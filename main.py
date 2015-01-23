@@ -35,7 +35,7 @@ TAG_WHITELIST_LIST = [
                       # Concrete concepts
                       'drm', 'nosql', 'sql', 'copyright', 'trademark', 'patent', 'encryption', 'economy', 'investing',
                       'privacy', 'autism', 'lawsuit', 'universe', 'assemblers', 'proxy', 'censorship', 'firewall', 'trial',
-                      'piracy',
+                      'piracy', 'ipo', 
                       
                       # Orgs
                       'intel', 'apple', 'facebook', 'google', 'yahoo', 'microsoft', 'twitter', 'zynga',
@@ -43,7 +43,7 @@ TAG_WHITELIST_LIST = [
                       'ubuntu', 'adobe', 'github', 'cisco', 'motorola', 'samsung', 'verizon', 'sprint', 'tmobile',
                       'instagram', 'square', 'stripe', 'anonymous', 'webkit', 'opera', 'tesla', 'redhat', 'centos',
                       'gnu', 'mpaa', 'riaa', 'w3c', 'isohunt', 'obama', 'ifpi', 'nsa', 'cia', 'fbi', 'csis', 'wikileaks',
-                      'snowden', 'kde', 'gnome',
+                      'snowden', 'kde', 'gnome', 'comcast', 'fcc', 'china', 'canada', 'usa',
                       
                       # Languages
                       'php', 'javascript', 'java', 'perl', 'python', 'ruby', 'html', 'html5',
