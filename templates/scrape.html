@@ -1,0 +1,19 @@
+<html>
+<head>
+</head>
+<body>
+
+<h1>Scraped</h1>
+<table border="1">
+	{% for story in stories %}
+	<tr>
+		<td>{{ story.source|escape }}</td>
+		<td>{{ story.id|escape }}</td>
+		<td>{{ story.new|escape }}</td>
+		<td>{{ story.title|escape }}</td>
+		<td>{{ story.url|escape }}</td>
+	</tr>
+	{% endfor %}
+</table>
+</body>
+</html>

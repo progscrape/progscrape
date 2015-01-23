@@ -1,0 +1,22 @@
+body { 
+	font-family: 'Lucida Grande', 'Lucida Sans', Helvetica, Arial, Tahoma, Verdana, sans-serif; 
+	font-size: 12px;
+	color: #111;
+}
+
+.story {
+	border-bottom: 1px solid #111;
+}
+
+.story .metadata {
+	margin-bottom: 1em;
+}
+
+.plusone {
+	float: right;
+}
+
+img.reddit {
+	width: 16px;
+	height: 16px;
+}
