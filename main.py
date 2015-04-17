@@ -268,6 +268,8 @@ def hackerNewsScrape(rpc):
         # Workaround for HTML parser bug
         title = title.replace("AT&T;", "AT&T")
         infoNode = story.parent.nextSibling
+        if isinstance(infoNode, NavigableString):
+            infoNode = infoNode.nextSibling
         infoSpans = infoNode.findAll('span')
         if len(infoSpans) == 0:
             continue;
