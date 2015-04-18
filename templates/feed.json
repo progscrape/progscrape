@@ -1,0 +1,25 @@
+{
+	"v": 1,
+	"stories": [
+	{% for story in stories %}
+		{
+			"title": "{{ story.title|escapejs }}",
+			"href": "{{ story.url|escapejs }}",
+			"date": "{{ story.rfc3339Date }}",
+	      	{% if story.redditProgId or story.redditTechId %}
+		      	"reddit": "{% if story.redditProgId %}http://www.reddit.com/comments/{{ story.redditProgId }}{% else %}http://www.reddit.com/comments/{{ story.redditTechId }}{% endif %}",
+	      	{% endif %}
+	      	{% if story.hackerNewsId %}
+	      		"hnews": "http://news.ycombinator.com/item?id={{ story.hackerNewsId }}",
+	      	{% endif %}
+	      	{% if story.deliciousId %}
+	      		"delicious": "http://delicious.com/url/{{ story.deliciousId }}",
+	      	{% endif %}
+	      	"tags": [
+				{% for tag in story.guessTags %}"{{ tag|escapejs }}"{% if not forloop.last %}, {% endif %}{% endfor %}
+	      	]
+		}{% if not forloop.last %},
+		{% endif %}
+	{% endfor %}
+	]
+}

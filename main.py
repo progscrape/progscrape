@@ -436,6 +436,22 @@ class FeedPage(StoryPage):
         self.response.out.write(template.render(path, template_values))
 
 
+class FeedJsonPage(StoryPage):
+    def get(self):
+        search = self.request.get("search")
+
+        stories = self.loadStories(search, False, False)
+        stories = stories[:15]
+        
+        template_values = {
+                           'search': search,
+                           'stories': stories
+                           }
+        
+        path = os.path.join(os.path.dirname(__file__), 'templates/feed.json')
+        self.response.headers['Content-Type'] = 'text/plain';
+        self.response.out.write(template.render(path, template_values))
+
 class MainPage(StoryPage):
     def get(self):    
         if ".appspot.com" in self.request.environ["HTTP_HOST"]:
@@ -693,6 +709,7 @@ app = webapp2.WSGIApplication(
                                      [
                                       ('/', MainPage),
                                       ('/feed', FeedPage),
+                                      ('/feed.json', FeedJsonPage),
                                       ('/sitemap.xml', SitemapPage),
                                       ('/dump__internal', DumpPage),
                                       ('/clean__old__stories', CleanOldStoriesPage),
