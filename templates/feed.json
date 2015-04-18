@@ -1,5 +1,10 @@
 {
 	"v": 1,
+	"tags": [
+		{% for tag in top_tags %}
+		"{{ tag|escapejs }}"{% if not forloop.last %}, {% endif %}
+		{% endfor %}
+	],
 	"stories": [
 	{% for story in stories %}
 		{

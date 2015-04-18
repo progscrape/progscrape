@@ -30,32 +30,34 @@ TAG_WHITELIST_LIST = [
                       'video', 'music', 'audio', 'tutorials', 'tutorial', 'media',
                       
                       # General concepts
-                      'algorithm', 'algorithms', 'compiler', '3d', 'hash', 'vc', 
+                      'algorithm', 'algorithms', 'compiler', 'compilers', '3d', 'hash', 'vc', 
                       
                       # Concrete concepts
                       'drm', 'nosql', 'sql', 'copyright', 'trademark', 'patent', 'encryption', 'economy', 'investing',
                       'privacy', 'autism', 'lawsuit', 'universe', 'assemblers', 'proxy', 'censorship', 'firewall', 'trial',
-                      'piracy', 'ipo', 
+                      'piracy', 'ipo', 'graphics', 'embedded', 'art', 'kernel',
                       
                       # Orgs
-                      'intel', 'apple', 'facebook', 'google', 'yahoo', 'microsoft', 'twitter', 'zynga',
+                      'amd', 'intel', 'apple', 'facebook', 'google', 'yahoo', 'microsoft', 'twitter', 'zynga',
                       'techcrunch', 'htc', 'amazon', 'mozilla', 'dell', 'nokia', 'novell', 'lenovo', 'nasa',
                       'ubuntu', 'adobe', 'github', 'cisco', 'motorola', 'samsung', 'verizon', 'sprint', 'tmobile',
                       'instagram', 'square', 'stripe', 'anonymous', 'webkit', 'opera', 'tesla', 'redhat', 'centos',
                       'gnu', 'mpaa', 'riaa', 'w3c', 'isohunt', 'obama', 'ifpi', 'nsa', 'cia', 'fbi', 'csis', 'wikileaks',
-                      'snowden', 'kde', 'gnome', 'comcast', 'fcc', 'china', 'canada', 'usa',
+                      'snowden', 'kde', 'gnome', 'comcast', 'fcc', 'china', 'canada', 'usa', 'yale', 'navy', 'debian',
+                      'spacex', 'turing', 'mit', 'stanford', 'uber', 'lyft', 'hbo', 'sony', 'fdic',
                       
                       # Languages
                       'php', 'javascript', 'java', 'perl', 'python', 'ruby', 'html', 'html5',
                       'css', 'css2', 'css3', 'flash', 'lisp', 'clojure', 'arc', 'scala', 'lua', 
-                      'haxe', 'ocaml', 'erlang', 'go', 'c',
+                      'haxe', 'ocaml', 'erlang', 'go', 'c', 'rust', 'ecmascript',
                       
                       # Technologies
                       'linux', 'mongodb', 'cassandra', 'hadoop', 'android', 'node',
                       'iphone', 'ipad', 'ipod', 'ec2', 'firefox', 'safari', 'chrome', 'windows', 'mac', 'osx',
-                      'git', 'subversion', 'mercurial', 'vi', 'emacs',
+                      'git', 'subversion', 'mercurial', 'vi', 'emacs', 
                       'bitcoin', 'drupal', 'wordpress', 'unicode', 'pdf', 'wifi', 
                       'phonegap', 'minecraft', 'mojang', 'svg', 'jpeg', 'jpg', 'gif', 'png', 'dns', 'torrent',
+                      'docker', 'drone', 'drones', 'meteor', 'react',
                     
                       # Frameworks
                       'django', 'rails', 'jquery', 'prototype', 'mootools', 'angular', 'ember'
@@ -208,8 +210,6 @@ class Story(search.SearchableModel):
         host = urlparse(self.url).netloc
         host = re.sub("^www[0-9]*\.", "", host)
         tags.append(host)
-        if host.find("youtube.com") != -1:
-            tags.append("video")
         
         tags_so_far = {}
         for bit in re.split("[^A-Za-z0-9]+", self.title.lower()):
@@ -217,6 +217,9 @@ class Story(search.SearchableModel):
                 tags_so_far[bit] = True
                 tags.append(bit)    
         
+        if (host.find("youtube.com") != -1 or host.find("vimeo.com") != -1) and not ("video" in tags):
+            tags.append("video")
+
         self.__cachedGuessedTags = tags
         return self.__cachedGuessedTags
         
@@ -344,6 +347,21 @@ def findOrCreateStory(story):
     
     return existingStory
 
+def computeTopTags(stories):
+    popular_tags = {}
+    for story in stories:
+        if story.redditProgPosition == 0 and story.redditTechPosition == 0 and story.hackerNewsPosition == 0:
+            continue
+        for tag in story.guessTags():
+            if popular_tags.has_key(tag):
+                popular_tags[tag] = popular_tags[tag] + 1
+            else: 
+                popular_tags[tag] = 1
+
+    top_tags = [x for x in popular_tags.keys() if popular_tags[x] > 1]
+    top_tags.sort(lambda x, y: popular_tags[y] - popular_tags[x])
+    #top_tags = ["%s(%s)" % (x, popular_tags[x]) for x in top_tags]
+    return top_tags
 
 class StoryPage(webapp2.RequestHandler):
     def postProcess(self, stories, force_update):
@@ -441,15 +459,18 @@ class FeedJsonPage(StoryPage):
         search = self.request.get("search")
 
         stories = self.loadStories(search, False, False)
-        stories = stories[:15]
+        top_tags = computeTopTags(stories)
         
         template_values = {
                            'search': search,
-                           'stories': stories
+                           'stories': stories,
+                           'top_tags': top_tags
                            }
         
         path = os.path.join(os.path.dirname(__file__), 'templates/feed.json')
-        self.response.headers['Content-Type'] = 'text/plain';
+        self.response.headers['Content-Type'] = 'application/json';
+        self.response.headers['Cache-Control'] = 'public, max-age=120, s-maxage=120'
+        self.response.headers['Pragma'] = 'Public'
         self.response.out.write(template.render(path, template_values))
 
 class MainPage(StoryPage):
@@ -458,7 +479,7 @@ class MainPage(StoryPage):
             self.redirect("http://www.progscrape.com%s" % self.request.path_qs, True)
             return 
            
-        FRONT_PAGE_KEY = "rendered_front_page.2"
+        FRONT_PAGE_KEY = "rendered_front_page"
         
         # Fast path: cache the front page with no query strings
         if not self.request.query_string:
@@ -492,20 +513,7 @@ class MainPage(StoryPage):
             
         search = self.request.get("search")
         stories = self.loadStories(search, ignore_cache, force_update)
-
-        popular_tags = {}
-        for story in stories:
-            if story.redditProgPosition == 0 and story.redditTechPosition == 0 and story.hackerNewsPosition == 0:
-            	continue
-            for tag in story.guessTags():
-                if popular_tags.has_key(tag):
-                    popular_tags[tag] = popular_tags[tag] + 1
-                else: 
-                    popular_tags[tag] = 1
-
-        top_tags = [x for x in popular_tags.keys() if popular_tags[x] > 1]
-        top_tags.sort(lambda x, y: popular_tags[y] - popular_tags[x])
-        #top_tags = ["%s(%s)" % (x, popular_tags[x]) for x in top_tags]
+        top_tags = computeTopTags(stories)
         stories = stories[offset:offset + count]
 
         template_values = {
@@ -520,6 +528,9 @@ class MainPage(StoryPage):
 
         path = os.path.join(os.path.dirname(__file__), 'templates/index.html')
         self.response.headers['Content-Type'] = 'text/html; charset=utf-8';
+        self.response.headers['X-From-Cache'] = 'false';
+        self.response.headers['Cache-Control'] = 'public, max-age=120, s-maxage=120'
+        self.response.headers['Pragma'] = 'Public'
         rendered_front_page = template.render(path, template_values)
         if not self.request.query_string:
             memcache.add(FRONT_PAGE_KEY, rendered_front_page, 60*5)
