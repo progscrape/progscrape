@@ -35,7 +35,7 @@ TAG_WHITELIST_LIST = [
                       # Concrete concepts
                       'drm', 'nosql', 'sql', 'copyright', 'trademark', 'patent', 'encryption', 'economy', 'investing',
                       'privacy', 'autism', 'lawsuit', 'universe', 'assemblers', 'proxy', 'censorship', 'firewall', 'trial',
-                      'piracy', 'ipo', 'graphics', 'embedded', 'art', 'kernel',
+                      'piracy', 'ipo', 'graphics', 'embedded', 'art', 'kernel', 'antimatter',
                       
                       # Orgs
                       'amd', 'intel', 'apple', 'facebook', 'google', 'yahoo', 'microsoft', 'twitter', 'zynga',
@@ -44,7 +44,8 @@ TAG_WHITELIST_LIST = [
                       'instagram', 'square', 'stripe', 'anonymous', 'webkit', 'opera', 'tesla', 'redhat', 'centos',
                       'gnu', 'mpaa', 'riaa', 'w3c', 'isohunt', 'obama', 'ifpi', 'nsa', 'cia', 'fbi', 'csis', 'wikileaks',
                       'snowden', 'kde', 'gnome', 'comcast', 'fcc', 'china', 'canada', 'usa', 'yale', 'navy', 'debian',
-                      'spacex', 'turing', 'mit', 'stanford', 'uber', 'lyft', 'hbo', 'sony', 'fdic',
+                      'spacex', 'turing', 'mit', 'stanford', 'uber', 'lyft', 'hbo', 'sony', 'fdic', 'ucla', 'canada',
+                      'antarctica', 'arctic', 'tor', 'wolfram',
                       
                       # Languages
                       'php', 'javascript', 'java', 'perl', 'python', 'ruby', 'html', 'html5',
@@ -57,7 +58,8 @@ TAG_WHITELIST_LIST = [
                       'git', 'subversion', 'mercurial', 'vi', 'emacs', 
                       'bitcoin', 'drupal', 'wordpress', 'unicode', 'pdf', 'wifi', 
                       'phonegap', 'minecraft', 'mojang', 'svg', 'jpeg', 'jpg', 'gif', 'png', 'dns', 'torrent',
-                      'docker', 'drone', 'drones', 'meteor', 'react',
+                      'docker', 'drone', 'drones', 'meteor', 'react', 'openbsd',  'sass', 'scss', 'aes', 'rsa',
+                      'ssl', 'tls',
                     
                       # Frameworks
                       'django', 'rails', 'jquery', 'prototype', 'mootools', 'angular', 'ember'
