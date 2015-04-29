@@ -623,19 +623,6 @@ class ScrapeTestPage(webapp2.RequestHandler):
         self.response.out.write('\n')
         self.response.out.write(rpc.get_result().content)
         
-
-class Guestbook(webapp2.RequestHandler):
-    def post(self):
-        greeting = Greeting()
-
-        if users.get_current_user():
-            greeting.author = users.get_current_user()
-
-        greeting.content = self.request.get('content')
-        greeting.put()
-        self.redirect('/')
-
-
 class DumpPage(webapp2.RequestHandler):
     def get(self):
         stories_query = Story.all()
