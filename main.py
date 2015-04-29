@@ -23,6 +23,7 @@ from google.appengine.api import memcache
 from google.appengine.ext import db
 from google.appengine.ext import search
 from google.appengine.ext.webapp import template
+from google.appengine.runtime import apiproxy_errors
 
 VERSION = 5
 TAG_WHITELIST_LIST = [
@@ -59,7 +60,7 @@ TAG_WHITELIST_LIST = [
                       'bitcoin', 'drupal', 'wordpress', 'unicode', 'pdf', 'wifi', 
                       'phonegap', 'minecraft', 'mojang', 'svg', 'jpeg', 'jpg', 'gif', 'png', 'dns', 'torrent',
                       'docker', 'drone', 'drones', 'meteor', 'react', 'openbsd',  'sass', 'scss', 'aes', 'rsa',
-                      'ssl', 'tls',
+                      'ssl', 'tls', 
                     
                       # Frameworks
                       'django', 'rails', 'jquery', 'prototype', 'mootools', 'angular', 'ember'
@@ -181,7 +182,7 @@ class Story(search.SearchableModel):
             return self.__cachedScore
         
         elements = self.scoreElements()
-        print elements
+#        print elements
         self.__cachedScore = -sum([elements[x] for x in elements])
         return self.__cachedScore
 
@@ -387,7 +388,7 @@ class StoryPage(webapp2.RequestHandler):
 
     def loadStories(self, search, ignore_cache, force_update):
         FETCH_COUNT = 150
-        SEARCH_FETCH_COUNT = 50
+        SEARCH_FETCH_COUNT = 25
         
         stories = []
         
@@ -400,24 +401,32 @@ class StoryPage(webapp2.RequestHandler):
                     stories_query = Story.all().search(re.sub("[^A-Za-z0-9]", "", search), properties=['title', 'searchable_url', 'searchable_host']).order('-date')
                     stories = stories_query.fetch(SEARCH_FETCH_COUNT)   
                     cursor = stories_query.cursor()
-                except NeedIndexError:
+                    stories = self.postProcess(stories, force_update)
+                            
+                    memcache.add("search-" + search, stories, 60 * 60)
+                except db.NeedIndexError:
                     stories = []
                     
-                stories = self.postProcess(stories, force_update)
-                        
-                memcache.add("search-" + search, stories, 10 * 60)
         else:
             if not ignore_cache:
                 stories = memcache.get("frontPage")
                 
-            if not stories:       
-                stories_query = Story.all().order('-date')
-                stories = stories_query.fetch(FETCH_COUNT)
-                cursor = stories_query.cursor()
-                
-                stories = self.postProcess(stories, force_update)
-                
-                memcache.add("frontPage", stories, 10 * 60)
+            if not stories:
+                try:
+                    stories_query = Story.all().order('-date')
+                    stories = stories_query.fetch(FETCH_COUNT)
+                    cursor = stories_query.cursor()
+                    stories = self.postProcess(stories, force_update)
+                    
+                    memcache.add("frontPage", stories, 10 * 60)
+                    memcache.add("frontPageLast", stories, 24 * 60 * 60)
+                except apiproxy_errors.OverQuotaError:
+                    print "Uh-oh: we are over quota for the front page. Let's use the last-ditch results"
+
+                    # Last ditch
+                    stories = memcache.get("frontPageLast");
+                    if stories == None:
+                        stories = []
 
         return stories
     
