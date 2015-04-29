@@ -6,8 +6,8 @@ cron:
   url: /scrape__internal__hackernews
   schedule: every 12 minutes
 - description: Scrape Delicious
-  url: /scrape__internal__delicious
-  schedule: every 57 minutes
+  url: /scrape__internal__lobsters
+  schedule: every 19 minutes
 - description: Refresh homepage
   url: /
   schedule: every 5 minutes

@@ -28,15 +28,15 @@ from google.appengine.runtime import apiproxy_errors
 VERSION = 5
 TAG_WHITELIST_LIST = [
                       # General types of story
-                      'video', 'music', 'audio', 'tutorials', 'tutorial', 'media',
+                      'video', 'music', 'audio', 'tutorials', 'tutorial', 'media', 'rfc',
                       
                       # General concepts
-                      'algorithm', 'algorithms', 'compiler', 'compilers', '3d', 'hash', 'vc', 
+                      'algorithm', 'algorithms', 'compiler', 'compilers', '3d', 'hash', 'vc', 'web', 'api',
                       
                       # Concrete concepts
                       'drm', 'nosql', 'sql', 'copyright', 'trademark', 'patent', 'encryption', 'economy', 'investing',
                       'privacy', 'autism', 'lawsuit', 'universe', 'assemblers', 'proxy', 'censorship', 'firewall', 'trial',
-                      'piracy', 'ipo', 'graphics', 'embedded', 'art', 'kernel', 'antimatter',
+                      'piracy', 'ipo', 'graphics', 'embedded', 'art', 'kernel', 'antimatter', 'compression',
                       
                       # Orgs
                       'amd', 'intel', 'apple', 'facebook', 'google', 'yahoo', 'microsoft', 'twitter', 'zynga',
@@ -60,7 +60,7 @@ TAG_WHITELIST_LIST = [
                       'bitcoin', 'drupal', 'wordpress', 'unicode', 'pdf', 'wifi', 
                       'phonegap', 'minecraft', 'mojang', 'svg', 'jpeg', 'jpg', 'gif', 'png', 'dns', 'torrent',
                       'docker', 'drone', 'drones', 'meteor', 'react', 'openbsd',  'sass', 'scss', 'aes', 'rsa',
-                      'ssl', 'tls', 
+                      'ssl', 'tls', 'http', 'https', 'ftp', 'webrtc', 'pgp', 'gpg', 'ios',
                     
                       # Frameworks
                       'django', 'rails', 'jquery', 'prototype', 'mootools', 'angular', 'ember'
@@ -88,10 +88,8 @@ class Story(search.SearchableModel):
     redditTechPosition = db.IntegerProperty()
     hackerNewsId = db.StringProperty()
     hackerNewsPosition = db.IntegerProperty()
-    deliciousId = db.StringProperty()
-    deliciousProgrammingPosition = db.IntegerProperty()
-    deliciousDevelopmentPosition = db.IntegerProperty()
-    deliciousJavascriptPosition = db.IntegerProperty()
+    lobstersId = db.StringProperty()
+    lobstersPosition = db.IntegerProperty()
     
     tags = db.StringListProperty()
     
@@ -139,37 +137,15 @@ class Story(search.SearchableModel):
         if self.hackerNewsPosition:
             s['hnews'] = max(0, (30 - self.hackerNewsPosition) * 1.2)
             count += 1
+        if self.lobstersPosition:
+            count += 1
+            s['lobsters'] = max(0, (30 - self.lobstersPosition) * 1.2)
 
         if (self.redditProgPosition or self.redditTechPosition) and len(self.title) > 130:
             s['long_title'] = -5
         if len(self.title) > 250:
             s['really_log_title'] = -10
 
-        deliciousScores = [1 for x in [self.deliciousProgrammingPosition, self.deliciousDevelopmentPosition, self.deliciousJavascriptPosition] if x]
-        if len(deliciousScores) > 0:
-            s['delicious'] = 1
-            count += 1
-            lowerTitle = self.title.lower() + ' ' + self.url.lower()
-            if 'payday' in lowerTitle:
-                s['spam:paydal'] = -20
-            if 'cash' in lowerTitle or 'money' in lowerTitle:
-                s['spam:cash'] = -20
-            if 'loan' in lowerTitle or 'loans' in lowerTitle or 'lender' in lowerTitle:
-                s['spam:loan'] = -20 
-            if 'credit' in lowerTitle:
-                s['spam:credit'] = -20
-
-            # Short/long titles
-            if len(self.title) < 20:
-                s['short_title'] = -5
-            if len(self.title) > 150:
-                s['long_title'] = -5
-
-            # Spammy-looking stuff
-            if not re.match(".*[a-z].*", self.title):
-                s["no_lowercase"] = -20
-            if not re.match(".*[A-Z].*", self.title):
-                s["no_uppercase"] = -20
 
         # Found in more than one place: bonus
         if count > 1:
@@ -294,14 +270,14 @@ def hackerNewsScrape(rpc):
     
     return stories
 
-def deliciousScrape(rpc):
+def lobstersScrape(rpc):
     d = feedparser.parse(rpc.get_result().content)
     stories = []
     index = 0
     for story in d['entries']:
         index += 1
         processed = {
-                     'id': story['id'].split('/')[-1].split('#')[0],
+                     'id': story['id'].split('/s/')[-1],
                       'url': story['link'],
                       'title': story['title'],
                       'index': index,
@@ -406,7 +382,7 @@ class StoryPage(webapp2.RequestHandler):
                     memcache.add("search-" + search, stories, 60 * 60)
                 except db.NeedIndexError:
                     stories = []
-                    
+
         else:
             if not ignore_cache:
                 stories = memcache.get("frontPage")
@@ -583,45 +559,23 @@ class ScrapePageReddit(webapp2.RequestHandler):
         self.response.out.write(template.render(path, template_values))
 
 
-class ScrapePageDelicious(webapp2.RequestHandler):
+class ScrapePageLobsters(webapp2.RequestHandler):
     def get(self):
         rpc1 = urlfetch.create_rpc()
-        urlfetch.make_fetch_call(rpc1, url="http://feeds.delicious.com/v2/rss/popular/javascript?count=1")
-        rpc2 = urlfetch.create_rpc()
-        urlfetch.make_fetch_call(rpc2, url="http://feeds.delicious.com/v2/rss/popular/development?count=1")
-        rpc3 = urlfetch.create_rpc()
-        urlfetch.make_fetch_call(rpc3, url="http://feeds.delicious.com/v2/rss/popular/programming?count=1")
+        urlfetch.make_fetch_call(rpc1, url="https://lobste.rs/rss")
 
-        stories1 = deliciousScrape(rpc1)
-        stories2 = deliciousScrape(rpc2)
-        stories3 = deliciousScrape(rpc3)
+        stories1 = lobstersScrape(rpc1)
         
         for story in stories1:
-            story['source'] = 'delicious.javascript'
+            story['source'] = 'lobsters'
             existingStory = findOrCreateStory(story)
             if existingStory:
-                existingStory.deliciousId = story['id']         
-                existingStory.deliciousJavascriptPosition = story['index']       
+                existingStory.lobstersId = story['id']         
+                existingStory.lobstersPosition = story['index']       
                 db.put(existingStory)
 
-        for story in stories2:
-            story['source'] = 'delicious.development'
-            existingStory = findOrCreateStory(story)
-            if existingStory:
-                existingStory.deliciousId = story['id']         
-                existingStory.deliciousDevelopmentPosition = story['index']       
-                db.put(existingStory)
-
-        for story in stories3:
-            story['source'] = 'delicious.programming'
-            existingStory = findOrCreateStory(story)
-            if existingStory:
-                existingStory.deliciousId = story['id']         
-                existingStory.deliciousProgrammingPosition = story['index']       
-                db.put(existingStory)
-        
         template_values = {
-            'stories': stories1 + stories2 + stories3,
+            'stories': stories1,
             }
 
         path = os.path.join(os.path.dirname(__file__), 'templates/scrape.html')
@@ -737,7 +691,7 @@ app = webapp2.WSGIApplication(
                                       ('/clean__old__stories', CleanOldStoriesPage),
                                       ('/scrape__internal__reddit', ScrapePageReddit),
                                       ('/scrape__internal__hackernews', ScrapePageHackerNews),
-                                      ('/scrape__internal__delicious', ScrapePageDelicious),
+                                      ('/scrape__internal__lobsters', ScrapePageLobsters),
                                       ('/scrape__test__page/(.*)', ScrapeTestPage),
                                      ],
                                      debug=True)

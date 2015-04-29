@@ -17,8 +17,8 @@
 	      	{% if story.hackerNewsId %}
 	      		"hnews": "http://news.ycombinator.com/item?id={{ story.hackerNewsId }}",
 	      	{% endif %}
-	      	{% if story.deliciousId %}
-	      		"delicious": "http://delicious.com/url/{{ story.deliciousId }}",
+	      	{% if story.lobstersId %}
+	      		"lobsters": "https://lobste.rs/s/{{ story.lobstersId }}",
 	      	{% endif %}
 	      	"tags": [
 				{% for tag in story.guessTags %}"{{ tag|escapejs }}"{% if not forloop.last %}, {% endif %}{% endfor %}

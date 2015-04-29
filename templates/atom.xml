@@ -21,8 +21,8 @@
       	{% if story.hackerNewsId %}
       		<a href="http://news.ycombinator.com/item?id={{ story.hackerNewsId }}"><img class="hnews" src="http://www.progscrape.com/static/ynews.ico" /></a>
       	{% endif %}
-      	{% if story.deliciousId %}
-      		<a href="http://delicious.com/url/{{ story.deliciousId }}"><img class="delicious" src="http://www.progscrape.com/static/delicious.ico" /></a>
+      	{% if story.lobstersId %}
+      		<a href="https://lobste.rs/url/{{ story.lobstersId }}"><img class="lobsters" src="http://www.progscrape.com/static/lobsters.ico" /></a>
       	{% endif %}
       	<p>Tags:
         {% for tag in story.guessTags %}
