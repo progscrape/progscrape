@@ -16,6 +16,7 @@ from datetime import timedelta;
 from urlparse import urlparse;
 
 import webapp2
+import urlnorm
 
 from google.appengine.api import users
 from google.appengine.api import urlfetch
@@ -25,7 +26,7 @@ from google.appengine.ext import search
 from google.appengine.ext.webapp import template
 from google.appengine.runtime import apiproxy_errors
 
-VERSION = 5
+VERSION = 6
 TAG_WHITELIST_LIST = [
                       # General types of story
                       'video', 'music', 'audio', 'tutorials', 'tutorial', 'media', 'rfc',
@@ -203,15 +204,8 @@ class Story(search.SearchableModel):
         return self.__cachedGuessedTags
         
     def updateVersion(self):
-        self.searchable_url = cleanUrl(self.url)
-        host = urlparse(self.url).netloc
-        host = re.sub("^www[0-9]*\.", "", host)
-        host = re.sub("\.", "", host)
-        self.searchable_host = host
+        self.url = urlnorm.norm(self.url)
         self.current_version = VERSION
-        # Fixup old story titles
-        if self.title.find("&amp;") > -1:
-            self.title = unescapeHtml(self.title)
 
     def __cmp__(self, other):
         return cmp(self.score(), other.score())
@@ -225,7 +219,7 @@ def redditScrape(rpc):
         if story['data']['domain'].find('self.') != 0 and story['data']['score'] > 10:
              processed = {
                               'id': story['data']['id'],
-                              'url': story['data']['url'],
+                              'url': urlnorm.norm(story['data']['url']),
                               # HTML-escaping in JSON? WTF.
                               'title': xml.sax.saxutils.unescape(story['data']['title'].strip().replace("\n", ""), {"&apos;": "'", "&quot;": '"'}),
                               'index': index,
@@ -261,7 +255,7 @@ def hackerNewsScrape(rpc):
         if href.find('http') == 0:
              processed = {
                               'id': id,
-                              'url': href,
+                              'url': urlnorm.norm(href),
                               'title': title,
                               'index': index,
                               'new': False
@@ -278,7 +272,7 @@ def lobstersScrape(rpc):
         index += 1
         processed = {
                      'id': story['id'].split('/s/')[-1],
-                      'url': story['link'],
+                      'url': urlnorm.norm(story['link']),
                       'title': story['title'],
                       'index': index,
                       'new': False
