@@ -18,7 +18,7 @@ from sets import *;
 
 import webapp2
 import urlnorm
-from tags import TAG_WHITELIST
+from tags import *
 
 from google.appengine.api import users
 from google.appengine.api import urlfetch
@@ -150,14 +150,13 @@ class Story(search.SearchableModel):
         
         tags = list(self.tags)
         host = urlparse(self.url).netloc
-        host = re.sub("^www[0-9]*\.", "", host)
+        host = re.sub("^ww?w?[0-9]*\.", "", host)
         
-        tags_so_far = {}
-        for bit in re.split("[^A-Za-z0-9]+", self.title.lower()):
-            if TAG_WHITELIST.has_key(bit) and not tags_so_far.has_key(bit):
-                tags_so_far[bit] = True
-                tags.append(bit)    
+        # Displayed tags come from the title
+        tags += extractTags(self.title)
         
+        normalizeTags(host, tags)
+
         # Uniquify and sort tags
         tags = list(Set(tags))
         tags.sort()
@@ -166,8 +165,6 @@ class Story(search.SearchableModel):
         if host in tags:
             tags.remove(host)
         tags.insert(0, host)
-
-        normalizeTags(host, tags)
 
         self.__cachedGuessedTags = tags
         return self.__cachedGuessedTags
@@ -315,7 +312,7 @@ def lobstersScrape(rpc):
 
 def cleanHost(url):
     host = urlparse(url).netloc
-    host = re.sub("^www[0-9]*\.", "", host)
+    host = re.sub("^ww?w?[0-9]*\.", "", host)
     host = re.sub("\.", "", host)    
     return host
 
@@ -380,14 +377,17 @@ class StoryPage(webapp2.RequestHandler):
         
         stories = [story for story in stories if story.isEnglish()]
         
-        for story in stories:
-            if not story.current_version or not story.current_version == VERSION or force_update:
-                count = count + 1
-                if count > MAX_POST_PROCESS:
-                    return stories
-                story.updateVersion()
-                story.put()
-                
+        try:
+            for story in stories:
+                if not story.current_version or not story.current_version == VERSION or force_update:
+                    count = count + 1
+                    if count > MAX_POST_PROCESS:
+                        return stories
+                    story.updateVersion()
+                    story.put()
+        except apiproxy_errors.OverQuotaError:
+            print "Uh-oh: over quota while upgrading stories"
+
         return stories
 
     def loadStories(self, search, ignore_cache, force_update):
