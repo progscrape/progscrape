@@ -14,6 +14,7 @@ from BeautifulSoup import *
 from datetime import datetime;
 from datetime import timedelta;
 from urlparse import urlparse;
+from sets import *;
 
 import webapp2
 import urlnorm
@@ -26,7 +27,7 @@ from google.appengine.ext import search
 from google.appengine.ext.webapp import template
 from google.appengine.runtime import apiproxy_errors
 
-VERSION = 6
+VERSION = 10
 TAG_WHITELIST_LIST = [
                       # General types of story
                       'video', 'music', 'audio', 'tutorials', 'tutorial', 'media', 'rfc',
@@ -52,7 +53,7 @@ TAG_WHITELIST_LIST = [
                       # Languages
                       'php', 'javascript', 'java', 'perl', 'python', 'ruby', 'html', 'html5',
                       'css', 'css2', 'css3', 'flash', 'lisp', 'clojure', 'arc', 'scala', 'lua', 
-                      'haxe', 'ocaml', 'erlang', 'go', 'c', 'rust', 'ecmascript',
+                      'haxe', 'ocaml', 'erlang', 'go', 'golang', 'c', 'rust', 'ecmascript', 'haskell', 'nim',
                       
                       # Technologies
                       'linux', 'mongodb', 'cassandra', 'hadoop', 'android', 'node',
@@ -61,7 +62,7 @@ TAG_WHITELIST_LIST = [
                       'bitcoin', 'drupal', 'wordpress', 'unicode', 'pdf', 'wifi', 
                       'phonegap', 'minecraft', 'mojang', 'svg', 'jpeg', 'jpg', 'gif', 'png', 'dns', 'torrent',
                       'docker', 'drone', 'drones', 'meteor', 'react', 'openbsd',  'sass', 'scss', 'aes', 'rsa',
-                      'ssl', 'tls', 'http', 'https', 'ftp', 'webrtc', 'pgp', 'gpg', 'ios',
+                      'ssl', 'tls', 'http', 'https', 'ftp', 'webrtc', 'pgp', 'gpg', 'ios', 'ssd',
                     
                       # Frameworks
                       'django', 'rails', 'jquery', 'prototype', 'mootools', 'angular', 'ember'
@@ -96,7 +97,8 @@ class Story(search.SearchableModel):
     
     @classmethod
     def SearchableProperties(cls):
-        return [['title', 'searchable_url', 'searchable_host']]
+        # Remove this old set of searchable properties (ie: w/o tags) once all the old version stories fall out
+        return [['title', 'searchable_url', 'searchable_host', 'tags'], ['title', 'searchable_url', 'searchable_host']]
 
     def rfc3339Date(self):
         return rfc3339.rfc3339(self.date)
@@ -186,10 +188,9 @@ class Story(search.SearchableModel):
         if self.__cachedGuessedTags:
             return self.__cachedGuessedTags
         
-        tags = []
+        tags = list(self.tags)
         host = urlparse(self.url).netloc
         host = re.sub("^www[0-9]*\.", "", host)
-        tags.append(host)
         
         tags_so_far = {}
         for bit in re.split("[^A-Za-z0-9]+", self.title.lower()):
@@ -197,18 +198,62 @@ class Story(search.SearchableModel):
                 tags_so_far[bit] = True
                 tags.append(bit)    
         
-        if (host.find("youtube.com") != -1 or host.find("vimeo.com") != -1) and not ("video" in tags):
-            tags.append("video")
+        # Uniquify and sort tags
+        tags = list(Set(tags))
+        tags.sort()
+
+        # Put host at start of tags
+        if host in tags:
+            tags.remove(host)
+        tags.insert(0, host)
 
         self.__cachedGuessedTags = tags
         return self.__cachedGuessedTags
         
+    def updateImplicitFields(self):
+        self.searchable_url = cleanUrl(self.url)
+        host = urlparse(self.url).netloc
+        host = re.sub("^www[0-9]*\.", "", host)
+        host = re.sub("\.", "", host)
+        self.searchable_host = host 
+
     def updateVersion(self):
+        # fix for stop words
+        host = urlparse(self.url).netloc
+        normalizeTags(host, self.tags)
+
+        # Accidentally omitted search fields for version 6
+        self.updateImplicitFields()
         self.url = urlnorm.norm(self.url)
         self.current_version = VERSION
 
     def __cmp__(self, other):
         return cmp(self.score(), other.score())
+
+# Given a host and set of tags, adds/removes tags as needed
+def normalizeTags(host, tags):
+    # Normalize 'go' -> 'golang' in tags
+    if 'go' in tags:
+        tags.remove('go')
+        tags += ['golang']
+
+    # Normalize 'c' -> 'clanguage' in tags
+    if 'c' in tags:
+        tags.remove('c')
+        tags += ['clanguage']
+
+    # youtube/vimeo implicitly have a video tag
+    if (host.find("youtube.com") != -1 or host.find("vimeo.com") != -1) and not ("video" in tags):
+        tags += ['video']
+    # msdn->microsoft
+    if (host.find("msdn.com") != -1) and not ("microsoft" in tags):
+        tags += ['microsoft']
+
+def processScrapedStory(story):
+    host = urlparse(story['url']).netloc
+    normalizeTags(host, story['tags'])
+
+    return story
 
 def redditScrape(rpc):
     rawJson = json.loads(rpc.get_result().content)
@@ -217,15 +262,21 @@ def redditScrape(rpc):
     for story in rawJson['data']['children']:
         index += 1
         if story['data']['domain'].find('self.') != 0 and story['data']['score'] > 10:
-             processed = {
-                              'id': story['data']['id'],
-                              'url': urlnorm.norm(story['data']['url']),
-                              # HTML-escaping in JSON? WTF.
-                              'title': xml.sax.saxutils.unescape(story['data']['title'].strip().replace("\n", ""), {"&apos;": "'", "&quot;": '"'}),
-                              'index': index,
-                              'new': False
-                              }
-             stories.append(processed)
+            tags = []
+            if story['data']['subreddit'].lower() in ['javascript', 'rust', 'golang', 'appengine', 'llvm', 'python']:
+                tags += [story['data']['subreddit'].lower()]
+
+            processed = {
+                          'id': story['data']['id'],
+                          'url': urlnorm.norm(story['data']['url']),
+                          # HTML-escaping in JSON? WTF.
+                          'title': xml.sax.saxutils.unescape(story['data']['title'].strip().replace("\n", ""), 
+                            {"&apos;": "'", "&quot;": '"'}),
+                          'index': index,
+                          'tags': tags,
+                          'new': False
+                        }
+            stories.append(processScrapedStory(processed))
     
     return stories
 
@@ -241,8 +292,7 @@ def hackerNewsScrape(rpc):
         a = a[0]
         href = a['href']
         title = a.text
-        # Workaround for HTML parser bug
-        title = title.replace("AT&T;", "AT&T")
+
         infoNode = story.parent.nextSibling
         if isinstance(infoNode, NavigableString):
             infoNode = infoNode.nextSibling
@@ -252,15 +302,33 @@ def hackerNewsScrape(rpc):
         scoreNode = infoSpans[0]
         id = scoreNode['id'][6:]
         score = int(scoreNode.text.split(' ')[0])
+
+        tags = []
+
+        if title.endswith('[pdf]'):
+            title = title[:-5]
+            tags += ['pdf']
+
+        if title.endswith('[video]'):
+            title = title[:-7]
+            tags += ['video']
+
+        if title.startswith('Ask HN'):
+            tags += ['ask']
+
+        if title.startswith('Show HN'):
+            tags += ['show']
+
         if href.find('http') == 0:
              processed = {
                               'id': id,
                               'url': urlnorm.norm(href),
                               'title': title,
                               'index': index,
+                              'tags': tags,
                               'new': False
                               }
-             stories.append(processed)
+             stories.append(processScrapedStory(processed))
     
     return stories
 
@@ -270,14 +338,19 @@ def lobstersScrape(rpc):
     index = 0
     for story in d['entries']:
         index += 1
+        tags = []
+        for tag in story['tags']:
+            tags += [tag.term]
+
         processed = {
                      'id': story['id'].split('/s/')[-1],
                       'url': urlnorm.norm(story['link']),
                       'title': story['title'],
                       'index': index,
+                      'tags': tags,
                       'new': False
                      } 
-        stories.append(processed)
+        stories.append(processScrapedStory(processed))
         
     return stories
 
@@ -309,11 +382,14 @@ def findOrCreateStory(story):
     if existingStory is None:
         story['new'] = True
         existingStory = Story(url=story['url'],
-                               title=story['title'])
+                               title=story['title'],
+                               tags=story['tags'])
     else:
         story['new'] = False
-         
-    existingStory.updateVersion()
+
+    # Merge tags
+    [existingStory.tags.append(item) for item in story['tags'] if item not in existingStory.tags]
+    existingStory.updateImplicitFields()
     
     # Cache that we've seen this story for a while
     memcache.add(existingKey, True, 24 * 60 * 60)
@@ -361,6 +437,14 @@ class StoryPage(webapp2.RequestHandler):
         SEARCH_FETCH_COUNT = 25
         
         stories = []
+
+        search = re.sub("[^A-Za-z0-9]", "", search)
+
+        # This is one of AppEngine's stop words
+        if search == "go":
+            search = "golang";
+        if search == "c":
+            search = "clanguage";
         
         if search:
             if not ignore_cache:
@@ -368,13 +452,31 @@ class StoryPage(webapp2.RequestHandler):
                 
             if not stories:
                 try:
-                    stories_query = Story.all().search(re.sub("[^A-Za-z0-9]", "", search), properties=['title', 'searchable_url', 'searchable_host']).order('-date')
-                    stories = stories_query.fetch(SEARCH_FETCH_COUNT)   
+                    # Modern query
+                    stories_query = Story.all().search(search, properties=['title', 'searchable_url', 'searchable_host', 'tags']).order('-date')
+                    stories = stories_query.fetch(SEARCH_FETCH_COUNT)
                     cursor = stories_query.cursor()
                     stories = self.postProcess(stories, force_update)
-                            
+
+                    # Old query (can be removed in 2016 when all the old stories fall out)
+                    # This is going to be a bit expensive
+                    if len(stories) < SEARCH_FETCH_COUNT:
+                        old_stories_query = Story.all().search(search, properties=['title', 'searchable_url', 'searchable_host']).order('-date')
+                        old_stories = old_stories_query.fetch(SEARCH_FETCH_COUNT)
+                        if len(old_stories) > 0:
+                            print "Upgrading older stories (count = %d)" % len(old_stories)
+                            self.postProcess(old_stories, force_update)
+                            # Now re-query for the items old and new
+                            stories = stories_query.fetch(SEARCH_FETCH_COUNT)
+                            cursor = stories_query.cursor()
+                            print "Old search count = %d" % len(stories)
+                            stories = self.postProcess(stories, force_update)
+                            print "New search count = %d" % len(stories)
+                    # End old query
+
                     memcache.add("search-" + search, stories, 60 * 60)
-                except db.NeedIndexError:
+                except db.NeedIndexError, err:
+                    print "Index appears to be missing %s" % err
                     stories = []
 
         else:
@@ -394,7 +496,7 @@ class StoryPage(webapp2.RequestHandler):
                     print "Uh-oh: we are over quota for the front page. Let's use the last-ditch results"
 
                     # Last ditch
-                    stories = memcache.get("frontPageLast");
+                    stories = memcache.get("frontPageLast")
                     if stories == None:
                         stories = []
 
@@ -521,9 +623,11 @@ class MainPage(StoryPage):
 class ScrapePageReddit(webapp2.RequestHandler):
     def get(self):
         rpc1 = urlfetch.create_rpc()
-        urlfetch.make_fetch_call(rpc1, url="http://reddit.com/r/programming+compsci+csbooks+llvm+compilers+types+systems/.json")
+        urlfetch.make_fetch_call(rpc1, 
+            url="http://reddit.com/r/programming+compsci+csbooks+llvm+compilers+types+systems+rust+golang+appengine+javascript+python/.json?limit=100")
         rpc2 = urlfetch.create_rpc()
-        urlfetch.make_fetch_call(rpc2, url="http://reddit.com/r/technology+science/.json")
+        urlfetch.make_fetch_call(rpc2, 
+            url="http://reddit.com/r/technology+science/.json")
         
         stories1 = redditScrape(rpc1)
         stories2 = redditScrape(rpc2)

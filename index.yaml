@@ -15,3 +15,9 @@ indexes:
   - name: __searchable_text_index_title_searchable_url_searchable_host
   - name: date
     direction: desc
+
+- kind: Story
+  properties:
+  - name: __searchable_text_index_title_searchable_url_searchable_host_tags
+  - name: date
+    direction: desc
