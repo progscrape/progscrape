@@ -28,6 +28,10 @@ from google.appengine.ext import search
 from google.appengine.ext.webapp import template
 from google.appengine.runtime import apiproxy_errors
 
+# Used for the SearchableModel upgrade hack
+import string
+from google.appengine.ext.search import SearchableEntity
+
 VERSION = 11
 
 class Story(search.SearchableModel):
@@ -58,7 +62,7 @@ class Story(search.SearchableModel):
     @classmethod
     def SearchableProperties(cls):
         # Remove this old set of searchable properties (ie: w/o tags) once all the old version stories fall out
-        return [['title', 'searchable_url', 'searchable_host', 'tags'], ['title', 'searchable_url', 'searchable_host']]
+        return [['title', 'searchable_url', 'searchable_host', 'tags']]
 
     def rfc3339Date(self):
         return rfc3339.rfc3339(self.date)
@@ -174,6 +178,10 @@ class Story(search.SearchableModel):
         self.searchable_host = cleanHost(self.url) 
 
     def updateVersion(self):
+        # ensure tags
+        if not self.tags:
+            self.tags = []
+
         # fix for stop words
         host = urlparse(self.url).netloc
         normalizeTags(host, self.tags)
@@ -317,16 +325,15 @@ def cleanHost(url):
     return host
 
 def cleanUrl(url):
-    url = cleanHost(url) + urlparse(url).path
+    url = urlparse(url).path
 
     # Chop off any extension-ish looking things at the end
     url = re.sub("\.[a-z]{1,5}$", '', url)
-        
+    # Chop the url into alphanumeric segments
+    url = re.sub("[^A-Za-z0-9]", " ", url)
+
     return url
     
-def unescapeHtml(html):
-    return xml.sax.saxutils.unescape(html, {"&apos;": "'", "&quot;": '"'})
-
 def findOrCreateStory(story):
     existingKey = '%s-%s' % (story['source'], story['url'])
     if memcache.get(existingKey):
@@ -380,6 +387,7 @@ class StoryPage(webapp2.RequestHandler):
         try:
             for story in stories:
                 if not story.current_version or not story.current_version == VERSION or force_update:
+                    print "Upgrading '%s' from %d to %d" % (story.url, story.current_version, VERSION)
                     count = count + 1
                     if count > MAX_POST_PROCESS:
                         return stories
@@ -418,18 +426,21 @@ class StoryPage(webapp2.RequestHandler):
 
                     # Old query (can be removed in 2016 when all the old stories fall out)
                     # This is going to be a bit expensive
-                    if len(stories) < SEARCH_FETCH_COUNT:
-                        old_stories_query = Story.all().search(search, properties=['title', 'searchable_url', 'searchable_host']).order('-date')
+                    if len(stories) < SEARCH_FETCH_COUNT and (not memcache.get("updated-" + search) or force_update):
+                        internal_query = list(SearchableEntity._FullTextIndex(search, re.compile('[' + re.escape(string.punctuation) + ']')))
+                        print "Upgrading query '%s' (%s)" % (internal_query, search)
+                        old_stories_query = db.GqlQuery("SELECT * FROM Story WHERE __searchable_text_index_title_searchable_url_searchable_host = :1", internal_query)
                         old_stories = old_stories_query.fetch(SEARCH_FETCH_COUNT)
                         if len(old_stories) > 0:
                             print "Upgrading older stories (count = %d)" % len(old_stories)
                             self.postProcess(old_stories, force_update)
                             # Now re-query for the items old and new
+                            print "Old search count = %d" % len(stories)
                             stories = stories_query.fetch(SEARCH_FETCH_COUNT)
                             cursor = stories_query.cursor()
-                            print "Old search count = %d" % len(stories)
                             stories = self.postProcess(stories, force_update)
                             print "New search count = %d" % len(stories)
+                        memcache.add("updated-" + search, True)
                     # End old query
 
                     memcache.add("search-" + search, stories, 60 * 60)

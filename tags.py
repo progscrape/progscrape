@@ -18,7 +18,6 @@ RAW_TAGS = [
     'compiler(s)', 
     { 'tag': '3d', 'alt': ['3 d', 'three dimension(s)', 'three dimensional'] }, 
     'hash', 
-    'vc', 
     'web', 
     'api',
 
@@ -166,6 +165,7 @@ RAW_TAGS = [
     { 'symbol': 'c++', 'internal': 'cplusplus' },
     { 'symbol': 'c#', 'internal': 'csharp' },
     { 'symbol': 'f#', 'internal': 'fsharp' },
+    'scheme',
 
     # Technologies
     'linux', 
