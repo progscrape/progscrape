@@ -54,6 +54,7 @@ TAG_WHITELIST_LIST = [
                       'php', 'javascript', 'java', 'perl', 'python', 'ruby', 'html', 'html5',
                       'css', 'css2', 'css3', 'flash', 'lisp', 'clojure', 'arc', 'scala', 'lua', 
                       'haxe', 'ocaml', 'erlang', 'go', 'golang', 'c', 'rust', 'ecmascript', 'haskell', 'nim',
+                      'prolog',
                       
                       # Technologies
                       'linux', 'mongodb', 'cassandra', 'hadoop', 'android', 'node',
@@ -76,22 +77,24 @@ class Story(search.SearchableModel):
     __cachedGuessedTags = None
     __cachedScore = None
     
-    title = db.StringProperty()
+    title = db.StringProperty(indexed=False)
     url = db.StringProperty()
+    # This will eventually be used for host-search optimization (maybe?)
     searchable_host = db.StringProperty()
-    searchable_url = db.StringProperty()
+    # This is purely to support the search field, so it is not indexed
+    searchable_url = db.StringProperty(indexed=False)
     date = db.DateTimeProperty(auto_now_add=True)
     current_version = db.IntegerProperty(default=VERSION)
     
     # Scraped IDs
     redditProgId = db.StringProperty()
-    redditProgPosition = db.IntegerProperty()
+    redditProgPosition = db.IntegerProperty(indexed=False)
     redditTechId = db.StringProperty()
-    redditTechPosition = db.IntegerProperty()
+    redditTechPosition = db.IntegerProperty(indexed=False)
     hackerNewsId = db.StringProperty()
-    hackerNewsPosition = db.IntegerProperty()
+    hackerNewsPosition = db.IntegerProperty(indexed=False)
     lobstersId = db.StringProperty()
-    lobstersPosition = db.IntegerProperty()
+    lobstersPosition = db.IntegerProperty(indexed=False)
     
     tags = db.StringListProperty()
     
@@ -147,7 +150,7 @@ class Story(search.SearchableModel):
         if (self.redditProgPosition or self.redditTechPosition) and len(self.title) > 130:
             s['long_title'] = -5
         if len(self.title) > 250:
-            s['really_log_title'] = -10
+            s['really_long_title'] = -10
 
 
         # Found in more than one place: bonus
@@ -206,6 +209,8 @@ class Story(search.SearchableModel):
         if host in tags:
             tags.remove(host)
         tags.insert(0, host)
+
+        normalizeTags(host, tags)
 
         self.__cachedGuessedTags = tags
         return self.__cachedGuessedTags
@@ -354,18 +359,16 @@ def lobstersScrape(rpc):
         
     return stories
 
-def cleanUrl(url):
-    # Chop off protocol
-    url = url[url.find("://") + 3:]
-    if url.find("www.") == 0:
-        url = url[4:]
-    
-    if url.find("?"):
-        url = url[:url.find("?")]
-    if url.find("#"):
-        url = url[:url.find("#")]
+def cleanHost(url):
+    host = urlparse(url).netloc
+    host = re.sub("^www[0-9]*\.", "", host)
+    host = re.sub("\.", "", host)    
 
-    url = re.sub("\.[a-z]{1,4}$", '', url)
+def cleanUrl(url):
+    url = cleanHost(url) + urlparse(url).path
+
+    # Chop off any extension-ish looking things at the end
+    url = re.sub("\.[a-z]{1,5}$", '', url)
         
     return url
     
