@@ -565,12 +565,6 @@ class CleanOldStoriesPage(webapp2.RequestHandler):
         self.response.headers['Content-Type'] = 'text/html; charset=utf-8';
         self.response.out.write(template.render(path, template_values))
 
-
-class CanonicalRedirectHandler(webapp2.RequestHandler):
-  def get(self, path):
-    self.redirect("http://www.progscrape.com%s" % (path), True)
-
-
 app = webapp2.WSGIApplication(
                                      [
                                       ('/', MainPage),

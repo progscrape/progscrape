@@ -30,24 +30,24 @@ class ScraperFactory:
 
     def scraper(self, name):
         if name == 'hackernews':
-            return self.hackernews()
+            return self._hackernews()
         if name == 'lobsters':
-            return self.lobsters()
+            return self._lobsters()
         if name == 'reddit.prog':
-            return self.redditProg()
+            return self._reddit_prog()
         if name == 'reddit.tech':
-            return self.redditTech()
+            return self._reddit_tech()
 
-    def hackernews(self):
+    def _hackernews(self):
         return HackerNewsScraper(self.http)
 
-    def lobsters(self):
+    def _lobsters(self):
         return LobstersScraper(self.http)
 
-    def redditProg(self):
+    def _reddit_prog(self):
         return RedditScraper(self.http, 'prog', REDDIT_PROG_TAG + REDDIT_PROG_NO_TAG, 100)
 
-    def redditTech(self):
+    def _reddit_tech(self):
         return RedditScraper(self.http, 'tech', REDDIT_TECH, 25)
 
 class ScrapedStory:
@@ -59,6 +59,16 @@ class ScrapedStory:
         self.index = index
         self.tags = tags
         self.new = None
+
+    @staticmethod
+    def from_string(str):
+        dict = eval(str)
+        return ScrapedStory(source=dict['source'], id=dict['id'], url=dict['url'], 
+            title=dict['title'], index=dict['index'], tags=dict['tags'])
+
+    def to_string(self):
+        return str({'source': self.source, 'id': self.id, 'url': self.url, 
+            'title': self.title, 'index': self.index, 'tags': self.tags})
 
 class Scraper:
     def __init__(self, http):
