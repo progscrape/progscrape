@@ -1,16 +1,24 @@
 cron:
-- description: Scrape Reddit 
-  url: /scrape__internal__reddit
+- description: Scrape Reddit Prog
+  url: /scrape__internal?scraper=reddit.prog
   schedule: every 4 minutes
+
+- description: Scrape Reddit Tech
+  url: /scrape__internal?scraper=reddit.tech
+  schedule: every 4 minutes
+
 - description: Scrape Hacker News
-  url: /scrape__internal__hackernews
+  url: /scrape__internal?scraper=hackernews
   schedule: every 12 minutes
-- description: Scrape Delicious
-  url: /scrape__internal__lobsters
+
+- description: Scrape Lobsters
+  url: /scrape__internal?scrape=lobsters
   schedule: every 19 minutes
+
 - description: Refresh homepage
   url: /
   schedule: every 5 minutes
+
 - description: Clean old stories
   url: /clean__old__stories
   schedule: every 24 hours

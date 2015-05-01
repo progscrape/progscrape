@@ -1,18 +1,10 @@
-import sys
-import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'lib'))
+import lib
 
-import cgi
-import hmac
-import simplejson as json
+import os
 import re
-import feedparser
 import logging
-import xml.sax.saxutils
 import rfc3339
 import urllib
-
-from BeautifulSoup import *
 
 from datetime import datetime;
 from datetime import timedelta;
@@ -22,6 +14,7 @@ from sets import *;
 import webapp2
 import urlnorm
 from tags import *
+from scrapers import *
 
 from google.appengine.api import users
 from google.appengine.api import urlfetch
@@ -34,6 +27,8 @@ from google.appengine.runtime import apiproxy_errors
 # Used for the SearchableModel upgrade hack
 import string
 from google.appengine.ext.search import SearchableEntity
+
+scrapers = ScraperFactory(AppEngineHttp(urlfetch))
 
 VERSION = 11
 
@@ -215,111 +210,6 @@ def normalizeTags(host, tags):
     if (host.find("msdn.com") != -1) and not ("microsoft" in tags):
         tags += ['microsoft']
 
-def processScrapedStory(story):
-    host = urlparse(story['url']).netloc
-    normalizeTags(host, story['tags'])
-
-    return story
-
-def redditScrape(rpc):
-    rawJson = json.loads(rpc.get_result().content)
-    stories = []
-    index = 0
-    for story in rawJson['data']['children']:
-        index += 1
-        if story['data']['domain'].find('self.') != 0 and story['data']['score'] > 10:
-            tags = []
-            if story['data']['subreddit'].lower() in ['javascript', 'rust', 'golang', 'appengine', 'llvm', 'python']:
-                tags += [story['data']['subreddit'].lower()]
-
-            processed = {
-                          'id': story['data']['id'],
-                          'url': urlnorm.norm(story['data']['url']),
-                          # HTML-escaping in JSON? WTF.
-                          'title': xml.sax.saxutils.unescape(story['data']['title'].strip().replace("\n", ""), 
-                            {"&apos;": "'", "&quot;": '"'}),
-                          'index': index,
-                          'tags': tags,
-                          'new': False
-                        }
-            stories.append(processScrapedStory(processed))
-    
-    return stories
-
-def hackerNewsScrape(rpc):
-    rawHtml = BeautifulSoup(rpc.get_result().content)
-    stories = []
-    index = 0
-    for story in rawHtml.findAll('td', {'class':'title'})[1::2]:
-        index += 1
-        a = story.findAll('a')
-        if len(a) == 0:
-            continue
-        a = a[0]
-        href = a['href']
-        title = a.text
-
-        infoNode = story.parent.nextSibling
-        if isinstance(infoNode, NavigableString):
-            infoNode = infoNode.nextSibling
-        infoSpans = infoNode.findAll('span')
-        if len(infoSpans) == 0:
-            continue;
-        scoreNode = infoSpans[0]
-        id = scoreNode['id'][6:]
-        score = int(scoreNode.text.split(' ')[0])
-
-        tags = []
-
-        if title.endswith('[pdf]'):
-            title = title[:-5]
-            tags += ['pdf']
-
-        if title.endswith('[video]'):
-            title = title[:-7]
-            tags += ['video']
-
-        if title.startswith('Ask HN'):
-            tags += ['ask']
-
-        if title.startswith('Show HN'):
-            tags += ['show']
-
-        if href.find('http') == 0:
-             processed = {
-                              'id': id,
-                              'url': urlnorm.norm(href),
-                              'title': title,
-                              'index': index,
-                              'tags': tags,
-                              'new': False
-                              }
-             stories.append(processScrapedStory(processed))
-    
-    return stories
-
-def lobstersScrape(rpc):
-    d = feedparser.parse(rpc.get_result().content)
-    stories = []
-    index = 0
-    for story in d['entries']:
-        index += 1
-        tags = []
-        for tag in story['tags']:
-            tags += [tag.term]
-
-        processed = {
-                     'id': story['id'].split('/s/')[-1],
-                      'url': urlnorm.norm(story['link']),
-                      'title': story['title'],
-                      'index': index,
-                      'tags': tags,
-                      'new': False
-                     } 
-        stories.append(processScrapedStory(processed))
-        
-    return stories
-
 def cleanHost(url):
     host = urlparse(url).netloc
     host = re.sub("^ww?w?[0-9]*\.", "", host)
@@ -337,22 +227,22 @@ def cleanUrl(url):
     return url
     
 def findOrCreateStory(story):
-    existingKey = '%s-%s' % (story['source'], story['url'])
+    existingKey = '%s-%s' % (story.source, story.url)
     if memcache.get(existingKey):
-        story['new'] = False
+        story.new = False
         return None
     
-    existingStory = db.GqlQuery("SELECT * FROM Story WHERE url = :1", story['url']).get()
+    existingStory = db.GqlQuery("SELECT * FROM Story WHERE url = :1", story.url).get()
     if existingStory is None:
-        story['new'] = True
-        existingStory = Story(url=story['url'],
-                               title=story['title'],
-                               tags=story['tags'])
+        story.new = True
+        existingStory = Story(url=story.url,
+                               title=story.title,
+                               tags=story.tags)
     else:
-        story['new'] = False
+        story.new = False
 
     # Merge tags
-    [existingStory.tags.append(item) for item in story['tags'] if item not in existingStory.tags]
+    [existingStory.tags.append(item) for item in story.tags if item not in existingStory.tags]
     existingStory.updateImplicitFields()
     
     # Cache that we've seen this story for a while
@@ -387,7 +277,7 @@ class StoryPage(webapp2.RequestHandler):
         try:
             for story in stories:
                 if not story.current_version or not story.current_version == VERSION or force_update:
-                    print "Upgrading '%s' from %d to %d" % (story.url, story.current_version, VERSION)
+                    print "Upgrading '%s' from %d to %d" % (story.url.encode('utf-8'), story.current_version, VERSION)
                     count = count + 1
                     if count > MAX_POST_PROCESS:
                         return stories
@@ -588,86 +478,32 @@ class MainPage(StoryPage):
             memcache.add(FRONT_PAGE_KEY, rendered_front_page, 60*5)
         self.response.out.write(rendered_front_page)
 
-
-class ScrapePageReddit(webapp2.RequestHandler):
+class ScrapePage(webapp2.RequestHandler):
     def get(self):
-        rpc1 = urlfetch.create_rpc()
-        urlfetch.make_fetch_call(rpc1, 
-            url="http://reddit.com/r/programming+compsci+csbooks+llvm+compilers+types+systems+rust+golang+appengine+javascript+python/.json?limit=100")
-        rpc2 = urlfetch.create_rpc()
-        urlfetch.make_fetch_call(rpc2, 
-            url="http://reddit.com/r/technology+science/.json")
-        
-        stories1 = redditScrape(rpc1)
-        stories2 = redditScrape(rpc2)
-        
-        for story in stories1:
-            story['source'] = 'reddit.programming'
+        scraper = self.request.get("scraper")
+        stories = scrapers.scraper(scraper).scrape()
+
+        for story in stories:
             existingStory = findOrCreateStory(story)
             if existingStory:
-                existingStory.redditProgId = story['id']         
-                existingStory.redditProgPosition = story['index']       
+                if story.source == 'hackernews':
+                    existingStory.hackerNewsId = story.id
+                    existingStory.hackerNewsPosition = story.index
+                elif story.source == 'lobsters':
+                    existingStory.lobstersId = story.id
+                    existingStory.lobstersPosition = story.index
+                elif story.source == 'reddit.prog':
+                    existingStory.redditProgId = story.id
+                    existingStory.redditProgPosition = story.index
+                elif story.source == 'reddit.tech':
+                    existingStory.redditTechId = story.id
+                    existingStory.redditTechPosition = story.index
+                else:
+                    raise Exception('Unknown story source: %s' % story.source)
+
                 db.put(existingStory)
 
-        for story in stories2:
-            story['source'] = 'reddit.technology'
-            existingStory = findOrCreateStory(story)
-            if existingStory:
-                existingStory.redditTechId = story['id']                
-                existingStory.redditTechPosition = story['index']       
-                db.put(existingStory)
-
-        template_values = {
-            'stories': stories1 + stories2
-            }
-
-        path = os.path.join(os.path.dirname(__file__), 'templates/scrape.html')
-        self.response.headers['Content-Type'] = 'text/html; charset=utf-8';
-        self.response.out.write(template.render(path, template_values))
-
-
-class ScrapePageLobsters(webapp2.RequestHandler):
-    def get(self):
-        rpc1 = urlfetch.create_rpc()
-        urlfetch.make_fetch_call(rpc1, url="https://lobste.rs/rss")
-
-        stories1 = lobstersScrape(rpc1)
-        
-        for story in stories1:
-            story['source'] = 'lobsters'
-            existingStory = findOrCreateStory(story)
-            if existingStory:
-                existingStory.lobstersId = story['id']         
-                existingStory.lobstersPosition = story['index']       
-                db.put(existingStory)
-
-        template_values = {
-            'stories': stories1,
-            }
-
-        path = os.path.join(os.path.dirname(__file__), 'templates/scrape.html')
-        self.response.headers['Content-Type'] = 'text/html; charset=utf-8';
-        self.response.out.write(template.render(path, template_values))
-
-
-class ScrapePageHackerNews(webapp2.RequestHandler):
-    def get(self):
-        rpc1 = urlfetch.create_rpc()
-        urlfetch.make_fetch_call(rpc1, url="https://news.ycombinator.com/")
-        
-        stories1 = hackerNewsScrape(rpc1)
-        
-        for story in stories1:
-            story['source'] = 'hackernews'
-            existingStory = findOrCreateStory(story)
-            if existingStory:
-                existingStory.hackerNewsId = story['id']                
-                existingStory.hackerNewsPosition = story['index']       
-                db.put(existingStory)
-        
-        template_values = {
-            'stories': stories1,
-            }
+        template_values = { 'stories': stories, 'scraper': scraper }
 
         path = os.path.join(os.path.dirname(__file__), 'templates/scrape.html')
         self.response.headers['Content-Type'] = 'text/html; charset=utf-8';
@@ -743,9 +579,7 @@ app = webapp2.WSGIApplication(
                                       ('/sitemap.xml', SitemapPage),
                                       ('/dump__internal', DumpPage),
                                       ('/clean__old__stories', CleanOldStoriesPage),
-                                      ('/scrape__internal__reddit', ScrapePageReddit),
-                                      ('/scrape__internal__hackernews', ScrapePageHackerNews),
-                                      ('/scrape__internal__lobsters', ScrapePageLobsters),
+                                      ('/scrape__internal', ScrapePage),
                                       ('/scrape__test__page/(.*)', ScrapeTestPage),
                                      ],
                                      debug=True)
