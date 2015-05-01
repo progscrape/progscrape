@@ -12,6 +12,7 @@ RAW_TAGS = [
     'tutorial(s)', 
     'media', 
     'rfc',
+    { 'tag': 'release', 'alt': { 'released', 'releases' } },
 
     # General concepts
     'algorithm(s)', 
@@ -48,6 +49,8 @@ RAW_TAGS = [
     'kernel', 
     'antimatter', 
     'compression',
+    'font(s)',
+    'concurrency',
 
     # Orgs
     'amd', 

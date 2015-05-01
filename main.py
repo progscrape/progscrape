@@ -61,7 +61,6 @@ class Story(search.SearchableModel):
     
     @classmethod
     def SearchableProperties(cls):
-        # Remove this old set of searchable properties (ie: w/o tags) once all the old version stories fall out
         return [['title', 'searchable_url', 'searchable_host', 'tags']]
 
     def rfc3339Date(self):
@@ -361,8 +360,6 @@ def findOrCreateStory(story):
 def computeTopTags(stories):
     popular_tags = {}
     for story in stories:
-        if story.redditProgPosition == 0 and story.redditTechPosition == 0 and story.hackerNewsPosition == 0:
-            continue
         for tag in story.guessTags():
             if popular_tags.has_key(tag):
                 popular_tags[tag] = popular_tags[tag] + 1
@@ -371,7 +368,7 @@ def computeTopTags(stories):
 
     top_tags = [x for x in popular_tags.keys() if popular_tags[x] > 1]
     top_tags.sort(lambda x, y: popular_tags[y] - popular_tags[x])
-    #top_tags = ["%s(%s)" % (x, popular_tags[x]) for x in top_tags]
+
     return top_tags
 
 class StoryPage(webapp2.RequestHandler):
