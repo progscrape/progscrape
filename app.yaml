@@ -15,11 +15,10 @@ handlers:
 - url: /apple-touch-icon.png
   static_files: static/apple-touch-icon.png
   upload: static/apple-touch-icon.png
-  
+
 - url: /robots.txt
   static_files: static/robots.txt
   upload: static/robots.txt
-
 
 - url: /.*
   script: main.app

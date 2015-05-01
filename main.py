@@ -1,5 +1,8 @@
-import cgi
+import sys
 import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'lib'))
+
+import cgi
 import hmac
 import simplejson as json
 import re
