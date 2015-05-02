@@ -23,3 +23,5 @@ handlers:
 - url: /.*
   script: main.app
 
+builtins:
+- remote_api: on
