@@ -12,7 +12,7 @@ cron:
   schedule: every 12 minutes
 
 - description: Scrape Lobsters
-  url: /scrape__internal?scrape=lobsters
+  url: /scrape__internal?scraper=lobsters
   schedule: every 19 minutes
 
 - description: Refresh homepage
