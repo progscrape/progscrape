@@ -2,6 +2,8 @@ import lib
 
 import re
 import string
+from urlparse import urlparse
+import unittest
 
 from stemming import porter2
 from sets import *
@@ -42,39 +44,80 @@ FULL_TEXT_STOP_WORDS = frozenset([
    'will', 'with', 'within', 'without', 'would', 'yet', 'you'])
 
 # Common but useless terms in URLs
+# TODO: dump list of URLs and generate this properly
 URL_STOP_WORDS = frozenset([
-	'www', 'html', 'post', 'story', 'archive'])
+    'www', 'html', 'post', 'story', 'archive'])
 
 # Inspired by AppEngine's SearchableModel
 def tokenize(text):
-	"""Tokenize an english phrase"""
-	text = WORD_DELIMITER_REGEX.sub(' ', text)
-	words = text.lower().split()
-	words = set(unicode(w) for w in words if len(w) > FULL_TEXT_MIN_LENGTH)
-	words -= FULL_TEXT_STOP_WORDS
-	return words
+    """Tokenize an english phrase"""
+    text = WORD_DELIMITER_REGEX.sub(' ', text)
+    words = text.lower().split()
+    words = set(unicode(w) for w in words if len(w) > FULL_TEXT_MIN_LENGTH)
+    words -= FULL_TEXT_STOP_WORDS
+    return words
 
 def tokenize_url(url):
-	url_tokens = tokenize(url)
-	url_tokens -= URL_STOP_WORDS
-	return url_tokens
+    url_tokens = tokenize(clean_url(url))
+    url_tokens -= URL_STOP_WORDS
+    return url_tokens
 
-def tokenizeStory(story):
-	# Tokenize all the story titles, even the ones we are hiding from different scrapes
-	tokens = tokenize(story.titles)
+def tokenize_story(story):
+    # Tokenize all the story titles, even the ones we are hiding from different scrapes
+    tokens = set().union(*[tokenize(title) for title in story.titles])
 
-	# Add the tags we've generated
-	tokens = tokens.union(story.tags)
+    # Add the tags we've generated
+    tokens = tokens.union(story.tags)
 
-	# And the URL (but ignore common terms we don't care about)
-	# TODO: Clean the url using the old code
-	tokens = tokens.union(tokenize_url(story.url))
+    # And the URL (but ignore common terms we don't care about)
+    # TODO: Clean the url using the old code
+    tokens = tokens.union(tokenize_url(story.url))
 
-	return tokens
+    return tokens
 
-def generateSearchField(story):
-	tokens = [porter2.stem(x) for x in tokenizeStory(story)]
-	return tokens
+def clean_host(url):
+    host = urlparse(url).netloc
+    host = re.sub("^ww?w?[0-9]*\.", "", host)
+    return host
+
+def clean_url(url):
+    url = urlparse(url).path
+
+    # Chop off any extension-ish looking things at the end
+    url = re.sub("\.[a-z]{1,5}$", '', url)
+    # Chop the url into alphanumeric segments
+    url = re.sub("[^A-Za-z0-9]", " ", url)
+
+    return url
+    
+def generate_search_field(story):
+    tokens = set([porter2.stem(x) for x in tokenize_story(story)])
+
+    # Add the special host search token
+    # TODO: we should probably add all domains up to the root (ie: blog.reddit.com+reddit.com)
+    tokens.add('host:%s' % clean_host(story.url))
+
+    return tokens
+
+class MockStory():
+    def __init__(self, titles, url, tags):
+        self.titles = titles
+        self.url = url
+        self.tags = tags
+
+class TestSearch(unittest.TestCase):
+    def test_tokenize(self):
+        self.assertEquals(set(['greatest', 'title']), tokenize('This is the greatest title ever'))
+
+    def test_tokenize_url(self):
+        self.assertEquals(set(['foo']), tokenize_url('http://google.com/foo'))
+        self.assertEquals(set(['foo', 'bar']), tokenize_url('http://google.com/foo/bar'))
+        self.assertEquals(set(['foo', 'bar']), tokenize_url('http://google.com/foo/bar.html'))
+
+    def test_generate_search_field(self):
+        story = MockStory(['first title', 'titled second'], 'http://google.com/foo', ['tag', 'bar', 'baz'])
+        self.assertEquals(set(['first', 'second', 'titl', 'foo', 'bar', 'baz', 'tag', 'host:google.com']), 
+            generate_search_field(story))
 
 if __name__ == '__main__':
-	print tokenize("http://google.com/foo")
+    unittest.main()

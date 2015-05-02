@@ -72,8 +72,8 @@ class StoryModel:
         """Computes the best title for the story given the scaped versions"""
         if self._cachedTitle == None:
             # Priority order for titles
-            s = scrape(Scrapers.HACKERNEWS) or scrape(Scrapers.LOBSTERS) or 
-                scrape(Scrapers.REDDIT_PROG) or scrape(Scrapers.REDDIT_TECH)
+            s = (scrape(Scrapers.HACKERNEWS) or scrape(Scrapers.LOBSTERS) or 
+                scrape(Scrapers.REDDIT_PROG) or scrape(Scrapers.REDDIT_TECH))
 
             if s:
                 self._cachedTitle = s.title
@@ -176,7 +176,7 @@ class StoryModel:
                 
         return ascii > (ascii + non_ascii) / 2
 
-    def scrape(source):
+    def scrape(self, source):
         """Returns the given scrape for a source if it exists, otherwise None"""
         if self._cachedScrapes == None:
             scrapes = []
@@ -184,6 +184,9 @@ class StoryModel:
                 scrapes.add(dictToScrapedStory(scrape))
 
         return self._cachedScrapes[source] if source in self._cachedScrapes else None
+
+    def _update_search(self):
+        self._scrape.search = generate_search_field(self)
 
     def __cmp__(self, other):
         return cmp(self.score, other.score)
