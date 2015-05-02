@@ -15,8 +15,8 @@ import webapp2
 import urlnorm
 from tags import *
 from scrapers import *
+from stories import *
 
-from google.appengine.api import users
 from google.appengine.api import urlfetch
 from google.appengine.api import memcache
 from google.appengine.ext import db
@@ -29,6 +29,7 @@ import string
 from google.appengine.ext.search import SearchableEntity
 
 scrapers = ScraperFactory(AppEngineHttp(urlfetch))
+stories = Stories()
 
 VERSION = 11
 
@@ -226,30 +227,6 @@ def cleanUrl(url):
 
     return url
     
-def findOrCreateStory(story):
-    existingKey = '%s-%s' % (story.source, story.url)
-    if memcache.get(existingKey):
-        story.new = False
-        return None
-    
-    existingStory = db.GqlQuery("SELECT * FROM Story WHERE url = :1", story.url).get()
-    if existingStory is None:
-        story.new = True
-        existingStory = Story(url=story.url,
-                               title=story.title,
-                               tags=story.tags)
-    else:
-        story.new = False
-
-    # Merge tags
-    [existingStory.tags.append(item) for item in story.tags if item not in existingStory.tags]
-    existingStory.updateImplicitFields()
-    
-    # Cache that we've seen this story for a while
-    memcache.add(existingKey, True, 24 * 60 * 60)
-    
-    return existingStory
-
 def computeTopTags(stories):
     popular_tags = {}
     for story in stories:
@@ -481,29 +458,11 @@ class MainPage(StoryPage):
 class ScrapePage(webapp2.RequestHandler):
     def get(self):
         scraper = self.request.get("scraper")
-        stories = scrapers.scraper(scraper).scrape()
+        scraped = scrapers.scraper(scraper).scrape()
 
-        for story in stories:
-            existingStory = findOrCreateStory(story)
-            if existingStory:
-                if story.source == 'hackernews':
-                    existingStory.hackerNewsId = story.id
-                    existingStory.hackerNewsPosition = story.index
-                elif story.source == 'lobsters':
-                    existingStory.lobstersId = story.id
-                    existingStory.lobstersPosition = story.index
-                elif story.source == 'reddit.prog':
-                    existingStory.redditProgId = story.id
-                    existingStory.redditProgPosition = story.index
-                elif story.source == 'reddit.tech':
-                    existingStory.redditTechId = story.id
-                    existingStory.redditTechPosition = story.index
-                else:
-                    raise Exception('Unknown story source: %s' % story.source)
+        stories.store(scraped)
 
-                db.put(existingStory)
-
-        template_values = { 'stories': stories, 'scraper': scraper }
+        template_values = { 'stories': scraped, 'scraper': scraper }
 
         path = os.path.join(os.path.dirname(__file__), 'templates/scrape.html')
         self.response.headers['Content-Type'] = 'text/html; charset=utf-8';

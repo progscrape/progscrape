@@ -1,6 +1,7 @@
 import lib
 import urllib
 import sys
+from sets import *;
 
 import simplejson as json
 import feedparser
@@ -8,7 +9,7 @@ from BeautifulSoup import *
 import xml.sax.saxutils
 import urlnorm
 
-__all__ = [ 'ScraperFactory', 'AppEngineHttp' ]
+__all__ = [ 'ScraperFactory', 'AppEngineHttp', 'ScrapedStory', 'Scrapers' ]
 
 # Programming topics we can't tag
 REDDIT_PROG_NO_TAG = [ 'programming', 'compsci', 'csbooks', 'types', 'systems' ]
@@ -21,21 +22,24 @@ REDDIT_TECH = [ 'technology', 'science' ]
 # Reddits that have flair good enough to be tags
 REDDIT_FLAIR_TAGS = [ 'science' ]
 
+class Scrapers:
+    HACKERNEWS, LOBSTERS, REDDIT_TECH, REDDIT_PROG = ['hackernews', 'lobsters', 'reddit.tech', 'reddit.prog']
+
 class ScraperFactory:
     def __init__(self, http):
         self.http = http
 
-    def scrapers():
-        return ['hackernews', 'lobsters', 'reddit.tech', 'reddit.prog']
+    def scrapers(self):
+        return [Scrapers.__getattr__(i) for i in dir(Scrapers) if not i.startswith('_')]
 
     def scraper(self, name):
-        if name == 'hackernews':
+        if name == Scrapers.HACKERNEWS:
             return self._hackernews()
-        if name == 'lobsters':
+        if name == Scrapers.LOBSTERS:
             return self._lobsters()
-        if name == 'reddit.prog':
+        if name == Scrapers.REDDIT_PROG:
             return self._reddit_prog()
-        if name == 'reddit.tech':
+        if name == Scrapers.REDDIT_TECH:
             return self._reddit_tech()
 
     def _hackernews(self):
@@ -51,7 +55,7 @@ class ScraperFactory:
         return RedditScraper(self.http, 'tech', REDDIT_TECH, 25)
 
 class ScrapedStory:
-    def __init__(self, source, id, url, title, index, tags):
+    def __init__(self, source=None, id=None, url=None, title=None, index=None, tags=None):
         self.source = source
         self.id = id
         self.url = url
@@ -77,9 +81,17 @@ class Scraper:
 
     def scrape(self):
         stories = self._scrape()
+        # If we've scraped the same canonical URL twice, we will just choose the first one
+        urls = Set()
         for story in stories:
-            story.url = urlnorm.norm(story.url)
-            story.title = story.title.strip()
+            url = urlnorm.norm(story.url)
+            if url in urls:
+                stories.remove(story)
+            else:
+                urls.add(url)
+                story.url = url
+                story.title = story.title.strip()
+
         return stories
 
 class HackerNewsScraper(Scraper):
@@ -129,7 +141,7 @@ class HackerNewsScraper(Scraper):
                 tags += ['show']
 
             if href.find('http') == 0:
-                 stories.append(ScrapedStory(source='hackernews', id=id, url=href, title=title, index=index, tags=tags))
+                 stories.append(ScrapedStory(source=Scrapers.HACKERNEWS, id=id, url=href, title=title, index=index, tags=tags))
         
         return stories
 
@@ -192,7 +204,7 @@ class LobstersScraper(Scraper):
             if 'practices' in tags:
                 tags.remove('practices')
 
-            stories.append(ScrapedStory(source='lobsters', id=story['id'].split('/s/')[-1], 
+            stories.append(ScrapedStory(source=Scrapers.LOBSTERS, id=story['id'].split('/s/')[-1], 
                 url=story['link'], title=story['title'], index=index, tags=tags))
             
         return stories
