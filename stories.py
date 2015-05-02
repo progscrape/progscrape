@@ -1,8 +1,10 @@
 import lib
 import logging
 import unittest
+import re
 
-from scrapers import ScrapedStory
+from tags import *
+from scrapers import ScrapedStory, Scrapers
 from score import scoreStory
 from datetime import datetime;
 import rfc3339
@@ -25,7 +27,7 @@ CACHE_SEEN_STORY = 24 * 60 * 60
 """Current entity version"""
 VERSION = 11
 
-def scrapedStoryToDict(story):
+def scraped_story_to_dict(story):
     """Writes a scraped story to a dict"""
     out = {
         'source': story.source,
@@ -36,7 +38,7 @@ def scrapedStoryToDict(story):
     }
     return out
 
-def dictToScrapedStory(dict):
+def dict_to_scraped_story(dict):
     """Reads a scraped story from a dict"""
     return ScrapedStory(id=dict['id'], url=None, source=dict['source'], 
         title=dict['title'], index=dict['index'], tags=dict['tags'])
@@ -63,17 +65,19 @@ The story model is returned to the caller of Stories methods.
 class StoryModel:
     def __init__(self, scrape):
         self._scrape = scrape
-        _cachedTags = None
-        _cachedScore = None
-        _cachedTitle = None
+        self._cachedTags = None
+        self._cachedScore = None
+        self._cachedTitle = None
+        self._cachedTitles = None
+        self._cachedScrapes = None
 
     @property
     def title(self):
         """Computes the best title for the story given the scaped versions"""
         if self._cachedTitle == None:
             # Priority order for titles
-            s = (scrape(Scrapers.HACKERNEWS) or scrape(Scrapers.LOBSTERS) or 
-                scrape(Scrapers.REDDIT_PROG) or scrape(Scrapers.REDDIT_TECH))
+            s = (self.scrape(Scrapers.HACKERNEWS) or self.scrape(Scrapers.LOBSTERS) or 
+                self.scrape(Scrapers.REDDIT_PROG) or self.scrape(Scrapers.REDDIT_TECH))
 
             if s:
                 self._cachedTitle = s.title
@@ -81,6 +85,12 @@ class StoryModel:
                 self._cachedTitle = "(missing title)"
 
         return self._cachedTitle
+
+    @property
+    def titles(self):
+        if self._cachedTitles == None:
+            self._cachedTitles = [s['title'] for s in self._scrape.scraped]
+        return self._cachedTitles
 
     @property
     def autoBreakTitle(self):
@@ -93,23 +103,23 @@ class StoryModel:
 
     @property
     def hackernewsUrl(self):
-        s = scrape(Scrapers.HACKERNEWS)
+        s = self.scrape(Scrapers.HACKERNEWS)
         if s:
-            return 'http://news.ycombinator.com/item?id=%d' % s.id
+            return 'http://news.ycombinator.com/item?id=%s' % s.id
         return None
     
     @property
     def redditUrl(self):
-        s = scrape(Scrapers.REDDIT_PROG) or scrape(Scrapers.REDDIT_TECH)
+        s = self.scrape(Scrapers.REDDIT_PROG) or self.scrape(Scrapers.REDDIT_TECH)
         if s:
-            return 'http://www.reddit.com/comments/%d' % s.id
+            return 'http://www.reddit.com/comments/%s' % s.id
         return None
     
     @property
     def lobstersUrl(self):
-        s = scrape(Scrapers.LOBSTERS)
+        s = self.scrape(Scrapers.LOBSTERS)
         if s:
-            return 'https://lobste.rs/s/=%d' % s.id
+            return 'https://lobste.rs/s/%s' % s.id
         return None
     
     @property
@@ -123,7 +133,7 @@ class StoryModel:
     @property
     def age(self):
         """Computes a relative date based on the current time"""
-        date = self._store.date
+        date = self._scrape.date
         timespan = (datetime.now() - date)
         if timespan.days > 0:
             if timespan.days == 1:
@@ -144,13 +154,14 @@ class StoryModel:
     def tags(self):
         """Computes the display (not search) tags from the scraped information"""
         if self._cachedTags == None:
-            tags = Set()
+            tags = set()
 
             # Accumulate tags from scrapes
             for scrape in self._scrape.scraped:
-                for tag in scrape.tags:
+                for tag in scrape['tags']:
                     tags.add(tag)
 
+            tags = tags.union(extractTags(self.title))
             # Add keyword tags
             # TODO
 
@@ -179,10 +190,11 @@ class StoryModel:
     def scrape(self, source):
         """Returns the given scrape for a source if it exists, otherwise None"""
         if self._cachedScrapes == None:
-            scrapes = []
+            scrapes = {}
             for scrape in self._scrape.scraped:
-                scrapes.add(dictToScrapedStory(scrape))
-
+                scrape = dict_to_scraped_story(scrape)
+                scrapes[scrape.source] = scrape
+            self._cachedScrapes = scrapes
         return self._cachedScrapes[source] if source in self._cachedScrapes else None
 
     def _update_search(self):
@@ -193,12 +205,13 @@ class StoryModel:
 
 class Stories:
     # Loads a set of stories from the datastore
-    def load(search=None, ignore_cache=False, force_update=True):
+    def load(self, search=None, ignore_cache=False, force_update=True):
         scraped = Scrape.query().fetch()
         results = []
         for scrape in scraped:
-            results.add(StoryModel(scrape))
+            results.append(StoryModel(scrape))
 
+        logging.info("Loaded %d stor(ies) for query '%s'", len(results), search)
         return results
 
     # Stores scraped stories to the datastore
@@ -249,7 +262,7 @@ class Stories:
             story.source, 
             ' (replaced)' if replaced else '')
 
-        existing.scraped += [ scrapedStoryToDict(story) ]
+        existing.scraped += [ scraped_story_to_dict(story) ]
         existing.put()
 
 class DemoTestCase(unittest.TestCase):
@@ -282,6 +295,24 @@ class DemoTestCase(unittest.TestCase):
         ]
         stories.store(scrape)
         self.assertEquals(1, len(Scrape.query().fetch()))
+
+    def test_computed_title(self):
+        stories = Stories()
+        scrape = [
+            ScrapedStory(id='1', url='http://example.com/1', title='title a', source='reddit.prog', index=1, tags=['a']),
+        ]
+        stories.store(scrape)
+        loaded = stories.load()
+        self.assertEquals(1, len(loaded))
+        self.assertEquals('title a', loaded[0].title)
+
+        scrape = [
+            ScrapedStory(id='1', url='http://example.com/1', title='title b', source='hackernews', index=1, tags=['b']),
+        ]
+        stories.store(scrape)
+        loaded = stories.load()
+        self.assertEquals(1, len(loaded))
+        self.assertEquals('title b', loaded[0].title)
 
     def tearDown(self):
         self.testbed.deactivate()
