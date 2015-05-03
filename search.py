@@ -95,13 +95,13 @@ def clean_url(url):
 
     return url
     
-def generate_search_field(titles, existing_tags, url):
+def generate_search_field(titles, tags, url):
     # Compute all the tags given the existing tags and the tags we've extracted from the titles
-    all_tags = [set(existing_tags)] + [set(extractTags(title)) for title in titles]
-    tags = set.union(*all_tags)
+    all_tags = [set(tags)] + [set(extractTags(title)) for title in titles]
+    all_tags = set.union(*all_tags)
 
     # Now compute the search tokens
-    tokens = set([porter2.stem(x) for x in tokenize_story(titles, tags, url)])
+    tokens = set([porter2.stem(x) for x in tokenize_story(titles, all_tags, url)])
 
     # Add the special host search token
     # TODO: we should probably add all domains up to the root (ie: blog.reddit.com+reddit.com)
@@ -109,11 +109,11 @@ def generate_search_field(titles, existing_tags, url):
     tokens.add('host:%s' % host)
 
     # Add the host tag to the start
-    tags = list(tags)
-    tags.sort()
-    tags.insert(0, host)
+    all_tags = displayTags(all_tags)
+    all_tags.sort()
+    all_tags.insert(0, host)
 
-    return Results(tokens, tags)
+    return Results(tokens, all_tags)
 
 class TestSearch(unittest.TestCase):
     def test_tokenize(self):

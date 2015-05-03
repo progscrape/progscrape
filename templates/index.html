@@ -74,12 +74,12 @@
       </div>
       {% if debug %}
       <div>date = {{ story.date }}</div>
-      <div>version = {{ story.current_version }}</div>
+      <div>version = {{ story.version }}</div>
       <div>title = {{ story.title|escape }}</div>
       <div>url = {{ story.url|escape }}</div>
-      <div>search = {% for term in story.search %}{{ term|escape }}{% endfor %}</div>
-      <div>score = {{ story.score }} = {{ story.scoreElements }}</div>
-      <div>tags = {{ story.tags }}</div>
+      <div>search = {% for term in story.search %}{{ term|escape }} {% endfor %}</div>
+      <div>score = {{ story.score }} = {{ story.scoreTerms }}</div>
+      <div>tags = {% for tag in story.tags %}{{ tag|escape }} {% endfor %}</div>
       {% endif %}
     </div>
     {% endfor %}

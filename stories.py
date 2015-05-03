@@ -4,6 +4,7 @@ import unittest
 import re
 
 from scrapers import ScrapedStory, Scrapers
+from search import generate_search_field
 from score import scoreStory
 from datetime import datetime;
 import rfc3339
@@ -69,6 +70,7 @@ class StoryModel:
         self._cachedTitle = None
         self._cachedTitles = None
         self._cachedScrapes = None
+        self._cachedSearchResults = None
 
     @property
     def title(self):
@@ -154,27 +156,26 @@ class StoryModel:
     @property
     def tags(self):
         """Computes the display (not search) tags from the scraped information"""
-        if self._cachedTags == None:
-            tags = set()
-
-            # Accumulate tags from scrapes
-            for scrape in self._scrape.scraped:
-                for tag in scrape['tags']:
-                    tags.add(tag)
-
-            tags = tags.union(extractTags(self.title))
-            # Add keyword tags
-            # TODO
-
-            self._cachedTags = tags
-
-        return self._cachedTags
+        return self._search_results.tags        
+    
+    @property
+    def search(self):
+        """Computes the search terms from the scraped information"""
+        return self._search_results.search_tokens
     
     @property
     def score(self):
         if self._cachedScore == None:
-            self._cachedScore = -scoreStory(self)
+            self._cachedScore = -scoreStory(self).sum
         return self._cachedScore
+    
+    @property
+    def scoreTerms(self):
+        return scoreStory(self).scores
+    
+    @property
+    def version(self):
+        return self._scrape.version
     
     @property
     def isEnglish(self):
@@ -187,6 +188,18 @@ class StoryModel:
                 non_ascii += 1
                 
         return ascii > (ascii + non_ascii) / 2
+
+    @property
+    def _search_results(self):
+        if self._cachedSearchResults == None:
+            # Accumulate tags from scrapes
+            tags = []
+            for scrape in self._scrape.scraped:
+                for tag in scrape['tags']:
+                    tags.append(tag)
+            self._cachedSearchResults = generate_search_field(titles=self.titles, tags=tags, url=self.url)
+
+        return self._cachedSearchResults
 
     def scrape(self, source):
         """Returns the given scrape for a source if it exists, otherwise None"""
@@ -211,6 +224,8 @@ class Stories:
         results = []
         for scrape in scraped:
             results.append(StoryModel(scrape))
+
+        results.sort()
 
         logging.info("Loaded %d stor(ies) for query '%s'", len(results), search)
         return results

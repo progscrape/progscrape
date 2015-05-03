@@ -330,8 +330,19 @@ h2.story-title a {
 	display: block;
 }
 
+div.metadata {
+	display: table;
+}
+
+div.metadata > span {
+	display: table-cell;
+	vertical-align: middle;
+	padding-right: 0.75em;
+}
+
 div.metadata span.sites {
-	padding: 0;
+	padding-top: 0;
+	padding-bottom: 0;
 	margin: 0;
 	opacity: 0.2;
 	padding-left: 1em;
@@ -343,7 +354,6 @@ div.metadata:hover span.sites {
 
 div.metadata span.age {
 	opacity: 0.2;
-	padding-left: 0.5em;
 }
 
 div.metadata:hover span.age {
@@ -351,7 +361,6 @@ div.metadata:hover span.age {
 }
 
 div.metadata span.tags {
-	margin-left: 0.5em;
 }
 
 div.metadata:hover span.tags {

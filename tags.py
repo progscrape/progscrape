@@ -2,7 +2,7 @@ import re
 import unittest
 from sets import *
 
-__all__ = [ 'extractTags' ]
+__all__ = [ 'extractTags', 'displayTags' ]
 
 RAW_TAGS = [
     # General types of story
@@ -249,6 +249,10 @@ RAW_TAGS = [
 
 TAGS = {}
 SYMBOLS = {}
+DISPLAY = {}
+
+def displayTags(tags):
+    return [DISPLAY[tag] if DISPLAY.has_key(tag) else tag for tag in tags]
 
 # Note that this may return duplicates
 def extractTags(s):
