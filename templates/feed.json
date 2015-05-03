@@ -10,7 +10,7 @@
 		{
 			"title": "{{ story.title|escapejs }}",
 			"href": "{{ story.url|escapejs }}",
-			"date": "{{ story.rfc3339Date }}",
+			"date": "{{ story.rfc3339_date }}",
 	      	{% if story.redditProgId or story.redditTechId %}
 		      	"reddit": "{% if story.redditProgId %}http://www.reddit.com/comments/{{ story.redditProgId }}{% else %}http://www.reddit.com/comments/{{ story.redditTechId }}{% endif %}",
 	      	{% endif %}

@@ -59,18 +59,13 @@ class Scrape(ndb.Expando):
     # Scraped entries, stored as compressed json blobs (unindexed)
     scraped = ndb.JsonProperty(indexed=False, compressed=False, repeated=True)
 
-"""
-The story model is returned to the caller of Stories methods.
-"""
-class StoryModel:
-    def __init__(self, scrape):
-        self._scrape = scrape
-        self._cachedTags = None
-        self._cachedScore = None
-        self._cachedTitle = None
-        self._cachedTitles = None
-        self._cachedScrapes = None
-        self._cachedSearchResults = None
+    # Some cached computed properties
+    _cachedTags = None
+    _cachedScore = None
+    _cachedTitle = None
+    _cachedTitles = None
+    _cachedScrapes = None
+    _cachedSearchResults = None
 
     @property
     def title(self):
@@ -90,17 +85,13 @@ class StoryModel:
     @property
     def titles(self):
         if self._cachedTitles == None:
-            self._cachedTitles = [s['title'] for s in self._scrape.scraped]
+            self._cachedTitles = [s['title'] for s in self.scraped]
         return self._cachedTitles
 
     @property
     def autoBreakTitle(self):
         """Returns the title with embedded zero-width spaces"""
         return re.sub("([^\s]{7})([^\s]{3})", u"\\1\u200B\\2", self.title)
-
-    @property
-    def url(self):
-        return self._scrape.url
 
     @property
     def hackernewsUrl(self):
@@ -124,17 +115,13 @@ class StoryModel:
         return None
     
     @property
-    def date(self):
-        return rfc3339.rfc3339(self._scrape.date)
-
-    @property
-    def datetime(self):
-        return self._scrape.date
+    def rfc3339_date(self):
+        return rfc3339.rfc3339(self.date)
 
     @property
     def age(self):
         """Computes a relative date based on the current time"""
-        date = self._scrape.date
+        date = self.date
         timespan = (datetime.now() - date)
         if timespan.days > 0:
             if timespan.days == 1:
@@ -159,11 +146,6 @@ class StoryModel:
         return self._search_results.tags        
     
     @property
-    def search(self):
-        """Computes the search terms from the scraped information"""
-        return self._search_results.search_tokens
-    
-    @property
     def score(self):
         if self._cachedScore == None:
             self._cachedScore = -scoreStory(self).sum
@@ -172,10 +154,6 @@ class StoryModel:
     @property
     def scoreTerms(self):
         return scoreStory(self).scores
-    
-    @property
-    def version(self):
-        return self._scrape.version
     
     @property
     def isEnglish(self):
@@ -194,15 +172,15 @@ class StoryModel:
         if self._cachedSearchResults == None:
             # Accumulate tags from scrapes
             tags = []
-            for scrape in self._scrape.scraped:
+            for scrape in self.scraped:
                 for tag in scrape['tags']:
                     tags.append(tag)
             self._cachedSearchResults = generate_search_field(titles=self.titles, tags=tags, url=self.url)
 
-            if set(self._scrape.search) != set(self._cachedSearchResults.search_tokens):
-                self._scrape.search = self._cachedSearchResults.search_tokens
-                logging.info("Writing story w/updated search: %s", self._scrape.search)
-                self._scrape.put()
+            if set(self.search) != set(self._cachedSearchResults.search_tokens):
+                self.search = self._cachedSearchResults.search_tokens
+                logging.info("Writing story w/updated search: %s", self.search)
+                self.put()
 
         return self._cachedSearchResults
 
@@ -210,14 +188,11 @@ class StoryModel:
         """Returns the given scrape for a source if it exists, otherwise None"""
         if self._cachedScrapes == None:
             scrapes = {}
-            for scrape in self._scrape.scraped:
+            for scrape in self.scraped:
                 scrape = dict_to_scraped_story(scrape)
                 scrapes[scrape.source] = scrape
             self._cachedScrapes = scrapes
         return self._cachedScrapes[source] if source in self._cachedScrapes else None
-
-    def _update_search(self):
-        self._cachedSearchResults = generate_search_field(titles=self.titles, tags=tags, url=self.url)
 
     def __cmp__(self, other):
         return cmp(self.score, other.score)
@@ -244,14 +219,10 @@ class Stories:
         else:
             scraped = Scrape.query().order(-Scrape.date).fetch()
 
-        results = []
-        for scrape in scraped:
-            results.append(StoryModel(scrape))
+        scraped.sort()
 
-        results.sort()
-
-        logging.info("Loaded %d stor(ies) for query '%s'", len(results), search)
-        return results
+        logging.info("Loaded %d stor(ies) for query '%s'", len(scraped), search)
+        return scraped
 
     # Stores scraped stories to the datastore
     def store(self, stories):

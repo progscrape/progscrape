@@ -13,7 +13,7 @@ def scoreStory(story, now=datetime.now()):
     s = {}
     
     # Age decay for stories
-    timespan = (now - story.datetime)
+    timespan = (now - story.date)
     if timespan.days > 0:
     	# > 1day
         s['age'] = -100 * timespan.days
@@ -73,11 +73,11 @@ def scoreStory(story, now=datetime.now()):
     return Score(s)
 
 class MockStory():
-	def __init__(self, scraped, title, url, datetime):
+	def __init__(self, scraped, title, url, date):
 		self.scraped = scraped
 		self.title = title
 		self.url = url
-		self.datetime = datetime
+		self.date = date
 
 	def scrape(self, source):
 		for scrape in self.scraped:

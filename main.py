@@ -27,7 +27,6 @@ from google.appengine.runtime import apiproxy_errors
 scrapers = ScraperFactory(AppEngineHttp(urlfetch))
 stories = Stories()
 
-
 def computeTopTags(stories):
     popular_tags = {}
     for story in stories:

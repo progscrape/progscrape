@@ -13,7 +13,7 @@
 		<link rel="alternate"
 			href="{{ story.url|escape }}" />
 		<id>{{ story.url|escape }}</id>
-		<published>{{ story.rfc3339Date }}</published>
+		<published>{{ story.rfc3339_date }}</published>
 		<summary type="html">
       	{% if story.redditProgId or story.redditTechId %}
 	      	{% if story.redditProgId %}<a href="http://www.reddit.com/comments/{{ story.redditProgId }}">{% else %}<a href="http://www.reddit.com/comments/{{ story.redditTechId }}">{% endif %}<img class="reddit" src="http://www.progscrape.com/static/reddit.ico" width="16" height="16" /></a>
