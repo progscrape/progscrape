@@ -12,6 +12,7 @@ RAW_TAGS = [
     'media', 
     'rfc',
     { 'tag': 'release', 'alt': { 'released', 'releases' } },
+    'game(s)',
 
     # General concepts
     'algorithm(s)', 
@@ -170,6 +171,7 @@ RAW_TAGS = [
     { 'symbol': 'c#', 'internal': 'csharp' },
     { 'symbol': 'f#', 'internal': 'fsharp' },
     'scheme',
+    'swift',
 
     # Technologies
     'linux', 
@@ -211,8 +213,7 @@ RAW_TAGS = [
     'dns', 
     'torrent',
     'docker', 
-    'drone', 
-    'drones', 
+    'drone(s)', 
     'meteor', 
     'react', 
     'openbsd', 
@@ -238,6 +239,9 @@ RAW_TAGS = [
     { 'tag': 'jpeg', 'alt': 'jpg' },
     'dbus',
     'emoji',
+    'mysql',
+    { 'tag': 'postgresql', 'alt': 'postgres' },
+    'json',
 
     # Frameworks
     'django', 
@@ -350,20 +354,20 @@ class TestTags(unittest.TestCase):
         self.assertEqual(['video'], extractTags("Good old videos"))
 
     def test_plural_dupe(self):
-        self.assertEqual(['video'], extractTags("Good old video and videos"))
+        self.assertEqual(set(['video']), set(extractTags("Good old video and videos")))
 
     def test_alt(self):
         self.assertEqual(['chrome'], extractTags("Chromium is a project"))
         self.assertEqual(['angular'], extractTags("AngularJS is fun"))
 
     def test_alt_dupe(self):
-        self.assertEqual(['chrome'], extractTags("Chromium is the open Chrome"))
+        self.assertEqual(set(['chrome']), set(extractTags("Chromium is the open Chrome")))
 
     def test_implies(self):
         self.assertEqual(['neovim', 'vim'], extractTags("Neovim is kind of cool"))
 
     def test_implies_dupe(self):
-        self.assertEqual(['neovim', 'vim'], extractTags("Neovim is a kind of vim"))
+        self.assertEqual(set(['neovim', 'vim']), set(extractTags("Neovim is a kind of vim")))
 
     def test_internal(self):
         self.assertEqual(['clanguage'], extractTags("C is hard"))

@@ -83,7 +83,12 @@ class Scraper:
         # If we've scraped the same canonical URL twice, we will just choose the first one
         urls = set()
         for story in stories:
-            url = urlnorm.norm(story.url)
+            try:
+                url = urlnorm.norm(story.url)
+            except:
+                # If we've scraped a bad UTF-8 character here, this might fail
+                url = story.url
+                
             if url in urls:
                 stories.remove(story)
             else:
