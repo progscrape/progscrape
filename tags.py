@@ -250,6 +250,7 @@ RAW_TAGS = [
 TAGS = {}
 SYMBOLS = {}
 
+# Note that this may return duplicates
 def extractTags(s):
     tags = []
     s = s.lower();
@@ -262,8 +263,6 @@ def extractTags(s):
     for bit in re.split("[^A-Za-z0-9]+", s):
         if TAGS.has_key(bit):
             tags += TAGS[bit]['tags']
-    tags = list(Set(tags))
-    tags.sort()
 
     return tags
 

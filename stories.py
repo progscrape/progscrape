@@ -3,7 +3,6 @@ import logging
 import unittest
 import re
 
-from tags import *
 from scrapers import ScrapedStory, Scrapers
 from score import scoreStory
 from datetime import datetime;
@@ -139,8 +138,10 @@ class StoryModel:
             if timespan.days == 1:
                 return "1 day ago"
             else:
-                # TODO: "months" if > 30
-                return "%s days ago" % timespan.days
+                if timespan.days >= 60:
+                    return "%s months ago" % (timespan.days / 30)
+                else:
+                    return "%s days ago" % timespan.days
 
         age = timespan.seconds
         if age < 60 * 60:
@@ -230,11 +231,11 @@ class Stories:
         if memcache.get(existingKey):
             story.new = False
             return False
-        self._storeToDb(story)
+        self._store_to_db(story)
         memcache.add(existingKey, True, CACHE_SEEN_STORY)
         return True
 
-    def _storeToDb(self, story):
+    def _store_to_db(self, story):
         # TODO: Should we restrict this to the last X months to allow a story to re-bubble?
         # TODO: Create a canonical version of the URL so we can fuzzy-match stories?
 
@@ -298,6 +299,8 @@ class DemoTestCase(unittest.TestCase):
 
     def test_computed_title(self):
         stories = Stories()
+
+        # Scrape reddit first
         scrape = [
             ScrapedStory(id='1', url='http://example.com/1', title='title a', source='reddit.prog', index=1, tags=['a']),
         ]
@@ -306,6 +309,7 @@ class DemoTestCase(unittest.TestCase):
         self.assertEquals(1, len(loaded))
         self.assertEquals('title a', loaded[0].title)
 
+        # Once we scrape the same URL from HN, it should replace the reddit titles (which are usually worse)
         scrape = [
             ScrapedStory(id='1', url='http://example.com/1', title='title b', source='hackernews', index=1, tags=['b']),
         ]

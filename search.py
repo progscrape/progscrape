@@ -6,7 +6,7 @@ from urlparse import urlparse
 import unittest
 
 from stemming import porter2
-from sets import *
+from tags import *
 
 # From AppEngine's SearchableModel
 WORD_DELIMITER_REGEX = re.compile('[' + re.escape(string.punctuation) + ']')
@@ -48,6 +48,11 @@ FULL_TEXT_STOP_WORDS = frozenset([
 URL_STOP_WORDS = frozenset([
     'www', 'html', 'post', 'story', 'archive'])
 
+class Results:
+    def __init__(self, search_tokens, tags):
+        self.search_tokens = search_tokens
+        self.tags = tags
+
 # Inspired by AppEngine's SearchableModel
 def tokenize(text):
     """Tokenize an english phrase"""
@@ -62,16 +67,16 @@ def tokenize_url(url):
     url_tokens -= URL_STOP_WORDS
     return url_tokens
 
-def tokenize_story(story):
+def tokenize_story(titles, tags, url):
     # Tokenize all the story titles, even the ones we are hiding from different scrapes
-    tokens = set().union(*[tokenize(title) for title in story.titles])
+    tokens = set().union(*[tokenize(title) for title in titles])
 
     # Add the tags we've generated
-    tokens = tokens.union(story.tags)
+    tokens = tokens.union(tags)
 
     # And the URL (but ignore common terms we don't care about)
     # TODO: Clean the url using the old code
-    tokens = tokens.union(tokenize_url(story.url))
+    tokens = tokens.union(tokenize_url(url))
 
     return tokens
 
@@ -90,20 +95,25 @@ def clean_url(url):
 
     return url
     
-def generate_search_field(story):
-    tokens = set([porter2.stem(x) for x in tokenize_story(story)])
+def generate_search_field(titles, existing_tags, url):
+    # Compute all the tags given the existing tags and the tags we've extracted from the titles
+    all_tags = [set(existing_tags)] + [set(extractTags(title)) for title in titles]
+    tags = set.union(*all_tags)
+
+    # Now compute the search tokens
+    tokens = set([porter2.stem(x) for x in tokenize_story(titles, tags, url)])
 
     # Add the special host search token
     # TODO: we should probably add all domains up to the root (ie: blog.reddit.com+reddit.com)
-    tokens.add('host:%s' % clean_host(story.url))
+    host = clean_host(url)
+    tokens.add('host:%s' % host)
 
-    return tokens
+    # Add the host tag to the start
+    tags = list(tags)
+    tags.sort()
+    tags.insert(0, host)
 
-class MockStory():
-    def __init__(self, titles, url, tags):
-        self.titles = titles
-        self.url = url
-        self.tags = tags
+    return Results(tokens, tags)
 
 class TestSearch(unittest.TestCase):
     def test_tokenize(self):
@@ -115,9 +125,9 @@ class TestSearch(unittest.TestCase):
         self.assertEquals(set(['foo', 'bar']), tokenize_url('http://google.com/foo/bar.html'))
 
     def test_generate_search_field(self):
-        story = MockStory(['first title', 'titled second'], 'http://google.com/foo', ['tag', 'bar', 'baz'])
-        self.assertEquals(set(['first', 'second', 'titl', 'foo', 'bar', 'baz', 'tag', 'host:google.com']), 
-            generate_search_field(story))
+        res = generate_search_field(['first title', 'titled second javascript'], ['tag', 'bar', 'baz'], 'http://google.com/foo')
+        self.assertEquals(set(['first', 'second', 'titl', 'javascript', 'foo', 'bar', 'baz', 'tag', 'host:google.com']), res.search_tokens)
+        self.assertEquals(['google.com', 'bar', 'baz', 'javascript', 'tag'], res.tags)
 
 if __name__ == '__main__':
     unittest.main()
