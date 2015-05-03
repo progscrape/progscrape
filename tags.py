@@ -184,6 +184,7 @@ RAW_TAGS = [
     'ec2', 
     'firefox', 
     'safari', 
+    'servo',
     { 'tag': 'chrome', 'alt': 'chromium' }, 
     'windows', 
     { 'tag': 'mac', 'alt': 'macintosh' }, 

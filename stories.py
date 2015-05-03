@@ -199,6 +199,11 @@ class StoryModel:
                     tags.append(tag)
             self._cachedSearchResults = generate_search_field(titles=self.titles, tags=tags, url=self.url)
 
+            if set(self._scrape.search) != set(self._cachedSearchResults.search_tokens):
+                self._scrape.search = self._cachedSearchResults.search_tokens
+                logging.info("Writing story w/updated search: %s", self._scrape.search)
+                self._scrape.put()
+
         return self._cachedSearchResults
 
     def scrape(self, source):
@@ -212,7 +217,7 @@ class StoryModel:
         return self._cachedScrapes[source] if source in self._cachedScrapes else None
 
     def _update_search(self):
-        self._scrape.search = generate_search_field(self)
+        self._cachedSearchResults = generate_search_field(titles=self.titles, tags=tags, url=self.url)
 
     def __cmp__(self, other):
         return cmp(self.score, other.score)
@@ -234,7 +239,7 @@ class Stories:
                     query = ndb.AND(Scrape.search == token, query)
                 else:
                     query = (Scrape.search == token)
-            print query
+            logging.info("For search '%s', running query: %s", search, query)
             scraped = Scrape.query(query).order(-Scrape.date).fetch()
         else:
             scraped = Scrape.query().order(-Scrape.date).fetch()

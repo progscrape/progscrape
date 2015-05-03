@@ -8,8 +8,8 @@ import unittest
 from stemming import porter2
 from tags import *
 
-# From AppEngine's SearchableModel
-WORD_DELIMITER_REGEX = re.compile('[' + re.escape(string.punctuation) + ']')
+# From AppEngine's SearchableModel, plus some unicode quotes it should strip
+WORD_DELIMITER_REGEX = re.compile('[' + re.escape(string.punctuation) + u'\u201C\u201D\u2018\u2019' ']')
 FULL_TEXT_MIN_LENGTH = 2
 FULL_TEXT_STOP_WORDS = frozenset([
    'a', 'about', 'according', 'accordingly', 'affected', 'affecting', 'after',
@@ -32,7 +32,7 @@ FULL_TEXT_STOP_WORDS = frozenset([
    'quickly', 'quite', 'rather', 'readily', 'really', 'recently', 'regarding',
    'regardless', 'relatively', 'respectively', 'resulted', 'resulting',
    'results', 'said', 'same', 'seem', 'seen', 'several', 'shall', 'should',
-   'show', 'showed', 'shown', 'shows', 'significantly', 'similar', 'similarly',
+   'showed', 'shown', 'shows', 'significantly', 'similar', 'similarly',
    'since', 'slightly', 'so', 'some', 'sometime', 'somewhat', 'soon',
    'specifically', 'state', 'states', 'strongly', 'substantially',
    'successfully', 'such', 'sufficiently', 'than', 'that', 'the', 'their',
@@ -156,12 +156,18 @@ class TestSearch(unittest.TestCase):
         self.assertEquals(set(['first', 'second', 'titl', 'javascript', 'foo', 'bar', 'baz', 'tag', 'host:google.com']), res.search_tokens)
         self.assertEquals(['google.com', 'bar', 'baz', 'javascript', 'tag'], res.tags)
 
+    def test_generate_search_field_smart_quotes(self):
+        res = generate_search_field([u'\u201Chuge release\u201D', u'this is a \u2018triumph\u2019'], ['tag'], 'http://google.com/foo')
+        self.assertEquals(set(['triumph', 'huge', 'releas', 'tag', 'foo', 'host:google.com']), res.search_tokens)
+        self.assertEquals(['google.com', 'release', 'tag'], res.tags)
+
     def test_generate_search_tokens(self):
         self.assertEquals(set(['host:google.com']), generate_search_tokens_for_query('google.com'))
         self.assertEquals(set(['host:google.com']), generate_search_tokens_for_query('http://google.com'))
         self.assertEquals(set(['host:google.com', 'golang', 'project']), 
             generate_search_tokens_for_query('go is a project from google.com'))
         self.assertEquals(set(['openbsd', 'releas']), generate_search_tokens_for_query('OpenBSD 1.2.3 released!'))
+        self.assertEquals(set(['atandt', 'suck']), generate_search_tokens_for_query('at&t sucks'))
 
 if __name__ == '__main__':
     unittest.main()
