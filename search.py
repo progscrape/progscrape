@@ -171,6 +171,18 @@ class TestSearch(unittest.TestCase):
         self.assertEquals(set(['triumph', 'huge', 'releas', 'tag', 'foo', 'host:google.com']), res.search_tokens)
         self.assertEquals(['google.com', 'release', 'tag'], res.tags)
 
+    def test_generate_search_field_complex_keyword(self):
+        res = generate_search_field(['a reversible debugger'], [], 'http://example.com/')
+        # Note that this appears to be a stemming bug: debugging/debugger should stem to the same token
+        self.assertEquals(set(['debugg', 'debug', 'revers', 'host:example.com']), res.search_tokens)
+        self.assertEquals(['example.com', 'debugging'], res.tags)
+
+    def test_generate_search_field_complex_keyword_2(self):
+        res = generate_search_field(['a debug console'], [], 'http://example.com/')
+        # Note that this appears to be a stemming bug: debugging/debugger should stem to the same token
+        self.assertEquals(set(['debug', 'consol', 'host:example.com']), res.search_tokens)
+        self.assertEquals(['example.com', 'debugging'], res.tags)
+
     def test_generate_search_tokens(self):
         self.assertEquals(set(['host:google.com']), generate_search_tokens_for_query('google.com'))
         self.assertEquals(set(['host:google.com']), generate_search_tokens_for_query('http://google.com'))

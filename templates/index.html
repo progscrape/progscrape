@@ -44,7 +44,7 @@
     {% if not search %}
     	<div class="popular-tags">Trending tags:
         {% for tag in top_tags %}
-        	<span class="tag"><a href="/?search={{ tag }}">{{ tag }}</a></span>&nbsp;
+        	<span class="tag"><a href="/?search={{ tag|urlencode }}">{{ tag }}</a></span>&nbsp;
         {% endfor %}</div>
     {% endif %} 
     {% for story in stories %}
@@ -68,7 +68,7 @@
       </span>
       <span class="tags">
         {% for tag in story.tags %}
-        	<span class="tag"><a href="/?search={{ tag }}">{{ tag }}</a></span>
+        	<span class="tag"><a href="/?search={{ tag|urlencode }}">{{ tag }}</a></span>
         {% endfor %}
       </span>
       </div>

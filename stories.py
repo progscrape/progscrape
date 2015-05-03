@@ -15,9 +15,16 @@ if __name__ == '__main__':
 
 from google.appengine.api import memcache
 from google.appengine.ext import ndb
+from google.appengine.ext import db
 from google.appengine.ext import testbed
+from google.appengine.runtime import apiproxy_errors
 
 __all__ = [ 'Stories' ]
+
+
+FETCH_COUNT = 150
+
+SEARCH_FETCH_COUNT = 25
 
 """The amount of time we cache the fact that we've attempted to store 
 a given scraped story (cached by scrape source + id).
@@ -208,28 +215,71 @@ class Scrape(ndb.Expando):
 class Stories:
     # Loads a set of stories from the datastore
     def load(self, search=None, ignore_cache=False, force_update=True):
-        tokens = []
-        if search and search.strip():
-            tokens = generate_search_tokens_for_query(search)
-            # No results if a search term results in nothing but stop words
-            if len(tokens) == 0:
-                return []
+        try:
+            if search and search.strip():
+                return self._maybe_load_search(search, ignore_cache, force_update)
+            else:
+                return self._maybe_load_default(ignore_cache, force_update)
+        except db.NeedIndexError, err:
+            logging.error("Index appears to be missing %s", err)
+            return []
 
-        if tokens:
-            query = None
-            for token in tokens:
-                if query:
-                    query = ndb.AND(Scrape.search == token, query)
-                else:
-                    query = (Scrape.search == token)
-            logging.info("For search '%s', running query: %s", search, query)
-            scraped = Scrape.query(query).order(-Scrape.date).fetch()
-        else:
-            scraped = Scrape.query().order(-Scrape.date).fetch()
+    def _maybe_load_default(self, ignore_cache, force_update):
+        try:
+            if not ignore_cache:
+                stories = memcache.get("stories-default")
+                if stories:
+                    logging.info("Found %d stor(ies) in memcache for default feed", len(stories))
+                    return stories
+            stories = self._load_default(SEARCH_FETCH_COUNT)
+            memcache.add("stories-default", stories, 10 * 60)
+            memcache.add("stories-default-last-ditch", stories, 24 * 60 * 60)
+            return stories
+        except apiproxy_errors.OverQuotaError, err:
+            logging.error("Uh-oh: we are over quota for the front page. Let's use the last-ditch results: %s", err)
+            stories = memcache.get("stories-default-last-ditch")
+            if stories == None:
+                stories = []
+            return stories
 
+    def _load_default(self, count):
+        scraped = Scrape.query().order(-Scrape.date).fetch(count)
         scraped.sort()
 
-        logging.info("Loaded %d stor(ies) for query '%s'", len(scraped), search)
+        logging.info("Loaded %d stor(ies) for default feed", len(scraped))
+        return scraped
+
+    def _maybe_load_search(self, search, ignore_cache, force_update):
+        try:
+            if not ignore_cache:
+                stories = memcache.get("stories-search-" + search)
+                if stories:
+                    logging.info("Found %d stor(ies) in memcache for search '%s'", len(stories), search)
+                    return stories
+
+            stories = self._load_search(search, FETCH_COUNT)
+            memcache.add("stories-search-" + search, stories, 60 * 60)
+            return stories
+        except apiproxy_errors.OverQuotaError, err:
+            logging.error("Uh-oh: we are over quota for the search page: %s", err)
+            # TODO: Return a placeholder story here or just run through the last-ditch results
+            return []
+
+    def _load_search(self, search, count):
+        tokens = generate_search_tokens_for_query(search)
+        # No results if a search term results in nothing but stop words
+        if len(tokens) == 0:
+            return []
+
+        query = None
+        for token in tokens:
+            if query:
+                query = ndb.AND(Scrape.search == token, query)
+            else:
+                query = (Scrape.search == token)
+
+        logging.info("For search '%s', running query: %s", search, query)
+        scraped = Scrape.query(query).order(-Scrape.date).fetch(count)
         return scraped
 
     # Stores scraped stories to the datastore

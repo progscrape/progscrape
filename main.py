@@ -22,7 +22,6 @@ from google.appengine.api import memcache
 from google.appengine.ext import db
 from google.appengine.ext import search
 from google.appengine.ext.webapp import template
-from google.appengine.runtime import apiproxy_errors
 
 scrapers = ScraperFactory(AppEngineHttp(urlfetch))
 stories = Stories()
@@ -42,32 +41,8 @@ def computeTopTags(stories):
     return top_tags
 
 class StoryPage(webapp2.RequestHandler):
-    def postProcess(self, stories, force_update):
-        # Since this is so slow, we don't want to post-process too many items
-        MAX_POST_PROCESS = 10
-        count = 0
-        
-        stories.sort()
-        
-        stories = [story for story in stories if story.isEnglish()]
-        
-        try:
-            for story in stories:
-                if not story.current_version or not story.current_version == VERSION or force_update:
-                    print "Upgrading '%s' from %d to %d" % (story.url.encode('utf-8'), story.current_version, VERSION)
-                    count = count + 1
-                    if count > MAX_POST_PROCESS:
-                        return stories
-                    story.updateVersion()
-                    story.put()
-        except apiproxy_errors.OverQuotaError:
-            print "Uh-oh: over quota while upgrading stories"
-
-        return stories
-
     def loadStories(self, search, ignore_cache, force_update):
         return stories.load(search=search, ignore_cache=ignore_cache, force_update=force_update)
-    
 
 class SitemapPage(StoryPage):
     def get(self):

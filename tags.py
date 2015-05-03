@@ -51,6 +51,8 @@ RAW_TAGS = [
     'compression',
     'font(s)',
     'concurrency',
+    'beer',
+    { 'tag': 'debugging', 'alt': [ 'debugger', 'debug', 'debugs' ]},
 
     # Orgs
     'amd', 

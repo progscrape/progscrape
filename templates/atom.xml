@@ -1,34 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
-	<title>progscrape{% if search %}: {{ search|escape }}{% endif %}
-	</title>
-	<link rel="self"
-		href="http://www.progscrape.com/feed/{% if search %}?search={{ search|urlencode }}{% endif %}" />
-	<link rel="alternate"
-		href="http://www.progscrape.com/{% if search %}?search={{ search|urlencode }}{% endif %}" />
+	<title>progscrape{% if search %}: {{ search|escape }}{% endif %}</title>
+	<link rel="self" href="http://www.progscrape.com/feed/{% if search %}?search={{ search|urlencode }}{% endif %}" />
+	<link rel="alternate" href="http://www.progscrape.com/{% if search %}?search={{ search|urlencode }}{% endif %}" />
 
 	{% for story in stories %}
 	<entry>
 		<title>{{ story.title|escape }}</title>
-		<link rel="alternate"
-			href="{{ story.url|escape }}" />
+		<link rel="alternate" href="{{ story.url|escape }}" />
 		<id>{{ story.url|escape }}</id>
 		<published>{{ story.rfc3339_date }}</published>
 		<summary type="html">
-      	{% if story.redditProgId or story.redditTechId %}
-	      	{% if story.redditProgId %}<a href="http://www.reddit.com/comments/{{ story.redditProgId }}">{% else %}<a href="http://www.reddit.com/comments/{{ story.redditTechId }}">{% endif %}<img class="reddit" src="http://www.progscrape.com/static/reddit.ico" width="16" height="16" /></a>
-      	{% endif %}
-      	{% if story.hackerNewsId %}
-      		<a href="http://news.ycombinator.com/item?id={{ story.hackerNewsId }}"><img class="hnews" src="http://www.progscrape.com/static/ynews.ico" /></a>
-      	{% endif %}
-      	{% if story.lobstersId %}
-      		<a href="https://lobste.rs/url/{{ story.lobstersId }}"><img class="lobsters" src="http://www.progscrape.com/static/lobsters.ico" /></a>
-      	{% endif %}
-      	<p>Tags:
-        {% for tag in story.guessTags %}
-        	<span class="tag"><a href="http://www.progscrape.com/?search={{ tag|urlencode }}">{{ tag|escape }}</a></span>
-        {% endfor %}
-        </p>
+	      	{% if story.redditUrl %}<a href="{{ story.redditUrl }}"><img class="reddit" src="http://www.progscrape.com/static/reddit.ico" width="16" height="16" /></a>
+	      	{% endif %}{% if story.hackernewsUrl %}<a href="{{ story.hackernewsUrl }}"><img class="hnews" src="http://www.progscrape.com/static/ynews.ico" /></a>
+	      	{% endif %}{% if story.lobstersUrl %}<a href="{{ story.lobstersUrl }}"><img class="lobsters" src="http://www.progscrape.com/static/lobsters.ico" /></a>
+	      	{% endif %}<p>Tags:
+		        {% for tag in story.tags %}<span class="tag"><a href="http://www.progscrape.com/?search={{ tag|urlencode }}">{{ tag|escape }}</a></span> {% endfor %}
+		    </p>
 		</summary>
 	</entry>
 	{% endfor %}
