@@ -1,30 +1,20 @@
 {
-	"v": 1,
-	"tags": [
-		{% for tag in top_tags %}
-		"{{ tag|escapejs }}"{% if not forloop.last %}, {% endif %}
-		{% endfor %}
-	],
-	"stories": [
-	{% for story in stories %}
-		{
-			"title": "{{ story.title|escapejs }}",
-			"href": "{{ story.url|escapejs }}",
-			"date": "{{ story.rfc3339_date }}",
-	      	{% if story.redditProgId or story.redditTechId %}
-		      	"reddit": "{% if story.redditProgId %}http://www.reddit.com/comments/{{ story.redditProgId }}{% else %}http://www.reddit.com/comments/{{ story.redditTechId }}{% endif %}",
-	      	{% endif %}
-	      	{% if story.hackerNewsId %}
-	      		"hnews": "http://news.ycombinator.com/item?id={{ story.hackerNewsId }}",
-	      	{% endif %}
-	      	{% if story.lobstersId %}
-	      		"lobsters": "https://lobste.rs/s/{{ story.lobstersId }}",
-	      	{% endif %}
-	      	"tags": [
-				{% for tag in story.guessTags %}"{{ tag|escapejs }}"{% if not forloop.last %}, {% endif %}{% endfor %}
-	      	]
-		}{% if not forloop.last %},
-		{% endif %}
-	{% endfor %}
-	]
+    "v": 1,
+    "tags": [{% for tag in top_tags %}
+        "{{ tag|escapejs }}"{% if not forloop.last %}, {% endif %}{% endfor %}
+    ],
+    "stories": [
+        {% for story in stories %}{
+            "title": "{{ story.title|escapejs }}",
+            "href": "{{ story.url|escapejs }}",
+            "date": "{{ story.rfc3339_date }}",
+            {% if story.redditUrl %}"reddit": "{{ story.redditUrl }}",
+            {% endif %}{% if story.hackernewsUrl %}"hnews": "{{ story.hackernewsUrl }}",
+            {% endif %}{% if story.lobstersUrl %}"lobsters": "{{ story.lobstersUrl }}",
+            {% endif %}"tags": [
+                {% for tag in story.tags %}"{{ tag|escapejs }}"{% if not forloop.last %}, {% endif %}{% endfor %}
+            ]
+        }{% if not forloop.last %},
+        {% endif %}{% endfor %}
+    ]
 }

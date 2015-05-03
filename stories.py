@@ -6,7 +6,7 @@ import re
 from scrapers import ScrapedStory, Scrapers
 from search import generate_search_field, generate_search_tokens_for_query
 from score import scoreStory
-from datetime import datetime;
+from datetime import datetime
 import rfc3339
 
 if __name__ == '__main__':
@@ -173,8 +173,7 @@ class Scrape(ndb.Expando):
             # Accumulate tags from scrapes
             tags = []
             for scrape in self.scraped:
-                for tag in scrape['tags']:
-                    tags.append(tag)
+                tags += scrape['tags']
             self._cachedSearchResults = generate_search_field(titles=self.titles, tags=tags, url=self.url)
 
             if set(self.search) != set(self._cachedSearchResults.search_tokens):
@@ -183,6 +182,15 @@ class Scrape(ndb.Expando):
                 self.put()
 
         return self._cachedSearchResults
+
+    def _update_search_results(self):
+        # TODO: de-dupe this code with _search_results above
+
+        # Accumulate tags from scrapes
+        tags = []
+        for scrape in self.scraped:
+            tags += scrape['tags']
+        self.search = generate_search_field(titles=self.titles, tags=tags, url=self.url).search_tokens
 
     def scrape(self, source):
         """Returns the given scrape for a source if it exists, otherwise None"""
@@ -273,6 +281,7 @@ class Stories:
             ' (replaced)' if replaced else '')
 
         existing.scraped += [ scraped_story_to_dict(story) ]
+        existing._update_search_results()
         existing.put()
 
 class DemoTestCase(unittest.TestCase):

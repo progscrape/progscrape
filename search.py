@@ -72,7 +72,7 @@ def tokenize_story(titles, tags, url):
     tokens = set().union(*[tokenize(title) for title in titles])
 
     # Add the tags we've generated
-    tokens = tokens.union(tags)
+    tokens = tokens.union(replaceInternal(tags))
 
     # And the URL (but ignore common terms we don't care about)
     # TODO: Clean the url using the old code
@@ -110,6 +110,9 @@ def generate_search_tokens_for_query(query):
         if '.' in token and re.match("^[a-z0-9\-\_\.]*(\.[a-z][a-z]+)$", token):
             # Yes, add in host format
             tokens.add("host:%s" % token)
+        elif isSymbol(token):
+            # Add tokens as their internal representation
+            tokens.add(isSymbol(token))
         else:
             # No, add a regular set of stemmed token(s) using the splitter
             sub_tokens = WORD_DELIMITER_REGEX.sub(' ', token).split(' ')
@@ -127,6 +130,9 @@ def generate_search_field(titles, tags, url):
     all_tags = [set(tags)] + [set(extractTags(title)) for title in titles]
     all_tags = set.union(*all_tags)
 
+    # Convert all the tags to display tags
+    all_tags = list(set(displayTags(all_tags)))
+
     # Now compute the search tokens
     tokens = set([porter2.stem(x) for x in tokenize_story(titles, all_tags, url)])
 
@@ -136,7 +142,6 @@ def generate_search_field(titles, tags, url):
     tokens.add('host:%s' % host)
 
     # Add the host tag to the start
-    all_tags = displayTags(all_tags)
     all_tags.sort()
     all_tags.insert(0, host)
 
@@ -155,6 +160,11 @@ class TestSearch(unittest.TestCase):
         res = generate_search_field(['first title', 'titled second javascript'], ['tag', 'bar', 'baz'], 'http://google.com/foo')
         self.assertEquals(set(['first', 'second', 'titl', 'javascript', 'foo', 'bar', 'baz', 'tag', 'host:google.com']), res.search_tokens)
         self.assertEquals(['google.com', 'bar', 'baz', 'javascript', 'tag'], res.tags)
+
+    def test_generate_search_field_internal_tags(self):
+        res = generate_search_field(['i love go'], ['go'], 'http://example.com/foo')
+        self.assertEquals(set(['golang', 'love', 'foo', 'host:example.com']), res.search_tokens)
+        self.assertEquals(['example.com', 'go'], res.tags)
 
     def test_generate_search_field_smart_quotes(self):
         res = generate_search_field([u'\u201Chuge release\u201D', u'this is a \u2018triumph\u2019'], ['tag'], 'http://google.com/foo')

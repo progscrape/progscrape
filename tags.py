@@ -2,7 +2,7 @@ import re
 import unittest
 from sets import *
 
-__all__ = [ 'extractTags', 'displayTags', 'replaceInternal' ]
+__all__ = [ 'extractTags', 'displayTags', 'replaceInternal', 'isSymbol' ]
 
 RAW_TAGS = [
     # General types of story
@@ -259,6 +259,9 @@ def replaceInternal(tokens):
 
 def displayTags(tags):
     return [DISPLAY[tag] if DISPLAY.has_key(tag) else tag for tag in tags]
+
+def isSymbol(token):
+    return SYMBOLS[token]['tags'][0] if SYMBOLS.has_key(token) else None
 
 # Note that this may return duplicates
 def extractTags(s):
