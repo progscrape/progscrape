@@ -4,7 +4,7 @@ import unittest
 import re
 
 from scrapers import ScrapedStory, Scrapers
-from search import generate_search_field
+from search import generate_search_field, generate_search_tokens_for_query
 from score import scoreStory
 from datetime import datetime;
 import rfc3339
@@ -220,7 +220,25 @@ class StoryModel:
 class Stories:
     # Loads a set of stories from the datastore
     def load(self, search=None, ignore_cache=False, force_update=True):
-        scraped = Scrape.query().fetch()
+        tokens = []
+        if search and search.strip():
+            tokens = generate_search_tokens_for_query(search)
+            # No results if a search term results in nothing but stop words
+            if len(tokens) == 0:
+                return []
+
+        if tokens:
+            query = None
+            for token in tokens:
+                if query:
+                    query = ndb.AND(Scrape.search == token, query)
+                else:
+                    query = (Scrape.search == token)
+            print query
+            scraped = Scrape.query(query).order(-Scrape.date).fetch()
+        else:
+            scraped = Scrape.query().order(-Scrape.date).fetch()
+
         results = []
         for scrape in scraped:
             results.append(StoryModel(scrape))

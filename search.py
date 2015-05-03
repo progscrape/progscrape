@@ -95,6 +95,33 @@ def clean_url(url):
 
     return url
     
+def generate_search_tokens_for_query(query):
+    tokens = set()
+
+    # First we split on spaces
+    raw_tokens = query.lower().split(' ')
+
+    for token in raw_tokens:
+        # Strip any protocol prefix (http:// etc)
+        if re.match("^[a-z]+://", token):
+            token = token.split('//', 1)[1]
+
+        # Does this look like a host token?
+        if '.' in token and re.match("^[a-z0-9\-\_\.]*(\.[a-z][a-z]+)$", token):
+            # Yes, add in host format
+            tokens.add("host:%s" % token)
+        else:
+            # No, add a regular set of stemmed token(s) using the splitter
+            sub_tokens = WORD_DELIMITER_REGEX.sub(' ', token).split(' ')
+            sub_tokens = replaceInternal(sub_tokens)
+            sub_tokens = [porter2.stem(x) for x in sub_tokens]
+            sub_tokens = [x for x in sub_tokens if len(x) > FULL_TEXT_MIN_LENGTH]
+            tokens = tokens.union(set(sub_tokens))
+
+    tokens -= FULL_TEXT_STOP_WORDS
+
+    return tokens
+
 def generate_search_field(titles, tags, url):
     # Compute all the tags given the existing tags and the tags we've extracted from the titles
     all_tags = [set(tags)] + [set(extractTags(title)) for title in titles]
@@ -128,6 +155,13 @@ class TestSearch(unittest.TestCase):
         res = generate_search_field(['first title', 'titled second javascript'], ['tag', 'bar', 'baz'], 'http://google.com/foo')
         self.assertEquals(set(['first', 'second', 'titl', 'javascript', 'foo', 'bar', 'baz', 'tag', 'host:google.com']), res.search_tokens)
         self.assertEquals(['google.com', 'bar', 'baz', 'javascript', 'tag'], res.tags)
+
+    def test_generate_search_tokens(self):
+        self.assertEquals(set(['host:google.com']), generate_search_tokens_for_query('google.com'))
+        self.assertEquals(set(['host:google.com']), generate_search_tokens_for_query('http://google.com'))
+        self.assertEquals(set(['host:google.com', 'golang', 'project']), 
+            generate_search_tokens_for_query('go is a project from google.com'))
+        self.assertEquals(set(['openbsd', 'releas']), generate_search_tokens_for_query('OpenBSD 1.2.3 released!'))
 
 if __name__ == '__main__':
     unittest.main()

@@ -10,14 +10,8 @@ indexes:
 # automatically uploaded to the admin console when you next deploy
 # your application using appcfg.py.
 
-- kind: Story
+- kind: Scrape
   properties:
-  - name: __searchable_text_index_title_searchable_url_searchable_host
-  - name: date
-    direction: desc
-
-- kind: Story
-  properties:
-  - name: __searchable_text_index_title_searchable_url_searchable_host_tags
+  - name: search
   - name: date
     direction: desc

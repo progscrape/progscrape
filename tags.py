@@ -2,7 +2,7 @@ import re
 import unittest
 from sets import *
 
-__all__ = [ 'extractTags', 'displayTags' ]
+__all__ = [ 'extractTags', 'displayTags', 'replaceInternal' ]
 
 RAW_TAGS = [
     # General types of story
@@ -250,6 +250,11 @@ RAW_TAGS = [
 TAGS = {}
 SYMBOLS = {}
 DISPLAY = {}
+INTERNAL = {}
+
+# Replaces a token that matches an internal's display token with the internal representation
+def replaceInternal(tokens):
+    return [INTERNAL[tag] if INTERNAL.has_key(tag) else tag for tag in tokens]
 
 def displayTags(tags):
     return [DISPLAY[tag] if DISPLAY.has_key(tag) else tag for tag in tags]
@@ -280,6 +285,11 @@ for tag_entry in RAW_TAGS:
     else:
         tag = tag_entry['tag']
     output = {}
+
+    # Reverse map
+    if tag_entry.has_key('internal'):
+        DISPLAY[tag_entry['internal']] = tag
+        INTERNAL[tag] = tag_entry['internal']
 
     # plural?
     if tag.find('(s)') != -1:
