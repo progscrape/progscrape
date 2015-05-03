@@ -9,8 +9,12 @@ class Score:
 		self.scores = s
 		self.sum = sum([s[x] for x in s])
 
-def scoreStory(story, now=datetime.now()):
+def scoreStory(story, now=None):
     s = {}
+
+    # If we use this as the default param, it'll get set once and only once!
+    if now == None:
+        now = datetime.now()
     
     # Age decay for stories
     timespan = (now - story.date)

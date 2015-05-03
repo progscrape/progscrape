@@ -78,7 +78,7 @@
       <div>title = {{ story.title|escape }}</div>
       <div>url = {{ story.url|escape }}</div>
       <div>search = {% for term in story.search %}{{ term|escape }} {% endfor %}</div>
-      <div>score = {{ -story.score }} = {{ story.scoreTerms }}</div>
+      <div>score = {{ story.score }} = {{ story.scoreTerms }}</div>
       <div>tags = {% for tag in story.tags %}{{ tag|escape }} {% endfor %}</div>
       {% endif %}
     </div>

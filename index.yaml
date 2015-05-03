@@ -15,3 +15,8 @@ indexes:
   - name: search
   - name: date
     direction: desc
+
+- kind: Scrape
+  properties:
+  - name: url
+  - name: date

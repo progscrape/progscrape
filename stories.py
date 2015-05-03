@@ -156,7 +156,7 @@ class Scrape(ndb.Expando):
     @property
     def score(self):
         if self._cachedScore == None:
-            self._cachedScore = -scoreStory(self).sum
+            self._cachedScore = scoreStory(self).sum
         return self._cachedScore
     
     @property
@@ -220,7 +220,8 @@ class Scrape(ndb.Expando):
         return self._cachedScrapes[source] if source in self._cachedScrapes else None
 
     def __cmp__(self, other):
-        return cmp(self.score, other.score)
+        # Invert comparison
+        return cmp(other.score, self.score)
 
 class Stories:
     # Loads a set of stories from the datastore
