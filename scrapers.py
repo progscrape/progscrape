@@ -1,7 +1,6 @@
 import lib
 import urllib
 import sys
-from sets import *;
 
 import simplejson as json
 import feedparser
@@ -82,7 +81,7 @@ class Scraper:
     def scrape(self):
         stories = self._scrape()
         # If we've scraped the same canonical URL twice, we will just choose the first one
-        urls = Set()
+        urls = set()
         for story in stories:
             url = urlnorm.norm(story.url)
             if url in urls:
@@ -214,8 +213,9 @@ class AppEngineHttp:
         self.urlfetch = urlfetch
 
     def fetch(self, url):
-        rpc = self.urlfetch.create_rpc()
-        self.urlfetch.make_fetch_call(rpc, url=url, headers={'User-Agent': 'progscrape feed fetcher (+http://progscrape.com)'})
+        rpc = self.urlfetch.create_rpc(deadline=20)
+        self.urlfetch.make_fetch_call(rpc, url=url, 
+            headers={'User-Agent': 'progscrape feed fetcher (+http://progscrape.com)'})
         return rpc.get_result().content
 
 class PythonHttp:

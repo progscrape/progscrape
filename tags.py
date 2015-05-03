@@ -1,6 +1,5 @@
 import re
 import unittest
-from sets import *
 
 __all__ = [ 'extractTags', 'displayTags', 'replaceInternal', 'isSymbol' ]
 

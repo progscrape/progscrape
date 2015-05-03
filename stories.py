@@ -31,8 +31,9 @@ a given scraped story (cached by scrape source + id).
 """
 CACHE_SEEN_STORY = 24 * 60 * 60
 
-"""Current entity version"""
-VERSION = 11
+"""Current entity version
+"""
+VERSION = 1
 
 def scraped_story_to_dict(story):
     """Writes a scraped story to a dict"""
@@ -231,7 +232,7 @@ class Stories:
                 if stories:
                     logging.info("Found %d stor(ies) in memcache for default feed", len(stories))
                     return stories
-            stories = self._load_default(SEARCH_FETCH_COUNT)
+            stories = self._load_default(FETCH_COUNT)
             memcache.add("stories-default", stories, 10 * 60)
             memcache.add("stories-default-last-ditch", stories, 24 * 60 * 60)
             return stories
@@ -257,7 +258,7 @@ class Stories:
                     logging.info("Found %d stor(ies) in memcache for search '%s'", len(stories), search)
                     return stories
 
-            stories = self._load_search(search, FETCH_COUNT)
+            stories = self._load_search(search, SEARCH_FETCH_COUNT)
             memcache.add("stories-search-" + search, stories, 60 * 60)
             return stories
         except apiproxy_errors.OverQuotaError, err:
@@ -280,6 +281,9 @@ class Stories:
 
         logging.info("For search '%s', running query: %s", search, query)
         scraped = Scrape.query(query).order(-Scrape.date).fetch(count)
+        scraped.sort()
+        logging.info("Query retured %d stor(ies)", len(scraped))
+
         return scraped
 
     # Stores scraped stories to the datastore

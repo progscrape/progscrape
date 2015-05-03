@@ -8,11 +8,8 @@ import urllib
 
 from datetime import datetime;
 from datetime import timedelta;
-from urlparse import urlparse;
-from sets import *;
 
 import webapp2
-import urlnorm
 from tags import *
 from scrapers import *
 from stories import *
@@ -20,7 +17,6 @@ from stories import *
 from google.appengine.api import urlfetch
 from google.appengine.api import memcache
 from google.appengine.ext import db
-from google.appengine.ext import search
 from google.appengine.ext.webapp import template
 
 scrapers = ScraperFactory(AppEngineHttp(urlfetch))
@@ -99,9 +95,10 @@ class FeedJsonPage(StoryPage):
 
 class MainPage(StoryPage):
     def get(self):    
-        if ".appspot.com" in self.request.environ["HTTP_HOST"]:
-            self.redirect("http://www.progscrape.com%s" % self.request.path_qs, True)
-            return 
+        # TODO: re-enable once we are serving properly
+        # if ".appspot.com" in self.request.environ["HTTP_HOST"]:
+        #     self.redirect("http://www.progscrape.com%s" % self.request.path_qs, True)
+        #     return 
            
         FRONT_PAGE_KEY = "rendered_front_page"
         
