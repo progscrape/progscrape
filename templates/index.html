@@ -46,6 +46,14 @@
         {% for tag in top_tags %}
         	<span class="tag"><a href="/?search={{ tag|urlencode }}">{{ tag }}</a></span>&nbsp;
         {% endfor %}</div>
+      <div class="story">
+      <h2 class="story-title"><a href="https://play.google.com/store/apps/details?id=com.progscrape">progscrape now has an Android app!</a></h2>
+      <div class="metadata">
+        <span class="sites"><a href="."><img class="progscrape" src="/favicon.ico"></a></span>
+        <span class="age">announcement</span>
+        <span class="tags"><span class="tag"><a href="/?search=android">android</a></span></span>
+      </div>
+      </div>
     {% endif %} 
     {% for story in stories %}
     <div class="story">
@@ -87,10 +95,19 @@
     
     </div>
     </div>
-    
+
     <div id="footer">
-    <p class="left"><g:plusone size="small"></g:plusone></p>
-    <p class="right">More related projects: <a href="http://charbase.com">Charbase - visual unicode database</a> Comments/concerns? <a href="https://spreadsheets.google.com/viewform?formkey=dG53SmctNTJQRzkzYU1mSGxOVWJLVVE6MA">Contact Us</a></p>
+      <div class="span-8 left">
+        <div><a href="https://play.google.com/store/apps/details?id=com.progscrape">
+          <img alt="Get it on Google Play"
+               src="https://developer.android.com/images/brand/en_generic_rgb_wo_45.png" />
+        </a></div>
+      </div>
+      <div class="span-10 right">
+        Created by <a href="https://grack.com">Matt Mastracci</a> (matthew - at - mastracci.com)<br>
+        This entire project is <a href="https://github.com/mmastrac/progscrape">open source</a><br>
+        Also see: <a href="http://charbase.com">Charbase - visual unicode database</a></div>
+      <span class="clear"></span>
     </div>
     
 <script type="text/javascript">
@@ -103,18 +120,7 @@
     ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
     (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(ga);
   })();
-  
-  
 </script>
-
-<script type="text/javascript">
-  (function() {
-    var po = document.createElement('script'); po.type = 'text/javascript'; po.async = true;
-    po.src = 'https://apis.google.com/js/plusone.js';
-    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
-  })();
-</script>
-
 
 </body>
 </html>

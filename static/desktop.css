@@ -408,10 +408,9 @@ a:visited {
 	box-shadow: 2px 2px 5px #ddd;
 }	
 
-
 #main {
 	width: 788px;
-	margin: 0 auto;
+	margin: 0 auto 2em auto;
 	padding: 1.5em;
 	background-color: white;
 	-webkit-border-radius: 6px 6px;
@@ -424,25 +423,25 @@ a:visited {
 	box-shadow: 5px 5px 25px #ccc;
 }
 
+#footer {
+	width: 788px;
+	margin: 0 auto 2em auto;
+	padding: 1.5em;
+	font-size: 10px;
+}
+
 #header {
 	width: 810px;
 	margin: 0 auto;
 	position: relative;
 }
 
-#footer {
-	width: 810px;
-	xbackground-color: white;
-	margin: 0 auto;
-	xborder-top: 1px solid #ddd;
-	padding-top: 1em;
-}
-
-#footer p.right {
+#footer .right {
 	float: right;
+	text-align: right;
 }
 
-#footer p.left {
+#footer .left {
 	float: left;
 }
 

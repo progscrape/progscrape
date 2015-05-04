@@ -112,11 +112,15 @@ for url, date, scraped in to_import:
 	# 		continue
 
 	# Resume import -- need to search the first 1200 or so because of the interrupting
-	if rows < 1200:
+	if rows > 30000 and rows < 31000:
 		existing = Scrape.query(ndb.AND(Scrape.url == url, Scrape.date == date)).get()
 		if existing:
 			skipped += 1
 			continue
+
+	if rows < 30000:
+		skipped += 1
+		continue
 
 	# Old or nothing to merge, just insert
 	story = Scrape()
