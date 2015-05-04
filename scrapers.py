@@ -88,7 +88,7 @@ class Scraper:
             except:
                 # If we've scraped a bad UTF-8 character here, this might fail
                 url = story.url
-                
+
             if url in urls:
                 stories.remove(story)
             else:
@@ -199,6 +199,10 @@ class LobstersScraper(Scraper):
             tags = []
             for tag in story['tags']:
                 tags += [tag.term]
+
+            # Skip lobste.rs meta posts
+            if 'meta' in tags:
+                continue
 
             # Remove these special tags
             if 'person' in tags:
