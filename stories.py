@@ -6,7 +6,7 @@ import re
 from scrapers import ScrapedStory, Scrapers
 from search import generate_search_field, generate_search_tokens_for_query
 from score import scoreStory
-from datetime import datetime, timedelta;
+from datetime import datetime, timedelta
 import rfc3339
 
 if __name__ == '__main__':
@@ -19,7 +19,7 @@ from google.appengine.ext import db
 from google.appengine.ext import testbed
 from google.appengine.runtime import apiproxy_errors
 
-__all__ = [ 'Stories' ]
+__all__ = [ 'Stories', 'Scrape' ]
 
 
 FETCH_COUNT = 150
@@ -208,6 +208,9 @@ class Scrape(ndb.Expando):
         self._cachedScrapes = None
         self._cachedSearchResults = None
 
+    def add_scrape(self, story):
+        self.scraped += [ scraped_story_to_dict(story) ]
+        self._update_caches()
 
     def scrape(self, source):
         """Returns the given scrape for a source if it exists, otherwise None"""
@@ -344,8 +347,7 @@ class Stories:
             story.source, 
             ' (replaced)' if replaced else '')
 
-        existing.scraped += [ scraped_story_to_dict(story) ]
-        existing._update_caches()
+        existing.add_scrape(story)
         existing.put()
 
 class DemoTestCase(unittest.TestCase):
