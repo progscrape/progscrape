@@ -94,11 +94,10 @@ class FeedJsonPage(StoryPage):
         self.response.out.write(template.render(path, template_values))
 
 class MainPage(StoryPage):
-    def get(self):    
-        # TODO: re-enable once we are serving properly
-        # if ".appspot.com" in self.request.environ["HTTP_HOST"]:
-        #     self.redirect("http://www.progscrape.com%s" % self.request.path_qs, True)
-        #     return 
+    def get(self):
+        if ".appspot.com" in self.request.environ["HTTP_HOST"]:
+            self.redirect("http://www.progscrape.com%s" % self.request.path_qs, True)
+            return 
            
         FRONT_PAGE_KEY = "rendered_front_page"
         

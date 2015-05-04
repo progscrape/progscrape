@@ -21,6 +21,7 @@ RAW_TAGS = [
     'hash', 
     'web', 
     'api',
+    'spam',
 
     # Concrete concepts
     'drm', 
@@ -137,6 +138,7 @@ RAW_TAGS = [
     'tor', 
     'wolfram', 
     'mojang', 
+    'dropbox',
 
     # Languages
     'php', 
@@ -218,7 +220,8 @@ RAW_TAGS = [
     'drone(s)', 
     'meteor', 
     'react', 
-    'openbsd', 
+    { 'tag': 'openbsd', 'implies': 'bsd' }, 
+    { 'tag': 'freebsd', 'implies': 'bsd' },
     'sass', 
     'scss', 
     'aes', 
@@ -226,7 +229,8 @@ RAW_TAGS = [
     { 'tag': 'ssl', 'implies': 'https' }, 
     { 'tag': 'tls', 'implies': 'https' }, 
     'http', 
-    'https', 
+    'https',
+    'smtp', 
     'ftp', 
     'webrtc', 
     'pgp', 
@@ -249,6 +253,14 @@ RAW_TAGS = [
     'arm',
     'mips',
     'gpu',
+    'awk',
+    'sed',
+    'ssh',
+    'grep',
+    { 'tag': 'regex', 'alt': 'regexp' },
+    'webgl',
+    'glsl',
+    { 'tag': 'gmail', 'implies': 'google' },
 
     # Frameworks
     'django', 
