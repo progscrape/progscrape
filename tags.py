@@ -153,9 +153,9 @@ RAW_TAGS = [
     'flash', 
     'lisp', 
     { 'tag': 'clojure', 'implies': 'lisp' }, 
-    { 'tag': 'arc', 'implies': 'lisp' }, 
-    { 'tag': 'racket', 'implies': 'lisp' }, 
-    { 'tag': 'scheme', 'implies': 'lisp' },
+    'racket', 
+    'scheme',
+    'arc',
     'scala', 
     'lua', 
     'haxe', 
@@ -173,6 +173,7 @@ RAW_TAGS = [
     { 'symbol': 'c#', 'internal': 'csharp' },
     { 'symbol': 'f#', 'internal': 'fsharp' },
     'swift',
+    'nvidia',
 
     # Technologies
     'linux', 
@@ -243,6 +244,11 @@ RAW_TAGS = [
     'mysql',
     { 'tag': 'postgresql', 'alt': 'postgres' },
     'json',
+    'xml',
+    'yaml',
+    'arm',
+    'mips',
+    'gpu',
 
     # Frameworks
     'django', 
