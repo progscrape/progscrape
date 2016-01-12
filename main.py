@@ -6,8 +6,9 @@ import logging
 import rfc3339
 import urllib
 
-from datetime import datetime;
-from datetime import timedelta;
+from datetime import datetime
+from datetime import timedelta
+import simplejson as json
 
 import webapp2
 from tags import *
@@ -61,6 +62,16 @@ class FeedPage(StoryPage):
     def get(self):
         search = self.request.get("search")
 
+        # These guys don't respect robots.txt
+        if self.request.environ["HTTP_USER_AGENT"] and "ahrefsbot" in self.request.environ["HTTP_USER_AGENT"].lower():
+            self.response.set_status(403)
+            self.response.headers['Cache-Control'] = 'private'
+            self.response.headers['Vary'] = 'User-Agent'
+            self.response.out.write('You are a bad bot for not reading robots.txt often enough.\n\nAnd you should feel bad.\n')
+            print self.request.headers
+            print self.request.environ
+            return
+
         stories = self.loadStories(search, False, False)
         stories = stories[:15]
         
@@ -78,27 +89,65 @@ class FeedJsonPage(StoryPage):
     def get(self):
         search = self.request.get("search")
 
-        stories = self.loadStories(search, False, False)
+        KEY = "rendered_default_feed"
+
+        if not search:
+            rendered_json = memcache.get(KEY)
+            if rendered_json:
+                self.response.headers['Content-Type'] = 'application/json'
+                self.response.headers['X-From-Cache'] = 'true'
+                self.response.headers['Cache-Control'] = 'public, max-age=120, s-maxage=120'
+                self.response.headers['Pragma'] = 'Public'
+                self.response.out.write(rendered_json)
+                return
+
+        stories = self.loadStories(search, True, False)
         top_tags = computeTopTags(stories)
         
-        template_values = {
-                           'search': search,
-                           'stories': stories,
-                           'top_tags': top_tags
-                           }
+        json_stories = []
+        for story in stories:
+            s = { 
+                'title': story.title,
+                'href': story.url,
+                'date': story.rfc3339_date,
+                'tags': story.tags
+            }
+            if story.redditUrl:
+                s['reddit'] = story.redditUrl
+            if story.hackernewsUrl:
+                s['hnews'] = story.hackernewsUrl
+            if story.lobstersUrl:
+                s['lobsters'] = story.lobstersUrl
+            json_stories.append(s)
+
+        feed = { 'v': 1, 'tags': top_tags, 'stories': json_stories }
+        rendered_json = json.dumps(feed)
         
-        path = os.path.join(os.path.dirname(__file__), 'templates/feed.json')
-        self.response.headers['Content-Type'] = 'application/json';
+        if not search:
+            memcache.add(KEY, rendered_json, 60*5)
+
+        self.response.headers['Content-Type'] = 'application/json'
+        self.response.headers['X-From-Cache'] = 'false'
         self.response.headers['Cache-Control'] = 'public, max-age=120, s-maxage=120'
         self.response.headers['Pragma'] = 'Public'
-        self.response.out.write(template.render(path, template_values))
+        self.response.out.write(rendered_json)
 
 class MainPage(StoryPage):
     def get(self):
         if ".appspot.com" in self.request.environ["HTTP_HOST"]:
             self.redirect("http://www.progscrape.com%s" % self.request.path_qs, True)
             return 
-           
+
+        # These guys don't respect robots.txt
+        if self.request.environ["HTTP_USER_AGENT"] and "ahrefsbot" in self.request.environ["HTTP_USER_AGENT"].lower():
+            self.response.set_status(403)
+            self.response.headers['Cache-Control'] = 'private'
+            self.response.headers['Vary'] = 'User-Agent'
+            self.response.out.write('You are a bad bot for not reading robots.txt often enough.\n\nAnd you should feel bad.\n')
+            print self.request.headers
+            print self.request.environ
+            return
+
         FRONT_PAGE_KEY = "rendered_front_page"
         
         # Fast path: cache the front page with no query strings
@@ -134,6 +183,12 @@ class MainPage(StoryPage):
         search = self.request.get("search")
         stories = self.loadStories(search, ignore_cache, force_update)
         top_tags = computeTopTags(stories)
+
+        if offset < len(stories) - count:
+            next = offset + count
+        else:
+            next = None
+
         stories = stories[offset:offset + count]
 
         template_values = {
@@ -144,6 +199,8 @@ class MainPage(StoryPage):
             'force_update': force_update,
             'cursor': cursor,
             'top_tags': top_tags[:13],
+            'next': next,
+            'first': offset == 0
             }
 
         path = os.path.join(os.path.dirname(__file__), 'templates/index.html')

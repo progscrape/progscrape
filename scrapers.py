@@ -122,31 +122,32 @@ class HackerNewsScraper(Scraper):
             infoSpans = infoNode.findAll('span')
             if len(infoSpans) == 0:
                 continue
-            scoreNode = infoSpans[0]
-            id = scoreNode['id'][6:]
-            
-            # We don't use score right now
-            # score = int(scoreNode.text.split(' ')[0])
+            for scoreNode in infoSpans:
+                if scoreNode.has_key('id') and scoreNode['id'][0:5] == 'score':
+                    id = scoreNode['id'][6:]
 
-            tags = []
+                    # We don't use score right now
+                    # score = int(scoreNode.text.split(' ')[0])
 
-            if title.endswith('[pdf]'):
-                title = title[:-5]
-                tags += ['pdf']
+                    tags = []
 
-            if title.endswith('[video]'):
-                title = title[:-7]
-                tags += ['video']
+                    if title.endswith('[pdf]'):
+                        title = title[:-5]
+                        tags += ['pdf']
 
-            if title.startswith('Ask HN'):
-                tags += ['ask']
+                    if title.endswith('[video]'):
+                        title = title[:-7]
+                        tags += ['video']
 
-            if title.startswith('Show HN'):
-                tags += ['show']
+                    if title.startswith('Ask HN'):
+                        tags += ['ask']
 
-            if href.find('http') == 0:
-                 stories.append(ScrapedStory(source=Scrapers.HACKERNEWS, id=id, url=href, title=title, index=index, tags=tags))
-        
+                    if title.startswith('Show HN'):
+                        tags += ['show']
+
+                    if href.find('http') == 0:
+                         stories.append(ScrapedStory(source=Scrapers.HACKERNEWS, id=id, url=href, title=title, index=index, tags=tags))
+                
         return stories
 
 class RedditScraper(Scraper):

@@ -1,11 +1,11 @@
 cron:
 - description: Scrape Reddit Prog
   url: /scrape__internal?scraper=reddit.prog
-  schedule: every 4 minutes
+  schedule: every 8 minutes
 
 - description: Scrape Reddit Tech
   url: /scrape__internal?scraper=reddit.tech
-  schedule: every 4 minutes
+  schedule: every 8 minutes
 
 - description: Scrape Hacker News
   url: /scrape__internal?scraper=hackernews

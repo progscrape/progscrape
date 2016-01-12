@@ -41,19 +41,11 @@
     {% if not stories %}
     Sorry, nothing found for "{{ search|escape }}".
     {% endif %}
-    {% if not search %}
+    {% if not search and first %}
     	<div class="popular-tags">Trending tags:
         {% for tag in top_tags %}
         	<span class="tag"><a href="/?search={{ tag|urlencode }}">{{ tag }}</a></span>&nbsp;
         {% endfor %}</div>
-      <div class="story">
-      <h2 class="story-title"><a href="https://play.google.com/store/apps/details?id=com.progscrape">progscrape now has an Android app!</a></h2>
-      <div class="metadata">
-        <span class="sites"><a href="."><img class="progscrape" src="/favicon.ico"></a></span>
-        <span class="age">announcement</span>
-        <span class="tags"><span class="tag"><a href="/?search=android">android</a></span></span>
-      </div>
-      </div>
     {% endif %} 
     {% for story in stories %}
     <div class="story">
@@ -91,6 +83,21 @@
       {% endif %}
     </div>
     {% endfor %}
+    {% if not search and first %}
+      <div class="story">
+      <h2 class="story-title"><a href="https://play.google.com/store/apps/details?id=com.progscrape">progscrape now has an Android app!</a></h2>
+      <div class="metadata">
+        <span class="sites"><a href="."><img class="progscrape" src="/favicon.ico"></a></span>
+        <span class="age">announcement</span>
+        <span class="tags"><span class="tag"><a href="/?search=android">android</a></span></span>
+      </div>
+      </div>
+    {% endif %}
+    
+    {% if not search and next %}
+    <p><a href="?offset={{ next }}">More &rarr;</a></p>
+    {% endif %}
+
     </div>
     
     </div>

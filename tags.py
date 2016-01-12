@@ -250,6 +250,7 @@ RAW_TAGS = [
     'json',
     'xml',
     'yaml',
+    'csv',
     'arm',
     'mips',
     'gpu',
