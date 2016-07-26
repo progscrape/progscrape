@@ -42,14 +42,20 @@ def scraped_story_to_dict(story):
         'id': story.id,
         'tags': story.tags,
         'title': story.title,
-        'index': story.index
+        'index': story.index,
+        'subcategory': story.subcategory
     }
     return out
 
 def dict_to_scraped_story(dict):
     """Reads a scraped story from a dict"""
+
+    # Backwards compat with old storage
+    if not 'subcategory' in dict:
+        dict['subcategory'] = None
+
     return ScrapedStory(id=dict['id'], url=None, source=dict['source'], 
-        title=dict['title'], index=dict['index'], tags=dict['tags'])
+        title=dict['title'], index=dict['index'], tags=dict['tags'], subcategory=dict['subcategory'])
 
 class Scrape(ndb.Expando):
     # Story URL (indexed for de-duplication across scrape sites)
@@ -66,6 +72,9 @@ class Scrape(ndb.Expando):
 
     # Scraped entries, stored as compressed json blobs (unindexed)
     scraped = ndb.JsonProperty(indexed=False, compressed=False, repeated=True)
+
+    # Story source sub-category (eg: subreddit)
+    subcategory = ndb.StringProperty(indexed=True)
 
     # Some cached computed properties
     _cachedTags = None
@@ -112,7 +121,10 @@ class Scrape(ndb.Expando):
     def redditUrl(self):
         s = self.scrape(Scrapers.REDDIT_PROG) or self.scrape(Scrapers.REDDIT_TECH)
         if s:
-            return 'http://www.reddit.com/comments/%s' % s.id
+            if s.subcategory:
+                return 'http://www.reddit.com/r/%s/comments/%s' % (s.subcategory, s.id)
+            else:
+                return 'http://www.reddit.com/comments/%s' % s.id
         return None
     
     @property

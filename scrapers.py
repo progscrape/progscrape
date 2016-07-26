@@ -54,24 +54,25 @@ class ScraperFactory:
         return RedditScraper(self.http, 'tech', REDDIT_TECH, 25)
 
 class ScrapedStory:
-    def __init__(self, source=None, id=None, url=None, title=None, index=None, tags=None):
+    def __init__(self, source=None, id=None, url=None, title=None, index=None, tags=None, subcategory=None):
         self.source = source
         self.id = id
         self.url = url
         self.title = title
         self.index = index
         self.tags = tags
+        self.subcategory = subcategory
         self.new = None
 
     @staticmethod
     def from_string(str):
         dict = eval(str)
         return ScrapedStory(source=dict['source'], id=dict['id'], url=dict['url'], 
-            title=dict['title'], index=dict['index'], tags=dict['tags'])
+            title=dict['title'], index=dict['index'], tags=dict['tags'], subcategory=dict['subcategory'])
 
     def to_string(self):
         return str({'source': self.source, 'id': self.id, 'url': self.url, 
-            'title': self.title, 'index': self.index, 'tags': self.tags})
+            'title': self.title, 'index': self.index, 'tags': self.tags, 'subcategory': self.subcategory})
 
 class Scraper:
     def __init__(self, http):
@@ -176,8 +177,9 @@ class RedditScraper(Scraper):
                             tags += [flair.lower()]
 
                 stories.append(ScrapedStory(source='reddit.%s' % self.category, 
-                    id=story['data']['id'], 
-                    url=story['data']['url'], 
+                    id=story['data']['id'],
+                    url=story['data']['url'],
+                    subcategory=story['data']['subreddit'],
                     # XML in JSON
                     title=xml.sax.saxutils.unescape(story['data']['title'].strip().replace("\n", ""), 
                                 {"&apos;": "'", "&quot;": '"'}), 
