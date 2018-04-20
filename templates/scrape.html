@@ -14,6 +14,7 @@
 		<td>{{ story.new|escape }}</td>
 		<td>{{ story.title|escape }}</td>
 		<td>{{ story.url|escape }}</td>
+		<td>{{ story.subcategory|escape }}</td>		
 		<td>{% for tag in story.tags %}{{ tag|escape }} {% endfor %}</td>
 	</tr>
 	{% endfor %}
