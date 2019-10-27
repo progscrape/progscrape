@@ -14,8 +14,8 @@
 	{% endfor %}
 </table>
 
-<form method="POST">
-<input type="hidden" value="{{ cursor }}" />
+<form method="GET">
+<input type="hidden" name="cursor" value="{{ cursor }}" />
 <input type="submit" value="Next ->" />
 </form>
 

@@ -136,12 +136,14 @@ class FeedJsonPage(StoryPage):
 
 class MainPage(StoryPage):
     def get(self):
-        if ".appspot.com" in self.request.environ["HTTP_HOST"]:
-            self.redirect("http://www.progscrape.com%s" % self.request.path_qs, True)
-            return 
+        # Should be checking to see if this req is from Cloudflare
+        # if ".appspot.com" in self.request.environ["HTTP_HOST"]:
+        #     self.redirect("http://www.progscrape.com%s" % self.request.path_qs, True)
+        #     return
 
         # These guys don't respect robots.txt
-        if self.request.environ["HTTP_USER_AGENT"] and "ahrefsbot" in self.request.environ["HTTP_USER_AGENT"].lower():
+        agent = self.request.environ.get('HTTP_USER_AGENT', "")
+        if "ahrefsbot" in agent.lower():
             self.response.set_status(403)
             self.response.headers['Cache-Control'] = 'private'
             self.response.headers['Vary'] = 'User-Agent'
@@ -171,7 +173,7 @@ class MainPage(StoryPage):
         ignore_cache = bool(self.request.get_all('ignore_cache'))
         force_update = bool(self.request.get_all('force_update'))
         cursor = self.request.get("with_cursor")
-        
+
         try:
             count = min(60, max(1, int(self.request.get("count"))))
         except ValueError:
@@ -247,13 +249,13 @@ class ScrapeTestPage(webapp2.RequestHandler):
         
 class DumpPage(webapp2.RequestHandler):
     def get(self):
-        stories_query = Story.all()
-        stories = stories_query.fetch(500)   
+        stories_query = Scrape.query()
+        stories, cursor, more = stories_query.fetch_page(500)
         template_values = {
             'stories': stories,
-            'cursor': stories_query.cursor()
-            }
-        
+            'cursor': cursor.urlsafe()
+        }
+
 #        for story in stories:
 #            if story.current_version != VERSION:
 #                story.updateVersion()
@@ -263,26 +265,10 @@ class DumpPage(webapp2.RequestHandler):
         self.response.headers['Content-Type'] = 'text/html; charset=utf-8';
         self.response.out.write(template.render(path, template_values))
 
-
 class CleanOldStoriesPage(webapp2.RequestHandler):
     def get(self):
-        cutoff = datetime.today() - timedelta(days=365)
-        stories_query = Story.all().filter('date <', cutoff).order('date')
-        stories_query._keys_only=True #http://code.google.com/p/googleappengine/issues/detail?id=2021
-        count = 0
-        while True:
-            stories = stories_query.fetch(200)
-            story_count = len(stories)
-            if story_count == 0:
-                break
-            count += story_count
-            db.delete(stories)
-        
-        template_values = { 'count': count }
-
-        path = os.path.join(os.path.dirname(__file__), 'templates/clean.html')
-        self.response.headers['Content-Type'] = 'text/html; charset=utf-8';
-        self.response.out.write(template.render(path, template_values))
+        # We no longer clean stories, but we could consider it
+        return
 
 app = webapp2.WSGIApplication([
     ('/', MainPage),
