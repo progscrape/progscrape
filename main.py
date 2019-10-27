@@ -232,7 +232,7 @@ class ScrapePage(webapp2.RequestHandler):
 
 class ScrapeTestPage(webapp2.RequestHandler):
     def get(self, url):
-        url = urllib.parse.unquote(url)
+        url = urllib.unquote(url)
         self.response.headers['Content-Type'] = 'text/plain; charset=utf-8';
         self.response.out.write(url)
         self.response.out.write('\n')
