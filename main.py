@@ -27,12 +27,12 @@ def computeTopTags(stories):
     popular_tags = {}
     for story in stories:
         for tag in story.tags:
-            if popular_tags.has_key(tag):
+            if tag in popular_tags:
                 popular_tags[tag] = popular_tags[tag] + 1
             else: 
                 popular_tags[tag] = 1
 
-    top_tags = [x for x in popular_tags.keys() if popular_tags[x] > 1]
+    top_tags = [x for x in list(popular_tags.keys()) if popular_tags[x] > 1]
     top_tags.sort(lambda x, y: popular_tags[y] - popular_tags[x])
 
     return top_tags
@@ -68,8 +68,8 @@ class FeedPage(StoryPage):
             self.response.headers['Cache-Control'] = 'private'
             self.response.headers['Vary'] = 'User-Agent'
             self.response.out.write('You are a bad bot for not reading robots.txt often enough.\n\nAnd you should feel bad.\n')
-            print self.request.headers
-            print self.request.environ
+            print(self.request.headers)
+            print(self.request.environ)
             return
 
         stories = self.loadStories(search, False, False)
@@ -148,8 +148,8 @@ class MainPage(StoryPage):
             self.response.headers['Cache-Control'] = 'private'
             self.response.headers['Vary'] = 'User-Agent'
             self.response.out.write('You are a bad bot for not reading robots.txt often enough.\n\nAnd you should feel bad.\n')
-            print self.request.headers
-            print self.request.environ
+            print(self.request.headers)
+            print(self.request.environ)
             return
 
         FRONT_PAGE_KEY = "rendered_front_page"
@@ -232,7 +232,7 @@ class ScrapePage(webapp2.RequestHandler):
 
 class ScrapeTestPage(webapp2.RequestHandler):
     def get(self, url):
-        url = urllib.unquote(url)
+        url = urllib.parse.unquote(url)
         self.response.headers['Content-Type'] = 'text/plain; charset=utf-8';
         self.response.out.write(url)
         self.response.out.write('\n')

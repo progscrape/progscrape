@@ -29,7 +29,7 @@ ignored = 0
 to_import = []
 
 cutoff = datetime.strptime("2015-04-03 22:51:10", "%Y-%m-%d %H:%M:%S")
-print cutoff
+print(cutoff)
 
 for line in f.read().split('\n'):
 	if not line:
@@ -46,11 +46,11 @@ for line in f.read().split('\n'):
 
 		# Some non-english hosts giving us trouble
 		if "skydevelop.ir" in url or "blog.scimpr.com" in url:
-			print "Ignoring troublesome site"
+			print("Ignoring troublesome site")
 			continue
 
 		if url.startswith('http://http://'):
-			print "Warning: fixing up %s to %s" % (url, url[7:])
+			print("Warning: fixing up %s to %s" % (url, url[7:]))
 			url = urlnorm.norm(url[7:])
 		else:
 			url = urlnorm.norm(url)
@@ -61,8 +61,8 @@ for line in f.read().split('\n'):
 			date = datetime.strptime(export['date'], "%Y-%m-%d %H:%M:%S")
 
 		scraped = []
-		for k, v in SERVICE_MAP.items():
-			if export.has_key(k + 'Position') and export[k + 'Position'] != "None":
+		for k, v in list(SERVICE_MAP.items()):
+			if k + 'Position' in export and export[k + 'Position'] != "None":
 				index = int(export[k + 'Position'])
 				id = export[k + 'Id']
 				scraped.append(ScrapedStory(source=v, id=id, index=index, url=url, title=title, tags=[]))
@@ -77,10 +77,10 @@ for line in f.read().split('\n'):
 
 		count += 1
 	except:
-		print "Failed to parse:\n%s\n%s" % (sys.exc_info()[0], line)
-		print traceback.format_exc()
+		print("Failed to parse:\n%s\n%s" % (sys.exc_info()[0], line))
+		print(traceback.format_exc())
 
-print "%d records processed, %d recent, %d ignored" % (count, recent, ignored)
+print("%d records processed, %d recent, %d ignored" % (count, recent, ignored))
 
 rows = 0
 inserts = 0
@@ -92,8 +92,8 @@ batch = []
 for url, date, scraped in to_import:
 	rows += 1
 	if rows % 1000 == 0:
-		print "%d of %d" % (rows, count)
-		print "%d inserts, %d updates, %d skipped" % (inserts, updates, skipped)
+		print("%d of %d" % (rows, count))
+		print("%d inserts, %d updates, %d skipped" % (inserts, updates, skipped))
 
 	# if date > cutoff:
 	# 	# Recent, try to merge w/our scrapes
@@ -132,5 +132,5 @@ for url, date, scraped in to_import:
 	story.put()
 	inserts += 1
 
-print "%d inserts, %d updates, %d skipped" % (inserts, updates, skipped)
-print "Done."
+print("%d inserts, %d updates, %d skipped" % (inserts, updates, skipped))
+print("Done.")

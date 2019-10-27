@@ -149,47 +149,47 @@ def generate_search_field(titles, tags, url):
 
 class TestSearch(unittest.TestCase):
     def test_tokenize(self):
-        self.assertEquals(set(['greatest', 'title']), tokenize('This is the greatest title ever'))
+        self.assertEqual(set(['greatest', 'title']), tokenize('This is the greatest title ever'))
 
     def test_tokenize_url(self):
-        self.assertEquals(set(['foo']), tokenize_url('http://google.com/foo'))
-        self.assertEquals(set(['foo', 'bar']), tokenize_url('http://google.com/foo/bar'))
-        self.assertEquals(set(['foo', 'bar']), tokenize_url('http://google.com/foo/bar.html'))
+        self.assertEqual(set(['foo']), tokenize_url('http://google.com/foo'))
+        self.assertEqual(set(['foo', 'bar']), tokenize_url('http://google.com/foo/bar'))
+        self.assertEqual(set(['foo', 'bar']), tokenize_url('http://google.com/foo/bar.html'))
 
     def test_generate_search_field(self):
         res = generate_search_field(['first title', 'titled second javascript'], ['tag', 'bar', 'baz'], 'http://google.com/foo')
-        self.assertEquals(set(['first', 'second', 'titl', 'javascript', 'foo', 'bar', 'baz', 'tag', 'host:google.com']), res.search_tokens)
-        self.assertEquals(['google.com', 'bar', 'baz', 'javascript', 'tag'], res.tags)
+        self.assertEqual(set(['first', 'second', 'titl', 'javascript', 'foo', 'bar', 'baz', 'tag', 'host:google.com']), res.search_tokens)
+        self.assertEqual(['google.com', 'bar', 'baz', 'javascript', 'tag'], res.tags)
 
     def test_generate_search_field_internal_tags(self):
         res = generate_search_field(['i love go'], ['go'], 'http://example.com/foo')
-        self.assertEquals(set(['golang', 'love', 'foo', 'host:example.com']), res.search_tokens)
-        self.assertEquals(['example.com', 'go'], res.tags)
+        self.assertEqual(set(['golang', 'love', 'foo', 'host:example.com']), res.search_tokens)
+        self.assertEqual(['example.com', 'go'], res.tags)
 
     def test_generate_search_field_smart_quotes(self):
         res = generate_search_field([u'\u201Chuge release\u201D', u'this is a \u2018triumph\u2019'], ['tag'], 'http://google.com/foo')
-        self.assertEquals(set(['triumph', 'huge', 'releas', 'tag', 'foo', 'host:google.com']), res.search_tokens)
-        self.assertEquals(['google.com', 'release', 'tag'], res.tags)
+        self.assertEqual(set(['triumph', 'huge', 'releas', 'tag', 'foo', 'host:google.com']), res.search_tokens)
+        self.assertEqual(['google.com', 'release', 'tag'], res.tags)
 
     def test_generate_search_field_complex_keyword(self):
         res = generate_search_field(['a reversible debugger'], [], 'http://example.com/')
         # Note that this appears to be a stemming bug: debugging/debugger should stem to the same token
-        self.assertEquals(set(['debugg', 'debug', 'revers', 'host:example.com']), res.search_tokens)
-        self.assertEquals(['example.com', 'debugging'], res.tags)
+        self.assertEqual(set(['debugg', 'debug', 'revers', 'host:example.com']), res.search_tokens)
+        self.assertEqual(['example.com', 'debugging'], res.tags)
 
     def test_generate_search_field_complex_keyword_2(self):
         res = generate_search_field(['a debug console'], [], 'http://example.com/')
         # Note that this appears to be a stemming bug: debugging/debugger should stem to the same token
-        self.assertEquals(set(['debug', 'consol', 'host:example.com']), res.search_tokens)
-        self.assertEquals(['example.com', 'debugging'], res.tags)
+        self.assertEqual(set(['debug', 'consol', 'host:example.com']), res.search_tokens)
+        self.assertEqual(['example.com', 'debugging'], res.tags)
 
     def test_generate_search_tokens(self):
-        self.assertEquals(set(['host:google.com']), generate_search_tokens_for_query('google.com'))
-        self.assertEquals(set(['host:google.com']), generate_search_tokens_for_query('http://google.com'))
-        self.assertEquals(set(['host:google.com', 'golang', 'project']), 
+        self.assertEqual(set(['host:google.com']), generate_search_tokens_for_query('google.com'))
+        self.assertEqual(set(['host:google.com']), generate_search_tokens_for_query('http://google.com'))
+        self.assertEqual(set(['host:google.com', 'golang', 'project']), 
             generate_search_tokens_for_query('go is a project from google.com'))
-        self.assertEquals(set(['openbsd', 'releas']), generate_search_tokens_for_query('OpenBSD 1.2.3 released!'))
-        self.assertEquals(set(['atandt', 'suck']), generate_search_tokens_for_query('at&t sucks'))
+        self.assertEqual(set(['openbsd', 'releas']), generate_search_tokens_for_query('OpenBSD 1.2.3 released!'))
+        self.assertEqual(set(['atandt', 'suck']), generate_search_tokens_for_query('at&t sucks'))
 
 if __name__ == '__main__':
     unittest.main()

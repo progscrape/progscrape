@@ -254,7 +254,7 @@ class Stories:
                 return self._maybe_load_search(search, ignore_cache, force_update)
             else:
                 return self._maybe_load_default(ignore_cache, force_update)
-        except db.NeedIndexError, err:
+        except db.NeedIndexError as err:
             logging.error("Index appears to be missing %s", err)
             return []
 
@@ -269,7 +269,7 @@ class Stories:
             memcache.add("stories-default", stories, 10 * 60)
             memcache.add("stories-default-last-ditch", stories, 24 * 60 * 60)
             return stories
-        except apiproxy_errors.OverQuotaError, err:
+        except apiproxy_errors.OverQuotaError as err:
             logging.error("Uh-oh: we are over quota for the front page. Let's use the last-ditch results: %s", err)
             stories = memcache.get("stories-default-last-ditch")
             if stories == None:
@@ -294,7 +294,7 @@ class Stories:
             stories = self._load_search(search, SEARCH_FETCH_COUNT)
             memcache.add("stories-search-" + search, stories, 60 * 60)
             return stories
-        except apiproxy_errors.OverQuotaError, err:
+        except apiproxy_errors.OverQuotaError as err:
             logging.error("Uh-oh: we are over quota for the search page: %s", err)
             # TODO: Return a placeholder story here or just run through the last-ditch results
             return []
@@ -388,7 +388,7 @@ class DemoTestCase(unittest.TestCase):
             ScrapedStory(id='2', url='http://example.com/2', title='title', source='source', index=2, tags=['b']),
         ]
         stories.store(scrape)
-        self.assertEquals(2, len(Scrape.query().fetch()))
+        self.assertEqual(2, len(Scrape.query().fetch()))
 
     def test_save_dupe(self):
         stories = Stories()
@@ -400,7 +400,7 @@ class DemoTestCase(unittest.TestCase):
             ScrapedStory(id='1', url='http://example.com/1', title='title', source='b', index=1, tags=['b']),
         ]
         stories.store(scrape)
-        self.assertEquals(1, len(Scrape.query().fetch()))
+        self.assertEqual(1, len(Scrape.query().fetch()))
 
     def test_computed_title(self):
         stories = Stories()
@@ -411,8 +411,8 @@ class DemoTestCase(unittest.TestCase):
         ]
         stories.store(scrape)
         loaded = stories.load(ignore_cache=True)
-        self.assertEquals(1, len(loaded))
-        self.assertEquals('title reddit', loaded[0].title)
+        self.assertEqual(1, len(loaded))
+        self.assertEqual('title reddit', loaded[0].title)
 
         # Once we scrape the same URL from HN, it should replace the reddit titles (which are usually worse)
         scrape = [
@@ -420,8 +420,8 @@ class DemoTestCase(unittest.TestCase):
         ]
         stories.store(scrape)
         loaded = stories.load(ignore_cache=True)
-        self.assertEquals(1, len(loaded))
-        self.assertEquals('title hn', loaded[0].title)
+        self.assertEqual(1, len(loaded))
+        self.assertEqual('title hn', loaded[0].title)
 
     def tearDown(self):
         self.testbed.deactivate()

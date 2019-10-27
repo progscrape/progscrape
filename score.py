@@ -103,18 +103,18 @@ class TestScores(unittest.TestCase):
     	story = MockStory([hn, reddit], 
     		'EarthBound\xe2s Copy Protection (Super Nintendo game)', 
     		'http://earthboundcentral.com/2011/05/earthbounds-copy-protection/',
-    		datetime(2015, 05, 02, 5))
+    		datetime(2015, 5, 2, 5))
 
     	# Six hours later
-    	s = scoreStory(story, now=datetime(2015, 05, 02, 11))
+    	s = scoreStory(story, now=datetime(2015, 5, 2, 11))
     	self.assertAlmostEqual(s.scores['hnews'], 27.6)
     	self.assertAlmostEqual(s.scores['reddit1'], 29)
     	self.assertAlmostEqual(s.scores['multiple_service'], 10)
     	self.assertAlmostEqual(s.scores['age'], -50)
 
-    	keys = s.scores.keys()
+    	keys = list(s.scores.keys())
     	keys.sort()
-    	self.assertEquals(['age', 'hnews', 'multiple_service', 'random', 'reddit1'], keys)
+    	self.assertEqual(['age', 'hnews', 'multiple_service', 'random', 'reddit1'], keys)
 
 if __name__ == '__main__':
     unittest.main()

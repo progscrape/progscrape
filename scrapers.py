@@ -6,7 +6,7 @@ import simplejson as json
 import feedparser
 from BeautifulSoup import *
 import xml.sax.saxutils
-import urlnorm
+from url_normalize import url_normalize
 
 __all__ = [ 'ScraperFactory', 'AppEngineHttp', 'ScrapedStory', 'Scrapers' ]
 
@@ -90,7 +90,7 @@ class Scraper:
         urls = set()
         for story in stories:
             try:
-                url = urlnorm.norm(story.url)
+                url = url_normalize(story.url)
             except:
                 # If we've scraped a bad UTF-8 character here, this might fail
                 url = story.url
@@ -128,14 +128,14 @@ class SlashdotScraper(Scraper):
                 continue
             href = links[1]['href']
             id = '/'.join(links[0]['href'].split('/story/')[1].split('/')[0:4])
-            print id
+            print(id)
             title = links[0].text.strip()
             tags = []
             for link in story.findAll('a'):
                 if "tag" in link.get('class', ''):
                     if link.text.strip() in SLASHDOT_WHITELIST:
                         tags += [link.text.strip()]
-            print tags
+            print(tags)
             stories.append(ScrapedStory(source=Scrapers.SLASHDOT, id=id, url=href, title=title, index=index, tags=tags))
         return stories
 
@@ -209,7 +209,7 @@ class RedditScraper(Scraper):
                 subreddit = story['data']['subreddit'].lower()
                 if subreddit in REDDIT_PROG_TAG:
                     tags += [subreddit]
-                if subreddit in REDDIT_FLAIR_TAGS and story['data'].has_key('link_flair_text'):
+                if subreddit in REDDIT_FLAIR_TAGS and 'link_flair_text' in story['data']:
                     # Include flair if it doesn't have a space
                     flair = story['data']['link_flair_text']
                     if flair:
@@ -280,10 +280,10 @@ if __name__ == '__main__':
     factory = ScraperFactory(http)
 
     if len(sys.argv) == 1:
-        print "Specify one of %s" % (', '.join(factory.scrapers()))
+        print("Specify one of %s" % (', '.join(factory.scrapers())))
         sys.exit(1)
 
     stories = factory.scraper(sys.argv[1]).scrape()
     for story in stories:
         tags = ' (tags: ' + ', '.join(story.tags) + ')' if story.tags else ''
-        print "%d %s%s\n%s\n" % (story.index, story.title, tags, story.url)
+        print("%d %s%s\n%s\n" % (story.index, story.title, tags, story.url))
