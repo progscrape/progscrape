@@ -297,26 +297,26 @@ INTERNAL = {}
 
 # Replaces a token that matches an internal's display token with the internal representation
 def replaceInternal(tokens):
-    return [INTERNAL[tag] if INTERNAL.has_key(tag) else tag for tag in tokens]
+    return [INTERNAL[tag] if tag in INTERNAL else tag for tag in tokens]
 
 def displayTags(tags):
-    return [DISPLAY[tag] if DISPLAY.has_key(tag) else tag for tag in tags]
+    return [DISPLAY[tag] if tag in DISPLAY else tag for tag in tags]
 
 def isSymbol(token):
-    return SYMBOLS[token]['tags'][0] if SYMBOLS.has_key(token) else None
+    return SYMBOLS[token]['tags'][0] if token in SYMBOLS else None
 
 # Note that this may return duplicates
 def extractTags(s):
     tags = []
     s = s.lower();
-    for symbol in SYMBOLS.keys():
+    for symbol in list(SYMBOLS.keys()):
         if s.find(symbol) != -1:
             # Eat the symbol so we don't match on it any more
             s = s.replace(symbol, '')
             tags += SYMBOLS[symbol]['tags']
 
     for bit in re.split("[^A-Za-z0-9]+", s):
-        if TAGS.has_key(bit):
+        if bit in TAGS:
             tags += TAGS[bit]['tags']
 
     return tags
@@ -325,7 +325,7 @@ for tag_entry in RAW_TAGS:
     if type(tag_entry) == str:
         tag_entry = { 'tag': tag_entry }
 
-    symbol = tag_entry.has_key('symbol')
+    symbol = 'symbol' in tag_entry
     if symbol:
         tag = tag_entry['symbol']
     else:
@@ -333,7 +333,7 @@ for tag_entry in RAW_TAGS:
     output = {}
 
     # Reverse map
-    if tag_entry.has_key('internal'):
+    if 'internal' in tag_entry:
         DISPLAY[tag_entry['internal']] = tag
         INTERNAL[tag] = tag_entry['internal']
 
@@ -344,13 +344,13 @@ for tag_entry in RAW_TAGS:
         output['tags'] = [ root ]
     else:
         input = [ tag ]
-        if tag_entry.has_key('internal'):
+        if 'internal' in tag_entry:
             output['tags'] = [ tag_entry['internal'] ]
         else:
             output['tags'] = [ tag ]
 
     # implies adds additional output tags for a given input
-    if tag_entry.has_key('implies'):
+    if 'implies' in tag_entry:
         implies = tag_entry['implies']
         if type(implies) == str:
             output['tags'] += [ implies ]
@@ -358,7 +358,7 @@ for tag_entry in RAW_TAGS:
             output['tags'] += implies
 
     # alt adds addtional input tags for a given output
-    if tag_entry.has_key('alt'):
+    if 'alt' in tag_entry:
         alt = tag_entry['alt']
         if type(alt) == str:
             input += [ alt ]
@@ -372,12 +372,12 @@ for tag_entry in RAW_TAGS:
 
     if symbol:
         for tag in input:
-            if SYMBOLS.has_key(tag):
+            if tag in SYMBOLS:
                 raise Exception('Duplicate symbol: ' + tag)
             SYMBOLS[tag] = output
     else:
         for tag in input:
-            if TAGS.has_key(tag):
+            if tag in TAGS:
                 raise Exception('Duplicate tag: ' + tag)
             TAGS[tag] = output
 
