@@ -61,9 +61,9 @@ class SitemapPage(StoryPage):
 class FeedPage(StoryPage):
     def get(self):
         search = self.request.get("search")
-
+        agent = self.request.environ.get('HTTP_USER_AGENT', "")
         # These guys don't respect robots.txt
-        if self.request.environ["HTTP_USER_AGENT"] and "ahrefsbot" in self.request.environ["HTTP_USER_AGENT"].lower():
+        if "ahrefsbot" in agent.lower():
             self.response.set_status(403)
             self.response.headers['Cache-Control'] = 'private'
             self.response.headers['Vary'] = 'User-Agent'
