@@ -62,6 +62,9 @@
       	{% if story.lobstersUrl %}
       		<a href="{{ story.lobstersUrl }}"><img class="lobsters" src="/static/lobsters.ico"></a>
       	{% endif %}
+      	{% if story.slashdotUrl %}
+      		<a href="{{ story.slashdotUrl }}"><img class="slashdot" src="/static/slashdot.ico"></a>
+      	{% endif %}
       </span>
 	    <span class="age">
         {{ story.age }}

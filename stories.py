@@ -90,7 +90,8 @@ class Scrape(ndb.Expando):
         if self._cachedTitle == None:
             # Priority order for titles
             s = (self.scrape(Scrapers.HACKERNEWS) or self.scrape(Scrapers.LOBSTERS) or 
-                self.scrape(Scrapers.REDDIT_PROG) or self.scrape(Scrapers.REDDIT_TECH))
+                self.scrape(Scrapers.REDDIT_PROG) or self.scrape(Scrapers.REDDIT_TECH) or
+                self.scrape(Scrapers.SLASHDOT))
 
             if s:
                 self._cachedTitle = s.title
@@ -114,17 +115,24 @@ class Scrape(ndb.Expando):
     def hackernewsUrl(self):
         s = self.scrape(Scrapers.HACKERNEWS)
         if s:
-            return 'http://news.ycombinator.com/item?id=%s' % s.id
+            return 'https://news.ycombinator.com/item?id=%s' % s.id
         return None
-    
+
+    @property
+    def slashdotUrl(self):
+        s = self.scrape(Scrapers.SLASHDOT)
+        if s:
+            return 'https://slashdot.org/story/%s' % s.id
+        return None
+
     @property
     def redditUrl(self):
         s = self.scrape(Scrapers.REDDIT_PROG) or self.scrape(Scrapers.REDDIT_TECH)
         if s:
             if s.subcategory:
-                return 'http://www.reddit.com/r/%s/comments/%s' % (s.subcategory, s.id)
+                return 'https://www.reddit.com/r/%s/comments/%s' % (s.subcategory, s.id)
             else:
-                return 'http://www.reddit.com/comments/%s' % s.id
+                return 'https://www.reddit.com/comments/%s' % s.id
         return None
     
     @property

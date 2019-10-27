@@ -118,6 +118,8 @@ class FeedJsonPage(StoryPage):
                 s['hnews'] = story.hackernewsUrl
             if story.lobstersUrl:
                 s['lobsters'] = story.lobstersUrl
+            if story.slashdotUrl:
+                s['slashdot'] = story.slashdotUrl
             json_stories.append(s)
 
         feed = { 'v': 1, 'tags': top_tags, 'stories': json_stories }

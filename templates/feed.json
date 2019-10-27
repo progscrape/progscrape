@@ -11,6 +11,7 @@
             {% if story.redditUrl %}"reddit": "{{ story.redditUrl }}",
             {% endif %}{% if story.hackernewsUrl %}"hnews": "{{ story.hackernewsUrl }}",
             {% endif %}{% if story.lobstersUrl %}"lobsters": "{{ story.lobstersUrl }}",
+            {% endif %}{% if story.slashdotUrl %}"slashdot": "{{ story.slashdotUrl }}",
             {% endif %}"tags": [
                 {% for tag in story.tags %}"{{ tag|escapejs }}"{% if not forloop.last %}, {% endif %}{% endfor %}
             ]

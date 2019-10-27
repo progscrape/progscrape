@@ -22,7 +22,7 @@ REDDIT_TECH = [ 'technology', 'science' ]
 REDDIT_FLAIR_TAGS = [ 'science' ]
 
 class Scrapers:
-    HACKERNEWS, LOBSTERS, REDDIT_TECH, REDDIT_PROG = ['hackernews', 'lobsters', 'reddit.tech', 'reddit.prog']
+    HACKERNEWS, LOBSTERS, REDDIT_TECH, REDDIT_PROG, SLASHDOT = ['hackernews', 'lobsters', 'reddit.tech', 'reddit.prog', 'slashdot']
 
 class ScraperFactory:
     def __init__(self, http):
@@ -40,6 +40,8 @@ class ScraperFactory:
             return self._reddit_prog()
         if name == Scrapers.REDDIT_TECH:
             return self._reddit_tech()
+        if name == Scrapers.SLASHDOT:
+            return self._slashdot()
 
     def _hackernews(self):
         return HackerNewsScraper(self.http)
@@ -52,6 +54,9 @@ class ScraperFactory:
 
     def _reddit_tech(self):
         return RedditScraper(self.http, 'tech', REDDIT_TECH, 25)
+
+    def _slashdot(self):
+        return SlashdotScraper(self.http)
 
 class ScrapedStory:
     def __init__(self, source=None, id=None, url=None, title=None, index=None, tags=None, subcategory=None):
@@ -97,6 +102,41 @@ class Scraper:
                 story.url = url
                 story.title = story.title.strip()
 
+        return stories
+
+SLASHDOT_WHITELIST = ['adobe', 'ai', 'arm', 'att', 'blizzard', 'china', 'cloud', 'earth', 'facebook', 'fcc', 'games', 'google', 'government', 'health', 'java', 'javascript',
+    'mars', 'media', 'moon', 'military', 'nasa', 'oracle', 'php', 'power', 'programming', 'python', 'ransomware', 'robot', 'russia',
+    'samsung', 'science', 'security', 'space', 'symantec', 'twitter', 'usa']
+
+class SlashdotScraper(Scraper):
+    def __init__(self, http):
+        Scraper.__init__(self, http)
+        pass
+
+    def _scrape(self):
+        rawHtml = BeautifulSoup(self.http.fetch("https://www.slashdot.org/"))
+        stories = []
+        index = 0
+        for story in rawHtml.findAll('article'):
+            index += 1
+            title = story.findAll('span', {'class':'story-title'})
+            if len(title) == 0:
+                continue
+            title = title[0]
+            links = title.findAll('a')
+            if len(links) != 2:
+                continue
+            href = links[1]['href']
+            id = '/'.join(links[0]['href'].split('/story/')[1].split('/')[0:4])
+            print id
+            title = links[0].text.strip()
+            tags = []
+            for link in story.findAll('a'):
+                if "tag" in link.get('class', ''):
+                    if link.text.strip() in SLASHDOT_WHITELIST:
+                        tags += [link.text.strip()]
+            print tags
+            stories.append(ScrapedStory(source=Scrapers.SLASHDOT, id=id, url=href, title=title, index=index, tags=tags))
         return stories
 
 class HackerNewsScraper(Scraper):
