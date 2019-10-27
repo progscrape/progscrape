@@ -50,20 +50,19 @@
     {% for story in stories %}
     <div class="story">
       <h2 class="story-title"><a href="{{ story.url|escape }}">{{ story.autoBreakTitle|escape }}</a></h2>
-      <!-- <span class="plusone"><g:plusone size="small" href="{{ story.url|escape }}"></g:plusone></span> -->
       <div class="metadata">
       <span class="sites">
       	{% if story.redditUrl %}
-          <a href="{{ story.redditUrl }}"><img class="reddit" src="/static/reddit.ico" width="16" height="16"></a>
+          <a href="{{ story.redditUrl }}" class="reddit"><img src="/static/reddit.png" width="16" height="16"></a>
       	{% endif %}
       	{% if story.hackernewsUrl %}
-          <a href="{{ story.hackernewsUrl }}"><img class="hnews" src="/static/ynews.ico"></a>
+          <a href="{{ story.hackernewsUrl }}" class="hnews"><img src="/static/hnews.png" width="16" height="16"></a>
         {% endif %}
       	{% if story.lobstersUrl %}
-      		<a href="{{ story.lobstersUrl }}"><img class="lobsters" src="/static/lobsters.ico"></a>
+      		<a href="{{ story.lobstersUrl }}" class="lobsters"><img src="/static/lobsters.png" width="16" height="16"></a>
       	{% endif %}
       	{% if story.slashdotUrl %}
-      		<a href="{{ story.slashdotUrl }}"><img class="slashdot" src="/static/slashdot.ico"></a>
+      		<a href="{{ story.slashdotUrl }}" class="slashdot"><img src="/static/slashdot.png" width="16" height="16"></a>
       	{% endif %}
       </span>
 	    <span class="age">

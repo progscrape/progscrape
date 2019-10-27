@@ -321,15 +321,6 @@ h2.story-title a {
 .story:hover {
 }
 
-.story .plusone {
-	float: right;
-	display: none;
-}
-
-.story:hover .plusone {
-	display: block;
-}
-
 div.metadata {
 	display: table;
 }
@@ -468,7 +459,41 @@ a:visited {
 	font-size: 14px;
 }
 
-img.reddit, img.delicious, img.hnews, img.lobsters, img.slashdot {
+a.feed, a.reddit, a.delicious, a.hnews, a.lobsters, a.slashdot {
+	display: inline-block;
 	width: 16px;
 	height: 16px;
+	box-sizing: border-box;
+	border-radius: 2px;
+	border-top: 1px solid rgba(255, 255, 255, .1);
+	border-left: 1px solid rgba(255, 255, 255, .1);
+	border-right: 1px solid rgba(0, 0, 0, .1);
+	border-bottom: 1px solid rgba(0, 0, 0, .1);
+	background-size: 100%;
+	background-origin: border-box;
+	background-repeat: no-repeat;
+}
+
+a.reddit {
+	background-image: url(reddit.png);
+}
+
+a.slashdot {
+	background-image: url(slashdot.png);
+}
+
+a.hnews {
+	background-image: url(hnews.png);
+}
+
+a.lobsters {
+	background-image: url(lobsters.png);
+}
+
+a.feed {
+	background-image: url(feed.png);
+}
+
+a.feed > img, a.reddit > img, a.delicious > img, a.hnews > img, a.lobsters > img, a.slashdot > img {
+	display: none;
 }
