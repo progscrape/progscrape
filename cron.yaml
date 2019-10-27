@@ -15,6 +15,10 @@ cron:
   url: /scrape__internal?scraper=lobsters
   schedule: every 55 minutes
 
+- description: Scrape Slashdot
+  url: /scrape__internal?scraper=slashdot
+  schedule: every 41 minutes
+
 - description: Refresh homepage
   url: /
   schedule: every 5 minutes
