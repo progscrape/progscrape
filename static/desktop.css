@@ -293,10 +293,14 @@ p {
 	color: #888;
 }
 
-#header .feed {
+#header .subscribe {
 	float: right;
 	font-size: 11px;
 	color: #888;
+}
+
+#header .subscribe img {
+	vertical-align: sub;
 }
 
 .story {

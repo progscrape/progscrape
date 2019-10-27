@@ -1,0 +1,13 @@
+#main, #header, #footer {
+    width: 90% !important;
+}
+
+.story, .container > div {
+    width: 80vw !important;
+    max-width: 80vw !important;
+}
+
+#footer > div {
+    width: 30vw !important;
+    max-width: 30vw !important;
+}

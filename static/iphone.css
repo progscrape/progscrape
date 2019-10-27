@@ -4,6 +4,10 @@ body {
 	color: #111;
 }
 
+#header .subscribe img {
+	vertical-align: sub;
+}
+
 .story {
 	border-bottom: 1px solid #111;
 }
