@@ -55,6 +55,8 @@ RAW_TAGS = [
     'concurrency',
     'beer',
     { 'tag': 'debugging', 'alt': [ 'debugger', 'debug', 'debugs' ]},
+    'ipv4',
+    'ipv6',
 
     # Orgs
     'amd', 
@@ -157,6 +159,8 @@ RAW_TAGS = [
 
     # Languages
     'php', 
+    { 'tag': 'php6', 'implies': 'php' },
+    { 'tag': 'php7', 'implies': 'php' },
     'javascript', 
     'java', 
     'perl', 

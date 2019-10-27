@@ -105,7 +105,7 @@ class Scraper:
         return stories
 
 SLASHDOT_WHITELIST = ['adobe', 'ai', 'arm', 'att', 'blizzard', 'china', 'cloud', 'earth', 'facebook', 'fcc', 'games', 'google', 'government', 'health', 'java', 'javascript',
-    'mars', 'media', 'moon', 'military', 'nasa', 'oracle', 'php', 'power', 'programming', 'python', 'ransomware', 'robot', 'russia',
+    'mars', 'media', 'moon', 'microsoft', 'military', 'nasa', 'oracle', 'php', 'power', 'programming', 'python', 'ransomware', 'robot', 'russia',
     'samsung', 'science', 'security', 'space', 'symantec', 'twitter', 'usa']
 
 class SlashdotScraper(Scraper):
