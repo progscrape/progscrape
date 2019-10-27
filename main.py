@@ -46,13 +46,14 @@ class SitemapPage(StoryPage):
         stories = self.loadStories(None, False, False)
         searches = set()
         for story in stories:
-            for tag in story.guessTags():
+            for tag in story.tags:
                 searches.add(tag)
             
-        template_values = {'now': datetime.now().strftime("%Y-%m-%d"),
-                           'searches': searches
-                           }
-        
+        template_values = {
+            'now': datetime.now().strftime("%Y-%m-%d"),
+            'searches': searches
+        }
+
         path = os.path.join(os.path.dirname(__file__), 'templates/sitemap.xml')
         self.response.headers['Content-Type'] = 'text/xml; charset=utf-8';
         self.response.out.write(template.render(path, template_values))
@@ -164,8 +165,6 @@ class MainPage(StoryPage):
                 self.response.headers['Pragma'] = 'Public'
                 self.response.out.write(rendered_front_page)
                 return
-
-        FETCH_COUNT = 150
 
         count = 30
         offset = 0
