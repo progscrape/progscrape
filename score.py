@@ -43,6 +43,7 @@ def scoreStory(story, now=None):
     redditTechPosition = story.scrape(Scrapers.REDDIT_TECH).index if story.scrape(Scrapers.REDDIT_TECH) else None
     hackerNewsPosition = story.scrape(Scrapers.HACKERNEWS).index if story.scrape(Scrapers.HACKERNEWS) else None
     lobstersPosition = story.scrape(Scrapers.LOBSTERS).index if story.scrape(Scrapers.LOBSTERS) else None
+    slashdotPosition = story.scrape(Scrapers.SLASHDOT).index if story.scrape(Scrapers.SLASHDOT) else None
 
     if redditProgPosition:
         s['reddit1'] = max(0, 30 - redditProgPosition)
@@ -54,8 +55,11 @@ def scoreStory(story, now=None):
         s['hnews'] = max(0, (30 - hackerNewsPosition) * 1.2)
         count += 1
     if lobstersPosition:
-        count += 1
         s['lobsters'] = max(0, (30 - lobstersPosition) * 1.2)
+        count += 1
+    if slashdotPosition:
+        s['slashdot'] = max(0, (30 - slashdotPosition) * 1.2)
+        count += 1
 
     # Penalize long reddit titles
     if (redditProgPosition or redditTechPosition) and len(story.title) > 130:
