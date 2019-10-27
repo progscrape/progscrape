@@ -31,7 +31,8 @@ RAW_TAGS = [
     'trademark(s)', 
     'patent(s)', 
     'encryption', 
-    'economy', 
+    'economy',
+    'murder',
     'investing',
     'privacy', 
     'autism', 
@@ -65,7 +66,11 @@ RAW_TAGS = [
     { 'tag': 'microsoft', 'host': [ 'msdn.com' ] }, 
     'twitter', 
     'zynga',
-    
+    { 'tag': 'eff', 'host': [ 'eff.org' ] },
+    'exxon',
+    'tsmc',
+    'ibm',
+
     'techcrunch', 
     'htc', 
     'amazon', 
@@ -86,6 +91,8 @@ RAW_TAGS = [
     { 'symbol': 'at&t', 'internal': 'atandt' },
     'sprint', 
     'tmobile',
+    'boeing',
+    'airbus',
     
     'instagram', 
     'square', 
@@ -102,7 +109,6 @@ RAW_TAGS = [
     'riaa', 
     'w3c', 
     'isohunt', 
-    'obama', 
     'ifpi', 
     'nsa', 
     'cia', 
@@ -110,17 +116,29 @@ RAW_TAGS = [
     'csis', 
     'wikileaks',
     
+    'obama',
+    'trump',
+    'clinton',
     'snowden', 
+
     'kde', 
     'gnome', 
     'comcast', 
     'fcc', 
-    'china', 
-    'usa', 
     'yale', 
     'navy', 
     'debian',
-    
+
+    'china', 
+    'usa', 
+    'russia',
+    'iran',
+    'chile',
+    'canada',
+    'earth',
+    'antarctica', 
+    'arctic', 
+
     'spacex', 
     'turing', 
     'mit', 
@@ -131,10 +149,7 @@ RAW_TAGS = [
     'sony', 
     'fdic', 
     'ucla', 
-    'canada',
     
-    'antarctica', 
-    'arctic', 
     'tor', 
     'wolfram', 
     'mojang', 
@@ -262,13 +277,15 @@ RAW_TAGS = [
     'webgl',
     'glsl',
     { 'tag': 'gmail', 'implies': 'google' },
+    'monad',
 
     # Frameworks
     'django', 
     'rails', 
     'jquery', 
     'prototype', 
-    'mootools', 
+    'mootools',
+    'unity',
     { 'tag': 'angular', 'alt': 'angularjs' },
     { 'tag': 'ember', 'alt': 'emberjs' }
 ]
