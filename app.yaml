@@ -18,6 +18,18 @@ handlers:
   static_files: static/robots.txt
   upload: static/robots.txt
 
+- url: /ads.txt
+  static_files: static/ads.txt
+  upload: static/ads.txt
+
+- url: /app-ads.txt
+  static_files: static/app-ads.txt
+  upload: static/app-ads.txt
+
+- url: /robots.txt
+  static_files: static/robots.txt
+  upload: static/robots.txt
+
 - url: /.*
   script: main.app
 
