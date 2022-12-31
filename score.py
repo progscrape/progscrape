@@ -58,7 +58,7 @@ def scoreStory(story, now=None):
         s['lobsters'] = max(0, (30 - lobstersPosition) * 1.2)
         count += 1
     if slashdotPosition:
-        s['slashdot'] = max(0, (30 - slashdotPosition) * 1.2)
+        s['slashdot'] = 5 # slashdot doesn't use position as a score
         count += 1
 
     # Penalize long reddit titles
