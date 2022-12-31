@@ -2,6 +2,7 @@ use std::{io::{BufRead, BufReader}, fs::File};
 
 use chrono::{DateTime, NaiveDateTime, Utc, TimeZone};
 use flate2::bufread::GzDecoder;
+use itertools::Itertools;
 use serde_json::Value;
 use url::Url;
 
@@ -54,7 +55,7 @@ fn import_legacy_1() -> Result<impl Iterator<Item=Box<dyn Scrape>>, LegacyError>
                 id,
                 title: title.clone(),
                 url: url.clone(),
-                date: date.timestamp_micros() as u64,
+                date: date.clone(),
                 ..Default::default()
             }) as Box<dyn Scrape>);
         }
@@ -64,7 +65,7 @@ fn import_legacy_1() -> Result<impl Iterator<Item=Box<dyn Scrape>>, LegacyError>
                 id,
                 title: title.clone(),
                 url: url.clone(),
-                date: date.timestamp_micros() as u64,
+                date: date.clone(),
                 ..Default::default()
             }) as Box<dyn Scrape>);
         }
@@ -127,7 +128,7 @@ fn import_legacy_2() ->  Result<impl Iterator<Item=Box<dyn Scrape>>, LegacyError
                     id,
                     title: title.clone(),
                     url: url.clone(),
-                    date: date.timestamp_micros() as u64,
+                    date: date.clone(),
                     ..Default::default()
                 }) as Box<dyn Scrape>);
             }
@@ -147,17 +148,13 @@ fn import_legacy_2() ->  Result<impl Iterator<Item=Box<dyn Scrape>>, LegacyError
 }
 
 pub fn import_legacy() -> Result<impl Iterator<Item=Box<dyn Scrape>>, LegacyError> {
-    Ok(import_legacy_1()?.chain(import_legacy_2()?))
+    let mut v: Vec<_> = import_legacy_1()?.chain(import_legacy_2()?).collect::<Vec<_>>();
+    v.sort_by_cached_key(|story| story.date());
+    Ok(v.into_iter())
 }
 
 #[cfg(test)]
 mod test {
-    use std::collections::HashMap;
-
-    use url::Url;
-
-    use crate::datasci::urlnormalizer::url_normalization_string;
-
     use super::*;
 
     #[test]
@@ -170,6 +167,13 @@ mod test {
     #[test]
     fn test_read_legacy_2() {
         for story in import_legacy_2().expect("Failed to import legacy stories") {
+            println!("{:?} {} {}", story.source(), story.title(), story.url());
+        }
+    }
+
+    #[test]
+    fn test_read_legacy_all() {
+        for story in import_legacy().expect("Failed to import legacy stories") {
             println!("{:?} {} {}", story.source(), story.title(), story.url());
         }
     }

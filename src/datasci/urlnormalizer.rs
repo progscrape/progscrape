@@ -82,8 +82,9 @@ pub fn token_stream(url: &Url) -> impl Iterator<Item = CompareToken> {
                     curr = next;
                 } else {
                     // Remove anything that looks like a trailing file type (.html, etc)
+                    // We require at least one alphabetic char
                     if let Some((a, b)) = curr.rsplit_once('.') {
-                        if b.len() <= 6 {
+                        if b.len() <= 6 && b.contains(|c: char| c.is_alphabetic()) {
                             out.push(CompareToken(a));
                         } else {
                             out.push(CompareToken(curr));
@@ -113,6 +114,11 @@ pub fn token_stream(url: &Url) -> impl Iterator<Item = CompareToken> {
                 out.push(CompareToken(&value));
             }
         }
+    }
+
+    let fragment = url.fragment().unwrap_or_default();
+    if fragment.starts_with("!") {
+        out.push(CompareToken(&fragment[1..fragment.len()]));
     }
     out.into_iter()
 }
@@ -187,6 +193,8 @@ mod test {
     #[case("http://x.com?utm_source=foo", "http://x.com")]
     #[case("http://x.com?fbclid=foo&gclid=bar", "http://x.com")]
     #[case("http://x.com?fbclid=foo", "http://x.com?fbclid=basdf")]
+    // Ignored fragments
+    #[case("http://x.com", "http://x.com#something")]
     fn test_url_normalization_same(#[case] a: &str, #[case] b: &str) {
         let a = Url::parse(a).unwrap();
         let b = Url::parse(b).unwrap();
@@ -200,6 +208,9 @@ mod test {
     #[case("https://google.com/abc", "https://google.com/def")]
     #[case("https://google.com/?page=1", "https://google.com/?page=2")]
     #[case("https://google.com/?page=%31", "https://google.com/?page=%32")]
+    // Examples of real URLs that should not be normalized together
+    #[case("http://arxiv.org/abs/1405.0126", "http://arxiv.org/abs/1405.0351")]
+    #[case("https://groups.google.com/forum/#!topic/mailing.postfix.users/6Kkel3J_nv4", "https://groups.google.com/forum/#!topic/erlang-programming/nFWfmwK64RU")]
     fn test_url_normalization_different(#[case] a: &str, #[case] b: &str) {
         let a = Url::parse(a).unwrap();
         let b = Url::parse(b).unwrap();

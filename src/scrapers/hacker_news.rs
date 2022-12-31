@@ -35,6 +35,10 @@ impl Scrape for HackerNewsStory {
     fn comments_url(&self) -> String {
         unimplemented!()
     }
+
+    fn date(&self) -> DateTime<Utc> {
+        self.date
+    }
 }
 
 #[derive(Default)]

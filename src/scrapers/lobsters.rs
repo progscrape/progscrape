@@ -29,4 +29,8 @@ impl Scrape for LobstersStory {
     fn source(&self) -> super::ScrapeSource {
         return ScrapeSource::Lobsters;
     }
+
+    fn date(&self) -> DateTime<Utc> {
+        unimplemented!()
+    }
 }

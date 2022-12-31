@@ -1,3 +1,4 @@
+use chrono::{serde::ts_seconds, Utc, DateTime, TimeZone};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -23,7 +24,8 @@ pub struct RedditStory {
     pub num_comments: u32,
     pub score: u32,
     pub upvote_ratio: f32,
-    pub date: u64,
+    #[serde(with = "ts_seconds")]
+    pub date: DateTime<Utc>,
 }
 
 impl Scrape for RedditStory {
@@ -41,6 +43,10 @@ impl Scrape for RedditStory {
 
     fn source(&self) -> super::ScrapeSource {
         return ScrapeSource::Reddit(self.subreddit.clone());
+    }
+
+    fn date(&self) -> DateTime<Utc> {
+        self.date
     }
 }
 
@@ -122,6 +128,9 @@ impl RedditScraper {
             return Err(format!("Unknown story type: {:?}", kind));
         }
 
+        let millis = self.require_integer(data, "created_utc")?;
+        let date = Utc.timestamp_millis_opt(millis).single().ok_or(format!("Unmappable date"))?;
+
         let story = RedditStory {
             title: unescape_entities(&self.require_string(data, "title")?),
             url: unescape_entities(&self.require_string(data, "url")?),
@@ -134,7 +143,7 @@ impl RedditScraper {
             subreddit: self.require_string(data, "subreddit")?,
             flair: self.optional_string(data, "link_flair_text")?,
             id: self.require_string(data, "id")?,
-            date: self.require_integer(data, "created_utc")?,
+            date,
             position,
         };
         return Ok(story);

@@ -38,6 +38,9 @@ pub trait Scrape {
 
     /// Retrieve the scrape source.
     fn source(&self) -> ScrapeSource;
+
+    /// Retrieve the scrape date.
+    fn date(&self) -> DateTime<Utc>;
 }
 
 /// Represents a scraped story.
