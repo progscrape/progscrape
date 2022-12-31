@@ -1,0 +1,182 @@
+use chrono::{DateTime, Utc};
+use thiserror::Error;
+
+pub mod hacker_news;
+pub mod reddit_json;
+pub mod lobsters;
+pub mod legacy_import;
+
+#[derive(Error, Debug)]
+pub enum ScrapeError {
+    #[error("I/O error")]
+    IO(#[from] std::io::Error),
+    #[error("JSON parse error")]
+    JSON(#[from] serde_json::Error),
+    #[error("HTML parse error")]
+    HTML(#[from] tl::ParseError),
+    #[error("Structure error")]
+    StructureError(String),
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Hash, PartialOrd, Ord)]
+pub enum ScrapeSource {
+    HackerNews,
+    Reddit(String),
+    Lobsters,
+    Slashdot,
+}
+
+pub trait Scrape {
+    /// Retrieve the scrape title.
+    fn title(&self) -> String;
+
+    /// Retrieve the scrape URL.
+    fn url(&self) -> String;
+
+    /// Retrieve the scrape comments URL.
+    fn comments_url(&self) -> String;
+
+    /// Retrieve the scrape source.
+    fn source(&self) -> ScrapeSource;
+}
+
+/// Represents a scraped story.
+#[derive(Debug, Default)]
+struct Story {
+    title: String,
+    url: String,
+    id: String,
+    position: u32,
+    votes: u32,
+    tags: Vec<String>,
+    date: DateTime<Utc>,
+}
+
+trait Scraper<Args, Output: Scrape> {
+    fn scrape(&self, args: Args, input: String) -> Result<(Vec<Output>, Vec<String>), ScrapeError>;
+
+    /// Scrape these items as a generic `Vec<Box<dyn Scrape>>`.
+    fn scrape_dyn(&self, args: Args, input: String) -> Result<(Vec<Box<dyn Scrape>>, Vec<String>), ScrapeError> where Output: 'static {
+        let (a, b) = self.scrape(args, input)?;
+        Ok((a.into_iter().map(|x| Box::new(x) as Box<dyn Scrape>).collect(), b))
+    }
+}
+
+/// This method will unescape standard HTML entities. It is limited to a subset of the most common entities and the decimal/hex
+/// escapes for arbitrary characters. It will attempt to pass through any entity that doesn't match.
+pub fn unescape_entities(input: &str) -> String {
+    const ENTITIES: [(&str, &str); 6] = [
+        ("amp", "&"),
+        ("lt", "<"),
+        ("gt", ">"),
+        ("quot", "\""),
+        ("squot", "'"),
+        ("nbsp", "\u{00a0}"),
+    ];
+    let mut s = String::new();
+    let mut entity = false;
+    let mut entity_name = String::new();
+    'char: for c in input.chars() {
+        if entity {
+            if c == ';' {
+                entity = false;
+                if entity_name.starts_with("#x") {
+                    if let Ok(n) = u32::from_str_radix(&entity_name[2..entity_name.len()], 16) {
+                        if let Some(c) = char::from_u32(n) {
+                            s.push(c);
+                            entity_name.clear();
+                            continue 'char;
+                        }
+                    }
+                } else if entity_name.starts_with("#") {
+                    if let Ok(n) = u32::from_str_radix(&entity_name[1..entity_name.len()], 10) {
+                        if let Some(c) = char::from_u32(n) {
+                            s.push(c);
+                            entity_name.clear();
+                            continue 'char;
+                        }
+                    }
+                } else {
+                    for (name, value) in ENTITIES {
+                        if entity_name == name {
+                            s += value;
+                            entity_name.clear();
+                            continue 'char;
+                        }
+                    }
+                }
+                s += &format!("&{};", entity_name);
+                entity_name.clear();
+                continue 'char;
+            }
+            entity_name.push(c);
+        } else if c == '&' {
+            entity = true;
+        } else {
+            s.push(c);
+        }
+    }
+    if !entity_name.is_empty() {
+        s += &format!("&{}", entity_name);
+    }
+    return s;
+}
+
+#[cfg(test)]
+pub mod test {
+    use super::*;
+    use rstest::*;
+    use std::fs::read_to_string;
+    use std::path::PathBuf;
+    use std::str::FromStr;
+
+    pub fn hacker_news_files() -> Vec<&'static str> {
+        vec!["hn1.html", "hn2.html", "hn3.html", "hn4.html"]
+    }
+
+    pub fn reddit_files() -> Vec<&'static str> {
+        vec![
+            "reddit-prog-tag1.json",
+            "reddit-prog-tag2.json",
+            "reddit-prog1.json",
+            "reddit-science1.json",
+            "reddit-science2.json",
+        ]
+    }
+
+    pub fn scrape_all() -> Vec<Box<dyn Scrape>> {
+        let mut v = vec![];
+        v.extend(super::hacker_news::test::scrape_all());
+        v.extend(super::reddit_json::test::scrape_all());
+        v
+    }
+
+    pub fn load_file(f: &str) -> String {
+        let mut path = PathBuf::from_str("src/scrapers/testdata").unwrap();
+        path.push(f);
+        read_to_string(path).unwrap()
+    }
+
+    #[test]
+    fn test_scrape_all() {
+        scrape_all();
+    }
+
+    #[rstest]
+    #[case("a b", "a b")]
+    #[case("a&amp;b", "a&b")]
+    #[case("a&#x27;b", "a'b")]
+    #[case("a&#160;b", "a\u{00a0}b")]
+    #[case("a&squot;&quot;b", "a'\"b")]
+    fn test_unescape(#[case] a: &str, #[case] b: &str) {
+        assert_eq!(unescape_entities(a), b.to_owned());
+    }
+
+    #[rstest]
+    #[case("a&amp")]
+    #[case("a&fake;")]
+    #[case("a?a=b&b=c")]
+    fn test_bad_escape(#[case] a: &str) {
+        assert_eq!(unescape_entities(a), a.to_owned());
+    }
+}

@@ -1,0 +1,23 @@
+[package]
+name = "progscrape"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tl = "0.7.7"
+chrono = { version = "0.4", features = ["serde"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+roxmltree = "0.16.0"
+thiserror = "1.0.38"
+rusqlite = "0.28.0"
+serde_rusqlite = "0.31.0"
+url = "2.3.1"
+itertools = "0.10.5"
+regex = "1.7.0"
+flate2 = "1.0"
+# For storage/search
+tantivy = "0.19.0"
+
+[dev-dependencies]
+rstest = "0.16.0"
