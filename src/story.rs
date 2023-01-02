@@ -1,4 +1,4 @@
-use crate::scrapers::Scrape;
+use crate::scrapers::{Scrape, ScrapeSource, ScrapeId};
 use std::collections::HashMap;
 
 /// Rendered story with all properties hydrated from the underlying scrapes. Extraneous data is removed at this point.
@@ -11,7 +11,7 @@ pub struct StoryRender {
 
 /// Story scrape w/information from underlying sources.
 pub struct Story {
-    scrapes: HashMap<String, Box<dyn Scrape>>,
+    pub scrapes: HashMap<ScrapeId, Scrape>,
 }
 
 impl Story {

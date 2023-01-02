@@ -26,7 +26,7 @@ pub enum PersistError {
 /// The underlying storage engine.
 trait Storage {
     /// Insert a set of scrapes, merging with existing stories if necessary.
-    fn insert_scrapes<'a, IT: Scrape + AsRef<dyn Scrape> + 'static, I: Iterator<Item = IT> + 'a>(&mut self, scrape: I) -> Result<(), PersistError>;
+    fn insert_scrapes<'a, I: Iterator<Item = Scrape> + 'a>(&mut self, scrapes: I) -> Result<(), PersistError>;
 
     /// Query the current front page, scored mainly by "hotness".
     fn query_frontpage(&self, max_count: usize) -> Result<Vec<Story>, PersistError>;

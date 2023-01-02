@@ -2,9 +2,10 @@
 use std::collections::HashMap;
 
 use chrono::{Datelike, DateTime, Utc};
+use itertools::Itertools;
 use url::Url;
 
-use crate::{scrapers::ScrapeSource, datasci::urlnormalizer::url_normalization_string};
+use crate::{scrapers::{ScrapeData, ScrapeId}, datasci::urlnormalizer::url_normalization_string};
 
 use super::*;
 
@@ -26,41 +27,51 @@ impl YearMonth {
     }
 }
 
+/// Builds an index of stories in memory, useful for pre-aggregation of scrapes into normalized URL collections.
 #[derive(Default)]
 struct MemIndex {
     /// A map from year/month to normalized story URL, to scrape source/ID to scrape.
-    stories: HashMap<YearMonth, HashMap<String, HashMap<(ScrapeSource, String), Box<dyn Scrape>>>>
+    stories: HashMap<YearMonth, HashMap<String, HashMap<ScrapeId, Scrape>>>
 }
 
 impl MemIndex {
-    
+    pub fn get_all_stories(&self) -> impl Iterator<Item = Story> {
+        let mut out = vec![];
+        for (month, stories) in self.stories.iter().sorted_by_cached_key(|f| f.0) {
+            for story in stories {
+                out.push(Story {
+                    scrapes: story.1.clone()
+                });
+            }
+        }
+        out.into_iter()
+    }
 }
 
 impl Storage for MemIndex {
-    fn insert_scrapes<'a, IT: AsRef<dyn Scrape> + Scrape + 'static, I: Iterator<Item = IT> + 'a>(&mut self, scrape: I) -> Result<(), PersistError> {
+    fn insert_scrapes<'a, I: Iterator<Item = Scrape> + 'a>(&mut self, scrapes: I) -> Result<(), PersistError> {
         'outer:
-        for scrape in scrape {
+        for scrape in scrapes {
             let id = scrape.id();
             let date = YearMonth::from_date_time(scrape.date());
             let url = Url::parse(&scrape.url())?;
             let title = scrape.title();
             let normalized_url = url_normalization_string(&url);
             let source = scrape.source();
-            let boxed_scrape = Box::new(scrape);
-            let key = (source, id);
+            let key = ScrapeId::new(source, id);
             // Try to pin it to an existing item
             for n in -2..2 {
                 let map0 = self.stories.entry(date.plus_months(n)).or_default();
                 if let Some(map1) = map0.get_mut(&normalized_url) {
                     // This logic can be improved when try_insert is stabilized
                     // TODO: We need to merge duplicate scrapes
-                    map1.insert(key, boxed_scrape);
+                    map1.insert(key, scrape);
                     continue 'outer;
                 }
             }
 
             // Not found!
-            if let Some(old) = self.stories.entry(date).or_default().entry(normalized_url).or_default().insert(key, boxed_scrape) {
+            if let Some(old) = self.stories.entry(date).or_default().entry(normalized_url).or_default().insert(key, scrape) {
                 // TODO: We need to merge duplicate scrapes
                 println!("Unexpected");
             }

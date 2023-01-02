@@ -2,7 +2,7 @@ use chrono::{serde::ts_seconds, Utc, DateTime, TimeZone};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use super::{unescape_entities, Scrape, ScrapeError, ScrapeSource, Scraper};
+use super::{unescape_entities, Scrape, ScrapeError, ScrapeSource, Scraper, ScrapeData};
 
 #[derive(Default)]
 pub struct RedditArgs {}
@@ -10,7 +10,7 @@ pub struct RedditArgs {}
 #[derive(Default)]
 pub struct RedditScraper {}
 
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
 pub struct RedditStory {
     pub title: String,
     pub url: String,
@@ -28,7 +28,7 @@ pub struct RedditStory {
     pub date: DateTime<Utc>,
 }
 
-impl Scrape for RedditStory {
+impl ScrapeData for RedditStory {
     fn id(&self) -> String {
         self.id.clone()    
     }
@@ -190,12 +190,12 @@ pub mod test {
     use super::super::test::*;
     use super::*;
 
-    pub fn scrape_all() -> Vec<Box<dyn Scrape>> {
+    pub fn scrape_all() -> Vec<RedditStory> {
         let mut all = vec![];
         let scraper = RedditScraper::default();
         for file in reddit_files() {
             let stories = scraper
-                .scrape_dyn(RedditArgs::default(), load_file(file))
+                .scrape(RedditArgs::default(), load_file(file))
                 .expect(&format!("Failed to parse a story from {}", file));
             all.extend(stories.0);
         }

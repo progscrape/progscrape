@@ -1,14 +1,13 @@
-use std::{io::{BufRead, BufReader}, fs::File};
+use std::{io::{BufRead, BufReader, BufWriter}, fs::File};
 
 use chrono::{DateTime, NaiveDateTime, Utc, TimeZone};
 use flate2::bufread::GzDecoder;
-use itertools::Itertools;
 use serde_json::Value;
 use url::Url;
 
 use crate::scrapers::reddit_json::RedditStory;
 use crate::scrapers::unescape_entities;
-use super::{Scrape, Scraper, hacker_news::HackerNewsStory, lobsters::LobstersStory};
+use super::{Scrape, Scraper, ScrapeData, hacker_news::HackerNewsStory, lobsters::LobstersStory};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -25,7 +24,7 @@ pub enum LegacyError {
     MissingField,
 }
 
-fn import_legacy_1() -> Result<impl Iterator<Item=Box<dyn Scrape>>, LegacyError> {
+fn import_legacy_1() -> Result<impl Iterator<Item=Scrape>, LegacyError> {
     let f = BufReader::new(File::open("import/old.json.gz")?);
     let mut decoder = BufReader::new(GzDecoder::new(f));
     let mut out = vec![];
@@ -51,40 +50,40 @@ fn import_legacy_1() -> Result<impl Iterator<Item=Box<dyn Scrape>>, LegacyError>
         }
         let id = root["redditProgId"].as_str().unwrap_or("None").to_owned();
         if id != "None" {
-            out.push(Box::new(RedditStory {
+            out.push(RedditStory {
                 id,
                 title: title.clone(),
                 url: url.clone(),
                 date: date.clone(),
                 ..Default::default()
-            }) as Box<dyn Scrape>);
+            }.into());
         }
         let id = root["redditTechId"].as_str().unwrap_or("None").to_owned();
         if id != "None" {
-            out.push(Box::new(RedditStory {
+            out.push(RedditStory {
                 id,
                 title: title.clone(),
                 url: url.clone(),
                 date: date.clone(),
                 ..Default::default()
-            }) as Box<dyn Scrape>);
+            }.into());
         }
         let id = root["hackerNewsId"].as_str().unwrap_or("None").to_owned();
         if id != "None" {
-            out.push(Box::new(HackerNewsStory {
+            out.push(HackerNewsStory {
                 id,
                 title: title.clone(),
                 url: url.clone(),
                 date,
                 ..Default::default()
-            }) as Box<dyn Scrape>);
+            }.into());
         }
     }
 
     Ok(out.into_iter())
 }
 
-fn import_legacy_2() ->  Result<impl Iterator<Item=Box<dyn Scrape>>, LegacyError> {
+fn import_legacy_2() ->  Result<impl Iterator<Item=Scrape>, LegacyError> {
     let f = BufReader::new(File::open("import/stories-progscrape-hr.gz")?);
     let mut decoder = BufReader::new(GzDecoder::new(f));
     let mut out = vec![];
@@ -112,44 +111,55 @@ fn import_legacy_2() ->  Result<impl Iterator<Item=Box<dyn Scrape>>, LegacyError
         }
         let id = root["hn"].as_str().unwrap_or("None").to_owned();
         if id != "None" {
-            out.push(Box::new(HackerNewsStory {
+            out.push(HackerNewsStory {
                 id,
                 title: title.clone(),
                 url: url.clone(),
                 date: date.clone(),
                 ..Default::default()
-            }) as Box<dyn Scrape>);
+            }.into());
         }
         let mut reddit = root["reddit"].as_array().ok_or(LegacyError::MissingField)?.clone();
         while let Some(value) = reddit.pop() {
             let id = value.as_str().unwrap_or("None").to_owned();
             if id != "None" {
-                out.push(Box::new(RedditStory {
+                out.push(RedditStory {
                     id,
                     title: title.clone(),
                     url: url.clone(),
                     date: date.clone(),
                     ..Default::default()
-                }) as Box<dyn Scrape>);
+                }.into());
             }
         } 
         let id = root["lobsters"].as_str().unwrap_or("None").to_owned();
         if id != "None" {
-            out.push(Box::new(LobstersStory {
+            out.push(LobstersStory {
                 id,
                 title: title.clone(),
                 url: url.clone(),
                 date: date.clone(),
                 ..Default::default()
-            }) as Box<dyn Scrape>);
+            }.into());
         }
     }
     Ok(out.into_iter())
 }
 
-pub fn import_legacy() -> Result<impl Iterator<Item=Box<dyn Scrape>>, LegacyError> {
+pub fn import_legacy() -> Result<impl Iterator<Item=Scrape>, LegacyError> {
+    let cache_file = "target/legacycache.json";
+    if let Ok(f) = File::open(cache_file) {
+        println!("Reading cache...");
+        if let Ok(value) = serde_json::from_reader::<_, Vec<Scrape>>(BufReader::new(f)) {
+            println!("Cache OK");
+            return Ok(value.into_iter());
+        }
+    }
+    let _ = std::fs::remove_file(cache_file);
     let mut v: Vec<_> = import_legacy_1()?.chain(import_legacy_2()?).collect::<Vec<_>>();
     v.sort_by_cached_key(|story| story.date());
+    let f = File::create(cache_file)?;
+    serde_json::to_writer(BufWriter::new(f), &v)?;
     Ok(v.into_iter())
 }
 

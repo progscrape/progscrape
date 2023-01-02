@@ -50,23 +50,23 @@ impl StoryIndex {
     }
 
     /// Insert a list of scrapes into the index.
-    pub fn insert_scrapes<'a, IT: AsRef<dyn Scrape>, I: Iterator<Item = IT> + 'a>(&mut self, scrape: I) -> Result<(), PersistError> {
+    fn insert_scrapes<'a, I: Iterator<Item = Scrape> + 'a>(&mut self, scrapes: I) -> Result<(), PersistError> {
         let mut writer = self.index.writer(MEMORY_ARENA_SIZE)?;
         let reader = self.index.reader()?;
         let parser = QueryParser::for_index(&self.index, vec![self.url_field]);
 
         #[derive(Default)]
-        struct ChunkStory<IT> {
+        struct ChunkStory {
             url_string: String,
             title_string: String,
             url_normalized: String,
             chunk_date: DateTime<Utc>,
-            scrapes: HashMap<ScrapeSource, IT>,
+            scrapes: HashMap<ScrapeSource, Scrape>,
         }
 
         // We want to chunk the input stories and pre-batch them by normalized URL as we cannot use the index
         // for URL normalization during the insert process.
-        for chunk in &scrape.chunks(STORY_INDEXING_CHUNK_SIZE) {
+        for chunk in &scrapes.chunks(STORY_INDEXING_CHUNK_SIZE) {
             println!("Chunk");
             let mut batch = HashMap::new();
             let mut searcher = reader.searcher();
@@ -79,7 +79,7 @@ impl StoryIndex {
                 let chunk_date = scrape.date();
                 if let Ok(url) = Url::parse(&url_string) {
                     let url_normalized = url_normalization_string(&url);
-                    let chunk_story: &mut ChunkStory::<_> = batch.entry(url_normalized.clone()).or_insert_with(move || ChunkStory::<IT> {
+                    let chunk_story: &mut ChunkStory = batch.entry(url_normalized.clone()).or_insert_with(move || ChunkStory {
                         url_string,
                         title_string,
                         url_normalized,
@@ -128,8 +128,8 @@ impl StoryIndex {
 }
 
 impl Storage for StoryIndex {
-    fn insert_scrapes<'a, IT: AsRef<dyn Scrape>, I: Iterator<Item = IT> + 'a>(&mut self, scrape: I) -> Result<(), PersistError> {
-        self.insert_scrapes(scrape)
+    fn insert_scrapes<'a, I: Iterator<Item = Scrape> + 'a>(&mut self, scrapes: I) -> Result<(), PersistError> {
+        self.insert_scrapes(scrapes)
     }
 
     fn query_frontpage(&self, max_count: usize) -> Result<Vec<Story>, PersistError> {

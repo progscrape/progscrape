@@ -3,12 +3,12 @@ use serde::{Deserialize, Serialize};
 use std::{borrow::Borrow, collections::HashMap};
 use tl::{HTMLTag, NodeHandle, Parser, ParserOptions};
 
-use super::{unescape_entities, Scrape, ScrapeError, ScrapeSource, Scraper};
+use super::{unescape_entities, Scrape, ScrapeError, ScrapeSource, Scraper, ScrapeData};
 
 #[derive(Debug, Default)]
 pub struct HackerNewsArgs {}
 
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
 pub struct HackerNewsStory {
     pub title: String,
     pub url: String,
@@ -19,11 +19,11 @@ pub struct HackerNewsStory {
     pub date: DateTime<Utc>,
 }
 
-impl Scrape for HackerNewsStory {
+impl ScrapeData for HackerNewsStory {
     fn id(&self) -> String {
         self.id.clone()
     }
-    
+
     fn title(&self) -> String {
         self.title.clone()
     }
@@ -214,12 +214,12 @@ pub mod test {
     use super::super::test::*;
     use super::*;
 
-    pub fn scrape_all() -> Vec<Box<dyn Scrape>> {
+    pub fn scrape_all() -> Vec<HackerNewsStory> {
         let mut all = vec![];
         let scraper = HackerNewsScraper::default();
         for file in hacker_news_files() {
             let stories = scraper
-                .scrape_dyn(HackerNewsArgs::default(), load_file(file))
+                .scrape(HackerNewsArgs::default(), load_file(file))
                 .expect(&format!("Failed to parse a story from {}", file));
             all.extend(stories.0);
         }

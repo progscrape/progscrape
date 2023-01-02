@@ -2,7 +2,7 @@ use super::*;
 use serde::{Deserialize, Serialize};
 use chrono::{serde::ts_seconds, DateTime, Utc};
 
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
 pub struct LobstersStory {
     pub id: String,
     pub title: String,
@@ -13,7 +13,7 @@ pub struct LobstersStory {
     pub date: DateTime<Utc>,
 }
 
-impl Scrape for LobstersStory {
+impl ScrapeData for LobstersStory {
     fn id(&self) -> String {
         self.id.clone()
     }

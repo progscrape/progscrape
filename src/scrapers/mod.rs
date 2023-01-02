@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 pub mod hacker_news;
@@ -26,7 +27,20 @@ pub enum ScrapeSource {
     Slashdot,
 }
 
-pub trait Scrape {
+/// Identify a scrape by source an ID.
+#[derive(Clone, Debug, Eq, PartialEq, Hash, PartialOrd, Ord)]
+pub struct ScrapeId {
+    pub source: ScrapeSource,
+    pub id: String,
+}
+
+impl ScrapeId {
+    pub fn new(source: ScrapeSource, id: String) -> Self {
+        Self { source, id }
+    }
+}
+
+pub trait ScrapeData {
     /// Retrieve the scrape ID.
     fn id(&self) -> String;
 
@@ -46,31 +60,65 @@ pub trait Scrape {
     fn date(&self) -> DateTime<Utc>;
 }
 
-/// Workaround - temporary for MemIndex. We'll want to get rid of this as it results in double-boxing.
-impl Scrape for Box<dyn Scrape> {
-    fn id(&self) -> String {
-        self.as_ref().id()
-    }
+#[derive(Clone, Deserialize, Serialize)]
+pub enum Scrape {
+    HackerNews(hacker_news::HackerNewsStory),
+    Reddit(reddit_json::RedditStory),
+    Lobsters(lobsters::LobstersStory),
+}
 
-    fn title(&self) -> String {
-        self.as_ref().title()
+impl From<hacker_news::HackerNewsStory> for Scrape {
+    fn from(story: hacker_news::HackerNewsStory) -> Self {
+        Self::HackerNews(story)
     }
+}
 
-    fn url(&self) -> String {
-        self.as_ref().url()        
+impl From<reddit_json::RedditStory> for Scrape {
+    fn from(story: reddit_json::RedditStory) -> Self {
+        Self::Reddit(story)
     }
+}
 
-    fn comments_url(&self) -> String {
-        self.as_ref().comments_url()
+impl From<lobsters::LobstersStory> for Scrape {
+    fn from(story: lobsters::LobstersStory) -> Self {
+        Self::Lobsters(story)
     }
+}
 
-    fn source(&self) -> ScrapeSource {
-        self.as_ref().source()
+impl AsRef<dyn ScrapeData + 'static> for Scrape {
+    fn as_ref(&self) -> &(dyn ScrapeData + 'static) {
+        match self {
+            &Scrape::HackerNews(ref x) => x,
+            &Scrape::Reddit(ref x) => x,
+            &Scrape::Lobsters(ref x) => x,
+        }
     }
+}
 
-    fn date(&self) -> DateTime<Utc> {
-        self.as_ref().date()
-    }
+impl ScrapeData for Scrape {
+     fn id(&self) -> String {
+         self.as_ref().id()
+     }
+
+     fn url(&self) -> String {
+         self.as_ref().url()
+     }
+
+     fn title(&self) -> String {
+         self.as_ref().title()
+     }
+
+     fn date(&self) -> DateTime<Utc> {
+         self.as_ref().date()
+     }
+
+     fn comments_url(&self) -> String {
+         self.as_ref().comments_url()
+     }
+
+     fn source(&self) -> ScrapeSource {
+         self.as_ref().source()
+     }
 }
 
 /// Represents a scraped story.
@@ -85,14 +133,8 @@ struct Story {
     date: DateTime<Utc>,
 }
 
-trait Scraper<Args, Output: Scrape> {
+trait Scraper<Args, Output: ScrapeData> {
     fn scrape(&self, args: Args, input: String) -> Result<(Vec<Output>, Vec<String>), ScrapeError>;
-
-    /// Scrape these items as a generic `Vec<Box<dyn Scrape>>`.
-    fn scrape_dyn(&self, args: Args, input: String) -> Result<(Vec<Box<dyn Scrape>>, Vec<String>), ScrapeError> where Output: 'static {
-        let (a, b) = self.scrape(args, input)?;
-        Ok((a.into_iter().map(|x| Box::new(x) as Box<dyn Scrape>).collect(), b))
-    }
 }
 
 /// This method will unescape standard HTML entities. It is limited to a subset of the most common entities and the decimal/hex
@@ -177,10 +219,10 @@ pub mod test {
         ]
     }
 
-    pub fn scrape_all() -> Vec<Box<dyn Scrape>> {
+    pub fn scrape_all() -> Vec<Scrape> {
         let mut v = vec![];
-        v.extend(super::hacker_news::test::scrape_all());
-        v.extend(super::reddit_json::test::scrape_all());
+        v.extend(super::hacker_news::test::scrape_all().into_iter().map(Scrape::HackerNews));
+        v.extend(super::reddit_json::test::scrape_all().into_iter().map(Scrape::Reddit));
         v
     }
 
