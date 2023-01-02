@@ -29,9 +29,9 @@ impl YearMonth {
 
 /// Builds an index of stories in memory, useful for pre-aggregation of scrapes into normalized URL collections.
 #[derive(Default)]
-struct MemIndex {
+pub struct MemIndex {
     /// A map from year/month to normalized story URL, to scrape source/ID to scrape.
-    stories: HashMap<YearMonth, HashMap<String, HashMap<ScrapeId, Scrape>>>
+    stories: HashMap<YearMonth, HashMap<String, Story>>
 }
 
 impl MemIndex {
@@ -39,9 +39,7 @@ impl MemIndex {
         let mut out = vec![];
         for (month, stories) in self.stories.iter().sorted_by_cached_key(|f| f.0) {
             for story in stories {
-                out.push(Story {
-                    scrapes: story.1.clone()
-                });
+                out.push(story.1.clone());
             }
         }
         out.into_iter()
@@ -58,20 +56,17 @@ impl Storage for MemIndex {
             let title = scrape.title();
             let normalized_url = url_normalization_string(&url);
             let source = scrape.source();
-            let key = ScrapeId::new(source, id);
             // Try to pin it to an existing item
             for n in -2..2 {
                 let map0 = self.stories.entry(date.plus_months(n)).or_default();
                 if let Some(map1) = map0.get_mut(&normalized_url) {
-                    // This logic can be improved when try_insert is stabilized
-                    // TODO: We need to merge duplicate scrapes
-                    map1.insert(key, scrape);
+                    map1.merge(scrape);
                     continue 'outer;
                 }
             }
 
             // Not found!
-            if let Some(old) = self.stories.entry(date).or_default().entry(normalized_url).or_default().insert(key, scrape) {
+            if let Some(old) = self.stories.entry(date).or_default().insert(normalized_url.clone(), Story::new(normalized_url, scrape)) {
                 // TODO: We need to merge duplicate scrapes
                 println!("Unexpected");
             }
