@@ -20,6 +20,10 @@ pub struct HackerNewsStory {
 }
 
 impl Scrape for HackerNewsStory {
+    fn id(&self) -> String {
+        self.id.clone()
+    }
+    
     fn title(&self) -> String {
         self.title.clone()
     }

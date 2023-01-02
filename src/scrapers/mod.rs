@@ -27,6 +27,9 @@ pub enum ScrapeSource {
 }
 
 pub trait Scrape {
+    /// Retrieve the scrape ID.
+    fn id(&self) -> String;
+
     /// Retrieve the scrape title.
     fn title(&self) -> String;
 
@@ -41,6 +44,33 @@ pub trait Scrape {
 
     /// Retrieve the scrape date.
     fn date(&self) -> DateTime<Utc>;
+}
+
+/// Workaround - temporary for MemIndex. We'll want to get rid of this as it results in double-boxing.
+impl Scrape for Box<dyn Scrape> {
+    fn id(&self) -> String {
+        self.as_ref().id()
+    }
+
+    fn title(&self) -> String {
+        self.as_ref().title()
+    }
+
+    fn url(&self) -> String {
+        self.as_ref().url()        
+    }
+
+    fn comments_url(&self) -> String {
+        self.as_ref().comments_url()
+    }
+
+    fn source(&self) -> ScrapeSource {
+        self.as_ref().source()
+    }
+
+    fn date(&self) -> DateTime<Utc> {
+        self.as_ref().date()
+    }
 }
 
 /// Represents a scraped story.

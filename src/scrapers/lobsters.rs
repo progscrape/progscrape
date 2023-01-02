@@ -14,6 +14,10 @@ pub struct LobstersStory {
 }
 
 impl Scrape for LobstersStory {
+    fn id(&self) -> String {
+        self.id.clone()
+    }
+
     fn title(&self) -> String {
         return self.title.clone();
     }

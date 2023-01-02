@@ -29,6 +29,10 @@ pub struct RedditStory {
 }
 
 impl Scrape for RedditStory {
+    fn id(&self) -> String {
+        self.id.clone()    
+    }
+
     fn title(&self) -> String {
         return self.title.clone();
     }

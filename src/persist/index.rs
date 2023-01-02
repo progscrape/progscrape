@@ -17,7 +17,7 @@ use crate::scrapers::{Scrape, ScrapeSource};
 use super::*;
 
 const MEMORY_ARENA_SIZE: usize = 50_000_000;
-const STORY_INDEXING_CHUNK_SIZE: usize = 100;
+const STORY_INDEXING_CHUNK_SIZE: usize = 1000;
 
 struct StoryIndex {
     index: Index,

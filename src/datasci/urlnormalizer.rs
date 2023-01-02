@@ -2,6 +2,7 @@ use std::str::Chars;
 
 use regex::Regex;
 use url::Url;
+use lazy_static::lazy_static;
 
 const IGNORED_QUERY_PARAMS: [&'static str; 13] = [
 "utm_source",
@@ -60,14 +61,17 @@ impl <'a> PartialEq for EscapedCompareToken<'a> {
     }
 }
 
+lazy_static! {
+    pub static ref WWW_PREFIX: Regex = Regex::new("www?[0-9]*\\.").expect("Failed to parse regular expression");
+    pub static ref QUERY_PARAM_REGEX: Regex = Regex::new(&IGNORED_QUERY_PARAMS.join("|")).expect("Failed to parse regular expression");
+    pub static ref TRIM_EXTENSION_REGEX: Regex = Regex::new("[a-zA-Z]+[0-9]?$").expect("Failed to parse regular expression");
+}
+
 /// Generates a stream of token bits that can be used to compare whether URLs are "normalized-equal", that is: whether two URLs normalize to the same stream of tokens.
 pub fn token_stream(url: &Url) -> impl Iterator<Item = CompareToken> {
-    let re = Regex::new("www?[0-9]*\\.").expect("Failed to parse regular expression");
-    let re_query_param = Regex::new(&IGNORED_QUERY_PARAMS.join("|")).expect("Failed to parse regular expression");
-
     let mut out = vec![];
     let host = url.host_str().unwrap_or_default();
-    if let Some(stripped) = re.find_at(host, 0) {
+    if let Some(stripped) = WWW_PREFIX.find_at(host, 0) {
         out.push(CompareToken(&host[stripped.end()..host.len()]));
     } else {
         out.push(CompareToken(host));
@@ -82,9 +86,9 @@ pub fn token_stream(url: &Url) -> impl Iterator<Item = CompareToken> {
                     curr = next;
                 } else {
                     // Remove anything that looks like a trailing file type (.html, etc)
-                    // We require at least one alphabetic char
+                    // We allow at most one numeric char
                     if let Some((a, b)) = curr.rsplit_once('.') {
-                        if b.len() <= 6 && b.contains(|c: char| c.is_alphabetic()) {
+                        if b.len() <= 6 && TRIM_EXTENSION_REGEX.is_match_at(b, 0) {
                             out.push(CompareToken(a));
                         } else {
                             out.push(CompareToken(curr));
@@ -109,7 +113,7 @@ pub fn token_stream(url: &Url) -> impl Iterator<Item = CompareToken> {
         }
         query_pairs.sort();
         for (key, value) in query_pairs {
-            if !re_query_param.is_match(key) {
+            if !QUERY_PARAM_REGEX.is_match(key) {
                 out.push(CompareToken(&key));
                 out.push(CompareToken(&value));
             }
@@ -120,7 +124,9 @@ pub fn token_stream(url: &Url) -> impl Iterator<Item = CompareToken> {
     if fragment.starts_with("!") {
         out.push(CompareToken(&fragment[1..fragment.len()]));
     }
-    out.into_iter()
+
+    // Trim any empty tokens
+    out.into_iter().filter(|s| s.0.len() > 0)
 }
 
 pub fn urls_are_same(a: &Url, b: &Url) -> bool {
@@ -140,6 +146,14 @@ pub fn url_normalization_string(url: &Url) -> String {
 mod test {
     use super::*;
     use rstest::*;
+
+    #[test]
+    fn perf_test_normalization() {
+        let url = Url::parse("http://content.usatoday.com/communities/sciencefair/post/2011/07/invasion-of-the-viking-women-unearthed/1?csp=34tech&utm_source=feedburner&utm_medium=feed&utm_campaign=Feed:+usatoday-TechTopStories+%28Tech+-+Top+Stories%29&siteID=je6NUbpObpQ-K0N7ZWh0LJjcLzI4zsnGxg#.VAcNjWOna51").expect("Failed to parse this URL");
+        for i in (0..10000) {
+            url_normalization_string(&url);
+        }
+    }
 
     #[rstest]
     #[case("abc", "abc")]
@@ -185,6 +199,8 @@ mod test {
     #[case("https://www.google.com", "https://google.com")]
     // .html
     #[case("https://www.google.com/foo.html", "https://www.google.com/foo")]
+    // Empty query/fragment/path
+    #[case("https://www.google.com/?#", "https://www.google.com")]
     // Trailing/multiple slashes
     #[case("https://www.google.com/", "https://www.google.com")]
     #[case("https://www.google.com/foo", "https://www.google.com/foo/")]
@@ -198,8 +214,8 @@ mod test {
     fn test_url_normalization_same(#[case] a: &str, #[case] b: &str) {
         let a = Url::parse(a).unwrap();
         let b = Url::parse(b).unwrap();
-        assert!(urls_are_same(&a, &b), "{} != {}", a, b);
         assert_eq!(url_normalization_string(&a), url_normalization_string(&b));
+        assert!(urls_are_same(&a, &b), "{} != {}", a, b);
     }
 
     #[rstest]
@@ -210,11 +226,20 @@ mod test {
     #[case("https://google.com/?page=%31", "https://google.com/?page=%32")]
     // Examples of real URLs that should not be normalized together
     #[case("http://arxiv.org/abs/1405.0126", "http://arxiv.org/abs/1405.0351")]
+    #[case("http://www.bmj.com/content/360/bmj.j5855", "http://www.bmj.com/content/360/bmj.k322")]
+    #[case("https://www.google.com/contributor/welcome/#/intro", "https://www.google.com/contributor/welcome/#/about")]
     #[case("https://groups.google.com/forum/#!topic/mailing.postfix.users/6Kkel3J_nv4", "https://groups.google.com/forum/#!topic/erlang-programming/nFWfmwK64RU")]
     fn test_url_normalization_different(#[case] a: &str, #[case] b: &str) {
         let a = Url::parse(a).unwrap();
         let b = Url::parse(b).unwrap();
-        assert!(!urls_are_same(&a, &b), "{} != {}", a, b);
         assert_ne!(url_normalization_string(&a), url_normalization_string(&b));
+        assert!(!urls_are_same(&a, &b), "{} != {}", a, b);
     }
+
+    // TODO: Known failures
+    // http://apenwarr.ca/log/?m=201407#01 http://apenwarr.ca/log/?m=201407#14
+    // https://www.google.com/trends/explore#q=golang https://www.google.com/trends/explore#q=rustlang
+    // fn test_known_failures() {
+
+    // }
 }
