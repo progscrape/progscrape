@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 
 use crate::scrapers::{Scrape, ScrapeSource, ScrapeId, ScrapeData};
-use std::collections::HashMap;
+use std::{collections::{HashMap, hash_map::DefaultHasher}, hash::{Hash, Hasher}};
 
 /// Rendered story with all properties hydrated from the underlying scrapes. Extraneous data is removed at this point.
 pub struct StoryRender {
@@ -25,6 +25,13 @@ impl Story {
             normalized_url,
             scrapes: HashMap::from_iter([(id, scrape)])
         }
+    }
+
+    pub fn normalized_url_hash(&self) -> i64 {
+        let mut hasher = DefaultHasher::new();
+        self.normalized_url.hash(&mut hasher);
+        let url_norm_hash = hasher.finish() as i64;
+        return url_norm_hash;
     }
 
     pub fn merge(&mut self, scrape: Scrape) {
