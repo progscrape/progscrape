@@ -113,12 +113,13 @@ impl StoryIndexShard {
             let (min, max) = (index.min_value(), index.max_value());
             stories.retain(|story| {
                 if min <= story.url_norm_hash && max >= story.url_norm_hash {
-                    let mut vec = vec![];
-                    index.get_docids_for_value_range(story.url_norm_hash..=story.url_norm_hash, u32::MIN..u32::MAX, &mut vec);
-                    if vec.len() > 0 {
-                        let date = date.get_val(vec[0]) - story.date;
-                        if date_range.contains(&date) {
-                            result.push(StoryLookup::Found(*story, DocAddress::new(segment_ord as u32, vec[0])));
+                    for i in 0..segment_reader.num_docs() {
+                        if index.get_val(i) == story.url_norm_hash {
+                            let date = date.get_val(i) - story.date;
+                            if date_range.contains(&date) {
+                                return true;
+                            }
+                            result.push(StoryLookup::Found(*story, DocAddress::new(segment_ord as u32, i)));
                             return false;
                         }
                     }
@@ -185,7 +186,14 @@ impl StoryIndex {
             let result = index.lookup_stories(&searcher, story_ids, (-one_month)..one_month)?;
             for result in result {
                 match result {
-                    StoryLookup::Found(a, b) => {}
+                    StoryLookup::Found(a, b) => {
+                        let story = stories.get(&a).expect("Didn't find a story we should have");
+                        let url = searcher.doc(b)?.get_first(index.url_field).unwrap().as_text().unwrap_or_default().to_owned();
+                        let title = searcher.doc(b)?.get_first(index.title_field).unwrap().as_text().unwrap_or_default().to_owned();
+                        println!("--- {:?}", b);
+                        println!("{} {}: {}", a.url_norm_hash, title, url);
+                        println!("{} {}: {}", story.normalized_url_hash(), story.title(), story.url());
+                    }
                     StoryLookup::Unfound(a) => {
                         let story = stories.get(&a).expect("Didn't find a story we should have");
                         index.insert_story_document(&mut writer, StoryInsert { 
@@ -229,13 +237,13 @@ impl Storage for StoryIndex {
         for shard in (self.index_for_date(self.start_date)..self.index_for_date(now)).rev() {
             let index = self.index_cache.get(&shard);
             if let Some(index) = index {
-                println!("Found shard {}", shard);
+                // println!("Found shard {}", shard);
                 let searcher = index.index.reader()?.searcher();
                 let query = TermQuery::new(Term::from_field_text(index.title_field, &search), IndexRecordOption::Basic);
                 let docs = searcher.search(&query, &TopDocs::with_limit(max_count))?;
                 for doc in docs {
                     let doc = searcher.doc(doc.1)?;
-                    println!("{}", doc.get_first(index.title_field).and_then(|x| x.as_text()).unwrap_or_default());
+                    // println!("{}", doc.get_first(index.title_field).and_then(|x| x.as_text()).unwrap_or_default());
                 }
             }
         }
@@ -273,15 +281,15 @@ mod test {
         // No slop on date, date = 0, we only get 95..100
         let lookup = (95..110).into_iter().map(|n| StoryLookupId { url_norm_hash: n, date: 0 }).collect();
         let result = shard.lookup_stories(&searcher, lookup, 0..=0).expect("Failed to look up");
-        assert_eq!(5, result.len());
+        assert_eq!(5, result.iter().filter(|x| matches!(x, StoryLookup::Found(..))).collect::<Vec<_>>().len());
         // No slop on date, date = 10, we only get 100-110
         let lookup = (95..110).into_iter().map(|n| StoryLookupId { url_norm_hash: n, date: 10 }).collect();
         let result = shard.lookup_stories(&searcher, lookup, 0..=0).expect("Failed to look up");
-        assert_eq!(10, result.len());
+        assert_eq!(10, result.iter().filter(|x| matches!(x, StoryLookup::Found(..))).collect::<Vec<_>>().len());
         // 0..+10 slop on date, date = 0, we get everything
         let lookup = (95..110).into_iter().map(|n| StoryLookupId { url_norm_hash: n, date: 0 }).collect();
         let result = shard.lookup_stories(&searcher, lookup, 0..=10).expect("Failed to look up");
-        assert_eq!(15, result.len());
+        assert_eq!(15, result.iter().filter(|x| matches!(x, StoryLookup::Found(..))).collect::<Vec<_>>().len());
     }
 
     #[test]
