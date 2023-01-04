@@ -3,9 +3,8 @@ use sha2::Digest;
 use std::{
     collections::HashMap,
     fs::File,
-    io::{BufRead, BufReader, BufWriter, Read},
+    io::{BufReader, Read},
     path::Path,
-    sync::Arc,
 };
 
 #[derive(Default)]
