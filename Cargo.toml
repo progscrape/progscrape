@@ -30,6 +30,7 @@ tracing = "0.1.37"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 num-format = "0.4.4"
 sha2 = "0.10"
+infer = "0.12"
 
 [dev-dependencies]
 rstest = "0.16.0"

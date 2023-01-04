@@ -1,10 +1,8 @@
 use std::{net::SocketAddr, io::BufReader, path::Path, sync::Arc};
 
-use axum::{Router, routing::{get, post}, response::{IntoResponse, Response, Html}, Json, extract::{State, self}, body::{HttpBody, StreamBody, Bytes}, http::HeaderValue};
+use axum::{Router, routing::{get, post}, response::{IntoResponse, Response, Html}, Json, extract::{State, self}, http::HeaderValue};
 use hyper::{StatusCode, HeaderMap, Body, header};
-use num_format::ToFormattedString;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use tera::{Tera, Context};
 use lazy_static::lazy_static;
 use thiserror::Error;
@@ -52,6 +50,7 @@ fn create_templates() -> Tera {
         }
     };
     tera.register_filter("comma", filters::CommaFilter::default());
+    tera.register_filter("static", filters::StaticFileFilter::new(STATIC_FILES.clone()));
     tera
 }
 
@@ -80,8 +79,7 @@ pub async fn start_server() -> Result<(), WebError> {
         .route("/static/:file", get(serve_static_file)).with_state(STATIC_FILES.clone())
         .route("/admin/status", get(status)).with_state(global)
         .route("/admin/templates/reload", get(reload_templates))
-        .route("/users", post(create_user));
-
+        .route("/:file", get(serve_well_known_static_file).with_state(STATIC_FILES.clone()));
     // run our app with hyper
     // `axum::Server` is a re-export of `hyper::Server`
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
@@ -103,20 +101,58 @@ async fn status(State(state): State<index::Global>) -> Result<Html<String>, WebE
     Ok(TEMPLATES.render("status.html", &context)?.into())
 }
 
+lazy_static! {
+    pub static ref IMMUTABLE_CACHE_HEADER: HeaderValue = "public, max-age=31536000, immutable".parse().expect("Failed to parse header");
+    pub static ref IMMUTABLE_CACHE_WELL_KNOWN_HEADER: HeaderValue = "public, max-age=86400, immutable".parse().expect("Failed to parse header");
+    pub static ref SERVER_HEADER: HeaderValue = "progscrape".parse().expect("Failed to parse header");
+}
+
+/// Serve an immutable static file with a hash name.
 async fn serve_static_file(headers_in: HeaderMap, extract::Path(key): extract::Path<String>, State(static_files): State<Arc<StaticFileRegistry>>) -> Result<(StatusCode, HeaderMap, impl IntoResponse), WebError> {
     let mut headers = HeaderMap::new();
     headers.append(header::ETAG, key.parse()?);
-    headers.append(header::SERVER, "progscrape".parse()?);
+    headers.append(header::SERVER, SERVER_HEADER.clone());
 
-    if let Some(etag) = headers_in.get(header::IF_NONE_MATCH) {
-        if *etag == key {
-            return Ok((StatusCode::NOT_MODIFIED, headers, Response::new(axum::body::Full::new(Default::default()))))
+    if let Some((bytes, mime)) = static_files.get_bytes_from_key(&key) {
+        headers.append(header::CACHE_CONTROL, IMMUTABLE_CACHE_HEADER.clone());
+        headers.append(header::CONTENT_LENGTH, bytes.len().into());
+        headers.append(header::CONTENT_TYPE, mime.parse()?);
+        if let Some(etag) = headers_in.get(header::IF_NONE_MATCH) {
+            if *etag == key {
+                return Ok((StatusCode::NOT_MODIFIED, headers, Response::new(axum::body::Full::new(Default::default()))))
+            }
         }
-    }
-
-    if let Some(bytes) = static_files.get_bytes_from_key(&key) {
         Ok((StatusCode::OK, headers, Response::new(axum::body::Full::new(bytes))))
     } else {
+        tracing::warn!("File not found: {}", key);
+        Ok((StatusCode::NOT_FOUND, headers, Response::new(axum::body::Full::new(Default::default()))))
+    }
+}
+
+/// Serve a well-known static file that may change occasionally.
+async fn serve_well_known_static_file(headers_in: HeaderMap, extract::Path(file): extract::Path<String>, State(static_files): State<Arc<StaticFileRegistry>>) -> Result<(StatusCode, HeaderMap, impl IntoResponse), WebError> {
+    let mut headers = HeaderMap::new();
+    headers.append(header::SERVER, SERVER_HEADER.clone());
+
+    if let Some(key) = static_files.lookup_key(&file) {
+        headers.append(header::ETAG, key.parse()?);
+    
+        if let Some((bytes, mime)) = static_files.get_bytes_from_key(&key) {
+            headers.append(header::CACHE_CONTROL, IMMUTABLE_CACHE_WELL_KNOWN_HEADER.clone());
+            headers.append(header::CONTENT_LENGTH, bytes.len().into());
+            headers.append(header::CONTENT_TYPE, mime.parse()?);
+            if let Some(etag) = headers_in.get(header::IF_NONE_MATCH) {
+                if *etag == key {
+                    return Ok((StatusCode::NOT_MODIFIED, headers, Response::new(axum::body::Full::new(Default::default()))))
+                }
+            }
+            Ok((StatusCode::OK, headers, Response::new(axum::body::Full::new(bytes))))
+        } else {
+            tracing::warn!("File not found: {}", key);
+            Ok((StatusCode::NOT_FOUND, headers, Response::new(axum::body::Full::new(Default::default()))))
+        }
+    } else {
+        tracing::warn!("File not found: {}", file);
         Ok((StatusCode::NOT_FOUND, headers, Response::new(axum::body::Full::new(Default::default()))))
     }
 }
@@ -124,35 +160,6 @@ async fn serve_static_file(headers_in: HeaderMap, extract::Path(key): extract::P
 async fn reload_templates() -> &'static str {
     // TEMPLATES.full_reload();
     "Reloaded templates!"
-}
-
-async fn create_user(
-    // this argument tells axum to parse the request body
-    // as JSON into a `CreateUser` type
-    Json(payload): Json<CreateUser>,
-) -> impl IntoResponse {
-    // insert your application logic here
-    let user = User {
-        id: 1337,
-        username: payload.username,
-    };
-
-    // this will be converted into a JSON response
-    // with a status code of `201 Created`
-    (StatusCode::CREATED, Json(user))
-}
-
-// the input to our `create_user` handler
-#[derive(Deserialize)]
-struct CreateUser {
-    username: String,
-}
-
-// the output to our `create_user` handler
-#[derive(Serialize)]
-struct User {
-    id: u64,
-    username: String,
 }
 
 #[derive(Serialize)]
