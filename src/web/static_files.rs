@@ -1,11 +1,17 @@
-use std::{io::{BufRead, BufReader, BufWriter, Read}, fs::File, collections::HashMap, path::Path, sync::Arc};
 use axum::body::Bytes;
 use sha2::Digest;
+use std::{
+    collections::HashMap,
+    fs::File,
+    io::{BufRead, BufReader, BufWriter, Read},
+    path::Path,
+    sync::Arc,
+};
 
 #[derive(Default)]
 pub struct StaticFileRegistry {
     by_key: HashMap<String, String>,
-    files: HashMap<String, (Bytes, &'static str)>
+    files: HashMap<String, (Bytes, &'static str)>,
 }
 
 fn to_hash_key(bytes: &[u8]) -> String {
@@ -17,24 +23,44 @@ fn to_hash_key(bytes: &[u8]) -> String {
 }
 
 impl StaticFileRegistry {
-    pub fn register<P: AsRef<Path>>(&mut self, key: &str, extension: &str, file: P) -> Result<(), std::io::Error> {
+    pub fn register<P: AsRef<Path>>(
+        &mut self,
+        key: &str,
+        extension: &str,
+        file: P,
+    ) -> Result<(), std::io::Error> {
         let mut reader = BufReader::new(File::open(&file)?);
         let mut buf = Vec::with_capacity(1024);
         reader.read_to_end(&mut buf)?;
         let mime_type = match extension {
             "txt" => "text/plain",
             "css" => "text/css",
-            _ => infer::get(&buf).expect(&format!("File type was not known for {}", file.as_ref().to_string_lossy())).mime_type()
+            _ => infer::get(&buf)
+                .expect(&format!(
+                    "File type was not known for {}",
+                    file.as_ref().to_string_lossy()
+                ))
+                .mime_type(),
         };
-        
+
         let mut hash = sha2::Sha256::new();
         hash.update(&buf);
         let hash: &[u8] = &hash.finalize();
 
-        self.files.insert(to_hash_key(hash) + "." + extension, (Bytes::from(buf), mime_type));
-        self.by_key.insert(key.to_owned(), to_hash_key(hash) + "." + extension);
+        self.files.insert(
+            to_hash_key(hash) + "." + extension,
+            (Bytes::from(buf), mime_type),
+        );
+        self.by_key
+            .insert(key.to_owned(), to_hash_key(hash) + "." + extension);
 
-        tracing::info!("Registered '{}' with extension '{}', mime type '{}', and hash '{}'", key, extension, mime_type, to_hash_key(hash));
+        tracing::info!(
+            "Registered '{}' with extension '{}', mime type '{}', and hash '{}'",
+            key,
+            extension,
+            mime_type,
+            to_hash_key(hash)
+        );
 
         Ok(())
     }

@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::{borrow::Borrow, collections::HashMap};
 use tl::{HTMLTag, NodeHandle, Parser, ParserOptions};
 
-use super::{unescape_entities, Scrape, ScrapeError, ScrapeSource, Scraper, ScrapeData};
+use super::{unescape_entities, Scrape, ScrapeData, ScrapeError, ScrapeSource, Scraper};
 
 #[derive(Debug, Default)]
 pub struct HackerNewsArgs {}

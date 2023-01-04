@@ -1,14 +1,14 @@
-use crate::story::Story;
 use crate::scrapers::Scrape;
-use serde::{Serialize, Deserialize};
+use crate::story::Story;
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-mod index;
 mod db;
+mod index;
 mod memindex;
 
-pub use memindex::MemIndex;
 pub use index::StoryIndex;
+pub use memindex::MemIndex;
 
 #[derive(Error, Debug)]
 pub enum PersistError {
@@ -46,5 +46,8 @@ pub trait Storage: Send + Sync {
 
 pub trait StorageWriter: Storage {
     /// Insert a set of scrapes, merging with existing stories if necessary.
-    fn insert_scrapes<'a, I: Iterator<Item = Scrape> + 'a>(&mut self, scrapes: I) -> Result<(), PersistError>;
+    fn insert_scrapes<'a, I: Iterator<Item = Scrape> + 'a>(
+        &mut self,
+        scrapes: I,
+    ) -> Result<(), PersistError>;
 }

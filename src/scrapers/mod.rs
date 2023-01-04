@@ -3,9 +3,9 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 pub mod hacker_news;
-pub mod reddit_json;
-pub mod lobsters;
 pub mod legacy_import;
+pub mod lobsters;
+pub mod reddit_json;
 
 #[derive(Error, Debug)]
 pub enum ScrapeError {
@@ -96,29 +96,29 @@ impl AsRef<dyn ScrapeData + 'static> for Scrape {
 }
 
 impl ScrapeData for Scrape {
-     fn id(&self) -> String {
-         self.as_ref().id()
-     }
+    fn id(&self) -> String {
+        self.as_ref().id()
+    }
 
-     fn url(&self) -> String {
-         self.as_ref().url()
-     }
+    fn url(&self) -> String {
+        self.as_ref().url()
+    }
 
-     fn title(&self) -> String {
-         self.as_ref().title()
-     }
+    fn title(&self) -> String {
+        self.as_ref().title()
+    }
 
-     fn date(&self) -> DateTime<Utc> {
-         self.as_ref().date()
-     }
+    fn date(&self) -> DateTime<Utc> {
+        self.as_ref().date()
+    }
 
-     fn comments_url(&self) -> String {
-         self.as_ref().comments_url()
-     }
+    fn comments_url(&self) -> String {
+        self.as_ref().comments_url()
+    }
 
-     fn source(&self) -> ScrapeSource {
-         self.as_ref().source()
-     }
+    fn source(&self) -> ScrapeSource {
+        self.as_ref().source()
+    }
 }
 
 /// Represents a scraped story.
@@ -221,8 +221,16 @@ pub mod test {
 
     pub fn scrape_all() -> Vec<Scrape> {
         let mut v = vec![];
-        v.extend(super::hacker_news::test::scrape_all().into_iter().map(Scrape::HackerNews));
-        v.extend(super::reddit_json::test::scrape_all().into_iter().map(Scrape::Reddit));
+        v.extend(
+            super::hacker_news::test::scrape_all()
+                .into_iter()
+                .map(Scrape::HackerNews),
+        );
+        v.extend(
+            super::reddit_json::test::scrape_all()
+                .into_iter()
+                .map(Scrape::Reddit),
+        );
         v
     }
 

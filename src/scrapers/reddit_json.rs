@@ -1,8 +1,8 @@
-use chrono::{serde::ts_seconds, Utc, DateTime, TimeZone};
+use chrono::{serde::ts_seconds, DateTime, TimeZone, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use super::{unescape_entities, Scrape, ScrapeError, ScrapeSource, Scraper, ScrapeData};
+use super::{unescape_entities, Scrape, ScrapeData, ScrapeError, ScrapeSource, Scraper};
 
 #[derive(Default)]
 pub struct RedditArgs {}
@@ -30,7 +30,7 @@ pub struct RedditStory {
 
 impl ScrapeData for RedditStory {
     fn id(&self) -> String {
-        self.id.clone()    
+        self.id.clone()
     }
 
     fn title(&self) -> String {
@@ -133,7 +133,10 @@ impl RedditScraper {
         }
 
         let millis = self.require_integer(data, "created_utc")?;
-        let date = Utc.timestamp_millis_opt(millis).single().ok_or(format!("Unmappable date"))?;
+        let date = Utc
+            .timestamp_millis_opt(millis)
+            .single()
+            .ok_or(format!("Unmappable date"))?;
 
         let story = RedditStory {
             title: unescape_entities(&self.require_string(data, "title")?),

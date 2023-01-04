@@ -1,7 +1,10 @@
 use chrono::{DateTime, Utc};
 
-use crate::scrapers::{Scrape, ScrapeSource, ScrapeId, ScrapeData};
-use std::{collections::{HashMap, hash_map::DefaultHasher}, hash::{Hash, Hasher}};
+use crate::scrapers::{Scrape, ScrapeData, ScrapeId, ScrapeSource};
+use std::{
+    collections::{hash_map::DefaultHasher, HashMap},
+    hash::{Hash, Hasher},
+};
 
 /// Rendered story with all properties hydrated from the underlying scrapes. Extraneous data is removed at this point.
 pub struct StoryRender {
@@ -23,7 +26,7 @@ impl Story {
         let id = ScrapeId::new(scrape.source(), scrape.id());
         Self {
             normalized_url,
-            scrapes: HashMap::from_iter([(id, scrape)])
+            scrapes: HashMap::from_iter([(id, scrape)]),
         }
     }
 
@@ -42,14 +45,26 @@ impl Story {
     }
 
     pub fn title(&self) -> String {
-        self.scrapes.values().next().expect("Expected at least one").title()
+        self.scrapes
+            .values()
+            .next()
+            .expect("Expected at least one")
+            .title()
     }
 
     pub fn url(&self) -> String {
-        self.scrapes.values().next().expect("Expected at least one").url()
+        self.scrapes
+            .values()
+            .next()
+            .expect("Expected at least one")
+            .url()
     }
 
     pub fn date(&self) -> DateTime<Utc> {
-        self.scrapes.values().next().expect("Expected at least one").date()
+        self.scrapes
+            .values()
+            .next()
+            .expect("Expected at least one")
+            .date()
     }
 }

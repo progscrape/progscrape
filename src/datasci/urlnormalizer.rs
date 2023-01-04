@@ -1,23 +1,23 @@
 use std::str::Chars;
 
+use lazy_static::lazy_static;
 use regex::Regex;
 use url::Url;
-use lazy_static::lazy_static;
 
 const IGNORED_QUERY_PARAMS: [&'static str; 13] = [
-"utm_source",
-"utm_medium",
-"utm_campaign",
-"utm_term",
-"utm_content",
-"utm_expid",
-"gclid",
-"_ga",
-"_gl",
-"msclkid",
-"fbclid",
-"mc_cid",
-"mc_eid",
+    "utm_source",
+    "utm_medium",
+    "utm_campaign",
+    "utm_term",
+    "utm_content",
+    "utm_expid",
+    "gclid",
+    "_ga",
+    "_gl",
+    "msclkid",
+    "fbclid",
+    "mc_cid",
+    "mc_eid",
 ];
 
 #[derive(Debug, PartialEq)]
@@ -27,7 +27,7 @@ pub struct CompareToken<'a>(&'a str);
 #[derive(Debug)]
 pub struct EscapedCompareToken<'a>(&'a str);
 
-impl <'a> PartialEq for EscapedCompareToken<'a> {
+impl<'a> PartialEq for EscapedCompareToken<'a> {
     fn eq(&self, other: &Self) -> bool {
         fn consume_with_escape(c: char, ci: &mut Chars) -> char {
             const HEX_DIGIT: &'static str = "0123456789abcdef0123456789ABCDEF";
@@ -62,9 +62,12 @@ impl <'a> PartialEq for EscapedCompareToken<'a> {
 }
 
 lazy_static! {
-    pub static ref WWW_PREFIX: Regex = Regex::new("www?[0-9]*\\.").expect("Failed to parse regular expression");
-    pub static ref QUERY_PARAM_REGEX: Regex = Regex::new(&IGNORED_QUERY_PARAMS.join("|")).expect("Failed to parse regular expression");
-    pub static ref TRIM_EXTENSION_REGEX: Regex = Regex::new("[a-zA-Z]+[0-9]?$").expect("Failed to parse regular expression");
+    pub static ref WWW_PREFIX: Regex =
+        Regex::new("www?[0-9]*\\.").expect("Failed to parse regular expression");
+    pub static ref QUERY_PARAM_REGEX: Regex =
+        Regex::new(&IGNORED_QUERY_PARAMS.join("|")).expect("Failed to parse regular expression");
+    pub static ref TRIM_EXTENSION_REGEX: Regex =
+        Regex::new("[a-zA-Z]+[0-9]?$").expect("Failed to parse regular expression");
 }
 
 /// Generates a stream of token bits that can be used to compare whether URLs are "normalized-equal", that is: whether two URLs normalize to the same stream of tokens.
@@ -107,7 +110,8 @@ pub fn token_stream(url: &Url) -> impl Iterator<Item = CompareToken> {
         for bit in query.split('&') {
             if let Some((a, b)) = bit.split_once('=') {
                 query_pairs.push((a, b));
-            } {
+            }
+            {
                 query_pairs.push((bit, ""));
             }
         }
@@ -187,7 +191,12 @@ mod test {
     #[case("http://google.com/path/?query=bar")]
     #[case("http://facebook.com/path/?fbclid=bar&somequery=ok")]
     fn test_url_normalization_identical(#[case] a: &str) {
-        assert!(urls_are_same(&Url::parse(a).unwrap(), &Url::parse(a).unwrap()), "{} != {}", a, a);
+        assert!(
+            urls_are_same(&Url::parse(a).unwrap(), &Url::parse(a).unwrap()),
+            "{} != {}",
+            a,
+            a
+        );
     }
 
     #[rstest]
@@ -226,9 +235,18 @@ mod test {
     #[case("https://google.com/?page=%31", "https://google.com/?page=%32")]
     // Examples of real URLs that should not be normalized together
     #[case("http://arxiv.org/abs/1405.0126", "http://arxiv.org/abs/1405.0351")]
-    #[case("http://www.bmj.com/content/360/bmj.j5855", "http://www.bmj.com/content/360/bmj.k322")]
-    #[case("https://www.google.com/contributor/welcome/#/intro", "https://www.google.com/contributor/welcome/#/about")]
-    #[case("https://groups.google.com/forum/#!topic/mailing.postfix.users/6Kkel3J_nv4", "https://groups.google.com/forum/#!topic/erlang-programming/nFWfmwK64RU")]
+    #[case(
+        "http://www.bmj.com/content/360/bmj.j5855",
+        "http://www.bmj.com/content/360/bmj.k322"
+    )]
+    #[case(
+        "https://www.google.com/contributor/welcome/#/intro",
+        "https://www.google.com/contributor/welcome/#/about"
+    )]
+    #[case(
+        "https://groups.google.com/forum/#!topic/mailing.postfix.users/6Kkel3J_nv4",
+        "https://groups.google.com/forum/#!topic/erlang-programming/nFWfmwK64RU"
+    )]
     fn test_url_normalization_different(#[case] a: &str, #[case] b: &str) {
         let a = Url::parse(a).unwrap();
         let b = Url::parse(b).unwrap();

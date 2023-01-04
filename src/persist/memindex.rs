@@ -1,11 +1,13 @@
-
 use std::collections::HashMap;
 
-use chrono::{Datelike, DateTime, Utc};
+use chrono::{DateTime, Datelike, Utc};
 use itertools::Itertools;
 use url::Url;
 
-use crate::{scrapers::{ScrapeData, ScrapeId}, datasci::urlnormalizer::url_normalization_string};
+use crate::{
+    datasci::urlnormalizer::url_normalization_string,
+    scrapers::{ScrapeData, ScrapeId},
+};
 
 use super::*;
 
@@ -37,7 +39,7 @@ impl YearMonth {
 #[derive(Default)]
 pub struct MemIndex {
     /// A map from year/month to normalized story URL, to scrape source/ID to scrape.
-    stories: HashMap<YearMonth, HashMap<String, Story>>
+    stories: HashMap<YearMonth, HashMap<String, Story>>,
 }
 
 impl MemIndex {
@@ -53,9 +55,11 @@ impl MemIndex {
 }
 
 impl StorageWriter for MemIndex {
-    fn insert_scrapes<'a, I: Iterator<Item = Scrape> + 'a>(&mut self, scrapes: I) -> Result<(), PersistError> {
-        'outer:
-        for scrape in scrapes {
+    fn insert_scrapes<'a, I: Iterator<Item = Scrape> + 'a>(
+        &mut self,
+        scrapes: I,
+    ) -> Result<(), PersistError> {
+        'outer: for scrape in scrapes {
             let id = scrape.id();
             let date = YearMonth::from_date_time(scrape.date());
             let url = Url::parse(&scrape.url())?;
@@ -72,7 +76,12 @@ impl StorageWriter for MemIndex {
             }
 
             // Not found!
-            if let Some(old) = self.stories.entry(date).or_default().insert(normalized_url.clone(), Story::new(normalized_url, scrape)) {
+            if let Some(old) = self
+                .stories
+                .entry(date)
+                .or_default()
+                .insert(normalized_url.clone(), Story::new(normalized_url, scrape))
+            {
                 // TODO: We need to merge duplicate scrapes
                 println!("Unexpected");
             }
@@ -84,20 +93,23 @@ impl StorageWriter for MemIndex {
 impl Storage for MemIndex {
     fn story_count(&self) -> Result<StorageSummary, PersistError> {
         let mut summary = StorageSummary::default();
-        summary.by_shard = self.stories.iter()
+        summary.by_shard = self
+            .stories
+            .iter()
             .sorted_by_cached_key(|f| f.0)
-            .map(|f| (format!("{}", f.0.to_string()), f.1.len())).collect();
+            .map(|f| (format!("{}", f.0.to_string()), f.1.len()))
+            .collect();
         summary.total = summary.by_shard.iter().map(|x| x.1).sum();
         Ok(summary)
     }
 
     fn query_frontpage(&self, max_count: usize) -> Result<Vec<Story>, PersistError> {
-        unimplemented!()   
+        unimplemented!()
     }
 
     fn query_search(&self, search: String, max_count: usize) -> Result<Vec<Story>, PersistError> {
-        unimplemented!()   
-    }    
+        unimplemented!()
+    }
 }
 
 #[cfg(test)]
@@ -115,8 +127,11 @@ mod test {
 
     #[test]
     fn test_index_lots() {
-        let stories = crate::scrapers::legacy_import::import_legacy().expect("Failed to read scrapes");
+        let stories =
+            crate::scrapers::legacy_import::import_legacy().expect("Failed to read scrapes");
         let mut index = MemIndex::default();
-        index.insert_scrapes(stories.into_iter()).expect("Failed to insert scrapes");
+        index
+            .insert_scrapes(stories.into_iter())
+            .expect("Failed to insert scrapes");
     }
 }

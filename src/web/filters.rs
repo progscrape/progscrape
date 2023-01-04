@@ -9,8 +9,19 @@ use super::static_files::StaticFileRegistry;
 pub struct CommaFilter {}
 
 impl tera::Filter for CommaFilter {
-    fn filter(&self, value: &Value, args: &std::collections::HashMap<String, Value>) -> tera::Result<Value> {
-        Ok(value.as_i64().unwrap_or_else(|| { tracing::warn!("Invalid input to comma filter"); 0 }).to_formatted_string(&num_format::Locale::en).into())
+    fn filter(
+        &self,
+        value: &Value,
+        args: &std::collections::HashMap<String, Value>,
+    ) -> tera::Result<Value> {
+        Ok(value
+            .as_i64()
+            .unwrap_or_else(|| {
+                tracing::warn!("Invalid input to comma filter");
+                0
+            })
+            .to_formatted_string(&num_format::Locale::en)
+            .into())
     }
 }
 
@@ -25,8 +36,22 @@ impl StaticFileFilter {
 }
 
 impl tera::Filter for StaticFileFilter {
-    fn filter(&self, value: &Value, args: &std::collections::HashMap<String, Value>) -> tera::Result<Value> {
-        let key = value.as_str().unwrap_or_else(|| { tracing::warn!("Invalid input to static filter"); "" });
-        Ok(self.static_files.lookup_key(key).unwrap_or_else(|| { tracing::warn!("Static file not found: {}", key); "<invalid>" }).into())
+    fn filter(
+        &self,
+        value: &Value,
+        args: &std::collections::HashMap<String, Value>,
+    ) -> tera::Result<Value> {
+        let key = value.as_str().unwrap_or_else(|| {
+            tracing::warn!("Invalid input to static filter");
+            ""
+        });
+        Ok(self
+            .static_files
+            .lookup_key(key)
+            .unwrap_or_else(|| {
+                tracing::warn!("Static file not found: {}", key);
+                "<invalid>"
+            })
+            .into())
     }
 }
