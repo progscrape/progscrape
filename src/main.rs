@@ -2,7 +2,10 @@ mod datasci;
 mod persist;
 mod scrapers;
 mod story;
+mod web;
 
-fn main() {
-    println!("Hello, world!");
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    web::start_server().await?;
+    Ok(())
 }

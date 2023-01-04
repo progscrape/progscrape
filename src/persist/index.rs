@@ -136,15 +136,15 @@ impl StoryIndexShard {
     }
 }
 
-struct StoryIndex {
+pub struct StoryIndex {
     index_cache: HashMap<u32, StoryIndexShard>,
-    directory_fn: Box<dyn Fn(u32) -> Box<dyn Directory>>,
+    directory_fn: Box<dyn Fn(u32) -> Box<dyn Directory> + Send + Sync>,
     start_date: DateTime<Utc>,
 }
 
 impl StoryIndex {
     pub fn initialize<DIR: Directory>(start_date: DateTime<Utc>, directory_fn: fn (u32) -> DIR) -> Result<Self, PersistError> {
-        let directory_fn: Box<dyn Fn(u32) -> Box<dyn Directory>> = Box::new(move |date| {
+        let directory_fn: Box<dyn Fn(u32) -> Box<dyn Directory> + Send + Sync> = Box::new(move |date| {
             Box::new(directory_fn(date))
         });
         Ok(Self {
@@ -190,9 +190,6 @@ impl StoryIndex {
                         let story = stories.get(&a).expect("Didn't find a story we should have");
                         let url = searcher.doc(b)?.get_first(index.url_field).unwrap().as_text().unwrap_or_default().to_owned();
                         let title = searcher.doc(b)?.get_first(index.title_field).unwrap().as_text().unwrap_or_default().to_owned();
-                        println!("--- {:?}", b);
-                        println!("{} {}: {}", a.url_norm_hash, title, url);
-                        println!("{} {}: {}", story.normalized_url_hash(), story.title(), story.url());
                     }
                     StoryLookup::Unfound(a) => {
                         let story = stories.get(&a).expect("Didn't find a story we should have");
@@ -222,9 +219,24 @@ impl StoryIndex {
     }
 }
 
-impl Storage for StoryIndex {
+impl StorageWriter for StoryIndex {
     fn insert_scrapes<'a, I: Iterator<Item = Scrape> + 'a>(&mut self, scrapes: I) -> Result<(), PersistError> {
         self.insert_scrapes(scrapes)
+    }
+}
+
+impl Storage for StoryIndex {
+    fn story_count(&self) -> Result<usize, PersistError> {
+        let now = DateTime::<Utc>::from(SystemTime::now());
+        let mut sum = 0;
+        for shard in (self.index_for_date(self.start_date)..self.index_for_date(now)).rev() {
+            let index = self.index_cache.get(&shard);
+            if let Some(index) = index {
+                let meta = index.index.load_metas()?;
+                sum += meta.segments.iter().fold(0, |a, b| 1 + b.num_docs());
+            }
+        }
+        Ok(sum as usize)
     }
 
     fn query_frontpage(&self, max_count: usize) -> Result<Vec<Story>, PersistError> {

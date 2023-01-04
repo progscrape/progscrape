@@ -1,11 +1,13 @@
 use crate::story::Story;
 use crate::scrapers::Scrape;
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use thiserror::Error;
 
 mod index;
 mod db;
 mod memindex;
+
+pub use memindex::MemIndex;
+pub use index::StoryIndex;
 
 #[derive(Error, Debug)]
 pub enum PersistError {
@@ -24,13 +26,18 @@ pub enum PersistError {
 }
 
 /// The underlying storage engine.
-trait Storage {
-    /// Insert a set of scrapes, merging with existing stories if necessary.
-    fn insert_scrapes<'a, I: Iterator<Item = Scrape> + 'a>(&mut self, scrapes: I) -> Result<(), PersistError>;
+pub trait Storage: Send + Sync {
+    /// Count the docs in this index.
+    fn story_count(&self) -> Result<usize, PersistError>;
 
     /// Query the current front page, scored mainly by "hotness".
     fn query_frontpage(&self, max_count: usize) -> Result<Vec<Story>, PersistError>;
 
     /// Query a search, scored mostly by date but may include some "hotness".
     fn query_search(&self, search: String, max_count: usize) -> Result<Vec<Story>, PersistError>;
+}
+
+pub trait StorageWriter: Storage {
+    /// Insert a set of scrapes, merging with existing stories if necessary.
+    fn insert_scrapes<'a, I: Iterator<Item = Scrape> + 'a>(&mut self, scrapes: I) -> Result<(), PersistError>;
 }

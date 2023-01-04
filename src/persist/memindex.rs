@@ -46,7 +46,7 @@ impl MemIndex {
     }
 }
 
-impl Storage for MemIndex {
+impl StorageWriter for MemIndex {
     fn insert_scrapes<'a, I: Iterator<Item = Scrape> + 'a>(&mut self, scrapes: I) -> Result<(), PersistError> {
         'outer:
         for scrape in scrapes {
@@ -73,6 +73,12 @@ impl Storage for MemIndex {
         }
         Ok(())
     }
+}
+
+impl Storage for MemIndex {
+    fn story_count(&self) -> Result<usize, PersistError> {
+        Ok(self.stories.iter().fold(0, |a, b| a + b.1.len()))
+    }
 
     fn query_frontpage(&self, max_count: usize) -> Result<Vec<Story>, PersistError> {
         unimplemented!()   
@@ -80,7 +86,7 @@ impl Storage for MemIndex {
 
     fn query_search(&self, search: String, max_count: usize) -> Result<Vec<Story>, PersistError> {
         unimplemented!()   
-    }
+    }    
 }
 
 #[cfg(test)]
