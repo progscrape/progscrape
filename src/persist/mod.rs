@@ -1,5 +1,6 @@
 use crate::story::Story;
 use crate::scrapers::Scrape;
+use serde::{Serialize, Deserialize};
 use thiserror::Error;
 
 mod index;
@@ -25,10 +26,16 @@ pub enum PersistError {
     Unmappable(),
 }
 
+#[derive(Default, Serialize, Deserialize)]
+pub struct StorageSummary {
+    by_shard: Vec<(String, usize)>,
+    total: usize,
+}
+
 /// The underlying storage engine.
 pub trait Storage: Send + Sync {
-    /// Count the docs in this index.
-    fn story_count(&self) -> Result<usize, PersistError>;
+    /// Count the docs in this index, breaking it out by index segment.
+    fn story_count(&self) -> Result<StorageSummary, PersistError>;
 
     /// Query the current front page, scored mainly by "hotness".
     fn query_frontpage(&self, max_count: usize) -> Result<Vec<Story>, PersistError>;

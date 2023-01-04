@@ -226,17 +226,20 @@ impl StorageWriter for StoryIndex {
 }
 
 impl Storage for StoryIndex {
-    fn story_count(&self) -> Result<usize, PersistError> {
+    fn story_count(&self) -> Result<StorageSummary, PersistError> {
         let now = DateTime::<Utc>::from(SystemTime::now());
-        let mut sum = 0;
+        let mut summary = StorageSummary::default();
         for shard in (self.index_for_date(self.start_date)..self.index_for_date(now)).rev() {
             let index = self.index_cache.get(&shard);
+            let mut subtotal = 0;
             if let Some(index) = index {
                 let meta = index.index.load_metas()?;
-                sum += meta.segments.iter().fold(0, |a, b| 1 + b.num_docs());
+                subtotal += meta.segments.iter().fold(0, |a, b| a + b.num_docs()) as usize;
             }
+            summary.by_shard.push((shard.to_string(), subtotal));
+            summary.total += subtotal;
         }
-        Ok(sum as usize)
+        Ok(summary)
     }
 
     fn query_frontpage(&self, max_count: usize) -> Result<Vec<Story>, PersistError> {

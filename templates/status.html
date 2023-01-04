@@ -2,10 +2,29 @@
 <html>
     <head>
         <title>progscrape: status</title>
+        <style>
+            table {
+                border-collapse: collapse;
+            }
+
+            table td, table th {
+                border: 1px solid black;
+                padding: 0.1em 0.3em;
+            }
+
+            table th {
+                background-color: lightblue;
+            }
+        </style>
     </head>
     <body>
         <h1>progscrape: status</h1>
-
-        <p>Number of stories: {{ num_docs }}</p>
+        <table>
+        <tr><th>Shard Identifier</th><th>Story Count</th></tr>
+        {% for shard in storage.by_shard %}
+        <tr><td>{{ shard.0 }}</td><td>{{ shard.1 | comma }}</td></tr>
+        {% endfor %}
+        <tr><td>Total</td><td>{{ storage.total | comma }}</td></tr>
+        </table>
     </body>
 </html>

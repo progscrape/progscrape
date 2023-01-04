@@ -12,6 +12,12 @@ use super::*;
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 struct YearMonth(u16, u8);
 
+impl ToString for YearMonth {
+    fn to_string(&self) -> String {
+        format!("{:04}-{:02}", self.0, self.1 + 1)
+    }
+}
+
 impl YearMonth {
     fn from_date_time(date: DateTime<Utc>) -> Self {
         Self(date.year() as u16, date.month0() as u8)
@@ -76,8 +82,13 @@ impl StorageWriter for MemIndex {
 }
 
 impl Storage for MemIndex {
-    fn story_count(&self) -> Result<usize, PersistError> {
-        Ok(self.stories.iter().fold(0, |a, b| a + b.1.len()))
+    fn story_count(&self) -> Result<StorageSummary, PersistError> {
+        let mut summary = StorageSummary::default();
+        summary.by_shard = self.stories.iter()
+            .sorted_by_cached_key(|f| f.0)
+            .map(|f| (format!("{}", f.0.to_string()), f.1.len())).collect();
+        summary.total = summary.by_shard.iter().map(|x| x.1).sum();
+        Ok(summary)
     }
 
     fn query_frontpage(&self, max_count: usize) -> Result<Vec<Story>, PersistError> {

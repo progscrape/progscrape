@@ -1,13 +1,21 @@
-use std::net::SocketAddr;
+use std::{net::SocketAddr, io::BufReader, path::Path, sync::Arc};
 
-use axum::{Router, routing::{get, post}, response::{IntoResponse, Response, Html}, Json, extract::State};
-use hyper::StatusCode;
+use axum::{Router, routing::{get, post}, response::{IntoResponse, Response, Html}, Json, extract::{State, self}, body::{HttpBody, StreamBody, Bytes}, http::HeaderValue};
+use hyper::{StatusCode, HeaderMap, Body, header};
+use num_format::ToFormattedString;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use tera::{Tera, Context};
 use lazy_static::lazy_static;
 use thiserror::Error;
 
+use crate::persist::StorageSummary;
+
+use self::static_files::StaticFileRegistry;
+
 mod index;
+mod filters;
+mod static_files;
 
 #[derive(Debug, Error)]
 pub enum WebError {
@@ -17,6 +25,10 @@ pub enum WebError {
     HyperError(#[from] hyper::Error),
     #[error("Persistence error")]
     PersistError(#[from] crate::persist::PersistError),
+    #[error("I/O error")]
+    IOError(#[from] std::io::Error),
+    #[error("Invalid header")]
+    InvalidHeader(#[from] hyper::header::InvalidHeaderValue)
 }
 
 impl IntoResponse for WebError {
@@ -27,25 +39,47 @@ impl IntoResponse for WebError {
 }
 
 lazy_static! {
-    pub static ref TEMPLATES: Tera = match Tera::new("templates/**/*") {
+    pub static ref TEMPLATES: Tera = create_templates();
+    pub static ref STATIC_FILES: Arc<StaticFileRegistry> = Arc::new(create_static_files().expect("Failed to read static files"));
+}
+
+fn create_templates() -> Tera {
+    let mut tera = match Tera::new("templates/**/*") {
         Ok(t) => t,
         Err(e) => {
             println!("Parsing error(s): {}", e);
             ::std::process::exit(1);
         }
     };
+    tera.register_filter("comma", filters::CommaFilter::default());
+    tera
+}
+
+fn create_static_files() -> Result<StaticFileRegistry, WebError> {
+    let mut static_files = StaticFileRegistry::default();
+    let static_root = Path::new("static/");
+    for file in std::fs::read_dir(static_root)? {
+        let file = file?.file_name();
+        let name = Path::new(&file);
+        let ext = name.extension().expect("Static file did not have an extension").to_string_lossy();
+        static_files.register(&file.to_string_lossy(), &ext, static_root.join(name))?;
+    }
+    Ok(static_files)
 }
 
 pub async fn start_server() -> Result<(), WebError> {
     // initialize tracing
     tracing_subscriber::fmt::init();
+    TEMPLATES.check_macro_files()?;
 
     let global = index::initialize_with_testing_data()?;
 
     // build our application with a route
     let app = Router::new()
         .route("/", get(root))
-        .route("/status", get(status)).with_state(global)
+        .route("/static/:file", get(serve_static_file)).with_state(STATIC_FILES.clone())
+        .route("/admin/status", get(status)).with_state(global)
+        .route("/admin/templates/reload", get(reload_templates))
         .route("/users", post(create_user));
 
     // run our app with hyper
@@ -65,8 +99,31 @@ async fn root() -> &'static str {
 }
 
 async fn status(State(state): State<index::Global>) -> Result<Html<String>, WebError> {
-    let context = Context::from_serialize(&Status { num_docs: state.storage.story_count()? })?;
+    let context = Context::from_serialize(&Status { storage: state.storage.story_count()? })?;
     Ok(TEMPLATES.render("status.html", &context)?.into())
+}
+
+async fn serve_static_file(headers_in: HeaderMap, extract::Path(key): extract::Path<String>, State(static_files): State<Arc<StaticFileRegistry>>) -> Result<(StatusCode, HeaderMap, impl IntoResponse), WebError> {
+    let mut headers = HeaderMap::new();
+    headers.append(header::ETAG, key.parse()?);
+    headers.append(header::SERVER, "progscrape".parse()?);
+
+    if let Some(etag) = headers_in.get(header::IF_NONE_MATCH) {
+        if *etag == key {
+            return Ok((StatusCode::NOT_MODIFIED, headers, Response::new(axum::body::Full::new(Default::default()))))
+        }
+    }
+
+    if let Some(bytes) = static_files.get_bytes_from_key(&key) {
+        Ok((StatusCode::OK, headers, Response::new(axum::body::Full::new(bytes))))
+    } else {
+        Ok((StatusCode::NOT_FOUND, headers, Response::new(axum::body::Full::new(Default::default()))))
+    }
+}
+
+async fn reload_templates() -> &'static str {
+    // TEMPLATES.full_reload();
+    "Reloaded templates!"
 }
 
 async fn create_user(
@@ -100,5 +157,5 @@ struct User {
 
 #[derive(Serialize)]
 struct Status {
-    num_docs: usize,
+    storage: StorageSummary,
 }
