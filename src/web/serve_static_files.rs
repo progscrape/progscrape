@@ -66,6 +66,12 @@ pub async fn immutable(
         }
         Ok(ok(bytes, headers))
     } else {
+        // In the case we don't have the file, but the client has specified an ETAG that matches, we assume this is some ancient file and let them keep it.
+        if let Some(etag) = headers_in.get(IF_NONE_MATCH) {
+            if *etag == key {
+                return Ok(not_modified(headers));
+            }
+        }
         Ok(not_found(&key, headers))
     }
 }
