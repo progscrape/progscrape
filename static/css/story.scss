@@ -95,23 +95,23 @@
     }
     
     a.reddit {
-        background-image: url(reddit.png);
+        background-image: var(--url-reddit-png);
     }
     
     a.slashdot {
-        background-image: url(slashdot.png);
+        background-image: var(--url-slashdot-png);
     }
     
     a.hnews {
-        background-image: url(hnews.png);
+        background-image: var(--url-hnews-png);
     }
     
     a.lobsters {
-        background-image: url(lobsters.png);
+        background-image: var(--url-lobsters-png);
     }
     
     a.feed {
-        background-image: url(feed.png);
+        background-image: var(--url-feed-png);
     }
 
     /* Support for devices that can't point so good */

@@ -14,6 +14,7 @@ use crate::web::WebError;
 struct Generated {
     templates: Arc<Tera>,
     static_files: Arc<StaticFileRegistry>,
+    static_files_root: Arc<StaticFileRegistry>,
 }
 
 #[derive(Clone)]
@@ -28,12 +29,27 @@ impl GeneratedSource {
     pub fn static_files(&self) -> Arc<StaticFileRegistry> {
         self.rx.borrow().static_files.clone()
     }
+    pub fn static_files_root(&self) -> Arc<StaticFileRegistry> {
+        self.rx.borrow().static_files_root.clone()
+    }
 }
 
 fn create_static_files(css: String) -> Result<StaticFileRegistry, WebError> {
     let mut static_files = StaticFileRegistry::default();
     static_files.register_files("static/")?;
-    static_files.register_bytes("style.css", "css", css.as_bytes())?;
+    let mut css_vars = ":root {\n".to_owned();
+    for key in static_files.keys() {
+        let url = static_files.lookup_key(&key).unwrap_or_default();
+        css_vars += &format!("--url-{}: url(\"{}\");\n", key.replace(".", "-"), url);
+    }
+    css_vars += "}\n";
+    static_files.register_bytes("style.css", "css", (css_vars + &css).as_bytes())?;
+    Ok(static_files)
+}
+
+fn create_static_files_root() -> Result<StaticFileRegistry, WebError> {
+    let mut static_files = StaticFileRegistry::default();
+    static_files.register_files("static/root/")?;
     Ok(static_files)
 }
 
@@ -59,8 +75,9 @@ fn create_css() -> Result<String, WebError> {
 fn generate() -> Result<Generated, WebError> {
     let css = create_css()?;
     let static_files = Arc::new(create_static_files(css)?);
+    let static_files_root = Arc::new(create_static_files_root()?);
     let templates = Arc::new(create_templates(static_files.clone())?);
-    Ok(Generated { templates, static_files })
+    Ok(Generated { templates, static_files, static_files_root })
 }
 
 /// Starts a process to watch all the templates/static data and regenerates everything if something changes.

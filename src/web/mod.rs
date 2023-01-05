@@ -124,7 +124,7 @@ pub async fn serve_static_files_well_known(
     Path(file): Path<String>,
     State(generated): State<GeneratedSource>,
 ) -> Result<impl IntoResponse, WebError> {
-    serve_static_files::well_known(headers_in, file, generated.static_files()).await
+    serve_static_files::well_known(headers_in, file, generated.static_files_root()).await
 }
 
 #[derive(Serialize)]

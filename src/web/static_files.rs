@@ -1,4 +1,5 @@
 use axum::body::Bytes;
+use itertools::Itertools;
 use sha2::Digest;
 use std::{
     collections::HashMap,
@@ -44,7 +45,6 @@ impl StaticFileRegistry {
         Ok(())
     }
 
-
     pub fn register_bytes(&mut self, key: &str, extension: &str, buf: &[u8]) -> Result<(), std::io::Error> {
         let mime_type = mime_type_from(extension, &buf)
             .expect(&format!(
@@ -84,6 +84,10 @@ impl StaticFileRegistry {
         let mut buf = Vec::with_capacity(1024);
         reader.read_to_end(&mut buf)?;
         self.register_bytes(key, extension, &buf)
+    }
+
+    pub fn keys(&self) -> impl Iterator<Item = String> {
+        self.by_key.keys().sorted().cloned().collect::<Vec<_>>().into_iter()
     }
 
     pub fn lookup_key(&self, key: &str) -> Option<&str> {
