@@ -21,6 +21,15 @@ fn to_hash_key(bytes: &[u8]) -> String {
     s
 }
 
+fn mime_type_from(extension: &str, buf: &[u8]) -> Option<&'static str> {
+    match extension {
+        "txt" => Some("text/plain"),
+        "css" => Some("text/css"),
+        _ => infer::get(&buf).
+            map(|x| x.mime_type()),
+    }
+}
+
 impl StaticFileRegistry {
     pub fn register_files<P: AsRef<Path>>(&mut self, root: P) -> Result<(), std::io::Error> {
         for file in std::fs::read_dir(root.as_ref())? {
@@ -35,25 +44,13 @@ impl StaticFileRegistry {
         Ok(())
     }
 
-    pub fn register<P: AsRef<Path>>(
-        &mut self,
-        key: &str,
-        extension: &str,
-        file: P,
-    ) -> Result<(), std::io::Error> {
-        let mut reader = BufReader::new(File::open(&file)?);
-        let mut buf = Vec::with_capacity(1024);
-        reader.read_to_end(&mut buf)?;
-        let mime_type = match extension {
-            "txt" => "text/plain",
-            "css" => "text/css",
-            _ => infer::get(&buf)
-                .expect(&format!(
-                    "File type was not known for {}",
-                    file.as_ref().to_string_lossy()
-                ))
-                .mime_type(),
-        };
+
+    pub fn register_bytes(&mut self, key: &str, extension: &str, buf: &[u8]) -> Result<(), std::io::Error> {
+        let mime_type = mime_type_from(extension, &buf)
+            .expect(&format!(
+                "File type was not known for {}",
+                key
+            ));
 
         let mut hash = sha2::Sha256::new();
         hash.update(&buf);
@@ -61,7 +58,7 @@ impl StaticFileRegistry {
 
         self.files.insert(
             to_hash_key(hash) + "." + extension,
-            (Bytes::from(buf), mime_type),
+            (Bytes::from(buf.to_vec()), mime_type),
         );
         self.by_key
             .insert(key.to_owned(), to_hash_key(hash) + "." + extension);
@@ -75,6 +72,18 @@ impl StaticFileRegistry {
         );
 
         Ok(())
+    }
+
+    pub fn register<P: AsRef<Path>>(
+        &mut self,
+        key: &str,
+        extension: &str,
+        file: P,
+    ) -> Result<(), std::io::Error> {
+        let mut reader = BufReader::new(File::open(&file)?);
+        let mut buf = Vec::with_capacity(1024);
+        reader.read_to_end(&mut buf)?;
+        self.register_bytes(key, extension, &buf)
     }
 
     pub fn lookup_key(&self, key: &str) -> Option<&str> {

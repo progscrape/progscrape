@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     {% block head %}
-    <link rel="stylesheet" href="/style.css" />
+    <link rel="stylesheet" href="{{ 'style.css' | static }}" />
     <title>{% block title %}{% endblock title %} - My Webpage</title>
 	<meta name="viewport" content="user-scalable=no, width=device-width, initial-scale=1.0" />
     {% endblock head %}

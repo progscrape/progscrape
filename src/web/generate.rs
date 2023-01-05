@@ -33,6 +33,7 @@ impl GeneratedSource {
 fn create_static_files(css: String) -> Result<StaticFileRegistry, WebError> {
     let mut static_files = StaticFileRegistry::default();
     static_files.register_files("static/")?;
+    static_files.register_bytes("style.css", "css", css.as_bytes())?;
     Ok(static_files)
 }
 

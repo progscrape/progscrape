@@ -60,7 +60,6 @@ pub async fn start_server() -> Result<(), WebError> {
     let app = Router::new()
         .route("/", get(root))
         .with_state((global.clone(), generated.clone()))
-        .route("/style.css", get(compile_css))
         .route("/static/:file", get(serve_static_files_immutable))
         .with_state(generated.clone())
         .route("/admin/status", get(status))
@@ -85,20 +84,6 @@ pub async fn start_server() -> Result<(), WebError> {
 struct FrontPage {
     top_tags: Vec<String>,
     stories: Vec<StoryRender>,
-}
-
-async fn compile_css() -> Result<(HeaderMap, Bytes), WebError> {
-    let opts = grass::Options::default()
-        .input_syntax(grass::InputSyntax::Scss)
-        .style(grass::OutputStyle::Expanded)
-        .load_path("static/css/");
-    let out = grass::from_string("@use 'root'".to_owned(), &opts)?;
-    let mut headers = HeaderMap::new();
-    headers.insert(
-        header::CONTENT_TYPE,
-        "text/css".parse().expect("Failed to parse mime type"),
-    );
-    Ok((headers, out.into()))
 }
 
 // basic handler that responds with a static string
