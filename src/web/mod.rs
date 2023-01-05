@@ -41,6 +41,8 @@ pub enum WebError {
     CssError(#[from] Box<grass::Error>),
     #[error("FS notify error")]
     NotifyError(#[from] notify::Error),
+    #[error("CBOR error")]
+    CBORError(#[from] serde_cbor::Error),
 }
 
 impl IntoResponse for WebError {

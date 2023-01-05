@@ -2,7 +2,6 @@ use std::{collections::HashMap, ops::RangeInclusive};
 
 use chrono::{DateTime, Datelike, Utc};
 use itertools::Itertools;
-use tantivy::time::format_description::modifier::Year;
 use url::Url;
 
 use crate::{
@@ -12,23 +11,27 @@ use crate::{
 
 use super::*;
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-struct YearMonth(u16, u8);
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+struct YearMonth(u16);
 
 impl ToString for YearMonth {
     fn to_string(&self) -> String {
-        format!("{:04}-{:02}", self.0, self.1 + 1)
+        format!("{:04}-{:02}", self.0 / 12, self.0 % 12 + 1)
     }
 }
 
 impl YearMonth {
+    fn from_year_month(year: u16, month: u8) -> Self {
+        YearMonth(year * 12 + month as u16)
+    }
+
     fn from_date_time(date: DateTime<Utc>) -> Self {
-        Self(date.year() as u16, date.month0() as u8)
+        Self::from_year_month(date.year() as u16, date.month0() as u8)
     }
 
     fn plus_months(&self, months: i8) -> Self {
-        let ordinal = self.0 as i32 * 12 + self.1 as i32 + months as i32;
-        YearMonth((ordinal / 12) as u16, (ordinal % 12) as u8)
+        let ordinal = self.0 as i16 + months as i16;
+        Self(ordinal as u16)
     }
 
     fn sub_months(&self, months: i8) -> Self {
@@ -37,7 +40,7 @@ impl YearMonth {
 }
 
 /// Builds an index of stories in memory, useful for pre-aggregation of scrapes into normalized URL collections.
-#[derive(Default)]
+#[derive(Default, Serialize, Deserialize)]
 pub struct MemIndex {
     /// A map from year/month to normalized story URL, to scrape source/ID to scrape.
     stories: HashMap<YearMonth, HashMap<String, Story>>,
@@ -62,12 +65,9 @@ impl StorageWriter for MemIndex {
         scrapes: I,
     ) -> Result<(), PersistError> {
         'outer: for scrape in scrapes {
-            let id = scrape.id();
             let date = YearMonth::from_date_time(scrape.date());
             let url = Url::parse(&scrape.url())?;
-            let title = scrape.title();
             let normalized_url = url_normalization_string(&url);
-            let source = scrape.source();
             // Try to pin it to an existing item
             for n in -2..2 {
                 let map0 = self.stories.entry(date.plus_months(n)).or_default();
@@ -121,11 +121,11 @@ mod test {
 
     #[test]
     fn test_year_month() {
-        let date = YearMonth(2000, 11);
-        assert_eq!(YearMonth(2001, 0), date.plus_months(1));
-        assert_eq!(YearMonth(2001, 11), date.plus_months(12));
-        assert_eq!(YearMonth(1999, 11), date.sub_months(12));
-        assert_eq!(YearMonth(2000, 0), date.sub_months(11));
+        let date = YearMonth::from_year_month(2000, 11);
+        assert_eq!(YearMonth::from_year_month(2001, 0), date.plus_months(1));
+        assert_eq!(YearMonth::from_year_month(2001, 11), date.plus_months(12));
+        assert_eq!(YearMonth::from_year_month(1999, 11), date.sub_months(12));
+        assert_eq!(YearMonth::from_year_month(2000, 0), date.sub_months(11));
     }
 
     #[test]
