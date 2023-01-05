@@ -7,7 +7,9 @@
     <div id="main">
     <div class="container">
     <div class="popular-tags">Trending tags:
-        <span class="tag"><a href="/?search=github.com">github.com</a></span>&nbsp;
+        {% for tag in top_tags %}
+        <span class="tag"><a href="/?search={{ tag }}">{{ tag }}</a></span>&nbsp;
+        {% endfor %}
     </div>
 
     {% for story in stories %}
@@ -22,6 +24,8 @@
                 now
             </span>
             <span class="tags">
+                <span class="tag"><a href="/?search=xxxxxx">rust</a></span>
+                <span class="tag"><a href="/?search=xxxxxx">python</a></span>
                 {% for tag in story.tags %}
                 <span class="tag"><a href="/?search={{ tag|urlencode }}">{{ tag }}</a></span>
                 {% endfor %}

@@ -110,6 +110,7 @@ pub async fn start_server() -> Result<(), WebError> {
 
 #[derive(Serialize, Deserialize)]
 struct FrontPage {
+    top_tags: Vec<String>,
     stories: Vec<StoryRender>,
 }
 
@@ -135,7 +136,8 @@ async fn root(State(state): State<index::Global>) -> Result<Html<String>, WebErr
         .iter()
         .map(|x| x.render())
         .collect();
-    let context = Context::from_serialize(&FrontPage { stories })?;
+    let top_tags = vec!["github.com", "rust", "amazon", "java", "health", "wsj.com", "security", "apple", "theverge.com", "python", "kernel", "google", "arstechnica.com"].into_iter().map(str::to_owned).collect();
+    let context = Context::from_serialize(&FrontPage { top_tags, stories })?;
     Ok(TEMPLATES.render("index2.html", &context)?.into())
 }
 
