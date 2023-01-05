@@ -25,6 +25,8 @@ pub enum LegacyError {
     DateError(#[from] chrono::ParseError),
     #[error("Field was missing or invalid")]
     MissingField,
+    #[error("CBOR error")]
+    CBORError(#[from] serde_cbor::Error),
 }
 
 fn import_legacy_1() -> Result<impl Iterator<Item = Scrape>, LegacyError> {
@@ -52,10 +54,10 @@ fn import_legacy_1() -> Result<impl Iterator<Item = Scrape>, LegacyError> {
                 .ok_or(LegacyError::MissingField)?
                 .0
                 .to_owned();
-            println!("Fixed up: {}", url);
+                tracing::info!("Fixed up: {}", url);
         }
         if let Err(e) = Url::parse(&url) {
-            println!("Bad URL: {}", url);
+            tracing::error!("Bad URL: {}", url);
             continue;
         }
         let id = root["redditProgId"].as_str().unwrap_or("None").to_owned();
@@ -128,10 +130,10 @@ fn import_legacy_2() -> Result<impl Iterator<Item = Scrape>, LegacyError> {
                 .ok_or(LegacyError::MissingField)?
                 .0
                 .to_owned();
-            println!("Fixed up: {}", url);
+                tracing::info!("Fixed up: {}", url);
         }
         if let Err(e) = Url::parse(&url) {
-            println!("Bad URL: {}", url);
+            tracing::error!("Bad URL: {}", url);
             continue;
         }
         let id = root["hn"].as_str().unwrap_or("None").to_owned();
@@ -184,13 +186,14 @@ fn import_legacy_2() -> Result<impl Iterator<Item = Scrape>, LegacyError> {
 }
 
 pub fn import_legacy() -> Result<impl Iterator<Item = Scrape>, LegacyError> {
-    let cache_file = "target/legacycache.json";
+    let cache_file = "target/legacycache.bin";
     if let Ok(f) = File::open(cache_file) {
-        println!("Reading cache...");
-        if let Ok(value) = serde_json::from_reader::<_, Vec<Scrape>>(BufReader::new(f)) {
-            println!("Cache OK");
+        tracing::info!("Reading cache '{}'...", cache_file);
+        if let Ok(value) = serde_cbor::from_reader::<Vec<Scrape>, _>(BufReader::new(f)) {
+            tracing::info!("Cache OK");
             return Ok(value.into_iter());
         }
+        tracing::info!("Cache not OK");
     }
     let _ = std::fs::remove_file(cache_file);
     let mut v: Vec<_> = import_legacy_1()?
@@ -198,7 +201,7 @@ pub fn import_legacy() -> Result<impl Iterator<Item = Scrape>, LegacyError> {
         .collect::<Vec<_>>();
     v.sort_by_cached_key(|story| story.date());
     let f = File::create(cache_file)?;
-    serde_json::to_writer(BufWriter::new(f), &v)?;
+    serde_cbor::to_writer(BufWriter::new(f), &v)?;
     Ok(v.into_iter())
 }
 
