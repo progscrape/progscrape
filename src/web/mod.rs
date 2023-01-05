@@ -8,7 +8,6 @@ use axum::{
     Json, Router,
 };
 use hyper::{header, HeaderMap, StatusCode};
-use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use tera::{Context, Tera};
 use thiserror::Error;
@@ -18,9 +17,10 @@ use crate::{
     story::{Story, StoryRender},
 };
 
-use self::static_files::StaticFileRegistry;
+use self::{generate::GeneratedSource};
 
 mod filters;
+mod generate;
 mod index;
 mod serve_static_files;
 mod static_files;
@@ -39,6 +39,8 @@ pub enum WebError {
     InvalidHeader(#[from] hyper::header::InvalidHeaderValue),
     #[error("CSS error")]
     CssError(#[from] Box<grass::Error>),
+    #[error("FS notify error")]
+    NotifyError(#[from] notify::Error),
 }
 
 impl IntoResponse for WebError {
@@ -48,54 +50,25 @@ impl IntoResponse for WebError {
     }
 }
 
-lazy_static! {
-    pub static ref TEMPLATES: Tera = create_templates();
-    pub static ref STATIC_FILES: Arc<StaticFileRegistry> =
-        Arc::new(create_static_files().expect("Failed to read static files"));
-}
-
-fn create_templates() -> Tera {
-    let mut tera = match Tera::new("templates/**/*") {
-        Ok(t) => t,
-        Err(e) => {
-            println!("Parsing error(s): {}", e);
-            ::std::process::exit(1);
-        }
-    };
-    tera.register_filter("comma", filters::CommaFilter::default());
-    tera.register_filter(
-        "static",
-        filters::StaticFileFilter::new(STATIC_FILES.clone()),
-    );
-    tera
-}
-
-fn create_static_files() -> Result<StaticFileRegistry, WebError> {
-    let mut static_files = StaticFileRegistry::default();
-    static_files.register_files("static/")?;
-    Ok(static_files)
-}
-
 pub async fn start_server() -> Result<(), WebError> {
-    // initialize tracing
     tracing_subscriber::fmt::init();
-    TEMPLATES.check_macro_files()?;
+    let generated = generate::start_watcher().await?;
 
     let global = index::initialize_with_testing_data()?;
 
     // build our application with a route
     let app = Router::new()
         .route("/", get(root))
-        .with_state(global.clone())
+        .with_state((global.clone(), generated.clone()))
         .route("/style.css", get(compile_css))
-        .route("/static/:file", get(serve_static_files::immutable))
-        .with_state(STATIC_FILES.clone())
+        .route("/static/:file", get(serve_static_files_immutable))
+        .with_state(generated.clone())
         .route("/admin/status", get(status))
-        .with_state(global)
+        .with_state((global.clone(), generated.clone()))
         .route("/admin/templates/reload", get(reload_templates))
         .route(
             "/:file",
-            get(serve_static_files::well_known).with_state(STATIC_FILES.clone()),
+            get(serve_static_files_well_known).with_state(generated.clone()),
         );
     // run our app with hyper
     // `axum::Server` is a re-export of `hyper::Server`
@@ -129,7 +102,7 @@ async fn compile_css() -> Result<(HeaderMap, Bytes), WebError> {
 }
 
 // basic handler that responds with a static string
-async fn root(State(state): State<index::Global>) -> Result<Html<String>, WebError> {
+async fn root(State((state, generated)): State<(index::Global, GeneratedSource)>) -> Result<Html<String>, WebError> {
     let stories = state
         .storage
         .query_frontpage(30)?
@@ -138,19 +111,35 @@ async fn root(State(state): State<index::Global>) -> Result<Html<String>, WebErr
         .collect();
     let top_tags = vec!["github.com", "rust", "amazon", "java", "health", "wsj.com", "security", "apple", "theverge.com", "python", "kernel", "google", "arstechnica.com"].into_iter().map(str::to_owned).collect();
     let context = Context::from_serialize(&FrontPage { top_tags, stories })?;
-    Ok(TEMPLATES.render("index2.html", &context)?.into())
+    Ok(generated.templates().render("index2.html", &context)?.into())
 }
 
-async fn status(State(state): State<index::Global>) -> Result<Html<String>, WebError> {
+async fn status(State((state, generated)): State<(index::Global, GeneratedSource)>) -> Result<Html<String>, WebError> {
     let context = Context::from_serialize(&Status {
         storage: state.storage.story_count()?,
     })?;
-    Ok(TEMPLATES.render("status.html", &context)?.into())
+    Ok(generated.templates().render("status.html", &context)?.into())
 }
 
 async fn reload_templates() -> &'static str {
     // TEMPLATES.full_reload();
     "Reloaded templates!"
+}
+
+pub async fn serve_static_files_immutable(
+    headers_in: HeaderMap,
+    Path(key): Path<String>,
+    State(generated): State<GeneratedSource>,
+) -> Result<impl IntoResponse, WebError> {
+    serve_static_files::immutable(headers_in, key, generated.static_files()).await
+}
+
+pub async fn serve_static_files_well_known(
+    headers_in: HeaderMap,
+    Path(file): Path<String>,
+    State(generated): State<GeneratedSource>,
+) -> Result<impl IntoResponse, WebError> {
+    serve_static_files::well_known(headers_in, file, generated.static_files()).await
 }
 
 #[derive(Serialize)]

@@ -48,8 +48,8 @@ fn ok(bytes: Bytes, headers: HeaderMap) -> StaticResponse {
 /// Serve an immutable static file with a hash name.
 pub async fn immutable(
     headers_in: HeaderMap,
-    Path(key): Path<String>,
-    State(static_files): State<Arc<StaticFileRegistry>>,
+    key: String,
+    static_files: Arc<StaticFileRegistry>,
 ) -> Result<impl IntoResponse, WebError> {
     let mut headers = HeaderMap::new();
     headers.append(ETAG, key.parse()?);
@@ -79,8 +79,8 @@ pub async fn immutable(
 /// Serve a well-known static file that may change occasionally.
 pub async fn well_known(
     headers_in: HeaderMap,
-    Path(file): Path<String>,
-    State(static_files): State<Arc<StaticFileRegistry>>,
+    file: String,
+    static_files: Arc<StaticFileRegistry>,
 ) -> Result<impl IntoResponse, WebError> {
     let mut headers = HeaderMap::new();
     headers.append(SERVER, SERVER_HEADER.clone());
