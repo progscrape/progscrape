@@ -1,18 +1,22 @@
-use std::{net::SocketAddr, path::Path, sync::Arc};
+use std::{net::SocketAddr, sync::Arc};
 
 use axum::{
-    extract::{self, State},
+    body::Bytes,
+    extract::{Path, Query, State},
     response::{Html, IntoResponse, Response},
     routing::{get, post},
     Json, Router,
 };
-use hyper::StatusCode;
+use hyper::{header, HeaderMap, StatusCode};
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use tera::{Context, Tera};
 use thiserror::Error;
 
-use crate::persist::StorageSummary;
+use crate::{
+    persist::StorageSummary,
+    story::{Story, StoryRender},
+};
 
 use self::static_files::StaticFileRegistry;
 
@@ -33,6 +37,8 @@ pub enum WebError {
     IOError(#[from] std::io::Error),
     #[error("Invalid header")]
     InvalidHeader(#[from] hyper::header::InvalidHeaderValue),
+    #[error("CSS error")]
+    CssError(#[from] Box<grass::Error>),
 }
 
 impl IntoResponse for WebError {
@@ -66,16 +72,7 @@ fn create_templates() -> Tera {
 
 fn create_static_files() -> Result<StaticFileRegistry, WebError> {
     let mut static_files = StaticFileRegistry::default();
-    let static_root = Path::new("static/");
-    for file in std::fs::read_dir(static_root)? {
-        let file = file?.file_name();
-        let name = Path::new(&file);
-        let ext = name
-            .extension()
-            .expect("Static file did not have an extension")
-            .to_string_lossy();
-        static_files.register(&file.to_string_lossy(), &ext, static_root.join(name))?;
-    }
+    static_files.register_files("static/")?;
     Ok(static_files)
 }
 
@@ -89,6 +86,8 @@ pub async fn start_server() -> Result<(), WebError> {
     // build our application with a route
     let app = Router::new()
         .route("/", get(root))
+        .with_state(global.clone())
+        .route("/style.css", get(compile_css))
         .route("/static/:file", get(serve_static_files::immutable))
         .with_state(STATIC_FILES.clone())
         .route("/admin/status", get(status))
@@ -109,9 +108,35 @@ pub async fn start_server() -> Result<(), WebError> {
     Ok(())
 }
 
+#[derive(Serialize, Deserialize)]
+struct FrontPage {
+    stories: Vec<StoryRender>,
+}
+
+async fn compile_css() -> Result<(HeaderMap, Bytes), WebError> {
+    let opts = grass::Options::default()
+        .input_syntax(grass::InputSyntax::Scss)
+        .style(grass::OutputStyle::Expanded)
+        .load_path("static/css/");
+    let out = grass::from_string("@use 'root'".to_owned(), &opts)?;
+    let mut headers = HeaderMap::new();
+    headers.insert(
+        header::CONTENT_TYPE,
+        "text/css".parse().expect("Failed to parse mime type"),
+    );
+    Ok((headers, out.into()))
+}
+
 // basic handler that responds with a static string
-async fn root() -> &'static str {
-    "Hello, World!"
+async fn root(State(state): State<index::Global>) -> Result<Html<String>, WebError> {
+    let stories = state
+        .storage
+        .query_frontpage(30)?
+        .iter()
+        .map(|x| x.render())
+        .collect();
+    let context = Context::from_serialize(&FrontPage { stories })?;
+    Ok(TEMPLATES.render("index2.html", &context)?.into())
 }
 
 async fn status(State(state): State<index::Global>) -> Result<Html<String>, WebError> {

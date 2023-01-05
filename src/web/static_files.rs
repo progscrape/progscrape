@@ -2,7 +2,7 @@ use axum::body::Bytes;
 use sha2::Digest;
 use std::{
     collections::HashMap,
-    fs::File,
+    fs::{File, FileType},
     io::{BufReader, Read},
     path::Path,
 };
@@ -22,6 +22,19 @@ fn to_hash_key(bytes: &[u8]) -> String {
 }
 
 impl StaticFileRegistry {
+    pub fn register_files<P: AsRef<Path>>(&mut self, root: P) -> Result<(), std::io::Error> {
+        for file in std::fs::read_dir(root.as_ref())? {
+            let file = file?;
+            if file.file_type()?.is_file() {
+                let file = file.file_name();
+                let name = Path::new(&file);
+                let ext = name.extension().unwrap_or_default().to_string_lossy();
+                self.register(&file.to_string_lossy(), &ext, root.as_ref().join(name))?;
+            }
+        }
+        Ok(())
+    }
+
     pub fn register<P: AsRef<Path>>(
         &mut self,
         key: &str,

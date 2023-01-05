@@ -1,0 +1,160 @@
+
+.story {
+	padding-bottom: 0.5em;
+}
+
+p {
+	padding-bottom: 0.5em;
+}
+
+h2.story-title {
+	padding: 0;
+	margin: 0;
+}
+
+h2.story-title a {
+	font-size: 16px;
+}
+
+.story:hover {
+}
+
+div.metadata {
+	display: table;
+}
+
+div.metadata > span {
+	display: table-cell;
+	vertical-align: middle;
+	padding-right: 0.75em;
+}
+
+div.metadata span.sites {
+	padding-top: 0;
+	padding-bottom: 0;
+	margin: 0;
+	opacity: 0.2;
+	padding-left: 1em;
+}
+
+div.metadata:hover span.sites {
+	opacity: 1;
+}
+
+div.metadata span.age {
+	opacity: 0.2;
+}
+
+div.metadata:hover span.age {
+	opacity: 1;
+}
+
+div.metadata span.tags {
+}
+
+div.metadata:hover span.tags {
+}
+
+div.metadata span.tag {
+	font-size: 10px;
+	font-weight: bold;
+	background-color: #ccc;
+	color: #fff;
+	padding: 0.1em 0.3em;
+}
+
+div.metadata:hover span.tag {
+	background-color: #555;
+	color: #eee;
+}
+
+span.tag a {
+	color: inherit;
+	text-decoration: none !important;
+}
+
+div.metadata span.tag:hover {
+	background-color: black !important;
+	color: white;
+}
+
+a {
+	color: #3333cc;
+	text-decoration: none;
+}
+
+a:hover {
+	text-decoration: underline;
+}
+
+a:visited {
+	color: #aaa;
+}
+
+.box {
+	-webkit-box-shadow: 2px 2px 5px #ddd;
+	-moz-box-shadow: 2px 2px 5px #ddd;
+	box-shadow: 2px 2px 5px #ddd;
+}	
+
+.popular-tags {
+	padding-bottom: 1em;
+	font-size: 11px;
+	color: #555;
+}
+
+.popular-tags span.tag {
+	font-size: 10px;
+	font-weight: bold;
+	background-color: #eee;
+	color: #222;
+	padding: 0.1em 0.7em;
+}
+
+.popular-tags span.tag:hover {
+	background-color: #222;
+	color: #eee;
+}
+
+.story-title {
+	font-size: 14px;
+}
+
+a.feed, a.reddit, a.delicious, a.hnews, a.lobsters, a.slashdot {
+	display: inline-block;
+	width: 16px;
+	height: 16px;
+	box-sizing: border-box;
+	border-radius: 2px;
+	border-top: 1px solid rgba(255, 255, 255, .1);
+	border-left: 1px solid rgba(255, 255, 255, .1);
+	border-right: 1px solid rgba(0, 0, 0, .1);
+	border-bottom: 1px solid rgba(0, 0, 0, .1);
+	background-size: 100%;
+	background-origin: border-box;
+	background-repeat: no-repeat;
+
+    > img {
+        display: none;
+    }
+}
+
+a.reddit {
+	background-image: url(reddit.png);
+}
+
+a.slashdot {
+	background-image: url(slashdot.png);
+}
+
+a.hnews {
+	background-image: url(hnews.png);
+}
+
+a.lobsters {
+	background-image: url(lobsters.png);
+}
+
+a.feed {
+	background-image: url(feed.png);
+}

@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}progscrape{% endblock title %}
+{% block head %}
+    {{ super() }}
+{% endblock head %}
+{% block content %}
+    <div id="main">
+    <div class="container">
+    <div class="popular-tags">Trending tags:
+        <span class="tag"><a href="/?search=github.com">github.com</a></span>&nbsp;
+    </div>
+
+    {% for story in stories %}
+    <div class="story">
+        <h2 class="story-title"><a href="{{ story.url }}">{{ story.title }}</a></h2>
+        <div class="metadata">
+            <span class="sites">
+                <a href="" class="reddit"><img src="{{ 'reddit.png' | static }}" width="16" height="16"></a>
+                <a href="" class="hnews"><img src="{{ 'hnews.png' | static }}" width="16" height="16"></a>
+            </span>
+            <span class="age">
+                now
+            </span>
+            <span class="tags">
+                {% for tag in story.tags %}
+                <span class="tag"><a href="/?search={{ tag|urlencode }}">{{ tag }}</a></span>
+                {% endfor %}
+            </span>
+        </div>
+    </div>
+    {% endfor %}
+
+    <p><a href="?offset=30">More &rarr;</a></p>
+    </div>
+    </div>
+{% endblock content %}

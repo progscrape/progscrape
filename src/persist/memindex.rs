@@ -1,7 +1,8 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, ops::RangeInclusive};
 
 use chrono::{DateTime, Datelike, Utc};
 use itertools::Itertools;
+use tantivy::time::format_description::modifier::Year;
 use url::Url;
 
 use crate::{
@@ -43,13 +44,14 @@ pub struct MemIndex {
 }
 
 impl MemIndex {
-    pub fn get_all_stories(&self) -> impl Iterator<Item = Story> {
+    pub fn get_all_stories(&self) -> impl DoubleEndedIterator<Item = Story> {
         let mut out = vec![];
         for (month, stories) in self.stories.iter().sorted_by_cached_key(|f| f.0) {
             for story in stories {
                 out.push(story.1.clone());
             }
         }
+        out.sort_by_cached_key(|x| x.date());
         out.into_iter()
     }
 }
@@ -104,7 +106,8 @@ impl Storage for MemIndex {
     }
 
     fn query_frontpage(&self, max_count: usize) -> Result<Vec<Story>, PersistError> {
-        unimplemented!()
+        let rev = self.get_all_stories().rev();
+        Ok(rev.take(max_count).collect())
     }
 
     fn query_search(&self, search: String, max_count: usize) -> Result<Vec<Story>, PersistError> {

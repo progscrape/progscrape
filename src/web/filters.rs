@@ -45,13 +45,13 @@ impl tera::Filter for StaticFileFilter {
             tracing::warn!("Invalid input to static filter");
             ""
         });
-        Ok(self
-            .static_files
-            .lookup_key(key)
-            .unwrap_or_else(|| {
+        let s = format!(
+            "/static/{}",
+            self.static_files.lookup_key(key).unwrap_or_else(|| {
                 tracing::warn!("Static file not found: {}", key);
                 "<invalid>"
             })
-            .into())
+        );
+        Ok(s.into())
     }
 }

@@ -19,7 +19,7 @@ pub enum ScrapeError {
     StructureError(String),
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, PartialOrd, Ord, Deserialize, Serialize)]
 pub enum ScrapeSource {
     HackerNews,
     Reddit(String),
@@ -28,7 +28,7 @@ pub enum ScrapeSource {
 }
 
 /// Identify a scrape by source an ID.
-#[derive(Clone, Debug, Eq, PartialEq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, PartialOrd, Ord, Deserialize, Serialize)]
 pub struct ScrapeId {
     pub source: ScrapeSource,
     pub id: String,
@@ -119,18 +119,6 @@ impl ScrapeData for Scrape {
     fn source(&self) -> ScrapeSource {
         self.as_ref().source()
     }
-}
-
-/// Represents a scraped story.
-#[derive(Debug, Default)]
-struct Story {
-    title: String,
-    url: String,
-    id: String,
-    position: u32,
-    votes: u32,
-    tags: Vec<String>,
-    date: DateTime<Utc>,
 }
 
 trait Scraper<Args, Output: ScrapeData> {
