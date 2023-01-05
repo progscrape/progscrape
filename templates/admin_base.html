@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>progscrape: status</title>
+        <link rel="stylesheet" type="text/css" href="{{ 'admin.css' | static }}"></link>
+    </head>
+    <body>
+        <div id="header">
+            <h1><a href="/">&gt;progscrape &#x2592;</a></h1>
+            <h2>All the news that's fit to scrape</h2>
+        </div>
+        <div id="content">
+        {% block content %}
+        {% endblock %}
+        </div>
+    </body>
+</html>

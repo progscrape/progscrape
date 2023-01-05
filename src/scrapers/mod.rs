@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de::Visitor};
 use thiserror::Error;
 
 pub mod hacker_news;
@@ -27,8 +27,19 @@ pub enum ScrapeSource {
     Slashdot,
 }
 
+impl ScrapeSource {
+    pub fn as_str(&self) -> String {
+        match self {
+            Self::HackerNews => "hackernews".to_owned(),
+            Self::Reddit(s) => format!("reddit-{}", s),
+            Self::Lobsters => "lobsters".to_owned(),
+            Self::Slashdot => "slashdot".to_owned(),
+        }
+    }
+}
+
 /// Identify a scrape by source an ID.
-#[derive(Clone, Debug, Eq, PartialEq, Hash, PartialOrd, Ord, Deserialize, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct ScrapeId {
     pub source: ScrapeSource,
     pub id: String,

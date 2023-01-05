@@ -1,5 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use url::Url;
 
 use crate::scrapers::{Scrape, ScrapeData, ScrapeId, ScrapeSource};
 use std::{
@@ -10,11 +11,13 @@ use std::{
 /// Rendered story with all properties hydrated from the underlying scrapes. Extraneous data is removed at this point.
 #[derive(Clone, Default, Deserialize, Serialize)]
 pub struct StoryRender {
-    url: String,
-    title: String,
-    tags: Vec<String>,
-    comment_links: HashMap<String, String>,
-    scrapes: HashMap<String, Scrape>,
+    pub url: String,
+    pub domain: String,
+    pub title: String,
+    pub date: DateTime<Utc>,
+    pub tags: Vec<String>,
+    pub comment_links: HashMap<String, String>,
+    pub scrapes: HashMap<String, Scrape>,
 }
 
 /// Story scrape w/information from underlying sources.
@@ -74,7 +77,9 @@ impl Story {
     pub fn render(&self) -> StoryRender {
         StoryRender {
             url: self.url(),
+            domain: Url::parse(&self.url()).ok().and_then(|u| u.host().map(|h| h.to_string())).unwrap_or_default(),
             title: self.title(),
+            date: self.date(),
             tags: vec![],
             comment_links: HashMap::new(),
             scrapes: HashMap::new(),

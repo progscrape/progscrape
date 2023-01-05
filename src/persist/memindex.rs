@@ -25,6 +25,15 @@ impl YearMonth {
         YearMonth(year * 12 + month as u16)
     }
 
+    fn from_string(s: &str) -> Option<Self> {
+        if let Some((a, b)) = s.split_once('-') {
+            if let (Ok(a), Ok(b)) = (str::parse(a), str::parse(b)) {
+                return Some(Self::from_year_month(a, u8::saturating_sub(b, 1)));
+            }
+        }
+        return None;
+    }
+
     fn from_date_time(date: DateTime<Utc>) -> Self {
         Self::from_year_month(date.year() as u16, date.month0() as u8)
     }
@@ -103,6 +112,18 @@ impl Storage for MemIndex {
             .collect();
         summary.total = summary.by_shard.iter().map(|x| x.1).sum();
         Ok(summary)
+    }
+
+    fn stories_by_shard(&self, shard: &str) -> Result<Vec<Story>, PersistError> {
+        if let Some(shard) = YearMonth::from_string(shard) {
+            if let Some(map) = self.stories.get(&shard) {
+                Ok(map.values().cloned().collect_vec())
+            } else {
+                Ok(vec![])
+            }
+        } else {
+            Ok(vec![])
+        }
     }
 
     fn query_frontpage(&self, max_count: usize) -> Result<Vec<Story>, PersistError> {

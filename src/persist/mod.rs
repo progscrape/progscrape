@@ -37,6 +37,9 @@ pub trait Storage: Send + Sync {
     /// Count the docs in this index, breaking it out by index segment.
     fn story_count(&self) -> Result<StorageSummary, PersistError>;
 
+    /// Retrieves all stories in a shard.
+    fn stories_by_shard(&self, shard: &str) -> Result<Vec<Story>, PersistError>;
+
     /// Query the current front page, scored mainly by "hotness".
     fn query_frontpage(&self, max_count: usize) -> Result<Vec<Story>, PersistError>;
 

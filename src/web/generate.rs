@@ -34,7 +34,7 @@ impl GeneratedSource {
     }
 }
 
-fn create_static_files(css: String) -> Result<StaticFileRegistry, WebError> {
+fn create_static_files(css: String, admin_css: String) -> Result<StaticFileRegistry, WebError> {
     let mut static_files = StaticFileRegistry::default();
     static_files.register_files("static/")?;
     let mut css_vars = ":root {\n".to_owned();
@@ -43,7 +43,8 @@ fn create_static_files(css: String) -> Result<StaticFileRegistry, WebError> {
         css_vars += &format!("--url-{}: url(\"{}\");\n", key.replace(".", "-"), url);
     }
     css_vars += "}\n";
-    static_files.register_bytes("style.css", "css", (css_vars + &css).as_bytes())?;
+    static_files.register_bytes("style.css", "css", (css_vars.clone() + &css).as_bytes())?;
+    static_files.register_bytes("admin.css", "css", (css_vars + &admin_css).as_bytes())?;
     Ok(static_files)
 }
 
@@ -72,9 +73,19 @@ fn create_css() -> Result<String, WebError> {
     Ok(out)
 }
 
+fn create_admin_css() -> Result<String, WebError> {
+    let opts = grass::Options::default()
+        .input_syntax(grass::InputSyntax::Scss)
+        .style(grass::OutputStyle::Expanded)
+        .load_path("static/css/");
+    let out = grass::from_string("@use 'admin'".to_owned(), &opts)?;
+    Ok(out)
+}
+
 fn generate() -> Result<Generated, WebError> {
     let css = create_css()?;
-    let static_files = Arc::new(create_static_files(css)?);
+    let admin_css = create_admin_css()?;
+    let static_files = Arc::new(create_static_files(css, admin_css)?);
     let static_files_root = Arc::new(create_static_files_root()?);
     let templates = Arc::new(create_templates(static_files.clone())?);
     Ok(Generated { templates, static_files, static_files_root })

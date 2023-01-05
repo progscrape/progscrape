@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>progscrape: status</title>
+        <link rel="stylesheet" type="text/css" href="{{ 'admin.css' | static }}"></link>
+    </head>
+    <body>
+        <div id="header">
+            <h1><a href="/">&gt;progscrape &#x2592;</a></h1>
+            <h2>All the news that's fit to scrape</h2>
+        </div>
+        <table>
+        <h1>Shard Dump</h1>
+        <h2>ID: {{ shard }}</h2>
+        <tr><th><a href="?sort=domain">Domain</a></th><th><a href="?sort=title">Story</a></th><th><a href="?sort=date">Date</a></th></tr>
+        {% for story in stories %}
+        <tr><td>{{ story.domain }}</td><td><a href="{{ story.url }}">{{ story.title }}</a></td><td>{{ story.date }}</td></tr>
+        {% endfor %}
+        </table>
+    </body>
+</html>

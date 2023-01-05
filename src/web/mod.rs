@@ -1,4 +1,4 @@
-use std::{net::SocketAddr, sync::Arc};
+use std::{net::SocketAddr, sync::Arc, collections::HashMap};
 
 use axum::{
     body::Bytes,
@@ -66,7 +66,8 @@ pub async fn start_server() -> Result<(), WebError> {
         .with_state(generated.clone())
         .route("/admin/status", get(status))
         .with_state((global.clone(), generated.clone()))
-        .route("/admin/templates/reload", get(reload_templates))
+        .route("/admin/status/:shard", get(status_shard))
+        .with_state((global.clone(), generated.clone()))
         .route(
             "/:file",
             get(serve_static_files_well_known).with_state(generated.clone()),
@@ -88,29 +89,78 @@ struct FrontPage {
     stories: Vec<StoryRender>,
 }
 
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+enum StorySort {
+    None,
+    Title,
+    Date,
+    Domain,
+}
+
+impl StorySort {
+    pub fn from_key(s: &str) -> Self {
+        match s {
+            "title" => Self::Title,
+            "date" => Self::Date,
+            "domain" => Self::Domain,
+            _ => Self::None,
+        }
+    }
+}
+
+fn render_stories(iter: impl Iterator<Item = Story>, sort: StorySort) -> Vec<StoryRender> {
+    let mut v = iter
+        .map(|x| x.render())
+        .collect::<Vec<_>>();
+    match sort {
+        StorySort::None => {},
+        StorySort::Title => {
+            v.sort_by(|a, b| a.title.cmp(&b.title))
+        },
+        StorySort::Date => {
+            v.sort_by(|a, b| a.date.cmp(&b.date))
+        }
+        StorySort::Domain => {
+            v.sort_by(|a, b| a.domain.cmp(&b.domain))
+        }
+    }
+    v
+}
+
 // basic handler that responds with a static string
 async fn root(State((state, generated)): State<(index::Global, GeneratedSource)>) -> Result<Html<String>, WebError> {
-    let stories = state
+    let stories = render_stories(state
         .storage
-        .query_frontpage(30)?
-        .iter()
-        .map(|x| x.render())
-        .collect();
+        .query_frontpage(30)?.into_iter(), StorySort::None);
     let top_tags = vec!["github.com", "rust", "amazon", "java", "health", "wsj.com", "security", "apple", "theverge.com", "python", "kernel", "google", "arstechnica.com"].into_iter().map(str::to_owned).collect();
     let context = Context::from_serialize(&FrontPage { top_tags, stories })?;
     Ok(generated.templates().render("index2.html", &context)?.into())
 }
 
 async fn status(State((state, generated)): State<(index::Global, GeneratedSource)>) -> Result<Html<String>, WebError> {
+    #[derive(Serialize)]
+    struct Status {
+        storage: StorageSummary,
+    }
     let context = Context::from_serialize(&Status {
         storage: state.storage.story_count()?,
     })?;
-    Ok(generated.templates().render("status.html", &context)?.into())
+    Ok(generated.templates().render("admin_status.html", &context)?.into())
 }
 
-async fn reload_templates() -> &'static str {
-    // TEMPLATES.full_reload();
-    "Reloaded templates!"
+async fn status_shard(State((state, generated)): State<(index::Global, GeneratedSource)>, Path(shard): Path<String>, sort: Query<HashMap<String, String>>) -> Result<Html<String>, WebError> {
+    #[derive(Serialize)]
+    struct ShardStatus {
+        shard: String,
+        stories: Vec<StoryRender>,
+    }
+    let sort = StorySort::from_key(&sort.get("sort").map(|x| x.clone()).unwrap_or_default());
+    tracing::info!("{:?}", sort);
+    let context = Context::from_serialize(&ShardStatus {
+        shard: shard.clone(),
+        stories: render_stories(state.storage.stories_by_shard(&shard)?.into_iter(), sort),
+    })?;
+    Ok(generated.templates().render("admin_shard.html", &context)?.into())
 }
 
 pub async fn serve_static_files_immutable(
@@ -127,9 +177,4 @@ pub async fn serve_static_files_well_known(
     State(generated): State<GeneratedSource>,
 ) -> Result<impl IntoResponse, WebError> {
     serve_static_files::well_known(headers_in, file, generated.static_files_root()).await
-}
-
-#[derive(Serialize)]
-struct Status {
-    storage: StorageSummary,
 }

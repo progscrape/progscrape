@@ -314,6 +314,10 @@ impl Storage for StoryIndex {
         Ok(summary)
     }
 
+    fn stories_by_shard(&self, shard: &str) -> Result<Vec<Story>, PersistError> {
+        unimplemented!()
+    }
+
     fn query_frontpage(&self, max_count: usize) -> Result<Vec<Story>, PersistError> {
         unimplemented!()
     }
