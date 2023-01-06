@@ -126,6 +126,10 @@ pub fn token_stream(url: &Url) -> impl Iterator<Item = CompareToken> {
 
     let fragment = url.fragment().unwrap_or_default();
     if fragment.starts_with("!") {
+        // #!-style fragment paths
+        out.push(CompareToken(&fragment[1..fragment.len()]));
+    } else if url.path().ends_with("/") && fragment.starts_with("/") {
+        // /#/-style fragment paths
         out.push(CompareToken(&fragment[1..fragment.len()]));
     }
 
