@@ -128,6 +128,7 @@ impl Storage for MemIndex {
             .iter()
             .sorted_by_cached_key(|f| f.0)
             .map(|f| (format!("{}", f.0.to_string()), f.1.len()))
+            .filter(|f| f.1 > 0)
             .collect();
         summary.total = summary.by_shard.iter().map(|x| x.1).sum();
         Ok(summary)
