@@ -3,7 +3,6 @@ use std::{
     io::{BufRead, BufReader, BufWriter},
 };
 
-use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
 use flate2::bufread::GzDecoder;
 use serde_json::Value;
 use url::Url;
@@ -11,6 +10,7 @@ use url::Url;
 use super::{hacker_news::HackerNewsStory, lobsters::LobstersStory, Scrape, ScrapeData, Scraper};
 use crate::scrapers::reddit_json::RedditStory;
 use crate::scrapers::unescape_entities;
+use crate::story::StoryDate;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -21,8 +21,6 @@ pub enum LegacyError {
     UTF8Error(#[from] std::string::FromUtf8Error),
     #[error("JSON error")]
     JSONError(#[from] serde_json::Error),
-    #[error("Date format error")]
-    DateError(#[from] chrono::ParseError),
     #[error("Field was missing or invalid")]
     MissingField,
     #[error("CBOR error")]
@@ -42,10 +40,7 @@ fn import_legacy_1() -> Result<impl Iterator<Item = Scrape>, LegacyError> {
         let json = String::from_utf8(buf)?;
         let root: Value = serde_json::from_str(&json)?;
         let date = root["date"].as_str().ok_or(LegacyError::MissingField)?;
-        let date = Utc.from_utc_datetime(&NaiveDateTime::parse_from_str(
-            date,
-            "%Y-%m-%d %H:%M:%S%.3f",
-        )?);
+        let date = StoryDate::from_string(date, "%Y-%m-%d %H:%M:%S%.3f").ok_or(LegacyError::MissingField)?;
         let title = unescape_entities(root["title"].as_str().ok_or(LegacyError::MissingField)?);
         let mut url = unescape_entities(root["url"].as_str().ok_or(LegacyError::MissingField)?);
         if url.contains("&amp") {
@@ -118,9 +113,7 @@ fn import_legacy_2() -> Result<impl Iterator<Item = Scrape>, LegacyError> {
         }
         let json = String::from_utf8(buf)?;
         let root: Value = serde_json::from_str(&json)?;
-        let date = Utc
-            .timestamp_millis_opt(root["date"].as_i64().ok_or(LegacyError::MissingField)?)
-            .single()
+        let date = StoryDate::from_millis(root["date"].as_i64().ok_or(LegacyError::MissingField)?)
             .ok_or(LegacyError::MissingField)?;
         let title = unescape_entities(root["title"].as_str().ok_or(LegacyError::MissingField)?);
         let mut url = unescape_entities(root["url"].as_str().ok_or(LegacyError::MissingField)?);

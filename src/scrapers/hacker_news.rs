@@ -1,9 +1,9 @@
-use chrono::{serde::ts_seconds, DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::{borrow::Borrow, collections::HashMap};
 use tl::{HTMLTag, NodeHandle, Parser, ParserOptions};
 
 use super::{unescape_entities, Scrape, ScrapeData, ScrapeError, ScrapeSource, Scraper};
+use crate::story::StoryDate;
 
 #[derive(Debug, Default)]
 pub struct HackerNewsArgs {}
@@ -15,8 +15,7 @@ pub struct HackerNewsStory {
     pub id: String,
     pub points: u32,
     pub comments: u32,
-    #[serde(with = "ts_seconds")]
-    pub date: DateTime<Utc>,
+    pub date: StoryDate,
 }
 
 impl ScrapeData for HackerNewsStory {
@@ -40,7 +39,7 @@ impl ScrapeData for HackerNewsStory {
         unimplemented!()
     }
 
-    fn date(&self) -> DateTime<Utc> {
+    fn date(&self) -> StoryDate {
         self.date
     }
 }
@@ -91,7 +90,7 @@ struct HackerNewsInfoLine {
     id: String,
     comments: u32,
     points: u32,
-    date: DateTime<Utc>,
+    date: StoryDate,
 }
 
 #[derive(Debug)]
@@ -133,9 +132,7 @@ impl HackerNewsScraper {
             let date = get_attribute(p, age_node, "title")
                 .ok_or(format!("Failed to get age title"))?
                 + "Z";
-            let date = DateTime::parse_from_rfc3339(&date)
-                .map_err(|e| e.to_string())?
-                .into();
+            let date = StoryDate::parse_from_rfc3339(&date).ok_or(format!("Failed to map date"))?;
             let mut comments = None;
             for node in html_tag_iterator(p, node.query_selector(p, "a")) {
                 let text = node.inner_text(p);

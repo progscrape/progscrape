@@ -1,5 +1,4 @@
 use super::*;
-use chrono::{serde::ts_seconds, DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
@@ -9,8 +8,7 @@ pub struct LobstersStory {
     pub url: String,
     pub num_comments: u32,
     pub score: u32,
-    #[serde(with = "ts_seconds")]
-    pub date: DateTime<Utc>,
+    pub date: StoryDate,
 }
 
 impl ScrapeData for LobstersStory {
@@ -34,7 +32,7 @@ impl ScrapeData for LobstersStory {
         return ScrapeSource::Lobsters;
     }
 
-    fn date(&self) -> DateTime<Utc> {
+    fn date(&self) -> StoryDate {
         unimplemented!()
     }
 }

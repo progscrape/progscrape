@@ -1,8 +1,8 @@
-use chrono::{serde::ts_seconds, DateTime, TimeZone, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::{unescape_entities, Scrape, ScrapeData, ScrapeError, ScrapeSource, Scraper};
+use crate::story::StoryDate;
 
 #[derive(Default)]
 pub struct RedditArgs {}
@@ -24,8 +24,7 @@ pub struct RedditStory {
     pub num_comments: u32,
     pub score: u32,
     pub upvote_ratio: f32,
-    #[serde(with = "ts_seconds")]
-    pub date: DateTime<Utc>,
+    pub date: StoryDate,
 }
 
 impl ScrapeData for RedditStory {
@@ -49,7 +48,7 @@ impl ScrapeData for RedditStory {
         return ScrapeSource::Reddit(self.subreddit.clone());
     }
 
-    fn date(&self) -> DateTime<Utc> {
+    fn date(&self) -> StoryDate {
         self.date
     }
 }
@@ -133,9 +132,7 @@ impl RedditScraper {
         }
 
         let millis = self.require_integer(data, "created_utc")?;
-        let date = Utc
-            .timestamp_millis_opt(millis)
-            .single()
+        let date = StoryDate::from_millis(millis)
             .ok_or(format!("Unmappable date"))?;
 
         let story = RedditStory {

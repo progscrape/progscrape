@@ -5,6 +5,7 @@ use itertools::Itertools;
 use url::Url;
 
 use crate::{
+    story::StoryDate,
     datasci::urlnormalizer::url_normalization_string,
     scrapers::{ScrapeData, ScrapeId},
 };
@@ -34,7 +35,7 @@ impl YearMonth {
         return None;
     }
 
-    fn from_date_time(date: DateTime<Utc>) -> Self {
+    fn from_date_time(date: StoryDate) -> Self {
         Self::from_year_month(date.year() as u16, date.month0() as u8)
     }
 

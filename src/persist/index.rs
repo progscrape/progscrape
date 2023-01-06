@@ -1,4 +1,3 @@
-use chrono::{DateTime, Datelike, Months, Utc};
 use itertools::Itertools;
 use tantivy::collector::TopDocs;
 use tantivy::directory::MmapDirectory;
@@ -11,7 +10,7 @@ use tantivy::{
 use url::Url;
 
 use crate::scrapers::{Scrape, ScrapeSource};
-use crate::story;
+use crate::story::StoryDate;
 use std::collections::hash_map::{DefaultHasher, Entry, OccupiedEntry};
 use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};
@@ -103,11 +102,11 @@ impl StoryIndexShard {
         &self,
         url_norm: &str,
         url_norm_hash: i64,
-        date: DateTime<Utc>,
+        date: StoryDate,
     ) -> Result<impl Query, PersistError> {
         if let (Some(start), Some(end)) = (
-            date.checked_sub_months(Months::new(1)),
-            date.checked_add_months(Months::new(1)),
+            date.checked_sub_months(1),
+            date.checked_add_months(1),
         ) {
             let url_query = Box::new(TermQuery::new(
                 Term::from_field_i64(self.url_norm_hash_field, url_norm_hash),
@@ -170,12 +169,12 @@ impl StoryIndexShard {
 pub struct StoryIndex {
     index_cache: HashMap<u32, StoryIndexShard>,
     directory_fn: Box<dyn Fn(u32) -> Box<dyn Directory> + Send + Sync>,
-    start_date: DateTime<Utc>,
+    start_date: StoryDate,
 }
 
 impl StoryIndex {
     pub fn initialize<DIR: Directory>(
-        start_date: DateTime<Utc>,
+        start_date: StoryDate,
         directory_fn: fn(u32) -> DIR,
     ) -> Result<Self, PersistError> {
         let directory_fn: Box<dyn Fn(u32) -> Box<dyn Directory> + Send + Sync> =
@@ -187,7 +186,7 @@ impl StoryIndex {
         })
     }
 
-    fn index_for_date(&self, date: DateTime<Utc>) -> u32 {
+    fn index_for_date(&self, date: StoryDate) -> u32 {
         (date.year() as u32) * 12 + date.month0()
     }
 
@@ -299,7 +298,7 @@ impl StorageWriter for StoryIndex {
 
 impl Storage for StoryIndex {
     fn story_count(&self) -> Result<StorageSummary, PersistError> {
-        let now = DateTime::<Utc>::from(SystemTime::now());
+        let now = StoryDate::now();
         let mut summary = StorageSummary::default();
         for shard in (self.index_for_date(self.start_date)..self.index_for_date(now)).rev() {
             let index = self.index_cache.get(&shard);
@@ -323,7 +322,7 @@ impl Storage for StoryIndex {
     }
 
     fn query_search(&self, search: String, max_count: usize) -> Result<Vec<Story>, PersistError> {
-        let now = DateTime::<Utc>::from(SystemTime::now());
+        let now = StoryDate::now();
         let vec = vec![];
         for shard in (self.index_for_date(self.start_date)..self.index_for_date(now)).rev() {
             let index = self.index_cache.get(&shard);
@@ -381,6 +380,12 @@ mod test {
         let shard = populate_shard(ids1.chain(ids2)).expect("Failed to initialize shard");
         let reader = shard.index.reader().expect("Failed to get reader");
         let searcher = reader.searcher();
+        let count_found = |vec: Vec<StoryLookup>| vec
+        .iter()
+        .filter(|x| matches!(x, StoryLookup::Found(..)))
+        .collect::<Vec<_>>()
+        .len();
+
         // No slop on date, date = 0, we only get 95..100
         let lookup = (95..110)
             .into_iter()
@@ -394,11 +399,7 @@ mod test {
             .expect("Failed to look up");
         assert_eq!(
             5,
-            result
-                .iter()
-                .filter(|x| matches!(x, StoryLookup::Found(..)))
-                .collect::<Vec<_>>()
-                .len()
+            count_found(result)
         );
         // No slop on date, date = 10, we only get 100-110
         let lookup = (95..110)
@@ -413,11 +414,7 @@ mod test {
             .expect("Failed to look up");
         assert_eq!(
             10,
-            result
-                .iter()
-                .filter(|x| matches!(x, StoryLookup::Found(..)))
-                .collect::<Vec<_>>()
-                .len()
+            count_found(result)
         );
         // 0..+10 slop on date, date = 0, we get everything
         let lookup = (95..110)
@@ -432,11 +429,7 @@ mod test {
             .expect("Failed to look up");
         assert_eq!(
             15,
-            result
-                .iter()
-                .filter(|x| matches!(x, StoryLookup::Found(..)))
-                .collect::<Vec<_>>()
-                .len()
+            count_found(result)
         );
     }
 
@@ -447,7 +440,7 @@ mod test {
             .collect::<Vec<_>>();
         let start_date = stories
             .iter()
-            .fold(DateTime::<Utc>::MAX_UTC, |a, b| std::cmp::min(a, b.date()));
+            .fold(StoryDate::MAX, |a, b| std::cmp::min(a, b.date()));
         // let stories = crate::scrapers::test::scrape_all();
         // let dir = MmapDirectory::open("/tmp/index").expect("Failed to get mmap dir");
         let dir = RamDirectory::create();

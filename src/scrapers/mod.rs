@@ -1,6 +1,6 @@
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize, de::Visitor};
 use thiserror::Error;
+use crate::story::StoryDate;
 
 pub mod hacker_news;
 pub mod legacy_import;
@@ -68,7 +68,7 @@ pub trait ScrapeData {
     fn source(&self) -> ScrapeSource;
 
     /// Retrieve the scrape date.
-    fn date(&self) -> DateTime<Utc>;
+    fn date(&self) -> StoryDate;
 }
 
 #[derive(Clone, Deserialize, Serialize)]
@@ -119,7 +119,7 @@ impl ScrapeData for Scrape {
         self.as_ref().title()
     }
 
-    fn date(&self) -> DateTime<Utc> {
+    fn date(&self) -> StoryDate {
         self.as_ref().date()
     }
 
