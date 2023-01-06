@@ -1,13 +1,13 @@
-use std::sync::Arc;
-use std::path::Path;
-use std::time::Duration;
 use notify::RecursiveMode;
 use notify::Watcher;
+use std::path::Path;
+use std::sync::Arc;
+use std::time::Duration;
 use tera::Tera;
 use tokio::sync::watch;
 
-use crate::web::static_files::StaticFileRegistry;
 use crate::web::filters::*;
+use crate::web::static_files::StaticFileRegistry;
 use crate::web::WebError;
 
 #[derive(Clone)]
@@ -57,10 +57,7 @@ fn create_static_files_root() -> Result<StaticFileRegistry, WebError> {
 fn create_templates(static_files: Arc<StaticFileRegistry>) -> Result<Tera, WebError> {
     let mut tera = Tera::new("templates/**/*")?;
     tera.register_filter("comma", CommaFilter::default());
-    tera.register_filter(
-        "static",
-        StaticFileFilter::new(static_files),
-    );
+    tera.register_filter("static", StaticFileFilter::new(static_files));
     Ok(tera)
 }
 
@@ -88,7 +85,11 @@ fn generate() -> Result<Generated, WebError> {
     let static_files = Arc::new(create_static_files(css, admin_css)?);
     let static_files_root = Arc::new(create_static_files_root()?);
     let templates = Arc::new(create_templates(static_files.clone())?);
-    Ok(Generated { templates, static_files, static_files_root })
+    Ok(Generated {
+        templates,
+        static_files,
+        static_files_root,
+    })
 }
 
 /// Starts a process to watch all the templates/static data and regenerates everything if something changes.
@@ -108,17 +109,17 @@ pub async fn start_watcher() -> Result<GeneratedSource, WebError> {
     tokio::spawn(async move {
         while let Ok(_) = rx_dirty.changed().await {
             tracing::info!("Noticed a change in watched paths!");
-            while let Ok(_) = tokio::time::timeout(Duration::from_millis(100), rx_dirty.changed()).await {
+            while let Ok(_) =
+                tokio::time::timeout(Duration::from_millis(100), rx_dirty.changed()).await
+            {
                 tracing::debug!("Debouncing extra event within timeout period");
             }
             tracing::info!("Regenerating...");
-            let res =  tokio::task::spawn_blocking(|| {
-                generate()
-            }).await ;
+            let res = tokio::task::spawn_blocking(|| generate()).await;
             match res {
                 Ok(Ok(v)) => drop(tx.send(v)),
                 Ok(Err(e)) => tracing::error!("Failed to regenerate data: {:?}", e),
-                _ => {},
+                _ => {}
             };
             tracing::info!("Done!");
         }

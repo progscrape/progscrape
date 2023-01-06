@@ -132,8 +132,7 @@ impl RedditScraper {
         }
 
         let millis = self.require_integer(data, "created_utc")?;
-        let date = StoryDate::from_millis(millis)
-            .ok_or(format!("Unmappable date"))?;
+        let date = StoryDate::from_millis(millis).ok_or(format!("Unmappable date"))?;
 
         let story = RedditStory {
             title: unescape_entities(&self.require_string(data, "title")?),

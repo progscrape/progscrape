@@ -40,7 +40,8 @@ fn import_legacy_1() -> Result<impl Iterator<Item = Scrape>, LegacyError> {
         let json = String::from_utf8(buf)?;
         let root: Value = serde_json::from_str(&json)?;
         let date = root["date"].as_str().ok_or(LegacyError::MissingField)?;
-        let date = StoryDate::from_string(date, "%Y-%m-%d %H:%M:%S%.3f").ok_or(LegacyError::MissingField)?;
+        let date = StoryDate::from_string(date, "%Y-%m-%d %H:%M:%S%.3f")
+            .ok_or(LegacyError::MissingField)?;
         let title = unescape_entities(root["title"].as_str().ok_or(LegacyError::MissingField)?);
         let mut url = unescape_entities(root["url"].as_str().ok_or(LegacyError::MissingField)?);
         if url.contains("&amp") {
@@ -49,7 +50,7 @@ fn import_legacy_1() -> Result<impl Iterator<Item = Scrape>, LegacyError> {
                 .ok_or(LegacyError::MissingField)?
                 .0
                 .to_owned();
-                tracing::info!("Fixed up: {}", url);
+            tracing::info!("Fixed up: {}", url);
         }
         if let Err(e) = Url::parse(&url) {
             tracing::error!("Bad URL: {}", url);
@@ -123,7 +124,7 @@ fn import_legacy_2() -> Result<impl Iterator<Item = Scrape>, LegacyError> {
                 .ok_or(LegacyError::MissingField)?
                 .0
                 .to_owned();
-                tracing::info!("Fixed up: {}", url);
+            tracing::info!("Fixed up: {}", url);
         }
         if let Err(e) = Url::parse(&url) {
             tracing::error!("Bad URL: {}", url);

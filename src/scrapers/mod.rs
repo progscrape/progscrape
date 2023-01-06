@@ -1,6 +1,6 @@
-use serde::{Deserialize, Serialize, de::Visitor};
-use thiserror::Error;
 use crate::story::StoryDate;
+use serde::{de::Visitor, Deserialize, Serialize};
+use thiserror::Error;
 
 pub mod hacker_news;
 pub mod legacy_import;

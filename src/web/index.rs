@@ -1,4 +1,8 @@
-use std::{sync::Arc, io::{BufWriter, BufReader}, fs::File};
+use std::{
+    fs::File,
+    io::{BufReader, BufWriter},
+    sync::Arc,
+};
 
 use crate::persist::{MemIndex, Storage, StorageWriter, StoryIndex};
 

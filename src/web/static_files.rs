@@ -26,8 +26,7 @@ fn mime_type_from(extension: &str, buf: &[u8]) -> Option<&'static str> {
     match extension {
         "txt" => Some("text/plain"),
         "css" => Some("text/css"),
-        _ => infer::get(&buf).
-            map(|x| x.mime_type()),
+        _ => infer::get(&buf).map(|x| x.mime_type()),
     }
 }
 
@@ -45,12 +44,14 @@ impl StaticFileRegistry {
         Ok(())
     }
 
-    pub fn register_bytes(&mut self, key: &str, extension: &str, buf: &[u8]) -> Result<(), std::io::Error> {
-        let mime_type = mime_type_from(extension, &buf)
-            .expect(&format!(
-                "File type was not known for {}",
-                key
-            ));
+    pub fn register_bytes(
+        &mut self,
+        key: &str,
+        extension: &str,
+        buf: &[u8],
+    ) -> Result<(), std::io::Error> {
+        let mime_type =
+            mime_type_from(extension, &buf).expect(&format!("File type was not known for {}", key));
 
         let mut hash = sha2::Sha256::new();
         hash.update(&buf);
@@ -87,7 +88,12 @@ impl StaticFileRegistry {
     }
 
     pub fn keys(&self) -> impl Iterator<Item = String> {
-        self.by_key.keys().sorted().cloned().collect::<Vec<_>>().into_iter()
+        self.by_key
+            .keys()
+            .sorted()
+            .cloned()
+            .collect::<Vec<_>>()
+            .into_iter()
     }
 
     pub fn lookup_key(&self, key: &str) -> Option<&str> {

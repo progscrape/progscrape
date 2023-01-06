@@ -1,11 +1,12 @@
-use chrono::{DateTime, Utc, Datelike, Months, TimeZone, NaiveDateTime};
+use chrono::{DateTime, Datelike, Months, NaiveDateTime, TimeZone, Utc};
 use serde::{Deserialize, Serialize};
 use url::Url;
 
 use crate::scrapers::{Scrape, ScrapeData, ScrapeId, ScrapeSource};
 use std::{
     collections::{hash_map::DefaultHasher, HashMap},
-    hash::{Hash, Hasher}, time::SystemTime,
+    hash::{Hash, Hasher},
+    time::SystemTime,
 };
 
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -24,19 +25,16 @@ impl StoryDate {
         Self::new(DateTime::<Utc>::from(SystemTime::now()))
     }
     pub fn from_millis(millis: i64) -> Option<Self> {
-        Utc
-            .timestamp_millis_opt(millis)
-            .earliest().map(Self::new)
+        Utc.timestamp_millis_opt(millis).earliest().map(Self::new)
     }
     pub fn from_string(date: &str, s: &str) -> Option<Self> {
-        let date = NaiveDateTime::parse_from_str(
-            date,
-            s,
-        ).ok();
+        let date = NaiveDateTime::parse_from_str(date, s).ok();
         date.map(|x| Self::new(Utc.from_utc_datetime(&x)))
     }
     pub fn parse_from_rfc3339(date: &str) -> Option<Self> {
-        DateTime::parse_from_rfc3339(date).ok().map(|x| Self::new(x.into()))
+        DateTime::parse_from_rfc3339(date)
+            .ok()
+            .map(|x| Self::new(x.into()))
     }
     pub fn year(&self) -> i32 {
         self.internal_date.year()
@@ -51,25 +49,31 @@ impl StoryDate {
         self.internal_date.timestamp()
     }
     pub fn checked_add_months(&self, months: u32) -> Option<Self> {
-        self.internal_date.checked_add_months(Months::new(months)).map(StoryDate::new)
+        self.internal_date
+            .checked_add_months(Months::new(months))
+            .map(StoryDate::new)
     }
     pub fn checked_sub_months(&self, months: u32) -> Option<Self> {
-        self.internal_date.checked_sub_months(Months::new(months)).map(StoryDate::new)
+        self.internal_date
+            .checked_sub_months(Months::new(months))
+            .map(StoryDate::new)
     }
 }
 
 impl Serialize for StoryDate {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: serde::Serializer {
-                chrono::serde::ts_seconds::serialize(&self.internal_date, serializer)
-            }
+    where
+        S: serde::Serializer,
+    {
+        chrono::serde::ts_seconds::serialize(&self.internal_date, serializer)
+    }
 }
 
-impl <'de> Deserialize<'de> for StoryDate {
+impl<'de> Deserialize<'de> for StoryDate {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-        where
-            D: serde::Deserializer<'de> {
+    where
+        D: serde::Deserializer<'de>,
+    {
         chrono::serde::ts_seconds::deserialize(deserializer).map(Self::new)
     }
 }
@@ -143,7 +147,10 @@ impl Story {
     pub fn render(&self) -> StoryRender {
         StoryRender {
             url: self.url(),
-            domain: Url::parse(&self.url()).ok().and_then(|u| u.host().map(|h| h.to_string())).unwrap_or_default(),
+            domain: Url::parse(&self.url())
+                .ok()
+                .and_then(|u| u.host().map(|h| h.to_string()))
+                .unwrap_or_default(),
             title: self.title(),
             date: self.date(),
             tags: vec![],

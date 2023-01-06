@@ -1,4 +1,4 @@
-use std::{net::SocketAddr, sync::Arc, collections::HashMap};
+use std::{collections::HashMap, net::SocketAddr, sync::Arc};
 
 use axum::{
     body::Bytes,
@@ -17,7 +17,7 @@ use crate::{
     story::{Story, StoryRender},
 };
 
-use self::{generate::GeneratedSource};
+use self::generate::GeneratedSource;
 
 mod filters;
 mod generate;
@@ -109,35 +109,52 @@ impl StorySort {
 }
 
 fn render_stories(iter: impl Iterator<Item = Story>, sort: StorySort) -> Vec<StoryRender> {
-    let mut v = iter
-        .map(|x| x.render())
-        .collect::<Vec<_>>();
+    let mut v = iter.map(|x| x.render()).collect::<Vec<_>>();
     match sort {
-        StorySort::None => {},
-        StorySort::Title => {
-            v.sort_by(|a, b| a.title.cmp(&b.title))
-        },
-        StorySort::Date => {
-            v.sort_by(|a, b| a.date.cmp(&b.date))
-        }
-        StorySort::Domain => {
-            v.sort_by(|a, b| a.domain.cmp(&b.domain))
-        }
+        StorySort::None => {}
+        StorySort::Title => v.sort_by(|a, b| a.title.cmp(&b.title)),
+        StorySort::Date => v.sort_by(|a, b| a.date.cmp(&b.date)),
+        StorySort::Domain => v.sort_by(|a, b| a.domain.cmp(&b.domain)),
     }
     v
 }
 
 // basic handler that responds with a static string
-async fn root(State((state, generated)): State<(index::Global, GeneratedSource)>) -> Result<Html<String>, WebError> {
-    let stories = render_stories(state
-        .storage
-        .query_frontpage(30)?.into_iter(), StorySort::None);
-    let top_tags = vec!["github.com", "rust", "amazon", "java", "health", "wsj.com", "security", "apple", "theverge.com", "python", "kernel", "google", "arstechnica.com"].into_iter().map(str::to_owned).collect();
+async fn root(
+    State((state, generated)): State<(index::Global, GeneratedSource)>,
+) -> Result<Html<String>, WebError> {
+    let stories = render_stories(
+        state.storage.query_frontpage(30)?.into_iter(),
+        StorySort::None,
+    );
+    let top_tags = vec![
+        "github.com",
+        "rust",
+        "amazon",
+        "java",
+        "health",
+        "wsj.com",
+        "security",
+        "apple",
+        "theverge.com",
+        "python",
+        "kernel",
+        "google",
+        "arstechnica.com",
+    ]
+    .into_iter()
+    .map(str::to_owned)
+    .collect();
     let context = Context::from_serialize(&FrontPage { top_tags, stories })?;
-    Ok(generated.templates().render("index2.html", &context)?.into())
+    Ok(generated
+        .templates()
+        .render("index2.html", &context)?
+        .into())
 }
 
-async fn status(State((state, generated)): State<(index::Global, GeneratedSource)>) -> Result<Html<String>, WebError> {
+async fn status(
+    State((state, generated)): State<(index::Global, GeneratedSource)>,
+) -> Result<Html<String>, WebError> {
     #[derive(Serialize)]
     struct Status {
         storage: StorageSummary,
@@ -145,10 +162,17 @@ async fn status(State((state, generated)): State<(index::Global, GeneratedSource
     let context = Context::from_serialize(&Status {
         storage: state.storage.story_count()?,
     })?;
-    Ok(generated.templates().render("admin_status.html", &context)?.into())
+    Ok(generated
+        .templates()
+        .render("admin_status.html", &context)?
+        .into())
 }
 
-async fn status_shard(State((state, generated)): State<(index::Global, GeneratedSource)>, Path(shard): Path<String>, sort: Query<HashMap<String, String>>) -> Result<Html<String>, WebError> {
+async fn status_shard(
+    State((state, generated)): State<(index::Global, GeneratedSource)>,
+    Path(shard): Path<String>,
+    sort: Query<HashMap<String, String>>,
+) -> Result<Html<String>, WebError> {
     #[derive(Serialize)]
     struct ShardStatus {
         shard: String,
@@ -160,7 +184,10 @@ async fn status_shard(State((state, generated)): State<(index::Global, Generated
         shard: shard.clone(),
         stories: render_stories(state.storage.stories_by_shard(&shard)?.into_iter(), sort),
     })?;
-    Ok(generated.templates().render("admin_shard.html", &context)?.into())
+    Ok(generated
+        .templates()
+        .render("admin_shard.html", &context)?
+        .into())
 }
 
 pub async fn serve_static_files_immutable(
