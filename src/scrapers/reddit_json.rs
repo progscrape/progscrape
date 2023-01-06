@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use super::{unescape_entities, ScrapeData, ScrapeError, ScrapeSource, Scraper};
-use crate::story::StoryDate;
+use super::{unescape_entities, ScrapeData, ScrapeDataInit, ScrapeError, ScrapeSource, Scraper};
+use crate::story::{StoryDate, StoryUrl};
 
 #[derive(Default)]
 pub struct RedditArgs {}
@@ -10,11 +10,10 @@ pub struct RedditArgs {}
 #[derive(Default)]
 pub struct RedditScraper {}
 
-#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct RedditStory {
     pub title: String,
-    pub url: String,
-    pub domain: String,
+    pub url: StoryUrl,
     pub subreddit: String,
     pub flair: String,
     pub id: String,
@@ -36,7 +35,7 @@ impl ScrapeData for RedditStory {
         return self.title.clone();
     }
 
-    fn url(&self) -> String {
+    fn url(&self) -> StoryUrl {
         return self.url.clone();
     }
 
@@ -50,6 +49,30 @@ impl ScrapeData for RedditStory {
 
     fn date(&self) -> StoryDate {
         self.date
+    }
+}
+
+impl ScrapeDataInit<RedditStory> for RedditStory {
+    fn initialize_required(
+        id: String,
+        title: String,
+        url: StoryUrl,
+        date: StoryDate,
+    ) -> RedditStory {
+        Self {
+            title,
+            url,
+            id,
+            date,
+            subreddit: Default::default(),
+            flair: Default::default(),
+            position: Default::default(),
+            upvotes: Default::default(),
+            downvotes: Default::default(),
+            num_comments: Default::default(),
+            score: Default::default(),
+            upvote_ratio: Default::default(),
+        }
     }
 }
 
@@ -133,12 +156,12 @@ impl RedditScraper {
 
         let millis = self.require_integer(data, "created_utc")?;
         let date = StoryDate::from_millis(millis).ok_or(format!("Unmappable date"))?;
-
+        let url = StoryUrl::parse(unescape_entities(&self.require_string(data, "url")?))
+            .ok_or(format!("Unmappable URL"))?;
         let story = RedditStory {
             title: unescape_entities(&self.require_string(data, "title")?),
-            url: unescape_entities(&self.require_string(data, "url")?),
+            url,
             num_comments: self.require_integer(data, "num_comments")?,
-            domain: self.require_string(data, "domain")?,
             score: self.require_integer(data, "score")?,
             downvotes: self.require_integer(data, "downs")?,
             upvotes: self.require_integer(data, "ups")?,

@@ -215,7 +215,7 @@ impl StoryIndex {
             let iter = stories.into_iter().enumerate().map(|(_i, story)| {
                 (
                     StoryLookupId {
-                        url_norm_hash: story.normalized_url_hash(),
+                        url_norm_hash: story.url().normalization().hash(),
                         date: story.date().timestamp(),
                     },
                     story,
@@ -249,9 +249,9 @@ impl StoryIndex {
                         index.insert_story_document(
                             &mut writer,
                             StoryInsert {
-                                url: &story.url(),
-                                url_norm: &story.normalized_url,
-                                url_norm_hash: story.normalized_url_hash(),
+                                url: story.url().raw(),
+                                url_norm: &story.url().normalization().string(),
+                                url_norm_hash: story.url().normalization().hash(),
                                 title: &story.title(),
                                 date: story.date().timestamp(),
                             },

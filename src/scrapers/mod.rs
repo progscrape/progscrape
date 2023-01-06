@@ -1,4 +1,4 @@
-use crate::story::StoryDate;
+use crate::story::{StoryDate, StoryUrl};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -59,7 +59,7 @@ pub trait ScrapeData {
     fn title(&self) -> String;
 
     /// Retrieve the scrape URL.
-    fn url(&self) -> String;
+    fn url(&self) -> StoryUrl;
 
     /// Retrieve the scrape comments URL.
     fn comments_url(&self) -> String;
@@ -69,6 +69,11 @@ pub trait ScrapeData {
 
     /// Retrieve the scrape date.
     fn date(&self) -> StoryDate;
+}
+
+/// Core partial initialization method.
+pub trait ScrapeDataInit<T: ScrapeData> {
+    fn initialize_required(id: String, title: String, url: StoryUrl, date: StoryDate) -> T;
 }
 
 #[derive(Clone, Deserialize, Serialize)]
@@ -111,7 +116,7 @@ impl ScrapeData for Scrape {
         self.as_ref().id()
     }
 
-    fn url(&self) -> String {
+    fn url(&self) -> StoryUrl {
         self.as_ref().url()
     }
 

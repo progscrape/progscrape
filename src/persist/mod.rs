@@ -20,8 +20,6 @@ pub enum PersistError {
     TantivyQueryError(#[from] tantivy::query::QueryParserError),
     #[error("Serialize/deserialize error")]
     SerdeError(#[from] serde_rusqlite::Error),
-    #[error("URL parse error")]
-    URLError(#[from] url::ParseError),
     #[error("Unmappable column")]
     Unmappable(),
 }

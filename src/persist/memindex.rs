@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
 use itertools::Itertools;
-use url::Url;
 
 use crate::{
-    datasci::urlnormalizer::url_normalization_string, scrapers::ScrapeData, story::StoryDate,
+    scrapers::ScrapeData,
+    story::{StoryDate, StoryUrlNorm},
 };
 
 use super::*;
@@ -50,7 +50,7 @@ impl YearMonth {
 #[derive(Default, Serialize, Deserialize)]
 pub struct MemIndex {
     /// A map from year/month to normalized story URL, to scrape source/ID to scrape.
-    stories: HashMap<YearMonth, HashMap<String, Story>>,
+    stories: HashMap<YearMonth, HashMap<StoryUrlNorm, Story>>,
 }
 
 impl MemIndex {
@@ -73,12 +73,12 @@ impl StorageWriter for MemIndex {
     ) -> Result<(), PersistError> {
         'outer: for scrape in scrapes {
             let date = YearMonth::from_date_time(scrape.date());
-            let url = Url::parse(&scrape.url())?;
-            let normalized_url = url_normalization_string(&url);
+            let url = scrape.url();
+            let normalized_url = url.normalization();
             // Try to pin it to an existing item
             for n in -2..2 {
                 let map0 = self.stories.entry(date.plus_months(n)).or_default();
-                if let Some(map1) = map0.get_mut(&normalized_url) {
+                if let Some(map1) = map0.get_mut(normalized_url) {
                     map1.merge(scrape);
                     continue 'outer;
                 }
@@ -89,7 +89,7 @@ impl StorageWriter for MemIndex {
                 .stories
                 .entry(date)
                 .or_default()
-                .insert(normalized_url.clone(), Story::new(normalized_url, scrape))
+                .insert(normalized_url.clone(), Story::new(scrape))
             {
                 // TODO: We need to merge duplicate scrapes
                 println!("Unexpected");

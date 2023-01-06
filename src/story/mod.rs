@@ -1,14 +1,14 @@
 use serde::{Deserialize, Serialize};
-use url::Url;
 
 use crate::scrapers::{Scrape, ScrapeData, ScrapeId};
 use std::{
-    collections::{hash_map::DefaultHasher, HashMap},
-    hash::{Hash, Hasher},
+    collections::{HashMap},
 };
 
 mod date;
-pub use date::StoryDate;
+mod url;
+
+pub use self::{date::StoryDate, url::{StoryUrl, StoryUrlNorm}};
 
 /// Rendered story with all properties hydrated from the underlying scrapes. Extraneous data is removed at this point.
 #[derive(Clone, Default, Deserialize, Serialize)]
@@ -25,24 +25,15 @@ pub struct StoryRender {
 /// Story scrape w/information from underlying sources.
 #[derive(Clone, Default, Deserialize, Serialize)]
 pub struct Story {
-    pub normalized_url: String,
     pub scrapes: HashMap<ScrapeId, Scrape>,
 }
 
 impl Story {
-    pub fn new(normalized_url: String, scrape: Scrape) -> Self {
+    pub fn new(scrape: Scrape) -> Self {
         let id = ScrapeId::new(scrape.source(), scrape.id());
         Self {
-            normalized_url,
             scrapes: HashMap::from_iter([(id, scrape)]),
         }
-    }
-
-    pub fn normalized_url_hash(&self) -> i64 {
-        let mut hasher = DefaultHasher::new();
-        self.normalized_url.hash(&mut hasher);
-        let url_norm_hash = hasher.finish() as i64;
-        return url_norm_hash;
     }
 
     pub fn merge(&mut self, scrape: Scrape) {
@@ -60,7 +51,7 @@ impl Story {
             .title()
     }
 
-    pub fn url(&self) -> String {
+    pub fn url(&self) -> StoryUrl {
         self.scrapes
             .values()
             .next()
@@ -78,11 +69,8 @@ impl Story {
 
     pub fn render(&self) -> StoryRender {
         StoryRender {
-            url: self.url(),
-            domain: Url::parse(&self.url())
-                .ok()
-                .and_then(|u| u.host().map(|h| h.to_string()))
-                .unwrap_or_default(),
+            url: self.url().to_string(),
+            domain: self.url().host().to_owned(),
             title: self.title(),
             date: self.date(),
             tags: vec![],

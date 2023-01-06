@@ -5,12 +5,13 @@ use std::{
 
 use flate2::bufread::GzDecoder;
 use serde_json::Value;
-use url::Url;
 
-use super::{hacker_news::HackerNewsStory, lobsters::LobstersStory, Scrape, ScrapeData};
-use crate::scrapers::reddit_json::RedditStory;
+use super::{
+    hacker_news::HackerNewsStory, lobsters::LobstersStory, Scrape, ScrapeData, ScrapeDataInit,
+};
 use crate::scrapers::unescape_entities;
 use crate::story::StoryDate;
+use crate::{scrapers::reddit_json::RedditStory, story::StoryUrl};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -23,6 +24,8 @@ pub enum LegacyError {
     JSONError(#[from] serde_json::Error),
     #[error("Field was missing or invalid")]
     MissingField,
+    #[error("Field {0} was missing or invalid ({1:?})")]
+    InvalidField(&'static str, Option<String>),
     #[error("CBOR error")]
     CBORError(#[from] serde_cbor::Error),
 }
@@ -50,50 +53,24 @@ fn import_legacy_1() -> Result<impl Iterator<Item = Scrape>, LegacyError> {
                 .ok_or(LegacyError::MissingField)?
                 .0
                 .to_owned();
-            tracing::info!("Fixed up: {}", url);
+                tracing::info!("Fixed up: {}", url);
+            }
+        if url.contains(" ") {
+            url = url.replace(" ", "");
+            tracing::info!("Fixed up (removed spaces): {}", url);
         }
-        if let Err(_e) = Url::parse(&url) {
-            tracing::error!("Bad URL: {}", url);
-            continue;
-        }
+        let url = StoryUrl::parse(&url).ok_or(LegacyError::InvalidField("url", Some(url)))?;
         let id = root["redditProgId"].as_str().unwrap_or("None").to_owned();
         if id != "None" {
-            out.push(
-                RedditStory {
-                    id,
-                    title: title.clone(),
-                    url: url.clone(),
-                    date: date.clone(),
-                    ..Default::default()
-                }
-                .into(),
-            );
+            out.push(RedditStory::initialize_required(id, title.clone(), url.clone(), date).into());
         }
         let id = root["redditTechId"].as_str().unwrap_or("None").to_owned();
         if id != "None" {
-            out.push(
-                RedditStory {
-                    id,
-                    title: title.clone(),
-                    url: url.clone(),
-                    date: date.clone(),
-                    ..Default::default()
-                }
-                .into(),
-            );
+            out.push(RedditStory::initialize_required(id, title.clone(), url.clone(), date).into());
         }
         let id = root["hackerNewsId"].as_str().unwrap_or("None").to_owned();
         if id != "None" {
-            out.push(
-                HackerNewsStory {
-                    id,
-                    title: title.clone(),
-                    url: url.clone(),
-                    date,
-                    ..Default::default()
-                }
-                .into(),
-            );
+            out.push(HackerNewsStory::initialize_required(id, title.clone(), url.clone(), date).into());
         }
     }
 
@@ -126,22 +103,10 @@ fn import_legacy_2() -> Result<impl Iterator<Item = Scrape>, LegacyError> {
                 .to_owned();
             tracing::info!("Fixed up: {}", url);
         }
-        if let Err(_e) = Url::parse(&url) {
-            tracing::error!("Bad URL: {}", url);
-            continue;
-        }
+        let url = StoryUrl::parse(&url).ok_or(LegacyError::InvalidField("url", Some(url)))?;
         let id = root["hn"].as_str().unwrap_or("None").to_owned();
         if id != "None" {
-            out.push(
-                HackerNewsStory {
-                    id,
-                    title: title.clone(),
-                    url: url.clone(),
-                    date: date.clone(),
-                    ..Default::default()
-                }
-                .into(),
-            );
+            out.push(HackerNewsStory::initialize_required(id, title.clone(), url.clone(), date).into());
         }
         let mut reddit = root["reddit"]
             .as_array()
@@ -150,30 +115,12 @@ fn import_legacy_2() -> Result<impl Iterator<Item = Scrape>, LegacyError> {
         while let Some(value) = reddit.pop() {
             let id = value.as_str().unwrap_or("None").to_owned();
             if id != "None" {
-                out.push(
-                    RedditStory {
-                        id,
-                        title: title.clone(),
-                        url: url.clone(),
-                        date: date.clone(),
-                        ..Default::default()
-                    }
-                    .into(),
-                );
+                out.push(RedditStory::initialize_required(id, title.clone(), url.clone(), date).into());
             }
         }
         let id = root["lobsters"].as_str().unwrap_or("None").to_owned();
         if id != "None" {
-            out.push(
-                LobstersStory {
-                    id,
-                    title: title.clone(),
-                    url: url.clone(),
-                    date: date.clone(),
-                    ..Default::default()
-                }
-                .into(),
-            );
+            out.push(LobstersStory::initialize_required(id, title.clone(), url.clone(), date).into());
         }
     }
     Ok(out.into_iter())

@@ -2,16 +2,16 @@ use serde::{Deserialize, Serialize};
 use std::{borrow::Borrow, collections::HashMap};
 use tl::{HTMLTag, NodeHandle, Parser, ParserOptions};
 
-use super::{unescape_entities, ScrapeData, ScrapeError, ScrapeSource, Scraper};
-use crate::story::StoryDate;
+use super::{unescape_entities, ScrapeData, ScrapeDataInit, ScrapeError, ScrapeSource, Scraper};
+use crate::story::{StoryDate, StoryUrl};
 
 #[derive(Debug, Default)]
 pub struct HackerNewsArgs {}
 
-#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct HackerNewsStory {
     pub title: String,
-    pub url: String,
+    pub url: StoryUrl,
     pub id: String,
     pub points: u32,
     pub comments: u32,
@@ -27,7 +27,7 @@ impl ScrapeData for HackerNewsStory {
         self.title.clone()
     }
 
-    fn url(&self) -> String {
+    fn url(&self) -> StoryUrl {
         self.url.clone()
     }
 
@@ -41,6 +41,24 @@ impl ScrapeData for HackerNewsStory {
 
     fn date(&self) -> StoryDate {
         self.date
+    }
+}
+
+impl ScrapeDataInit<HackerNewsStory> for HackerNewsStory {
+    fn initialize_required(
+        id: String,
+        title: String,
+        url: StoryUrl,
+        date: StoryDate,
+    ) -> HackerNewsStory {
+        HackerNewsStory {
+            title,
+            url,
+            id,
+            date,
+            points: Default::default(),
+            comments: Default::default(),
+        }
     }
 }
 
@@ -81,7 +99,7 @@ fn get_attribute<'a>(
 struct HackerNewsStoryLine {
     id: String,
     position: u32,
-    url: String,
+    url: StoryUrl,
     title: String,
 }
 
@@ -120,6 +138,7 @@ impl HackerNewsScraper {
             let url = unescape_entities(
                 &get_attribute(p, first_link, "href").ok_or(format!("Failed to get href"))?,
             );
+            let url = StoryUrl::parse(url).ok_or(format!("Failed to parse URL"))?;
             let id = get_attribute(p, node, "id").ok_or(format!("Failed to get id node"))?;
             Ok(HackerNewsNode::StoryLine(HackerNewsStoryLine {
                 id,
