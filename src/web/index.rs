@@ -4,7 +4,7 @@ use std::{
     sync::Arc,
 };
 
-use crate::persist::{MemIndex, Storage, StorageWriter};
+use crate::{persist::{MemIndex, Storage, StorageWriter}, scrapers::ScrapeData};
 
 use super::WebError;
 
@@ -29,7 +29,7 @@ pub fn initialize_with_testing_data() -> Result<Global, WebError> {
     let stories = crate::scrapers::legacy_import::import_legacy().expect("Failed to read scrapes");
     let mut index = MemIndex::default();
     index
-        .insert_scrapes(stories.into_iter())
+        .insert_scrapes(stories.filter(|x| x.date().year() >= 2017).into_iter())
         .expect("Failed to insert scrapes");
     let f = File::create(cache_file)?;
     serde_cbor::to_writer(BufWriter::new(f), &index)?;

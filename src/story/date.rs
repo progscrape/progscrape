@@ -1,6 +1,6 @@
 use chrono::{DateTime, Datelike, Months, NaiveDateTime, TimeZone, Utc};
 use serde::{Deserialize, Serialize};
-use std::time::SystemTime;
+use std::{time::SystemTime, fmt::Display};
 
 /// Story-specific date that wraps all of the operations we're interested in. This is a thin wrapper on top
 /// of `DateTime<Utc>` and other `chrono` utilities for now.
@@ -70,5 +70,11 @@ impl<'de> Deserialize<'de> for StoryDate {
         D: serde::Deserializer<'de>,
     {
         chrono::serde::ts_seconds::deserialize(deserializer).map(Self::new)
+    }
+}
+
+impl Display for StoryDate {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.internal_date.fmt(f)
     }
 }

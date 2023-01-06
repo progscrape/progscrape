@@ -14,7 +14,7 @@
         <h2>ID: {{ shard }}</h2>
         <tr><th><a href="?sort=domain">Domain</a></th><th><a href="?sort=title">Story</a></th><th><a href="?sort=date">Date</a></th></tr>
         {% for story in stories %}
-        <tr><td>{{ story.domain }}</td><td><a href="{{ story.url }}">{{ story.title }}</a></td><td>{{ story.date }}</td></tr>
+        <tr><td>{{ story.domain }}</td><td><a href="{{ story.url }}">{{ story.title }}</a></td><td>{{ story.date | date }}</td></tr>
         {% endfor %}
         </table>
     </body>
