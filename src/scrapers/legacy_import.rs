@@ -53,8 +53,8 @@ fn import_legacy_1() -> Result<impl Iterator<Item = Scrape>, LegacyError> {
                 .ok_or(LegacyError::MissingField)?
                 .0
                 .to_owned();
-                tracing::info!("Fixed up: {}", url);
-            }
+            tracing::info!("Fixed up: {}", url);
+        }
         if url.ends_with(" /") {
             let old = url.clone();
             url = url.replace(" ", "");
@@ -71,7 +71,9 @@ fn import_legacy_1() -> Result<impl Iterator<Item = Scrape>, LegacyError> {
         }
         let id = root["hackerNewsId"].as_str().unwrap_or("None").to_owned();
         if id != "None" {
-            out.push(HackerNewsStory::initialize_required(id, title.clone(), url.clone(), date).into());
+            out.push(
+                HackerNewsStory::initialize_required(id, title.clone(), url.clone(), date).into(),
+            );
         }
     }
 
@@ -107,7 +109,9 @@ fn import_legacy_2() -> Result<impl Iterator<Item = Scrape>, LegacyError> {
         let url = StoryUrl::parse(&url).ok_or(LegacyError::InvalidField("url", Some(url)))?;
         let id = root["hn"].as_str().unwrap_or("None").to_owned();
         if id != "None" {
-            out.push(HackerNewsStory::initialize_required(id, title.clone(), url.clone(), date).into());
+            out.push(
+                HackerNewsStory::initialize_required(id, title.clone(), url.clone(), date).into(),
+            );
         }
         let mut reddit = root["reddit"]
             .as_array()
@@ -116,12 +120,16 @@ fn import_legacy_2() -> Result<impl Iterator<Item = Scrape>, LegacyError> {
         while let Some(value) = reddit.pop() {
             let id = value.as_str().unwrap_or("None").to_owned();
             if id != "None" {
-                out.push(RedditStory::initialize_required(id, title.clone(), url.clone(), date).into());
+                out.push(
+                    RedditStory::initialize_required(id, title.clone(), url.clone(), date).into(),
+                );
             }
         }
         let id = root["lobsters"].as_str().unwrap_or("None").to_owned();
         if id != "None" {
-            out.push(LobstersStory::initialize_required(id, title.clone(), url.clone(), date).into());
+            out.push(
+                LobstersStory::initialize_required(id, title.clone(), url.clone(), date).into(),
+            );
         }
     }
     Ok(out.into_iter())

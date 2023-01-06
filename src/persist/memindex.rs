@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, ops::Sub};
 
 use itertools::Itertools;
 
@@ -64,6 +64,14 @@ impl MemIndex {
         out.sort_by_cached_key(|x| x.date());
         out.into_iter()
     }
+
+    fn map_mut(&mut self, shard: YearMonth) -> &mut HashMap<StoryUrlNorm, Story> {
+        self.stories.entry(shard).or_default()
+    }
+
+    fn map(&self, shard: YearMonth) -> Option<&HashMap<StoryUrlNorm, Story>> {
+        self.stories.get(&shard)
+    }
 }
 
 impl StorageWriter for MemIndex {
@@ -77,7 +85,7 @@ impl StorageWriter for MemIndex {
             let normalized_url = url.normalization();
             // Try to pin it to an existing item
             for n in -2..2 {
-                let map0 = self.stories.entry(date.plus_months(n)).or_default();
+                let map0 = self.map_mut(date.plus_months(n));
                 if let Some(map1) = map0.get_mut(normalized_url) {
                     map1.merge(scrape);
                     continue 'outer;
@@ -86,9 +94,7 @@ impl StorageWriter for MemIndex {
 
             // Not found!
             if let Some(_old) = self
-                .stories
-                .entry(date)
-                .or_default()
+                .map_mut(date)
                 .insert(normalized_url.clone(), Story::new(scrape))
             {
                 // TODO: We need to merge duplicate scrapes
@@ -114,7 +120,7 @@ impl Storage for MemIndex {
 
     fn stories_by_shard(&self, shard: &str) -> Result<Vec<Story>, PersistError> {
         if let Some(shard) = YearMonth::from_string(shard) {
-            if let Some(map) = self.stories.get(&shard) {
+            if let Some(map) = self.map(shard) {
                 Ok(map.values().cloned().collect_vec())
             } else {
                 Ok(vec![])

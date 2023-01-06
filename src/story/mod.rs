@@ -1,14 +1,15 @@
 use serde::{Deserialize, Serialize};
 
 use crate::scrapers::{Scrape, ScrapeData, ScrapeId};
-use std::{
-    collections::{HashMap},
-};
+use std::collections::HashMap;
 
 mod date;
 mod url;
 
-pub use self::{date::StoryDate, url::{StoryUrl, StoryUrlNorm}};
+pub use self::{
+    date::StoryDate,
+    url::{StoryUrl, StoryUrlNorm},
+};
 
 /// Rendered story with all properties hydrated from the underlying scrapes. Extraneous data is removed at this point.
 #[derive(Clone, Default, Deserialize, Serialize)]

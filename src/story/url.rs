@@ -1,4 +1,8 @@
-use std::{fmt::Display, collections::hash_map::DefaultHasher, hash::{Hasher, Hash}};
+use std::{
+    collections::hash_map::DefaultHasher,
+    fmt::Display,
+    hash::{Hash, Hasher},
+};
 
 use serde::{Deserialize, Serialize};
 use url::Url;
@@ -15,19 +19,26 @@ pub struct StoryUrl {
 
 impl Serialize for StoryUrl {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: serde::Serializer {
+    where
+        S: serde::Serializer,
+    {
         let tuple: (&String, &String, &String) = (&self.url, &self.host, &self.norm_str.norm);
         tuple.serialize(serializer)
     }
 }
 
-impl <'de> Deserialize<'de> for StoryUrl {
+impl<'de> Deserialize<'de> for StoryUrl {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-        where
-            D: serde::Deserializer<'de> {
-        let res: Result<(String, String, String), D::Error> = Deserialize::deserialize(deserializer);
-        res.map(|(url, host, norm)| StoryUrl { url, host, norm_str: StoryUrlNorm { norm } })
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let res: Result<(String, String, String), D::Error> =
+            Deserialize::deserialize(deserializer);
+        res.map(|(url, host, norm)| StoryUrl {
+            url,
+            host,
+            norm_str: StoryUrlNorm { norm },
+        })
     }
 }
 
@@ -42,7 +53,9 @@ impl StoryUrl {
         if let Ok(url) = Url::parse(s.as_ref()) {
             if let Some(host) = url.host_str() {
                 let host = host.to_owned();
-                let norm_str = StoryUrlNorm { norm: url_normalization_string(&url) };
+                let norm_str = StoryUrlNorm {
+                    norm: url_normalization_string(&url),
+                };
                 let url = url.into();
                 return Some(Self {
                     url,
@@ -74,16 +87,18 @@ pub struct StoryUrlNorm {
 
 impl Serialize for StoryUrlNorm {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: serde::Serializer {
+    where
+        S: serde::Serializer,
+    {
         self.norm.serialize(serializer)
     }
 }
 
-impl <'de> Deserialize<'de> for StoryUrlNorm {
+impl<'de> Deserialize<'de> for StoryUrlNorm {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-        where
-            D: serde::Deserializer<'de> {
+    where
+        D: serde::Deserializer<'de>,
+    {
         let res: Result<String, _> = Deserialize::deserialize(deserializer);
         res.map(|norm| StoryUrlNorm { norm })
     }
