@@ -1,12 +1,10 @@
-use std::{collections::HashMap};
+use std::collections::HashMap;
 
 use itertools::Itertools;
 use url::Url;
 
 use crate::{
-    datasci::urlnormalizer::url_normalization_string,
-    scrapers::{ScrapeData},
-    story::StoryDate,
+    datasci::urlnormalizer::url_normalization_string, scrapers::ScrapeData, story::StoryDate,
 };
 
 use super::*;

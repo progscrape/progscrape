@@ -3,7 +3,7 @@ use itertools::Itertools;
 use sha2::Digest;
 use std::{
     collections::HashMap,
-    fs::{File},
+    fs::File,
     io::{BufReader, Read},
     path::Path,
 };

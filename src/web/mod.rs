@@ -3,11 +3,12 @@ use std::{collections::HashMap, net::SocketAddr};
 use axum::{
     extract::{Path, Query, State},
     response::{Html, IntoResponse, Response},
-    routing::{get}, Router,
+    routing::get,
+    Router,
 };
 use hyper::{HeaderMap, StatusCode};
 use serde::{Deserialize, Serialize};
-use tera::{Context};
+use tera::Context;
 use thiserror::Error;
 
 use crate::{

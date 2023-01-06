@@ -9,6 +9,8 @@ use std::{
     time::SystemTime,
 };
 
+/// Story-specific date that wraps all of the operations we're interested in. This is a thin wrapper on top
+/// of `DateTime<Utc>` and other `chrono` utilities for now.
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct StoryDate {
     internal_date: DateTime<Utc>,

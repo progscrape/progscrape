@@ -4,18 +4,16 @@ use tantivy::collector::TopDocs;
 use tantivy::query::{BooleanQuery, Occur, Query, RangeQuery, TermQuery};
 use tantivy::{doc, Index};
 use tantivy::{
-    schema::*, Directory, DocAddress, IndexSettings, IndexSortByField, IndexWriter,
-    Searcher,
+    schema::*, Directory, DocAddress, IndexSettings, IndexSortByField, IndexWriter, Searcher,
 };
 
-
-use crate::scrapers::{Scrape};
+use crate::scrapers::Scrape;
 use crate::story::StoryDate;
 
 use std::collections::{HashMap, HashSet};
-use std::hash::{Hash};
-use std::ops::{RangeBounds};
-use std::time::{Duration};
+use std::hash::Hash;
+use std::ops::RangeBounds;
+use std::time::Duration;
 
 use super::*;
 
