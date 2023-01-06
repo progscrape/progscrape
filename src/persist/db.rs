@@ -1,6 +1,6 @@
 use super::*;
 use rusqlite::ToSql;
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Serialize};
 
 struct DB {
     connection: rusqlite::Connection,

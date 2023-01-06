@@ -1,15 +1,13 @@
-use std::{collections::HashMap, net::SocketAddr, sync::Arc};
+use std::{collections::HashMap, net::SocketAddr};
 
 use axum::{
-    body::Bytes,
     extract::{Path, Query, State},
     response::{Html, IntoResponse, Response},
-    routing::{get, post},
-    Json, Router,
+    routing::{get}, Router,
 };
-use hyper::{header, HeaderMap, StatusCode};
+use hyper::{HeaderMap, StatusCode};
 use serde::{Deserialize, Serialize};
-use tera::{Context, Tera};
+use tera::{Context};
 use thiserror::Error;
 
 use crate::{

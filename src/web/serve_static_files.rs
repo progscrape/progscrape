@@ -6,7 +6,7 @@ use axum::{
     body::Bytes,
     http::HeaderValue,
     response::IntoResponse,
-    {self, extract::Path, extract::State},
+    {self},
 };
 use hyper::{header::*, HeaderMap, StatusCode};
 

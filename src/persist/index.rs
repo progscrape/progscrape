@@ -1,21 +1,21 @@
 use itertools::Itertools;
 use tantivy::collector::TopDocs;
-use tantivy::directory::MmapDirectory;
-use tantivy::query::{BooleanQuery, Occur, Query, QueryParser, RangeQuery, TermQuery};
-use tantivy::{doc, DocId, Index, Score, SegmentReader};
+
+use tantivy::query::{BooleanQuery, Occur, Query, RangeQuery, TermQuery};
+use tantivy::{doc, Index};
 use tantivy::{
-    schema::*, Directory, DocAddress, IndexReader, IndexSettings, IndexSortByField, IndexWriter,
+    schema::*, Directory, DocAddress, IndexSettings, IndexSortByField, IndexWriter,
     Searcher,
 };
-use url::Url;
 
-use crate::scrapers::{Scrape, ScrapeSource};
+
+use crate::scrapers::{Scrape};
 use crate::story::StoryDate;
-use std::collections::hash_map::{DefaultHasher, Entry, OccupiedEntry};
+
 use std::collections::{HashMap, HashSet};
-use std::hash::{Hash, Hasher};
-use std::ops::{Range, RangeBounds};
-use std::time::{Duration, Instant, SystemTime};
+use std::hash::{Hash};
+use std::ops::{RangeBounds};
+use std::time::{Duration};
 
 use super::*;
 
@@ -100,7 +100,7 @@ impl StoryIndexShard {
 
     fn create_norm_query(
         &self,
-        url_norm: &str,
+        _url_norm: &str,
         url_norm_hash: i64,
         date: StoryDate,
     ) -> Result<impl Query, PersistError> {
@@ -214,7 +214,7 @@ impl StoryIndex {
             let index = self.index_cache.get_mut(&shard).expect("Shard was missing");
             let mut writer = index.index.writer(MEMORY_ARENA_SIZE)?;
             let searcher = index.index.reader()?.searcher();
-            let iter = stories.into_iter().enumerate().map(|(i, story)| {
+            let iter = stories.into_iter().enumerate().map(|(_i, story)| {
                 (
                     StoryLookupId {
                         url_norm_hash: story.normalized_url_hash(),
@@ -230,15 +230,15 @@ impl StoryIndex {
             for result in result {
                 match result {
                     StoryLookup::Found(a, b) => {
-                        let story = stories.get(&a).expect("Didn't find a story we should have");
-                        let url = searcher
+                        let _story = stories.get(&a).expect("Didn't find a story we should have");
+                        let _url = searcher
                             .doc(b)?
                             .get_first(index.url_field)
                             .unwrap()
                             .as_text()
                             .unwrap_or_default()
                             .to_owned();
-                        let title = searcher
+                        let _title = searcher
                             .doc(b)?
                             .get_first(index.title_field)
                             .unwrap()
@@ -310,11 +310,11 @@ impl Storage for StoryIndex {
         Ok(summary)
     }
 
-    fn stories_by_shard(&self, shard: &str) -> Result<Vec<Story>, PersistError> {
+    fn stories_by_shard(&self, _shard: &str) -> Result<Vec<Story>, PersistError> {
         unimplemented!()
     }
 
-    fn query_frontpage(&self, max_count: usize) -> Result<Vec<Story>, PersistError> {
+    fn query_frontpage(&self, _max_count: usize) -> Result<Vec<Story>, PersistError> {
         unimplemented!()
     }
 
@@ -332,7 +332,7 @@ impl Storage for StoryIndex {
                 );
                 let docs = searcher.search(&query, &TopDocs::with_limit(max_count))?;
                 for doc in docs {
-                    let doc = searcher.doc(doc.1)?;
+                    let _doc = searcher.doc(doc.1)?;
                     // println!("{}", doc.get_first(index.title_field).and_then(|x| x.as_text()).unwrap_or_default());
                 }
             }
@@ -416,8 +416,8 @@ mod test {
             .fold(StoryDate::MAX, |a, b| std::cmp::min(a, b.date()));
         // let stories = crate::scrapers::test::scrape_all();
         // let dir = MmapDirectory::open("/tmp/index").expect("Failed to get mmap dir");
-        let dir = RamDirectory::create();
-        let mut index = StoryIndex::initialize(start_date, |n| RamDirectory::create())
+        let _dir = RamDirectory::create();
+        let mut index = StoryIndex::initialize(start_date, |_n| RamDirectory::create())
             .expect("Failed to initialize index");
         index
             .insert_scrapes(stories.into_iter())

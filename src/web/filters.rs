@@ -12,7 +12,7 @@ impl tera::Filter for CommaFilter {
     fn filter(
         &self,
         value: &Value,
-        args: &std::collections::HashMap<String, Value>,
+        _args: &std::collections::HashMap<String, Value>,
     ) -> tera::Result<Value> {
         Ok(value
             .as_i64()
@@ -39,7 +39,7 @@ impl tera::Filter for StaticFileFilter {
     fn filter(
         &self,
         value: &Value,
-        args: &std::collections::HashMap<String, Value>,
+        _args: &std::collections::HashMap<String, Value>,
     ) -> tera::Result<Value> {
         let key = value.as_str().unwrap_or_else(|| {
             tracing::warn!("Invalid input to static filter");

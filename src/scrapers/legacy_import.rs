@@ -7,7 +7,7 @@ use flate2::bufread::GzDecoder;
 use serde_json::Value;
 use url::Url;
 
-use super::{hacker_news::HackerNewsStory, lobsters::LobstersStory, Scrape, ScrapeData, Scraper};
+use super::{hacker_news::HackerNewsStory, lobsters::LobstersStory, Scrape, ScrapeData};
 use crate::scrapers::reddit_json::RedditStory;
 use crate::scrapers::unescape_entities;
 use crate::story::StoryDate;
@@ -52,7 +52,7 @@ fn import_legacy_1() -> Result<impl Iterator<Item = Scrape>, LegacyError> {
                 .to_owned();
             tracing::info!("Fixed up: {}", url);
         }
-        if let Err(e) = Url::parse(&url) {
+        if let Err(_e) = Url::parse(&url) {
             tracing::error!("Bad URL: {}", url);
             continue;
         }
@@ -126,7 +126,7 @@ fn import_legacy_2() -> Result<impl Iterator<Item = Scrape>, LegacyError> {
                 .to_owned();
             tracing::info!("Fixed up: {}", url);
         }
-        if let Err(e) = Url::parse(&url) {
+        if let Err(_e) = Url::parse(&url) {
             tracing::error!("Bad URL: {}", url);
             continue;
         }

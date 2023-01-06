@@ -158,7 +158,7 @@ mod test {
     #[test]
     fn perf_test_normalization() {
         let url = Url::parse("http://content.usatoday.com/communities/sciencefair/post/2011/07/invasion-of-the-viking-women-unearthed/1?csp=34tech&utm_source=feedburner&utm_medium=feed&utm_campaign=Feed:+usatoday-TechTopStories+%28Tech+-+Top+Stories%29&siteID=je6NUbpObpQ-K0N7ZWh0LJjcLzI4zsnGxg#.VAcNjWOna51").expect("Failed to parse this URL");
-        for i in (0..10000) {
+        for _i in 0..10000 {
             url_normalization_string(&url);
         }
     }

@@ -4,7 +4,7 @@ use std::{
     sync::Arc,
 };
 
-use crate::persist::{MemIndex, Storage, StorageWriter, StoryIndex};
+use crate::persist::{MemIndex, Storage, StorageWriter};
 
 use super::WebError;
 

@@ -1,5 +1,5 @@
 use crate::story::StoryDate;
-use serde::{de::Visitor, Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 pub mod hacker_news;

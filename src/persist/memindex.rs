@@ -1,11 +1,11 @@
-use std::{collections::HashMap, ops::RangeInclusive};
+use std::{collections::HashMap};
 
 use itertools::Itertools;
 use url::Url;
 
 use crate::{
     datasci::urlnormalizer::url_normalization_string,
-    scrapers::{ScrapeData, ScrapeId},
+    scrapers::{ScrapeData},
     story::StoryDate,
 };
 
@@ -58,7 +58,7 @@ pub struct MemIndex {
 impl MemIndex {
     pub fn get_all_stories(&self) -> impl DoubleEndedIterator<Item = Story> {
         let mut out = vec![];
-        for (month, stories) in self.stories.iter().sorted_by_cached_key(|f| f.0) {
+        for (_month, stories) in self.stories.iter().sorted_by_cached_key(|f| f.0) {
             for story in stories {
                 out.push(story.1.clone());
             }
@@ -87,7 +87,7 @@ impl StorageWriter for MemIndex {
             }
 
             // Not found!
-            if let Some(old) = self
+            if let Some(_old) = self
                 .stories
                 .entry(date)
                 .or_default()
@@ -131,7 +131,7 @@ impl Storage for MemIndex {
         Ok(rev.take(max_count).collect())
     }
 
-    fn query_search(&self, search: String, max_count: usize) -> Result<Vec<Story>, PersistError> {
+    fn query_search(&self, _search: String, _max_count: usize) -> Result<Vec<Story>, PersistError> {
         unimplemented!()
     }
 }

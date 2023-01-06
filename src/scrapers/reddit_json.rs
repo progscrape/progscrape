@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use super::{unescape_entities, Scrape, ScrapeData, ScrapeError, ScrapeSource, Scraper};
+use super::{unescape_entities, ScrapeData, ScrapeError, ScrapeSource, Scraper};
 use crate::story::StoryDate;
 
 #[derive(Default)]
@@ -156,7 +156,7 @@ impl RedditScraper {
 impl Scraper<RedditArgs, RedditStory> for RedditScraper {
     fn scrape(
         &self,
-        args: RedditArgs,
+        _args: RedditArgs,
         input: String,
     ) -> Result<(Vec<RedditStory>, Vec<String>), ScrapeError> {
         let value: Value = serde_json::from_str(&input)?;

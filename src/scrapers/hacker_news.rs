@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::{borrow::Borrow, collections::HashMap};
 use tl::{HTMLTag, NodeHandle, Parser, ParserOptions};
 
-use super::{unescape_entities, Scrape, ScrapeData, ScrapeError, ScrapeSource, Scraper};
+use super::{unescape_entities, ScrapeData, ScrapeError, ScrapeSource, Scraper};
 use crate::story::StoryDate;
 
 #[derive(Debug, Default)]
@@ -66,7 +66,7 @@ fn find_first<'a>(
 }
 
 fn get_attribute<'a>(
-    p: &'a Parser<'a>,
+    _p: &'a Parser<'a>,
     parent: &'a HTMLTag,
     attribute: &'static str,
 ) -> Option<String> {
@@ -165,7 +165,7 @@ impl HackerNewsScraper {
 impl Scraper<HackerNewsArgs, HackerNewsStory> for HackerNewsScraper {
     fn scrape(
         &self,
-        args: HackerNewsArgs,
+        _args: HackerNewsArgs,
         input: String,
     ) -> Result<(Vec<HackerNewsStory>, Vec<String>), ScrapeError> {
         let dom = tl::parse(&input, ParserOptions::default())?;

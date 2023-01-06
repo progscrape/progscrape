@@ -2,7 +2,7 @@ use chrono::{DateTime, Datelike, Months, NaiveDateTime, TimeZone, Utc};
 use serde::{Deserialize, Serialize};
 use url::Url;
 
-use crate::scrapers::{Scrape, ScrapeData, ScrapeId, ScrapeSource};
+use crate::scrapers::{Scrape, ScrapeData, ScrapeId};
 use std::{
     collections::{hash_map::DefaultHasher, HashMap},
     hash::{Hash, Hasher},
