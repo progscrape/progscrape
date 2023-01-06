@@ -55,9 +55,10 @@ fn import_legacy_1() -> Result<impl Iterator<Item = Scrape>, LegacyError> {
                 .to_owned();
                 tracing::info!("Fixed up: {}", url);
             }
-        if url.contains(" ") {
+        if url.ends_with(" /") {
+            let old = url.clone();
             url = url.replace(" ", "");
-            tracing::info!("Fixed up (removed spaces): {}", url);
+            tracing::info!("Fixed up (removed spaces): {}->{}", old, url);
         }
         let url = StoryUrl::parse(&url).ok_or(LegacyError::InvalidField("url", Some(url)))?;
         let id = root["redditProgId"].as_str().unwrap_or("None").to_owned();

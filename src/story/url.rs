@@ -6,11 +6,29 @@ use url::Url;
 use crate::datasci::urlnormalizer::url_normalization_string;
 
 /// Story-specific URL that caches the normalization information and other important parts of the URL.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct StoryUrl {
     url: String,
     host: String,
     norm_str: StoryUrlNorm,
+}
+
+impl Serialize for StoryUrl {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: serde::Serializer {
+        let tuple: (&String, &String, &String) = (&self.url, &self.host, &self.norm_str.norm);
+        tuple.serialize(serializer)
+    }
+}
+
+impl <'de> Deserialize<'de> for StoryUrl {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+        where
+            D: serde::Deserializer<'de> {
+        let res: Result<(String, String, String), D::Error> = Deserialize::deserialize(deserializer);
+        res.map(|(url, host, norm)| StoryUrl { url, host, norm_str: StoryUrlNorm { norm } })
+    }
 }
 
 impl Display for StoryUrl {
@@ -49,9 +67,26 @@ impl StoryUrl {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct StoryUrlNorm {
     norm: String,
+}
+
+impl Serialize for StoryUrlNorm {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: serde::Serializer {
+        self.norm.serialize(serializer)
+    }
+}
+
+impl <'de> Deserialize<'de> for StoryUrlNorm {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+        where
+            D: serde::Deserializer<'de> {
+        let res: Result<String, _> = Deserialize::deserialize(deserializer);
+        res.map(|norm| StoryUrlNorm { norm })
+    }
 }
 
 impl StoryUrlNorm {
