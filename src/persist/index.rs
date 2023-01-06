@@ -104,10 +104,7 @@ impl StoryIndexShard {
         url_norm_hash: i64,
         date: StoryDate,
     ) -> Result<impl Query, PersistError> {
-        if let (Some(start), Some(end)) = (
-            date.checked_sub_months(1),
-            date.checked_add_months(1),
-        ) {
+        if let (Some(start), Some(end)) = (date.checked_sub_months(1), date.checked_add_months(1)) {
             let url_query = Box::new(TermQuery::new(
                 Term::from_field_i64(self.url_norm_hash_field, url_norm_hash),
                 IndexRecordOption::Basic,
@@ -143,7 +140,7 @@ impl StoryIndexShard {
                     for i in 0..segment_reader.num_docs() {
                         if index.get_val(i) == story.url_norm_hash {
                             let date = date.get_val(i) - story.date;
-                            if date_range.contains(&date) {
+                            if !date_range.contains(&date) {
                                 return true;
                             }
                             result.push(StoryLookup::Found(
@@ -380,57 +377,33 @@ mod test {
         let shard = populate_shard(ids1.chain(ids2)).expect("Failed to initialize shard");
         let reader = shard.index.reader().expect("Failed to get reader");
         let searcher = reader.searcher();
-        let count_found = |vec: Vec<StoryLookup>| vec
-        .iter()
-        .filter(|x| matches!(x, StoryLookup::Found(..)))
-        .collect::<Vec<_>>()
-        .len();
-
+        let count_found = |vec: Vec<StoryLookup>| {
+            vec.iter()
+                .filter(|x| matches!(x, StoryLookup::Found(..)))
+                .collect::<Vec<_>>()
+                .len()
+        };
+        macro_rules! test_range {
+            ($date:expr, $slop:expr, $expected:expr) => {
+                let lookup = (95..110)
+                    .into_iter()
+                    .map(|n| StoryLookupId {
+                        url_norm_hash: n,
+                        date: $date,
+                    })
+                    .collect();
+                let result = shard
+                    .lookup_stories(&searcher, lookup, $slop)
+                    .expect("Failed to look up");
+                assert_eq!($expected, count_found(result));
+            };
+        }
         // No slop on date, date = 0, we only get 95..100
-        let lookup = (95..110)
-            .into_iter()
-            .map(|n| StoryLookupId {
-                url_norm_hash: n,
-                date: 0,
-            })
-            .collect();
-        let result = shard
-            .lookup_stories(&searcher, lookup, 0..=0)
-            .expect("Failed to look up");
-        assert_eq!(
-            5,
-            count_found(result)
-        );
+        test_range!(0, 0..=0, 5);
         // No slop on date, date = 10, we only get 100-110
-        let lookup = (95..110)
-            .into_iter()
-            .map(|n| StoryLookupId {
-                url_norm_hash: n,
-                date: 10,
-            })
-            .collect();
-        let result = shard
-            .lookup_stories(&searcher, lookup, 0..=0)
-            .expect("Failed to look up");
-        assert_eq!(
-            10,
-            count_found(result)
-        );
+        test_range!(10, 0..=0, 10);
         // 0..+10 slop on date, date = 0, we get everything
-        let lookup = (95..110)
-            .into_iter()
-            .map(|n| StoryLookupId {
-                url_norm_hash: n,
-                date: 0,
-            })
-            .collect();
-        let result = shard
-            .lookup_stories(&searcher, lookup, 0..=10)
-            .expect("Failed to look up");
-        assert_eq!(
-            15,
-            count_found(result)
-        );
+        test_range!(0, 0..=10, 15);
     }
 
     #[test]
