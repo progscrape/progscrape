@@ -49,6 +49,10 @@ impl ScrapeId {
     pub fn new(source: ScrapeSource, id: String) -> Self {
         Self { source, id }
     }
+
+    pub fn as_str(&self) -> String {
+        format!("{}-{}", self.source.as_str(), self.id)
+    }
 }
 
 pub trait ScrapeData {
@@ -76,7 +80,7 @@ pub trait ScrapeDataInit<T: ScrapeData> {
     fn initialize_required(id: String, title: String, url: StoryUrl, date: StoryDate) -> T;
 }
 
-#[derive(Clone, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum Scrape {
     HackerNews(hacker_news::HackerNewsStory),
     Reddit(reddit_json::RedditStory),

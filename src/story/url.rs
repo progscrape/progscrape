@@ -105,6 +105,11 @@ impl<'de> Deserialize<'de> for StoryUrlNorm {
 }
 
 impl StoryUrlNorm {
+    /// Re-create a story norm, if you know what you're doing.
+    pub fn from_string(norm: String) -> Self {
+        Self { norm }
+    }
+
     pub fn hash(&self) -> i64 {
         let mut hasher = DefaultHasher::new();
         self.norm.hash(&mut hasher);

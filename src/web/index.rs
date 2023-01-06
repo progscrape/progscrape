@@ -4,7 +4,10 @@ use std::{
     sync::Arc,
 };
 
-use crate::{persist::{MemIndex, Storage, StorageWriter}, scrapers::ScrapeData};
+use crate::{
+    persist::{MemIndex, Storage, StorageWriter},
+    scrapers::ScrapeData,
+};
 
 use super::WebError;
 

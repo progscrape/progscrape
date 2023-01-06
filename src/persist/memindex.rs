@@ -20,20 +20,21 @@ impl ToString for YearMonth {
 
 impl YearMonth {
     fn from_year_month(year: u16, month: u8) -> Self {
-        YearMonth(year * 12 + month as u16)
+        assert!(month > 0);
+        YearMonth(year * 12 + month as u16 - 1)
     }
 
     fn from_string(s: &str) -> Option<Self> {
         if let Some((a, b)) = s.split_once('-') {
             if let (Ok(a), Ok(b)) = (str::parse(a), str::parse(b)) {
-                return Some(Self::from_year_month(a, u8::saturating_sub(b, 1)));
+                return Some(Self::from_year_month(a, b));
             }
         }
         return None;
     }
 
     fn from_date_time(date: StoryDate) -> Self {
-        Self::from_year_month(date.year() as u16, date.month0() as u8)
+        Self::from_year_month(date.year() as u16, date.month() as u8)
     }
 
     fn plus_months(&self, months: i8) -> Self {
@@ -56,9 +57,10 @@ pub struct MemIndex {
 impl MemIndex {
     pub fn get_all_stories(&self) -> impl DoubleEndedIterator<Item = Story> {
         let mut out = vec![];
-        for (_month, stories) in self.stories.iter().sorted_by_cached_key(|f| f.0) {
+        for (shard, stories) in self.stories.iter().sorted_by_cached_key(|f| f.0) {
             for story in stories {
                 out.push(story.1.clone());
+                assert_eq!(*shard, YearMonth::from_date_time(story.1.date()));
             }
         }
         out.sort_by_cached_key(|x| x.date());
@@ -72,6 +74,17 @@ impl MemIndex {
     fn map(&self, shard: YearMonth) -> Option<&HashMap<StoryUrlNorm, Story>> {
         self.stories.get(&shard)
     }
+
+    #[cfg(test)]
+    fn ensure_consistency(&self) {
+        for (shard, stories) in &self.stories {
+            for (norm, story) in stories {
+                assert_eq!(YearMonth::from_date_time(story.date()), *shard);
+                assert!(story.id.matches_date(story.date()));
+                self.get_story(&story.id).expect(&format!("Expected to find a story by its ID ({:?}), shard {}, norm '{:?}'", &story.id, shard.to_string(), norm));
+            }
+        }
+    }
 }
 
 impl StorageWriter for MemIndex {
@@ -84,10 +97,12 @@ impl StorageWriter for MemIndex {
             let url = scrape.url();
             let normalized_url = url.normalization();
             // Try to pin it to an existing item
-            for n in -2..2 {
+            for n in -2..=2 {
                 let map0 = self.map_mut(date.plus_months(n));
-                if let Some(map1) = map0.get_mut(normalized_url) {
-                    map1.merge(scrape);
+                if let Some(mut story) = map0.remove(normalized_url) {
+                    // Merge and then re-insert the story in the correct shard
+                    story.merge(scrape);
+                    self.map_mut(YearMonth::from_date_time(story.date())).insert(normalized_url.clone(), story);
                     continue 'outer;
                 }
             }
@@ -118,6 +133,16 @@ impl Storage for MemIndex {
         Ok(summary)
     }
 
+    fn get_story(&self, id: &StoryIdentifier) -> Option<Story> {
+        let shard = YearMonth::from_year_month(id.year(), id.month());
+        if let Some(map) = self.map(shard) {
+            map.get(&id.norm).map(Story::clone)
+        } else {
+            tracing::warn!("Shard {:?} not found for story {:?}", shard, id);
+            None
+        }
+    }
+
     fn stories_by_shard(&self, shard: &str) -> Result<Vec<Story>, PersistError> {
         if let Some(shard) = YearMonth::from_string(shard) {
             if let Some(map) = self.map(shard) {
@@ -146,11 +171,13 @@ mod test {
 
     #[test]
     fn test_year_month() {
-        let date = YearMonth::from_year_month(2000, 11);
-        assert_eq!(YearMonth::from_year_month(2001, 0), date.plus_months(1));
-        assert_eq!(YearMonth::from_year_month(2001, 11), date.plus_months(12));
-        assert_eq!(YearMonth::from_year_month(1999, 11), date.sub_months(12));
-        assert_eq!(YearMonth::from_year_month(2000, 0), date.sub_months(11));
+        let date = YearMonth::from_year_month(2000, 12);
+        assert_eq!(YearMonth::from_year_month(2001, 1), date.plus_months(1));
+        assert_eq!(YearMonth::from_year_month(2001, 12), date.plus_months(12));
+        assert_eq!(YearMonth::from_year_month(1999, 12), date.sub_months(12));
+        assert_eq!(YearMonth::from_year_month(2000, 1), date.sub_months(11));
+
+        assert_eq!(date, YearMonth::from_string(&date.to_string()).expect("Failed to parse"));
     }
 
     #[test]
@@ -161,5 +188,6 @@ mod test {
         index
             .insert_scrapes(stories.into_iter())
             .expect("Failed to insert scrapes");
+        index.ensure_consistency();
     }
 }

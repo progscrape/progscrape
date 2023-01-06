@@ -308,6 +308,10 @@ impl Storage for StoryIndex {
         Ok(summary)
     }
 
+    fn get_story(&self, id: &StoryIdentifier) -> Option<Story> {
+        unimplemented!()
+    }
+
     fn stories_by_shard(&self, _shard: &str) -> Result<Vec<Story>, PersistError> {
         unimplemented!()
     }

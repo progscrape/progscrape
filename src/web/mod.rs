@@ -13,7 +13,7 @@ use thiserror::Error;
 
 use crate::{
     persist::StorageSummary,
-    story::{Story, StoryRender},
+    story::{Story, StoryIdentifier, StoryRender},
 };
 
 use self::generate::GeneratedSource;
@@ -42,6 +42,8 @@ pub enum WebError {
     NotifyError(#[from] notify::Error),
     #[error("CBOR error")]
     CBORError(#[from] serde_cbor::Error),
+    #[error("Item not found")]
+    NotFound,
 }
 
 impl IntoResponse for WebError {
@@ -63,9 +65,11 @@ pub async fn start_server() -> Result<(), WebError> {
         .with_state((global.clone(), generated.clone()))
         .route("/static/:file", get(serve_static_files_immutable))
         .with_state(generated.clone())
-        .route("/admin/status", get(status))
+        .route("/admin/status/", get(status))
         .with_state((global.clone(), generated.clone()))
-        .route("/admin/status/:shard", get(status_shard))
+        .route("/admin/status/:shard/", get(status_shard))
+        .with_state((global.clone(), generated.clone()))
+        .route("/admin/status/:shard/:story/", get(status_story))
         .with_state((global.clone(), generated.clone()))
         .route(
             "/:file",
@@ -178,7 +182,6 @@ async fn status_shard(
         stories: Vec<StoryRender>,
     }
     let sort = StorySort::from_key(&sort.get("sort").map(|x| x.clone()).unwrap_or_default());
-    tracing::info!("{:?}", sort);
     let context = Context::from_serialize(&ShardStatus {
         shard: shard.clone(),
         stories: render_stories(state.storage.stories_by_shard(&shard)?.into_iter(), sort),
@@ -186,6 +189,24 @@ async fn status_shard(
     Ok(generated
         .templates()
         .render("admin_shard.html", &context)?
+        .into())
+}
+
+async fn status_story(
+    State((state, generated)): State<(index::Global, GeneratedSource)>,
+    Path((_shard, id)): Path<(String, String)>,
+) -> Result<Html<String>, WebError> {
+    #[derive(Serialize)]
+    struct StoryStatus {
+        story: StoryRender,
+    }
+    let id = StoryIdentifier::from_base64(id).ok_or(WebError::NotFound)?;
+    tracing::info!("Loading story = {:?}", id);
+    let story = state.storage.get_story(&id).ok_or(WebError::NotFound)?.render();
+    let context = Context::from_serialize(&StoryStatus { story })?;
+    Ok(generated
+        .templates()
+        .render("admin_story.html", &context)?
         .into())
 }
 

@@ -1,5 +1,5 @@
-use crate::scrapers::Scrape;
 use crate::story::Story;
+use crate::{scrapers::Scrape, story::StoryIdentifier};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -34,6 +34,9 @@ pub struct StorageSummary {
 pub trait Storage: Send + Sync {
     /// Count the docs in this index, breaking it out by index segment.
     fn story_count(&self) -> Result<StorageSummary, PersistError>;
+
+    /// Retrieves a single, unique story from the index.
+    fn get_story(&self, id: &StoryIdentifier) -> Option<Story>;
 
     /// Retrieves all stories in a shard.
     fn stories_by_shard(&self, shard: &str) -> Result<Vec<Story>, PersistError>;
