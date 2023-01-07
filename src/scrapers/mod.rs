@@ -78,6 +78,7 @@ pub trait ScrapeData {
 /// Core partial initialization method.
 pub trait ScrapeDataInit<T: ScrapeData> {
     fn initialize_required(id: String, title: String, url: StoryUrl, date: StoryDate) -> T;
+    fn merge(&mut self, other: T);
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]

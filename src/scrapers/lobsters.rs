@@ -53,4 +53,12 @@ impl ScrapeDataInit<LobstersStory> for LobstersStory {
             score: Default::default(),
         }
     }
+
+    fn merge(&mut self, other: LobstersStory) {
+        self.title = other.title;
+        self.url = other.url;
+        self.date = std::cmp::min(self.date, other.date);
+        self.score = std::cmp::max(self.score, other.score);
+        self.num_comments = std::cmp::max(self.num_comments, other.num_comments);
+    }
 }

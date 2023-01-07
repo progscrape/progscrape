@@ -60,6 +60,14 @@ impl ScrapeDataInit<HackerNewsStory> for HackerNewsStory {
             comments: Default::default(),
         }
     }
+
+    fn merge(&mut self, other: HackerNewsStory) {
+        self.title = other.title;
+        self.url = other.url;
+        self.date = std::cmp::min(self.date, other.date);
+        self.points = std::cmp::max(self.points, other.points);
+        self.comments = std::cmp::max(self.comments, other.comments);
+    }
 }
 
 #[derive(Default)]

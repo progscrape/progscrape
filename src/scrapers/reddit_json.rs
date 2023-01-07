@@ -74,6 +74,19 @@ impl ScrapeDataInit<RedditStory> for RedditStory {
             upvote_ratio: Default::default(),
         }
     }
+
+    fn merge(&mut self, other: RedditStory) {
+        self.title = other.title;
+        self.url = other.url;
+        self.date = std::cmp::min(self.date, other.date);
+        self.flair = other.flair;
+        self.position = std::cmp::max(self.position, other.position);
+        self.upvotes = std::cmp::max(self.upvotes, other.upvotes);
+        self.downvotes = std::cmp::max(self.downvotes, other.downvotes);
+        self.num_comments = std::cmp::max(self.num_comments, other.num_comments);
+        self.score = std::cmp::max(self.score, other.score);
+        self.upvote_ratio = f32::max(self.upvote_ratio, other.upvote_ratio);
+    }
 }
 
 impl RedditScraper {

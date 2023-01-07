@@ -81,7 +81,12 @@ impl MemIndex {
             for (norm, story) in stories {
                 assert_eq!(YearMonth::from_date_time(story.date()), *shard);
                 assert!(story.id.matches_date(story.date()));
-                self.get_story(&story.id).expect(&format!("Expected to find a story by its ID ({:?}), shard {}, norm '{:?}'", &story.id, shard.to_string(), norm));
+                self.get_story(&story.id).expect(&format!(
+                    "Expected to find a story by its ID ({:?}), shard {}, norm '{:?}'",
+                    &story.id,
+                    shard.to_string(),
+                    norm
+                ));
             }
         }
     }
@@ -102,7 +107,8 @@ impl StorageWriter for MemIndex {
                 if let Some(mut story) = map0.remove(normalized_url) {
                     // Merge and then re-insert the story in the correct shard
                     story.merge(scrape);
-                    self.map_mut(YearMonth::from_date_time(story.date())).insert(normalized_url.clone(), story);
+                    self.map_mut(YearMonth::from_date_time(story.date()))
+                        .insert(normalized_url.clone(), story);
                     continue 'outer;
                 }
             }
@@ -178,7 +184,10 @@ mod test {
         assert_eq!(YearMonth::from_year_month(1999, 12), date.sub_months(12));
         assert_eq!(YearMonth::from_year_month(2000, 1), date.sub_months(11));
 
-        assert_eq!(date, YearMonth::from_string(&date.to_string()).expect("Failed to parse"));
+        assert_eq!(
+            date,
+            YearMonth::from_string(&date.to_string()).expect("Failed to parse")
+        );
     }
 
     #[test]

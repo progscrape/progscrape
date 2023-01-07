@@ -4,8 +4,11 @@ use base64::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::scrapers::{Scrape, ScrapeData, ScrapeId};
-use std::{collections::HashMap, fmt::Display};
+use crate::scrapers::{Scrape, ScrapeData, ScrapeDataInit, ScrapeId};
+use std::{
+    collections::{hash_map::Entry, HashMap},
+    fmt::Display,
+};
 
 mod date;
 mod url;
@@ -123,12 +126,34 @@ impl Story {
     }
 
     pub fn merge(&mut self, scrape: Scrape) {
-        // This logic can be improved when try_insert is stabilized
-        // TODO: We need to merge duplicate scrapes
-        let id = ScrapeId::new(scrape.source(), scrape.id());
-        self.scrapes.insert(id, scrape);
+        let scrape_id = ScrapeId::new(scrape.source(), scrape.id());
+        match self.scrapes.entry(scrape_id) {
+            Entry::Occupied(mut x) => {
+                Self::merge_scrape(&mut x.get_mut(), scrape);
+            }
+            Entry::Vacant(x) => {
+                x.insert(scrape);
+            }
+        }
         // The ID may change if the date changes
         self.id.update_date(self.date());
+    }
+
+    fn merge_scrape(a: &mut Scrape, b: Scrape) {
+        use Scrape::*;
+
+        match (a, b) {
+            (HackerNews(a), HackerNews(b)) => a.merge(b),
+            (Reddit(a), Reddit(b)) => a.merge(b),
+            (Lobsters(a), Lobsters(b)) => a.merge(b),
+            (a, b) => {
+                tracing::warn!(
+                    "Unable to merge incompatible scrapes {:?} and {:?}, ignoring",
+                    a.source(),
+                    b.source()
+                );
+            }
+        }
     }
 
     pub fn title(&self) -> String {
@@ -151,7 +176,9 @@ impl Story {
     pub fn date(&self) -> StoryDate {
         self.scrapes
             .values()
-            .map(|s| s.date()).min().unwrap_or_default()
+            .map(|s| s.date())
+            .min()
+            .unwrap_or_default()
     }
 
     pub fn render(&self) -> StoryRender {
@@ -171,13 +198,16 @@ impl Story {
 
 #[cfg(test)]
 mod test {
-    use super::{StoryIdentifier, StoryDate, StoryUrl};
+    use super::{StoryDate, StoryIdentifier, StoryUrl};
 
     #[test]
     fn test_story_identifier() {
         let url = StoryUrl::parse("https://google.com/?q=foo").expect("Failed to parse URL");
         let id = StoryIdentifier::new(StoryDate::now(), url.normalization());
         let base64 = id.to_base64();
-        assert_eq!(id, StoryIdentifier::from_base64(base64).expect("Failed to decode ID"));
+        assert_eq!(
+            id,
+            StoryIdentifier::from_base64(base64).expect("Failed to decode ID")
+        );
     }
 }

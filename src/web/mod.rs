@@ -202,7 +202,11 @@ async fn status_story(
     }
     let id = StoryIdentifier::from_base64(id).ok_or(WebError::NotFound)?;
     tracing::info!("Loading story = {:?}", id);
-    let story = state.storage.get_story(&id).ok_or(WebError::NotFound)?.render();
+    let story = state
+        .storage
+        .get_story(&id)
+        .ok_or(WebError::NotFound)?
+        .render();
     let context = Context::from_serialize(&StoryStatus { story })?;
     Ok(generated
         .templates()
