@@ -25,6 +25,7 @@ pub enum ScrapeSource {
     Reddit(String),
     Lobsters,
     Slashdot,
+    Other,
 }
 
 impl ScrapeSource {
@@ -34,6 +35,7 @@ impl ScrapeSource {
             Self::Reddit(s) => format!("reddit-{}", s),
             Self::Lobsters => "lobsters".to_owned(),
             Self::Slashdot => "slashdot".to_owned(),
+            Self::Other => "other".to_owned(),
         }
     }
 }

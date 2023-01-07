@@ -4,7 +4,7 @@ use base64::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::scrapers::{Scrape, ScrapeData, ScrapeDataInit, ScrapeId};
+use crate::scrapers::{Scrape, ScrapeData, ScrapeDataInit, ScrapeId, ScrapeSource};
 use std::{
     collections::{hash_map::Entry, HashMap},
     fmt::Display,
@@ -157,11 +157,36 @@ impl Story {
     }
 
     pub fn title(&self) -> String {
-        self.scrapes
-            .values()
-            .next()
-            .expect("Expected at least one")
-            .title()
+        self.title_choice().1
+    }
+
+    /// Choose a title based on source priority, with preference for shorter titles if the priority is the same.
+    fn title_choice(&self) -> (ScrapeSource, String) {
+        let title_score = |source: &ScrapeSource| {
+            match source {
+                // HN is moderated and titles are high quality
+                ScrapeSource::HackerNews => 0,
+                ScrapeSource::Lobsters => 1,
+                ScrapeSource::Slashdot => 2,
+                // User-submitted titles are generally just OK
+                ScrapeSource::Reddit(_) => 3,
+                ScrapeSource::Other => 99,
+            }
+        };
+        let mut best_title = (99, &ScrapeSource::Other, "Unknown title".to_owned());
+        for (id, scrape) in &self.scrapes {
+            let score = title_score(&id.source);
+            if score < best_title.0 {
+                best_title = (score, &id.source, scrape.title());
+                continue;
+            }
+            let title = scrape.title();
+            if score == best_title.0 && title.len() < best_title.2.len() {
+                best_title = (score, &id.source, scrape.title());
+                continue;
+            }
+        }
+        (best_title.1.clone(), best_title.2)
     }
 
     pub fn url(&self) -> StoryUrl {
