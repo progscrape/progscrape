@@ -112,6 +112,25 @@ fn hot_set(now: StoryDate, global: &index::Global, config: &crate::config::Confi
     Ok(hot_set)
 }
 
+macro_rules! context {
+    ( $($id:ident : $typ:ty = $expr:expr),* ) => {
+        {
+            #[derive(Serialize, Deserialize)]
+            struct TempStruct {
+                $(
+                    $id: $typ,
+                )*
+            }
+            
+            Context::from_serialize(&TempStruct {
+                $(
+                    $id: $expr,
+                )*
+            })?
+        }
+    };
+}
+
 // basic handler that responds with a static string
 async fn root(
     State((state, resources)): State<(index::Global, Resources)>,
@@ -140,7 +159,7 @@ async fn root(
     .into_iter()
     .map(str::to_owned)
     .collect();
-    let context = Context::from_serialize(&FrontPage { top_tags, stories })?;
+    let context = context!(top_tags: Vec<String> = top_tags, stories: Vec<StoryRender> = stories);
     Ok(resources
         .templates()
         .render("index2.html", &context)?
@@ -154,9 +173,7 @@ async fn status(
     struct Status {
         storage: StorageSummary,
     }
-    let context = Context::from_serialize(&Status {
-        storage: state.storage.story_count()?,
-    })?;
+    let context = context!(storage: StorageSummary = state.storage.story_count()?);
     Ok(resources
         .templates()
         .render("admin_status.html", &context)?
