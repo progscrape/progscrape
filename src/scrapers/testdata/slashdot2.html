@@ -1,0 +1,4576 @@
+<!-- html-header type=current begin -->
+	
+	<!DOCTYPE html>
+	
+	
+	<html lang="en">
+	<head>
+	<!-- Render IE9 -->
+	<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+
+	
+
+	<script id="before-content" type="text/javascript">
+(function () {
+    if (typeof window.sdmedia !== 'object') {
+         window.sdmedia = {};
+    }
+    if (typeof window.sdmedia.site !== 'object') {
+        window.sdmedia.site = {};
+    }
+
+    var site = window.sdmedia.site;
+    site.rootdir = "//slashdot.org";
+}());
+
+var pageload = {
+	pagemark: '636782272728359211',
+	before_content: (new Date).getTime()
+};
+function pageload_done( $, console, maybe ){
+	pageload.after_readycode	= (new Date).getTime();
+	pageload.content_ready_time	= pageload.content_ready - pageload.before_content;
+	pageload.script_ready_time	= pageload.after_readycode - pageload.content_ready;
+	pageload.ready_time		= pageload.after_readycode - pageload.before_content;
+	// Only report 1% of cases.
+	maybe || (Math.random()>0.01) || $.ajax({ type: 'POST', data: {
+		op: 'page_profile',
+		pagemark: pageload.pagemark,
+		dom: pageload.content_ready_time,
+		js: pageload.script_ready_time
+	} });
+}
+</script>
+	<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"> 
+	
+		<title>Slashdot: News for nerds, stuff that matters</title>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+	  
+		<meta name="description" content="Slashdot: News for nerds, stuff that matters. Timely news source for technology related news with a heavy slant towards Linux and Open Source issues.">
+	    
+		<meta property="og:title" content="Slashdot: News for nerds, stuff that matters">
+		<meta property="og:description" content="Slashdot: News for nerds, stuff that matters. Timely news source for technology related news with a heavy slant towards Linux and Open Source issues.">
+	  
+	
+	
+		<meta property="fb:admins" content="100000696822412">
+		<meta property="fb:page_id" content="267995220856">
+	
+		<meta name="viewport" content="width=1000, user-scalable=yes, minimum-scale=0, maximum-scale=10.0" />
+		<meta name="apple-mobile-web-app-capable" content="yes">
+		<meta name="apple-mobile-web-app-status-bar-style" content="black">
+	
+		<link rel="canonical" href="https://slashdot.org">
+		
+		<link rel="alternate" media="only screen and (max-width: 640px)" href="https://m.slashdot.org" >
+	
+
+		<link rel="stylesheet" type="text/css" media="screen, projection" href="//a.fsdn.com/sd/classic.ssl.css?bbfde3099a7439f3" >
+		<!--[if IE 8]><link rel="stylesheet" type="text/css" media="screen, projection" href="//a.fsdn.com/sd/ie8-classic.ssl.css?bbfde3099a7439f3" ><![endif]-->
+		<!--[if IE 7]><link rel="stylesheet" type="text/css" media="screen, projection" href="//a.fsdn.com/sd/ie7-classic.ssl.css?bbfde3099a7439f3" ><![endif]-->
+	
+	
+	
+
+
+
+	
+	<!--  -->
+
+	
+	
+
+	
+	<!-- SMACKS: NEW CSS -->
+	<link rel="stylesheet" href="//a.fsdn.com/sd/css/app.css?bbfde3099a7439f3">
+
+	<script src="//a.fsdn.com/con/js/sftheme/cmp5.js"></script>
+	<script src="https://slashdot.org/country.js"></script>
+	<script>
+		if (window.is_euro_union === 1 || (window.region == 'CA' && window.country_code2 == 'US')) {
+			window.bizx.cmp.init({cmp_id: 12126}, 'consentmanager.net');
+		}
+	</script>
+	<script src="https://a.fsdn.com/con/js/sftheme/vendor/promise.polyfill.min.js"></script>
+	<link rel="stylesheet" href="//a.fsdn.com/con/css/sftheme/sandiego/cmp.css?2020-06-11" type="text/css">
+
+	<script type='text/javascript'>
+var _gaq = _gaq || [];
+</script>
+
+<script>
+window.SD = {};
+window.SD.Ads = {};
+
+bizx.cmp.ifConsent('', ['all'], function () {
+    var bt = 'https://btloader.com/tag?o=5098683085881344&upapi=true';
+    bizx.cmp.embedScript(bt, true);
+    window.addEventListener('AcceptableAdsInit', function (e) {
+      if(e.detail) {
+        console.log('acceptable ads on');
+        SD.Ads.acceptable_ads_active = true;
+      } else {
+        console.log('acceptable ads off');
+        SD.Ads.acceptable_ads_active = false;
+      }
+    });
+});
+</script>
+
+
+
+   
+   
+   
+
+<script type="text/javascript" id="pbjs_script" data-dom="https://d3tglifpd8whs6.cloudfront.net"  src="https://d3tglifpd8whs6.cloudfront.net/js/prebid/slash-homepage/slash-homepage.min.js"></script>
+<script type='text/javascript'>
+    /*global performance */
+    var googletag = window.googletag || {};
+    googletag.cmd = googletag.cmd || [];
+
+		window.SD.Ads.slotsById = {};
+		window.SD.Ads.idsByPath = {};
+
+		window.SD.Ads.visibleTime = {};
+		window.SD.Ads.Helpers = {};
+
+		//window.SD = SD;
+
+    bizx.cmp.ifConsent('', ['all','google-ads'], function(){
+        window.bizxPrebid.Ads.initPrebid(window.bizxPrebid.adUnits);
+    });
+</script>
+
+<!-- prep GPT ads -->
+<script type='text/javascript'>
+(function() {
+	function page_type (loc) {
+		/*
+		only four page types:
+		- Story
+		- Poll
+		- Homepage (/ only)
+		- Other (but AdOps wants 'Homepage' again)
+		*/
+		var path = loc.pathname;
+		var just_the_root = /^\/?$/.test(path);
+		var story_or_poll = /^\/(story(?=\/)|submission(?=\/)|poll(?=\/|Booth|s\b))/i.exec(path);
+
+		var page_type = just_the_root ? 'homepage'
+			: story_or_poll ? story_or_poll[1]
+				: 'other'
+
+		// exceptions
+		if (page_type.toLowerCase() === 'submission')
+			page_type = 'story'; // submissions are like stories, right?
+		else if (page_type.toLowerCase() === 'other')
+			page_type = 'homepage'; // this one might move out of here
+
+		return page_type;
+	}
+
+	function page_section(loc) {
+		//var greek = ['alpha', 'beta', 'gamma', 'delta'].join('|');
+		//var hostwise = '^([a-z]+)(?:-(?:'+greek+'))?\\.(?:slashdot\\.org|\\.xb\\.sf\\.net)$';
+		var pathwise = '^/(?:(recent|popular|blog)|stories/([^/]+))';
+		var rootwise = '^\/?$';
+
+		//var hostwisely = new RegExp(hostwise,'i').exec(loc.hostname);
+		var pathwisely = new RegExp(pathwise, 'i').exec(loc.pathname);
+		var rootwisely = new RegExp(rootwise, 'i').exec(loc.pathname);
+
+		var section = (rootwisely && 'homepage')
+			|| (pathwisely && (pathwisely[1] || pathwisely[2]))
+			|| ''
+		;
+
+		return section.replace(/[^_a-z]/ig, '');
+	}
+
+	function single_size(size) {
+		return '' + size[0] + 'x' + size[1];
+	}
+
+	function sz_sz(sz) {
+		var str = '';
+		var sizes = [];
+		if (sz[0] instanceof Array) {
+			for (size in sz) {
+				sizes.push(single_size(sz[size]));
+			}
+			return sizes.join(',');
+		} else {
+			return single_size(sz);
+		}
+	}
+
+	function unique_tpc_array(array1, array2) {
+		var j = array1.concat(array2);
+		j.forEach(function (v, i, a) {
+			a[i] = v.replace(/[^_a-z]/ig, '');
+		});
+		return j.filter(function (v, i, a) {
+			return v != '' && a.indexOf(v) === i;
+		});
+	}
+
+	/* LEGEND:
+		- 'sz' = "size"
+		- 'npt' = "no page type" in ad unit name
+	*/
+	var tags = {
+		'728x90_A': {'sz': [[728, 90], [970, 90], [970, 250], [980, 66]]},
+		'728x90_B': {'sz': [728, 90]},
+		'728x90_C': {'sz': [728, 90], 'skip': {'homepage': 1}},
+		'HubIcon_200x90_A': {'sz': [[200, 90], [220, 90]]},
+		'PowerSwitch_980x66_A': {'sz': [980, 66], 'skip': {'homepage': 1}},
+		'PollPeel': {'sz': [200, 90], 'skip': {'homepage': 1}},
+		//'VideoWidget_300x250': { 'sz': [300, 250], 'npt': 1 },
+		'300x250_A': {'sz': [[300, 250], [300, 600], [300, 1050]]},
+		'300x250_B': {'sz': [[300, 250], [300, 600]]},
+		'300x250_C': {'sz': [[300, 250], [300, 600]]},
+		'300x250_D': {'sz': [[300, 250], [300, 600]]},
+		'Pulse_300x600_A': {'sz': [300, 600]},
+		//'Polls_Detail_300x250_A': { 'sz': [[300, 250], [300, 600]], 'npt': 1 },
+		//'Poll_300x250_A': { 'sz': [[300, 250], [300, 600]], 'npt': 1 },
+		//'SD_Story_1x1': { 'sz': [1, 1] },
+		'1x1': {'sz': [1, 1]}
+	};
+
+	//var network_path = '/41014381/Slashdot/';
+	var network_path = '/41014381/Slashdot/';
+	var tag_name_prefix = 'SD';
+	var tag_name_linkage = '_';
+	var tag_name_pagetype = page_type(location);
+	var tag_topic = page_section(location);
+	if (tag_name_pagetype == 'poll') {
+		tag_name_pagetype = 'Poll';
+	}
+	var before_tag_pagetyped = network_path
+		+ tag_name_prefix
+		+ tag_name_linkage
+		+ tag_name_pagetype
+		+ tag_name_linkage
+	;
+	var before_tag_pagetypeless = network_path
+		+ tag_name_prefix
+		+ tag_name_linkage
+		/* + tag_name_pagetype */
+		/* + tag_name_linkage */
+	;
+
+		//can be safely called
+		googletag.cmd.push(function () {
+
+			function remove_sticky_top() {
+				setTimeout(function () {
+					$('#div-gpt-ad-728x90_a').parent('div').addClass('adwrap-viewed-banner');
+					$('#div-gpt-ad-728x90_a').addClass('viewableImpression');
+				}, 1000);
+			}
+
+			function remove_sticky_railad() {
+				setTimeout(function () {
+					$('#slashboxes .adwrap-unviewed').addClass('adwrap-viewed-railad');
+					$('.railad').addClass('viewableImpression');
+				}, 1000);
+			}
+
+			function viewable_imp(slot) {
+				for (var i in slot) {
+					remove_sticky_top();
+					remove_sticky_railad();
+					if (typeof slot[i] !== 'string') continue;
+					switch (slot[i]) {
+						//case "/41014381/Slashdot/SD_homepage_728x90_A":
+						//case "/41014381/Slashdot/SD_story_728x90_A":
+						//case "/41014381/Slashdot/SD_Poll_728x90_A":
+						//case "/41014381/Slashdot/SD_homepage_728x90_Ref_A":
+						//case "/41014381/Slashdot/SD_story_728x90_Ref_A":
+						//case "/41014381/Slashdot/SD_Poll_728x90_Ref_A":
+						//remove_sticky_top();
+						//break;
+						//case "/41014381/Slashdot/SD_homepage_300x250_A":
+						//case "/41014381/Slashdot/SD_story_300x250_A":
+						//case "/41014381/Slashdot/SD_Poll_300x250_A":
+						//case "/41014381/Slashdot/SD_homepage_300x250_Ref_A":
+						//case "/41014381/Slashdot/SD_story_300x250_Ref_A":
+						//case "/41014381/Slashdot/SD_Poll_300x250_Ref_A":
+						//remove_sticky_railad();
+						//break;
+					}
+					//if(slot[i] === "/41014381/Slashdot/SD_homepage_728x90_A") remove_sticky_top();
+					//if(slot[i] === "/41014381/Slashdot/SD_homepage_300x250_A") remove_sticky_railad();
+				}
+			}
+
+			function define_me_a_slot(tag) {
+				if (tags[tag].skip && tags[tag].skip[tag_name_pagetype])
+					return;
+				var sandbox_regex = /\.xb\.sf\.net$/i;
+				var full_name = tags[tag].npt  // "no page type"
+					? before_tag_pagetypeless + tag
+					: before_tag_pagetyped + tag
+				;
+				var div_id = 'div-gpt-ad-' + tag.toLowerCase();
+				// extend jQuery and get URL query params
+				jQuery.extend({
+					getQueryParameters: function (str) {
+						return (str || document.location.search).replace(/(^\?)/, '').split("&").map(function (n) {
+							return n = n.split("="), this[n[0]] = n[1], this
+						}.bind({}))[0];
+					}
+				});
+
+				var queryParams = $.getQueryParameters();
+
+				if (queryParams.source === 'autorefresh') {
+					full_name = full_name.replace(/(\d+x\d+)/, '$1_Ref');
+					//console.log('TAG NAME: ', full_name);
+				}
+
+				var slot = googletag.defineSlot(
+					full_name,
+					tags[tag].sz,
+					div_id
+				);
+
+				service = slot.addService(googletag.pubads());
+
+				window.SD.Ads.slotsById[div_id] = slot;
+				window.SD.Ads.idsByPath[full_name] = div_id;
+
+				service.setTargeting('sz', tags[tag].sz);
+
+				
+				var frontend_tpc = tag_topic.split(",");
+				var backend_tpc = [  ];
+
+				var tpc_final = unique_tpc_array(frontend_tpc, backend_tpc);
+				service.setTargeting('tpc', tpc_final);
+				if (location.hostname.match(sandbox_regex)) {
+					service.setTargeting('test', 'adops');
+				}
+
+			}
+
+		for (tag in tags) {
+			define_me_a_slot(tag, false);
+		}
+
+
+			googletag.pubads().addEventListener('slotVisibilityChanged', window.SD.Ads.visibilityChangedTracker);
+
+
+		googletag.pubads().addEventListener('impressionViewable', function(event) {
+			viewable_imp(event.slot);
+		    });
+
+                googletag.pubads().setTargeting('requestSource', 'GPT');
+		googletag.pubads().enableAsyncRendering();
+		
+
+		googletag.pubads().collapseEmptyDivs();
+		window.bizxPrebid.SAFEFRAMES = true;
+		window.SD.Ads.setupAdRefresh();
+		bizxPrebid.Ads.pushToGoogle();
+		googletag.enableServices();
+	});
+})();
+
+
+/* Ad-Refresh code */
+window.SD.Ads.visibilityChangedTracker = function(event) {
+	var id = event.slot.getSlotElementId();
+	if (!window.SD.Ads.visibleTime.hasOwnProperty(id)) {
+		window.SD.Ads.visibleTime[id] = {
+			visible: false,
+			prevVisibleTotal: 0,
+			wasVisibleBeforePageBgd: false,
+			reloadCount: 0
+		};
+	}
+	var timeinfo = window.SD.Ads.visibleTime[id];
+	if (event.inViewPercentage >= 50 && !document.hidden) {
+		if (!timeinfo.visible) {
+			timeinfo.visible = performance.now();
+		}
+	} else {
+		if (timeinfo.visible) {
+			timeinfo.prevVisibleTotal += performance.now() - timeinfo.visible;
+			timeinfo.visible = false;
+		}
+	}
+};
+
+window.SD.Ads.setupAdRefresh = function() {
+	document.addEventListener('visibilitychange', function () {
+		for (var id in window.SD.Ads.visibleTime) {
+			if (window.SD.Ads.visibleTime.hasOwnProperty(id)) {
+				var timeinfo = window.SD.Ads.visibleTime[id];
+				if (document.hidden) {
+					timeinfo.wasVisibleBeforePageBgd = !!timeinfo.visible;
+					if (timeinfo.visible) {
+						timeinfo.prevVisibleTotal += performance.now() - timeinfo.visible;
+						timeinfo.visible = false;
+					}
+				} else if (!document.hidden && timeinfo.wasVisibleBeforePageBgd) {
+					timeinfo.visible = performance.now();
+				}
+			}
+		}
+	}, false);
+
+	// after 30 sec, start checking every second for reload
+	var LIMIT_MS = 30000;
+	setTimeout(function () {
+		//
+		setInterval(function () {
+			if (document.hidden) {
+				return;
+			}
+			for (var id in window.SD.Ads.visibleTime) {
+				if (window.SD.Ads.visibleTime.hasOwnProperty(id)) {
+					var timeinfo = window.SD.Ads.visibleTime[id];
+					if (timeinfo.visible &&
+						timeinfo.prevVisibleTotal + (performance.now() - timeinfo.visible) >= LIMIT_MS &&
+						timeinfo.reloadCount < 50
+					) {
+						timeinfo.reloadCount++;
+						timeinfo.visible = false;
+						timeinfo.prevVisibleTotal = 0;
+						window.SD.Ads.Helpers.refreshBids([id]);
+					}
+				}
+			}
+		}, 1000);
+	}, LIMIT_MS);
+};
+
+window.SD.Ads.Helpers.refreshBids = function (reloadIds) {
+		console.log('AD REFRESH: refreshBids', reloadIds);
+		pbjs.que.push(function () {
+			for (var i = reloadIds.length-1; i >= 0; i--) {
+				var id = reloadIds[i];
+				// clear out winner status from earlier auctions
+				if (bizxPrebid.Ads.prebidWinners[id]) {
+					delete bizxPrebid.Ads.prebidWinners[id];
+				}
+				// if has complement (hubicon), remove it since they are just house ads and can cause funky layouts if this leaderboard is refreshed to a different size
+				var path = window.SD.Ads.slotsById[id].getAdUnitPath();
+				/*var complement = gptadComplements[path];
+				if (complement) {
+					var complement_shortname = complement[0];
+					var complement_path = "/41014381/SD/" + complement_shortname;
+					var slot = window.SD.Ads.slotsById[window.SD.Ads.idsByPath[complement_path]];
+					if (slot) {
+						googletag.destroySlots([slot]);
+						var $wrappedAd = $(window.SD.Ads.Helpers.getContainerIDFromPath(complement_path));
+						$wrappedAd.remove();
+						delete gptadComplements[path];
+					}
+				}*/
+
+			}
+
+			pbjs.requestBids({
+				timeout: window.bizxPrebid.PREBID_TIMEOUT,
+				adUnitCodes: reloadIds,
+				bidsBackHandler: function () {
+					var reloadSlots = reloadIds.map(function(id) { return window.SD.Ads.slotsById[id]; });
+
+					// clear out previous sizing attrs, as they may change after refresh
+/*
+					for (var i = 0; i < reloadSlots.length; i++) {
+						var $wrappedAd = $(window.SD.Ads.Helpers.getContainerIDFromPath(reloadSlots[i].getAdUnitPath()));
+						var classes = $wrappedAd.attr('class').split(' ');
+						for (var j = 0; j < classes.length; j++) {
+							if (classes[j].indexOf('sz_') >= 0) {
+								$wrappedAd.removeClass(classes[j]);
+							}
+						}
+					}
+*/
+					pbjs.setTargetingForGPTAsync(reloadIds);
+					googletag.pubads().refresh(reloadSlots);
+				}
+			});
+		});
+	}
+</script>
+
+<!-- CrossPixel -->
+<script type="text/javascript">
+if (window.is_euro_union === 0) {
+    bizx.cmp.ifConsent('', ['all'], function(){
+        try{(function(){ var cb = new Date().getTime(); var s = document.createElement("script"); s.defer = true; s.src = "//tag.crsspxl.com/s1.js?d=2397&cb="+cb; var s0 = document.getElementsByTagName('script')[0]; s0.parentNode.insertBefore(s, s0); })();}catch(e){}
+    });
+}
+</script>
+
+
+
+
+<!-- AdBlock Check -->
+<script>
+var isAdBlockActive = true;
+</script>
+<script async src="//a.fsdn.com/sd/js/scripts/adgenerator.js?bbfde3099a7439f3"></script>
+</head>
+
+<body class="anon index2 ">
+
+	
+	<script src="//a.fsdn.com/sd/all-minified.js?bbfde3099a7439f3" type="text/javascript"></script>
+	
+	
+	<script type="text/javascript">
+(function(){
+var regexp=/\s*(?:\d+|many)\s+more\s*/i;
+
+	
+	var auto_more_count = 1;
+
+	function auto_more(){
+		var $more_link = $('#more-experiment a');
+		$more_link.each(function(){
+			var $lastitem = $('#firehoselist>article.fhitem:visible:last');
+			if ( Bounds.intersect(window, $lastitem) ) {
+			
+			
+				!--auto_more_count && (auto_more=undefined);
+				// don't allow a call till the next paginate gets built and |more_possible|
+				$(document).unbind('scroll', call_auto_more);
+			}
+		});
+	};
+
+	function call_auto_more(){ auto_more && auto_more(); }
+	
+
+$('#more-experiment a').
+	live('more-possible', function( event ){
+		var $more_link=$(this);
+		if ( regexp.test($more_link.text()) ) {
+		
+			$(document).bind('scroll', call_auto_more);
+		} else {
+			$(document).unbind('scroll', call_auto_more);
+		
+		}
+	});
+})();
+</script>
+	<!--[if lt IE 9]><script src="//a.fsdn.com/sd/html5.js"></script><![endif]-->
+	
+	
+	<!-- index2_variant |A|-->
+	
+	<!-- TABOOLA -->
+	<script type="text/javascript">
+        bizx.cmp.ifConsent('', ['all'], function () {
+            if (window.is_euro_union === 0) {
+            window._taboola = window._taboola || [];
+            _taboola.push({home:'auto'});
+            !function (e, f, u) {
+                    e.async = 1;
+                    e.src = u;
+                    f.parentNode.insertBefore(e, f);
+            }(document.createElement('script'),
+            document.getElementsByTagName('script')[0],
+            '//cdn.taboola.com/libtrc/slashdot/loader.js');
+            }
+        });
+	</script>
+	
+		<script>
+	if (window.is_euro_union === 0) {
+            bizx.cmp.ifConsent('', ['all'], function () {
+                (function (s,o,n,a,r,i,z,e) {s['StackSonarObject']=r;s[r]=s[r]||function(){
+                (s[r].q=s[r].q||[]).push(arguments)},s[r].l=1*new Date();i=o.createElement(n),
+                z=o.getElementsByTagName(n)[0];i.async=1;i.src=a;z.parentNode.insertBefore(i,z)
+                })(window,document,'script','https://www.stack-sonar.com/ping.js','stackSonar');
+                stackSonar('stack-connect', '66');
+            });
+        }
+	</script>
+        <!-- jobbio !-->
+
+        <script type="text/javascript">
+        bizx.cmp.ifConsent('', ['all'], function () {
+        var h_script = document.createElement('script')
+        h_script.setAttribute('src', 'https://d1pywsqd87ew9v.cloudfront.net/partner_fluid_widgets_v1.5/horizontal.js')
+        h_script.setAttribute('id','jobbio-horizontal-script')
+        h_script.setAttribute('async','')
+        h_script.onload = function handle() {
+        jobbio_horizontal.widget({
+            slug: 'slashdot-jobs',
+            container: 'horizontal',
+            count: 5,
+            type: 'multiple',
+            content: 'jobs',
+            searchTerm: 'tech',
+            });
+        }
+        document.head.appendChild(h_script)
+        var s_script = document.createElement('script')
+        s_script.setAttribute('src', 'https://d1pywsqd87ew9v.cloudfront.net/partner_fluid_widgets_v1.5/sidebar.js')
+        s_script.setAttribute('id','jobbio-sidebar-script')
+        s_script.setAttribute('async','')
+        s_script.onload = function handle(){
+            jobbio_sidebar.widget({
+                    slug: 'slashdot-jobs',
+                        container: 'sidebar',
+                            count: 5,
+                                type: 'multiple',
+                                    content: 'jobs',
+                                        searchTerm: '',
+                                        });
+            }
+        document.head.appendChild(s_script)
+        })
+        </script>
+        <!-- mailchimp newsletter !-->
+        <script id="mcjs">
+        if (window.is_euro_union === 0) {
+            bizx.cmp.ifConsent('', ['all'], function () {
+                !function(c,h,i,m,p){m=c.createElement(h),p=c.getElementsByTagName(h)[0],m.async=1,m.src=i,p.parentNode.insertBefore(m,p)}(document,"script","https://chimpstatic.com/mcjs-connected/js/users/aab6529d3675bd877963a652d/fc2aefbb539f9ecd8f1ab4cee.js");    
+            });
+        }
+        </script>
+		<!-- html-header type=current end --><!-- header type=current begin -->
+	
+	
+	
+	<link rel="top"       title="News for nerds, stuff that matters" href="//slashdot.org/" >
+<link rel="search"    title="Search Slashdot" href="//slashdot.org/search.pl">
+<link rel="alternate" title="Slashdot RSS" href="http://rss.slashdot.org/Slashdot/slashdotMain" type="application/rss+xml">
+	<link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
+
+	
+		<div id="top_parent"></div>
+		<a name="topothepage"></a>
+		
+		<div class="container">
+			<div class="nav-wrap">
+				<nav class="nav-primary" role="navigation" aria-label="Global Navigation">
+					<h1 class="logo">
+	<a href="//slashdot.org"><span>Slashdot</span></a>
+</h1>
+
+<ul class="nav-site">
+	<li><a href="//slashdot.org"><i class="icon-book" title="Stories"></i><span>Stories</span></a></li>
+	<li>
+		<ul class="filter-firehose">
+			<li class="nav-label">Firehose <i class="icon-angle-right"></i></li>
+			<li><a href="//slashdot.org/recent">All</a></li>
+			<li><a href="//slashdot.org/popular">Popular</a></li>
+		</ul>
+	</li>
+	<li><a href="//slashdot.org/polls"><i class="icon-chart-bar" title="Polls"></i><span>Polls</span></a></li>
+
+	<!--
+	<li><a href="//ask.slashdot.org"><i class="icon-question-circle"></i><span>Ask</span></a></li>
+	
+	<li><a href="//events.slashdot.org"><i class="icon-calendar"></i><span>Events</span></a></li>
+	-->
+	<li><a href="https://slashdot.org/software/"><i class="sd-mini"></i> <span>Software</span></a></li>
+        <li><a href="https://www.slashdotstore.com" rel="nofollow"><span>Apparel</span></a></li>
+        <li><a href="//slashdot.org/newsletter"><span>Newsletter</span></a></li>
+        <li><a href="//slashdot.org/jobs" rel="nofollow"><span>Jobs</span></a></li>
+</ul>
+<a href="//slashdot.org/submission" class="btn btn-success">Submit</a>
+				</nav>
+				<nav class="nav-user" role="navigation" aria-label="user access and account controls">
+					<form id="search" class="form-inline nav-search-form" method="get" action="//slashdot.org/index2.pl">
+<!-- //slashdot.org/index2.pl" -->
+	<div class="form-group">
+		<label class="sr-only" for="sitesearch">Search Slashdot</label>
+		<div class="input-group">
+			<input type="text" id="" class="" name="fhfilter" value="" placeholder="Search">
+		</div>
+	</div>
+	<button type="submit" class="btn icon-search"></button>
+</form>
+<ul class="user-access">
+	
+		
+			<li >
+				<a href="//slashdot.org/my/login"  onclick="show_login_box(); return false;"><i class="icon-login"></i><span> Login</span></a>
+				
+			</li>
+		
+	
+		
+			<li class="nav-label">or</li>
+		
+	
+		
+			<li >
+				<a href="//slashdot.org/my/newuser"  ><i class="icon-user-add"></i><span> Sign up</span></a>
+				
+			</li>
+		
+	
+</ul>
+				</nav>
+			</div>
+			<div class="nav-secondary-wrap">
+				<nav class="nav-secondary" role="secondary-navigation">
+	<ul>
+		<li class="nav-label">Topics: </li>
+		<li><a href="//devices.slashdot.org">Devices</a></li>
+		<li><a href="//build.slashdot.org">Build</a></li>
+		<li><a href="//entertainment.slashdot.org">Entertainment</a></li>
+		<li><a href="//technology.slashdot.org">Technology</a></li>
+		<li><a href="//slashdot.org/?fhfilter=opensource">Open Source</a></li>
+		<li><a href="//science.slashdot.org">Science</a></li>
+		<li><a href="//yro.slashdot.org">YRO</a></li>
+		<!-- <li><a href="//slashdot.org/topics.pl">more...</a></li> -->
+	</ul>
+</nav>
+<nav class="nav-social" role="social navigation">
+	<ul>
+		<li class="nav-label">Follow us:</li>
+		<li><a href="https://rss.slashdot.org/Slashdot/slashdotMain" target="_blank" rel="nofollow"><i class="icon-rss-squared"></i><span class="sr-only">RSS</span></a></li>
+		<li><a href="https://www.facebook.com/slashdot" target="_blank" rel="nofollow"><i class="icon-facebook-squared"></i><span class="sr-only">Facebook</span></a></li>
+		<li><a href="https://www.linkedin.com/company/slashdot" target="_blank" rel="nofollow"><i class="icon-linkedin-squared"></i><span class="sr-only">LinkedIn</span></a></li>
+		<li><a href="https://twitter.com/slashdot" target="_blank" rel="nofollow"><i class="icon-twitter-squared"></i><span class="sr-only">Twitter</span></a></li>
+		<li><a href="https://www.youtube.com/channel/UCsW36751Gy-EAbHQwe9WBNw" target="_blank" rel="nofollow"><i class="icon-youtube-squared">
+                    <!-- width="1792" height="1792" -->
+                    <svg viewBox="0 260 1792 1260" xmlns="http://www.w3.org/2000/svg"><path d="M711 1128l484-250-484-253v503zm185-862q168 0 324.5 4.5t229.5 9.5l73 4q1 0 17 1.5t23 3 23.5 4.5 28.5 8 28 13 31 19.5 29 26.5q6 6 15.5 18.5t29 58.5 26.5 101q8 64 12.5 136.5t5.5 113.5v176q1 145-18 290-7 55-25 99.5t-32 61.5l-14 17q-14 15-29 26.5t-31 19-28 12.5-28.5 8-24 4.5-23 3-16.5 1.5q-251 19-627 19-207-2-359.5-6.5t-200.5-7.5l-49-4-36-4q-36-5-54.5-10t-51-21-56.5-41q-6-6-15.5-18.5t-29-58.5-26.5-101q-8-64-12.5-136.5t-5.5-113.5v-176q-1-145 18-290 7-55 25-99.5t32-61.5l14-17q14-15 29-26.5t31-19.5 28-13 28.5-8 23.5-4.5 23-3 17-1.5q251-18 627-18z"/></svg>
+                </i><span class="sr-only">Youtube</span></a></li>
+		<li><a href="https://mastodon.cloud/@slashdot" target="_blank" rel="me nofollow"><i class="icon-mastodon-squared">
+					<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><path d="M433 179.11c0-97.2-63.71-125.7-63.71-125.7-62.52-28.7-228.56-28.4-290.48 0 0 0-63.72 28.5-63.72 125.7 0 115.7-6.6 259.4 105.63 289.1 40.51 10.7 75.32 13 103.33 11.4 50.81-2.8 79.32-18.1 79.32-18.1l-1.7-36.9s-36.31 11.4-77.12 10.1c-40.41-1.4-83-4.4-89.63-54a102.54 102.54 0 0 1-.9-13.9c85.63 20.9 158.65 9.1 178.75 6.7 56.12-6.7 105-41.3 111.23-72.9 9.8-49.8 9-121.5 9-121.5zm-75.12 125.2h-46.63v-114.2c0-49.7-64-51.6-64 6.9v62.5h-46.33V197c0-58.5-64-56.6-64-6.9v114.2H90.19c0-122.1-5.2-147.9 18.41-175 25.9-28.9 79.82-30.8 103.83 6.1l11.6 19.5 11.6-19.5c24.11-37.1 78.12-34.8 103.83-6.1 23.71 27.3 18.4 53 18.4 175z"/></svg>
+				</i><span class="sr-only">Mastodon</span></a></li>
+		<li><a href="//slashdot.org/newsletter" target="_blank" rel="nofollow"><i class="icon-mail-squared"></i><span class="sr-only">Newsletter</span></a></li>
+	</ul>
+</nav>
+			</div>
+		</div>
+
+		<section>
+		
+			<div class="message-bar" id="firehose-message-tray">
+				<span class="icon-quote-left"></span>
+				<p>
+					
+						
+						Please <strong><a href="//slashdot.org/login.pl">create an account</a></strong> to participate in the Slashdot moderation system
+					
+				</p>
+			</div>
+		
+		
+			<div id='embbeded_login_modal' class="hide">
+<form action="https://slashdot.org/my/login" method="post" onsubmit="if (global_returnto) { this.returnto.value = global_returnto }" class="embedded"><fieldset style="-webkit-border-radius:10px 10px 0 0;border-radius:10px 10px 0 0;-moz-border-radius:10px 10px 0 0">
+<div style='height:25px;'>&nbsp;</div>
+    <input type="hidden" name="returnto" value="">
+    <input type="hidden" name="op" value="userlogin">
+    <p>
+        <label class="fleft" for="unickname">Nickname:</label>
+        <input type="text" name="unickname" value="">
+    </p>
+    <p>
+        <label class="fleft" for="upasswd">Password:</label>
+        <input type="password" name="upasswd">
+    </p>
+    <label class="checkbox"><input type="checkbox" name="login_temp" value="yes"> Public Terminal</label>
+    <br>
+    <hr>
+    <input type="submit" name="userlogin" value="Log In" class="fno"> <a href="//slashdot.org/my/mailpassword" class="btn link" onclick="getModalPrefs('sendPasswdModal', 'Retrieve Password', 1); return false;">Forgot your password?</a>
+</fieldset></form>
+
+<div class="actions">
+ <a class="ico close" onclick="hide_login_slider();" href=""><span>Close</span></a>
+</div>
+</div>
+		
+		
+			<div class="banner-wrapper">
+				<div class="adwrap adwrap-unviewed banner-contain">
+					
+					<div id='div-gpt-ad-728x90_a'><script type='text/javascript'>
+googletag.cmd.push(function(){
+googletag.display('div-gpt-ad-728x90_a');});</script></div>
+					<div id='div-gpt-ad-hubicon_200x90_a'><script type='text/javascript'>
+googletag.cmd.push(function(){
+googletag.display('div-gpt-ad-hubicon_200x90_a');});</script></div>
+				</div>
+			</div>
+		
+		<a name="main-articles"></a>
+	
+	<!-- header type=current end --><!--body begin -->
+
+
+
+
+
+
+
+
+	<style type="text/css">
+menu, menu * {
+	text-decoration:none;
+}
+
+menu[type=context] {
+	display:none;
+	position:absolute;
+	z-index:10000;
+}
+
+menu[type=context]:not(.brief) {
+	background-color:#dfdfdf;
+	margin:0;
+	padding:2px 0.5em;
+	border-style:solid;
+	border-width:1px;
+	border-color:#eeeeee #aaaaaa #aaaaaa #eeeeee;
+	-moz-border-radius-topright:.7em;
+	-webkit-border-top-right-radius: 0.7em 0.7em;
+}
+
+menu.full[type=context] > a.slash-hover:first-child {
+	-moz-border-radius-topright:.6em;
+	-webkit-border-top-right-radius: 0.6em 0.6em;
+}
+
+
+
+menu.brief[type=context] > a {
+	-moz-border-radius:.6em;
+	-webkit-border-radius: 0.6em;
+	color:#ffffff;
+	background-color:#000000;
+}
+
+/*
+span.briefmenu a.tag:not(.datatype) {
+    padding-left:.5em;
+}
+*/
+
+
+
+
+/* #tag-menu a, #feedback-menu a  { */
+menu.tag-menu-admin a {
+	display:list-item;
+	list-style:none;
+	text-align:left;
+	font-weight:bold;
+	color:black;
+	padding:0.1em 0.5em;
+	margin:-0.1em -0.5em;
+	cursor:pointer;
+}
+
+
+.tags .edit-bar { position:relative; }
+article aside .share .addthis_toolbox { display:block; width:60px; float:left; }
+article aside.view_mode .share { min-width:120px; padding-top:.5em; }
+#firehose.list article header h2 {padding-left: 20px; !important}
+.novote .vote { display:none; }
+
+.vote > a, .votedup > a, .voteddown > a {
+	display:inline-block;
+	height:22px;
+	width:22px;
+	margin: 2px 10px 0 0;
+	color:rgb(255,255,255);
+	text-decoration:none;
+	line-height:22px;
+	text-align:center;
+	font-weight:bold;
+	font-size:14px;
+	border-width:1px;
+	border-style:solid;
+	border-color:rgba(0,0,0,0.5);
+}
+
+.vote > a, .votedup > a, .voteddown > a {color:rgb(0,0,0);}
+
+article.fhitem-submission h2 .vote > a, article.fhitem-submission h2 .votedup > a, article.fhitem-submission h2 .voteddown > a { border-color:rgba(0,0,0,0.15); }
+.vote .up, .vote .down, .votedup .up, .votedup .down, .voteddown .up, .voteddown .down { border-radius: 4px; -moz-border-radius: 4px; -webkit-border-radius: 4px; /* text-shadow:0 0 2px #000000; }*/}
+article:not(.fhitem-story) .vote .up,article:not(.fhitem-story) .vote .down,article:not(.fhitem-story) .votedup .up,article:not(.fhitem-story) .votedup .down,article:not(.fhitem-story) .voteddown .up,article:not(.fhitem-story) .voteddown .down { /*text-shadow:none !important; */}
+.voteddown .down, .votedup .up { margin-right: 10px; text-indent:2px; line-height:24px; }
+article:not(.fhitem-story) .votedup .up,article:not(.fhitem-story) .voteddown .down {background: rgb(174,174,174);background-image: -webkit-gradient(linear, 0% 0%, 0% 100%, from(rgb(174,174,174)), to(rgb(193,193,193)));background-image: -moz-linear-gradient(100% 100% 90deg,rgb(193,193,193), rgb(174,174,174) 100%);color:rgb(0,0,0);}
+article.fhitem-story .votedup .up,article.fhitem-story .voteddown .down {background: rgb(0,66,66);background-image: -webkit-gradient(linear, 0% 0%, 0% 100%, from(rgb(0,53,53)), to(rgb(0,102,102)));background-image: -moz-linear-gradient(100% 100% 90deg,rgb(0,102,102), rgb(0,53,53) 100%);}
+
+
+
+
+#tag-menu span.var-tag {
+font-weight:normal;
+color:#444444;
+}
+
+menu.reasons-menu a {
+padding:0 .25em 0 .25em;
+font-size:80%;
+-moz-border-radius:.5em;
+-webkit-border-radius:.5em;
+cursor:pointer;
+}
+
+menu.reasons-menu a:hover {
+background:rgb(153,153,153);
+background:-moz-linear-gradient(100% 100% 90deg, rgb(102,102,102), rgb(153,153,153) 70%) repeat scroll 0 0 rgb(102,102,102);
+background-image: -webkit-gradient(linear, 0% 0%, 0% 100%, from(rgb(153,153,153)), to(rgb(102,102,102)));
+color:#fff;
+text-decoration:none;
+font-weignt:normal;
+}
+
+article.fhitem-story menu.reasons-menu a:hover {
+background:#002323 !important;
+background:-moz-linear-gradient(100% 100% 90deg, #002323, #005353 70%) repeat scroll 0 0 #002323 !important;
+background-image: -webkit-gradient(linear, 0% 0%, 0% 100%, from(#005353), to(#002323)) !important;
+}
+
+
+menu.reasons-menu {
+	display:none;
+	margin:0;
+	padding:0;
+}
+
+div.fhitem h3 menu.reasons-menu {
+margin:0.25em 0 0;
+}
+
+div.fhitem h3 menu.reasons-menu a.tag {
+font-size:.8em;
+}
+
+#tag-menu a.slash-hover,
+#feedback-menu a.slash-hover,
+
+.tag-display span.tag:hover,
+.tag-display span.tag.trigger {
+	color:white;
+	background-color:rgb(0, 85, 85);
+}
+
+#tag-menu a.slash-hover span.var-tag {
+	color:#eee;
+}
+
+.tag-entry.default {
+        color:#ccc;
+}
+
+.brief .nix {
+	margin-top:-1.35em;
+	margin-left:0px;
+	margin-top:-1.15em;
+	text-decoration:none;
+	line-height:1.35em;
+	padding:0 2px;
+	-moz-border-radius:.6em 0 0 .6em;
+	-webkit-border-radius:.6em 0 0 .6em;
+	-o-border-radius:.6em 0 0 .6em;
+	border-radius:.6em 0 0 .6em;
+    color:#fff !important;
+    background:transparent !important;
+}
+
+.brief .nix:hover {
+    background:rgb(153,153,153) !important;
+    background:-moz-linear-gradient(100% 100% 90deg, rgb(102,102,102), rgb(153,153,153) 70%) repeat scroll 0 0 rgb(102,102,102) !important;
+    background-image: -webkit-gradient(linear, 0% 0%, 0% 100%, from(rgb(153,153,153)), to(rgb(102,102,102))) !important;
+}
+
+</style>
+
+<menu id="nix-reasons" style="display:none">
+	<a class="tag">binspam</a><a class="tag">dupe</a><a class="tag">notthebest</a><a class="tag">offtopic</a><a class="tag">slownewsday</a><a class="tag">stale</a><a class="tag">stupid</a>
+</menu>
+<menu id="nod-reasons" style="display:none">
+	<a class="tag">fresh</a><a class="tag">funny</a><a class="tag">insightful</a><a class="tag">interesting</a><a class="tag">maybe</a>
+</menu>
+<menu id="comment-nix-reasons" style="display:none">
+	<a class="tag">offtopic</a><a class="tag">flamebait</a><a class="tag">troll</a><a class="tag">redundant</a><a class="tag">overrated</a>
+</menu>
+<menu id="comment-nod-reasons" style="display:none">
+	<a class="tag">insightful</a><a class="tag">interesting</a><a class="tag">informative</a><a class="tag">funny</a><a class="tag">underrated</a>
+</menu>
+
+<menu id="tag-nod-reasons" style="display:none">
+	<a class="tag">descriptive</a>
+</menu>
+<menu id="feedback-menu" class="tag-menu-admin" type="context">
+	<a class="tag">typo</a><a class="tag">dupe</a><a class="tag">error</a>
+</menu>
+<menu id="tag-menu" class="tag-menu-admin none" type="context">
+
+<!--	<a data-op="!" class="nix">!<span class="var-tag hide"></span></a>-->
+
+</menu>
+
+<script type="text/javascript">
+$(function(){
+var $CURRENT_MENU, $TAG_MENU=$('#tag-menu'), NOTNOT=/^!!/, IE7=/^7\.0/, TAG_PREFIX=/^\/tag\//;
+
+function get_tag_name( $tag ){
+	return ($tag.attr('href') || '').replace(TAG_PREFIX, '') || $tag.text().toLowerCase();
+}
+
+function trigger_menu( e, selector, $menu, menu_content ){
+	var $target=$(original_target(e, selector)), in_use=$target.is('.trigger');
+	if ( $CURRENT_MENU ) {
+		$CURRENT_MENU.menu('cancel', e);
+		$CURRENT_MENU = null;
+	}
+
+	if ( !in_use ) {
+		menu_content && $menu.stop(true, true).hide().html(menu_content);
+		($CURRENT_MENU=$menu).menu('context', e);
+	}
+	return !in_use;
+}
+
+function open_menu( trigger, $menu ){
+	var $trigger=$(trigger), $fhitem=$trigger.closest('.fhitem');
+	$fhitem.length && user_intent('interest', $fhitem[0]);
+
+	$menu.appendTo(document.body).css({ opacity:0 }).show();
+
+	var 	right	= $fhitem.offset().left + $fhitem.width(),
+		global	= $trigger.offset(),
+		local	= $menu.offsetParent().offset();
+
+	// Ugly IE position hack required:
+	$.browser.msie && IE7.test($.browser.version) && (local.top = 0);
+
+	// pin the menu (horizontally) on-screen
+	global.left = Math.min(global.left, right-$menu.width());
+
+	$trigger.addClass('trigger');
+	$menu.css({
+		position:	'absolute',
+		top:		global.top - local.top + $trigger.height(),
+		left:		global.left - local.left,
+		opacity:	1
+	});
+}
+
+function close_menu( trigger, $menu ){
+	$menu.hide();
+	$(trigger).removeClass('trigger');
+	($CURRENT_MENU===$menu) && ($CURRENT_MENU=false);
+}
+
+/* T2 tag context-menu */
+var $TAG_MENU=$('#tag-menu'), NOTNOT=/^!!/;
+
+
+    var user_is_admin = 0;
+
+
+
+$('a[rel=tag]').live('mousedown',function(ea){
+    window.open(this.href);
+    return false;
+})
+
+$('.tag-bar .disagree').live('mousedown',function(ee){
+	var fhitem = $(original_target(ee)).closest('.fhitem')[0],
+		command = ('!' + $(original_target(ee)).attr("data-tag")).replace(NOTNOT, '');
+    try { Tags.submit(fhitem, command); } catch ( err ) {  }
+    return false;
+})
+
+
+
+$('a[rel=tag]').
+	live('mousedown', function( e ){
+        
+            return true;
+        
+
+	}).
+	live('click', function( e ){
+		if ( !logged_in ) {
+			var	target	= original_target(e),
+				tag	= $(target).text();
+			addfhfilter(tag);
+		}
+		e.preventDefault();
+		return false;
+	});
+
+$TAG_MENU.menu({
+	cssNamespace: 'slash',
+	liveTriggers: true,
+	clickDuration: 300,
+
+	start: function( e, ui ){
+		var	$tag	= $(ui.trigger),
+			tag	= get_tag_name($tag),
+			context	= firehose_settings && firehose_settings.viewtitle;
+
+		// Insert the tagname into the menu items where needed.
+		$TAG_MENU.find('span.var-tag').text(tag);
+		$TAG_MENU.find('a.nix').attr('title','not ' + tag);
+
+
+			// non-admins may only delete their own tags
+		$TAG_MENU.find('a:[data-op="-"]').toggle($tag.is('.my'));
+	
+
+		// *tagname* in *viewtitle*
+		$TAG_MENU.find('a:[data-op="="]').toggle(!!context);
+		context && $TAG_MENU.find('span.var-view').text(context);
+
+		open_menu($tag, $TAG_MENU);
+	},
+
+	select: function( e, ui ){
+		var	$tag	= $(ui.trigger),
+			tag	= get_tag_name($tag),
+			op	= $(ui.select).attr('data-op'),
+			fhitem,
+			command;
+
+		// Global for positioning other things.
+		$related_trigger = $tag;
+
+		switch ( op ) {
+			case '=':
+				addfhfilter(tag);
+				break;
+
+			default:
+				fhitem = $tag.closest('.fhitem')[0];
+				command = (op + tag).replace(NOTNOT, '');
+				try { Tags.submit(fhitem, command); } catch ( err ) {  }
+				break;
+		}
+	},
+
+	stop: function( e, ui ){ close_menu(ui.trigger, $TAG_MENU); }
+});
+
+
+
+
+/* T2 feedback context-menu */
+
+
+
+/* T2 datatype context-menu (admin-only) */
+
+
+
+
+
+
+});
+</script>
+	
+
+
+
+<div class="container">
+	<div class="main-wrap  has-rail-right">
+		<div class="main-content">
+			<div id="firehose" class="nothumbs ">
+				<!-- WIT -->
+				<a name="articles"></a>
+
+
+				
+					
+				
+
+
+				<div id="firehoselist" class="fhroot row ">
+					<div id="announcement">
+  <div id="announcementText" style="display: none;"> </strong>Do you develop on GitHub? You can keep using GitHub but automatically <a href="https://sourceforge.net/p/forge/documentation/GitHub%20Importer/" rel="nofollow"><strong>sync your GitHub releases to SourceForge</a></strong> quickly and easily with <strong><a href="https://sourceforge.net/p/import_project/github/" rel="nofollow">this tool</a></strong> so your projects have a backup location, and get your project in front of SourceForge's nearly 30 million monthly users. It takes less than a minute. Get new users downloading your project releases today!</span><br><br><a href="https://slashdot.org/newsletter" rel="nofollow">Sign up for the Slashdot newsletter!</a> or <a href="https://slashdot.org/jobs-2" rel="nofollow">check out the new Slashdot job board to browse remote jobs or jobs in your area.</a></div>
+  <a href="" class="btn-close" title="don't show me this again" onclick="closeAnnouncement(); return false;">&times;</a>
+</div>
+
+
+<script type="text/javascript">
+
+if (!$.cookie('hide_sitenotice_36')) {
+	$('#announcement').fadeIn(300);
+}
+
+function closeAnnouncement() {
+	$('#announcement').fadeOut(300);
+	$.cookie('hide_sitenotice_36', 'true', { path: '/', domain: 'slashdot.org', expires: 1 });
+}
+</script>
+					<article id="firehose-170059994" data-fhid="170059994" data-fhtype="story" class="fhitem fhitem-story article usermode thumbs grid_24">
+		<span class="sd-info-block" style="display: none">
+			<span class="sd-key-firehose-id">170059994</span>
+			<span class="type">story</span>
+			
+		</span>
+
+
+
+
+
+
+
+	
+	
+
+<header>
+	
+		<span class="topic" id="topic-170059994">
+			<a href="//slashdot.org/index2.pl?fhfilter=space" onclick="return addfhfilter('space');">
+			
+				<img src="//a.fsdn.com/sd/topics/space_64.png" width="64" height="64" alt="Space" title="Space">
+			
+		</a>
+		</span>
+	
+
+	<h2 class="story">
+		
+
+		
+
+		
+		
+
+		
+
+		
+
+		
+
+		<span id="title-170059994" class="story-title"> <a onclick="return toggle_fh_body_wrap_return(this);"  href="//science.slashdot.org/story/23/01/09/2241202/uk-conducts-first-satellite-orbital-space-launch">UK Conducts First Satellite Orbital Space Launch</a> <span class=" no extlnk"><a class="story-sourcelnk" href="https://www.dw.com/en/uk-conducts-first-satellite-orbital-space-launch/a-64331728"  title="External link - https://www.dw.com/en/uk-conducts-first-satellite-orbital-space-launch/a-64331728" target="_blank"> (dw.com) </a></span></span>
+
+		
+		
+		<!--<span class="comments commentcnt-170059994" style="display:none">0</span>-->
+		
+
+		
+		<!-- comment bubble -->
+		
+	</h2>
+	<div class="details" id="details-170059994">
+		<span class="story-details">
+		<span class="story-views">
+			<span class="sodify" onclick="firehose_set_options('color', 'red')" title="Filter Firehose to entries rated red or better"></span><span class="icon-beaker pop1 " alt="Popularity" title="Filter Firehose to entries rated red or better" onclick="firehose_set_options('color', 'red')"><span></span></span> 
+		</span>
+		</span>
+		<span class="story-byline">
+	
+				
+			Posted
+				by 
+		
+		
+			
+				  <a href="https://twitter.com/BeauHD" rel="nofollow">BeauHD</a>
+			
+		
+		
+
+		
+		
+		<time id="fhtime-170059994" datetime="on Monday January 09, 2023 @05:42PM">on Monday January 09, 2023 @05:42PM</time>
+		
+		
+			 from the <span class="dept-text">history-making</span> dept.
+		
+		</span>
+	</div>
+</header>
+
+<div class="body" id="fhbody-170059994">
+	
+
+	
+		
+		<div id="text-170059994" class="p">
+			
+		 	
+				Britain has <a href="https://www.dw.com/en/uk-conducts-first-satellite-orbital-space-launch/a-64331728">conducted its first orbital space launch from UK soil on Monday evening</a>, making it the privately-owned Virgin Orbit's first international launch. Deutsche Welle reports: <i> Dubbed "Start Me Up," as in the Rolling Stones song, the rocket is carrying nine small satellites now making their way into space. The repurposed Virgin Atlantic Boeing 747 aircraft took off from Cornwall in southwestern England at around 10:15 pm local time (2215 GMT) before releasing the rocket around an hour into flight over the Atlantic Ocean, toward the south of Ireland. The nine satellites the rocket will bring into orbit will be used for both civil and defense purposes. The plane, meanwhile, should make its way back to Cornwall.
+<br> <br>
+The commercial satellite launch, described by Virgin Orbit as "history-making," is not only the first in the UK but in the whole of Western Europe, according to the UK Space Agency. Though the UK has produced satellites in the past, they were sent to spaceports abroad to be launched into space. Ian Annett, deputy chief executive at the UK Space Agency, said, "This is the start of a new era for the UK in terms of launch capabilities." He added that the UK had ambitions for being ''the hub of European launches." </i> Virgin Orbit has <a href="https://tech.slashdot.org/story/21/06/30/2328211/virgin-orbit-sends-its-first-commercial-satellites-into-space-from-air-launched-rocket">previously</a> <a href="https://science.slashdot.org/story/21/01/18/0030209/virgin-orbit-just-successfully-launched-a-70-foot-rocket-from-its-747">launched</a> four similar missions from California.<br>
+		 	
+		</div>
+
+		
+
+		
+
+		
+	</div>
+	<aside class="novote">
+		
+	</aside>
+	
+	  	
+
+		
+		<footer class="clearfix meta article-foot">
+			<div class="story-controls">
+				
+                    
+					
+				
+			</div>
+			
+				
+				<div class="story-tags">
+					<span class="tright tags"><menu type="toolbar" class="edit-bar">
+		<span id="tagbar-170059994" class="tag-bar none">
+			
+		</span>
+		
+		<!--
+			<a class="edit-toggle" href="/my/login/" onclick="show_login_box();return false;">
+				<span class="icon-tag btn collapse"></span>
+			</a>
+			-->
+		
+		
+		<div class="tag-menu">
+			<input class="tag-entry default" type="text" value="apply tags">
+		</div>
+		
+
+		
+		
+
+	</menu></span>
+				</div>
+				
+			
+		</footer>
+	
+
+
+
+	</article><article id="firehose-170059470" data-fhid="170059470" data-fhtype="story" class="fhitem fhitem-story article usermode thumbs grid_24">
+		<span class="sd-info-block" style="display: none">
+			<span class="sd-key-firehose-id">170059470</span>
+			<span class="type">story</span>
+			
+		</span>
+
+
+
+
+
+
+
+	
+	
+
+<header>
+	
+		<span class="topic" id="topic-170059470">
+			<a href="//slashdot.org/index2.pl?fhfilter=uk" onclick="return addfhfilter('uk');">
+			
+				<img src="//a.fsdn.com/sd/topics/uk_64.png" width="64" height="64" alt="United Kingdom" title="United Kingdom">
+			
+		</a>
+		</span>
+	
+
+	<h2 class="story">
+		
+
+		
+
+		
+		
+
+		
+
+		
+
+		
+
+		<span id="title-170059470" class="story-title"> <a onclick="return toggle_fh_body_wrap_return(this);"  href="//news.slashdot.org/story/23/01/09/2143238/england-makes-gigabit-internet-a-legal-requirement-for-new-homes">England Makes Gigabit Internet a Legal Requirement For New Homes</a> <span class=" no extlnk"><a class="story-sourcelnk" href="https://www.theverge.com/2023/1/9/23546401/gigabit-internet-broadband-england-new-homes-policy"  title="External link - https://www.theverge.com/2023/1/9/23546401/gigabit-internet-broadband-england-new-homes-policy" target="_blank"> (theverge.com) </a></span></span>
+
+		
+		
+		<!--<span class="comments commentcnt-170059470" >9</span>-->
+		
+
+		
+		<!-- comment bubble -->
+		
+			<span class="comment-bubble"><a href="//news.slashdot.org/story/23/01/09/2143238/england-makes-gigabit-internet-a-legal-requirement-for-new-homes#comments" title="">9</a></span>
+		
+	</h2>
+	<div class="details" id="details-170059470">
+		<span class="story-details">
+		<span class="story-views">
+			<span class="sodify" onclick="firehose_set_options('color', 'red')" title="Filter Firehose to entries rated red or better"></span><span class="icon-beaker pop1 " alt="Popularity" title="Filter Firehose to entries rated red or better" onclick="firehose_set_options('color', 'red')"><span></span></span> 
+		</span>
+		</span>
+		<span class="story-byline">
+	
+				
+			Posted
+				by 
+		
+		
+			
+				  <a href="https://twitter.com/BeauHD" rel="nofollow">BeauHD</a>
+			
+		
+		
+
+		
+		
+		<time id="fhtime-170059470" datetime="on Monday January 09, 2023 @05:00PM">on Monday January 09, 2023 @05:00PM</time>
+		
+		
+			 from the <span class="dept-text">faster-the-better</span> dept.
+		
+		</span>
+	</div>
+</header>
+
+<div class="body" id="fhbody-170059470">
+	
+
+	
+		
+		<div id="text-170059470" class="p">
+			
+		 	
+				An anonymous reader quotes a report from The Verge: <i>Amendments to <a href="https://www.legislation.gov.uk/uksi/2010/2214/introduction/made">Building Regulations 2010</a> were announced by the Department for Digital, Culture, Media, and Sport (DCMS) on January 6th that mandate new homes constructed in England to be <a href="https://www.theverge.com/2023/1/9/23546401/gigabit-internet-broadband-england-new-homes-policy">fitted with infrastructure and connections required to achieve gigabit internet connectivity</a>. Connection costs will be capped at &pound;2,000 per home, and developers must still install gigabit-ready infrastructure (including ducts, chambers, and termination points) and the fastest-available connection if they're unable to secure a gigabit connection within the cost cap. The UK government estimates that 98 percent of installations will fall comfortably under that cap, so it's likely been put in place to avoid spiraling chargings in remote, rural areas that need widescale line upgrades. Properties constructed in Scotland, Wales, and Northern Ireland may be exempt from this new legislation as each country sets its own building regulations independently from England.
+<br> <br>
+The new legislation was introduced on December 26th, 2022, following a 12-month technical consultation that indicated around 12 percent of 171,190 new homes constructed in England didn't have gigabit broadband access upon completion. DCMS claims that gigabit broadband is currently available in over 72 percent of UK households and is targeting full nationwide gigabit-capable broadband coverage across the UK by 2030. In order to meet that goal, another law has also been introduced to make it easier to install faster internet connections into existing flats and apartments. Previously, millions of tenants living in the UK's estimated 480,000 multi-dwelling units (MDUs) needed to obtain permission from the landowner to allow a broadband operator to install connection upgrades. Broadband companies estimate that around 40 percent of these requests are ignored by landlords, leaving tenants unable to upgrade their services even if they're unfit for use. Now, the Telecommunications Infrastructure (Leasehold Property) Act 2021 (TILPA) allows broadband providers in England and Wales to seek access rights via court if landlords and land owners don't respond to installation requests within 35 days.</i> "An additional 2,100 residential buildings a year are estimated to be connected to faster broadband speeds as a result of these new rules, and similar legislation is due to come into force in Scotland later this year," adds the report. "The existing appeals process that allows landlords to refuse access requests will not be affected."<br>
+		 	
+		</div>
+
+		
+
+		
+
+		
+	</div>
+	<aside class="novote">
+		
+	</aside>
+	
+	  	
+
+		
+		<footer class="clearfix meta article-foot">
+			<div class="story-controls">
+				
+                    
+					
+				
+			</div>
+			
+				
+				<div class="story-tags">
+					<span class="tright tags"><menu type="toolbar" class="edit-bar">
+		<span id="tagbar-170059470" class="tag-bar none">
+			
+		</span>
+		
+		<!--
+			<a class="edit-toggle" href="/my/login/" onclick="show_login_box();return false;">
+				<span class="icon-tag btn collapse"></span>
+			</a>
+			-->
+		
+		
+		<div class="tag-menu">
+			<input class="tag-entry default" type="text" value="apply tags">
+		</div>
+		
+
+		
+		
+
+	</menu></span>
+				</div>
+				
+			
+		</footer>
+	
+
+
+
+	</article><article id="firehose-170056030" data-fhid="170056030" data-fhtype="story" class="fhitem fhitem-story article usermode thumbs grid_24">
+		<span class="sd-info-block" style="display: none">
+			<span class="sd-key-firehose-id">170056030</span>
+			<span class="type">story</span>
+			
+		</span>
+
+
+
+
+
+
+
+	
+	
+
+<header>
+	
+		<span class="topic" id="topic-170056030">
+			<a href="//slashdot.org/index2.pl?fhfilter=earth" onclick="return addfhfilter('earth');">
+			
+				<img src="//a.fsdn.com/sd/topics/earth_64.png" width="64" height="64" alt="Earth" title="Earth">
+			
+		</a>
+		</span>
+	
+
+	<h2 class="story">
+		
+
+		
+
+		
+		
+
+		
+
+		
+
+		
+
+		<span id="title-170056030" class="story-title"> <a onclick="return toggle_fh_body_wrap_return(this);"  href="//news.slashdot.org/story/23/01/09/1736250/restoration-of-the-ozone-layer-is-back-on-track-scientists-say">Restoration of the Ozone Layer Is Back on Track, Scientists Say</a> <span class=" no extlnk"><a class="story-sourcelnk" href="https://www.nytimes.com/2023/01/09/climate/ozone-hole-restoration-montreal-protocol.html"  title="External link - https://www.nytimes.com/2023/01/09/climate/ozone-hole-restoration-montreal-protocol.html" target="_blank"> (nytimes.com) </a></span></span>
+
+		
+		
+		<!--<span class="comments commentcnt-170056030" >15</span>-->
+		
+
+		
+		<!-- comment bubble -->
+		
+			<span class="comment-bubble"><a href="//news.slashdot.org/story/23/01/09/1736250/restoration-of-the-ozone-layer-is-back-on-track-scientists-say#comments" title="">15</a></span>
+		
+	</h2>
+	<div class="details" id="details-170056030">
+		<span class="story-details">
+		<span class="story-views">
+			<span class="sodify" onclick="firehose_set_options('color', 'red')" title="Filter Firehose to entries rated red or better"></span><span class="icon-beaker pop1 " alt="Popularity" title="Filter Firehose to entries rated red or better" onclick="firehose_set_options('color', 'red')"><span></span></span> 
+		</span>
+		</span>
+		<span class="story-byline">
+	
+				
+			Posted
+				by 
+		
+		
+			
+				  msmash
+			
+		
+		
+
+		
+		
+		<time id="fhtime-170056030" datetime="on Monday January 09, 2023 @04:20PM">on Monday January 09, 2023 @04:20PM</time>
+		
+		
+			 from the <span class="dept-text">closer-look</span> dept.
+		
+		</span>
+	</div>
+</header>
+
+<div class="body" id="fhbody-170056030">
+	
+
+	
+		
+		<div id="text-170056030" class="p">
+			
+		 	
+				The protective ozone layer in the upper atmosphere <a href="https://www.nytimes.com/2023/01/09/climate/ozone-hole-restoration-montreal-protocol.html">could be restored within several decades</a>, scientists said Monday, as recent rogue emissions of ozone-depleting chemicals from China have been largely eliminated. From a report:<i> In a United Nations-sponsored assessment, the scientists said that global emissions of CFC-11, a banned chemical that has been used as a refrigerant and in insulating foams, had declined since 2018 after increasing for several years. CFC-11 and similar chemicals, collectively called chlorofluorocarbons, destroy ozone, which blocks ultraviolet radiation from the sun that can cause skin cancer and otherwise harm people and other living things. The scientists said that if current policies remained in place, ozone levels between the polar regions should reach pre-1980 levels by 2040. Ozone holes, or regions of greater depletion that appear regularly near the South Pole and, less frequently, near the North Pole, should also recover, by 2045 in the Arctic and about 2066 in Antarctica.<br> <br>
+
+"Things continue to trend in the right direction," said Stephen A. Montzka, a research chemist with the National Oceanic and Atmospheric Administration and one of the report's authors. Dr. Montzka led a 2018 study that alerted the world that CFC-11 emissions had been increasing since 2012 and that they appeared to come from East Asia. Investigations by The New York Times and others strongly suggested that small factories in Eastern China <a href="https://www.nytimes.com/2018/06/24/world/asia/china-ozone-cfc.html">disregarding the global ban were the source</a>. The new emissions had threatened to undermine the Montreal Protocol, the treaty negotiated in the 1980s to phase out the use of chlorofluorocarbons in favor of more benign chemicals after it was discovered that chlorofluorocarbons were depleting atmospheric ozone.</i><br>
+		 	
+		</div>
+
+		
+
+		
+
+		
+	</div>
+	<aside class="novote">
+		
+	</aside>
+	
+	  	
+
+		
+		<footer class="clearfix meta article-foot">
+			<div class="story-controls">
+				
+                    
+					
+				
+			</div>
+			
+				
+				<div class="story-tags">
+					<span class="tright tags"><menu type="toolbar" class="edit-bar">
+		<span id="tagbar-170056030" class="tag-bar none">
+			
+		</span>
+		
+		<!--
+			<a class="edit-toggle" href="/my/login/" onclick="show_login_box();return false;">
+				<span class="icon-tag btn collapse"></span>
+			</a>
+			-->
+		
+		
+		<div class="tag-menu">
+			<input class="tag-entry default" type="text" value="apply tags">
+		</div>
+		
+
+		
+		
+
+	</menu></span>
+				</div>
+				
+			
+		</footer>
+	
+
+
+
+	</article><article id="firehose-170055826" data-fhid="170055826" data-fhtype="story" class="fhitem fhitem-story article usermode thumbs grid_24">
+		<span class="sd-info-block" style="display: none">
+			<span class="sd-key-firehose-id">170055826</span>
+			<span class="type">story</span>
+			
+		</span>
+
+
+
+
+
+
+
+	
+	
+
+<header>
+	
+		<span class="topic" id="topic-170055826">
+			<a href="//slashdot.org/index2.pl?fhfilter=ai" onclick="return addfhfilter('ai');">
+			
+				<img src="//a.fsdn.com/sd/topics/ai_64.png" width="64" height="64" alt="AI" title="AI">
+			
+		</a>
+		</span>
+	
+
+	<h2 class="story">
+		
+
+		
+
+		
+		
+
+		
+
+		
+
+		
+
+		<span id="title-170055826" class="story-title"> <a onclick="return toggle_fh_body_wrap_return(this);"  href="//tech.slashdot.org/story/23/01/09/1726215/ai-turns-its-artistry-to-creating-new-human-proteins">AI Turns Its Artistry to Creating New Human Proteins</a> <span class=" no extlnk"><a class="story-sourcelnk" href="https://www.nytimes.com/2023/01/09/science/artificial-intelligence-proteins.html"  title="External link - https://www.nytimes.com/2023/01/09/science/artificial-intelligence-proteins.html" target="_blank"> (nytimes.com) </a></span></span>
+
+		
+		
+		<!--<span class="comments commentcnt-170055826" >14</span>-->
+		
+
+		
+		<!-- comment bubble -->
+		
+			<span class="comment-bubble"><a href="//tech.slashdot.org/story/23/01/09/1726215/ai-turns-its-artistry-to-creating-new-human-proteins#comments" title="">14</a></span>
+		
+	</h2>
+	<div class="details" id="details-170055826">
+		<span class="story-details">
+		<span class="story-views">
+			<span class="sodify" onclick="firehose_set_options('color', 'red')" title="Filter Firehose to entries rated red or better"></span><span class="icon-beaker pop1 " alt="Popularity" title="Filter Firehose to entries rated red or better" onclick="firehose_set_options('color', 'red')"><span></span></span> 
+		</span>
+		</span>
+		<span class="story-byline">
+	
+				
+			Posted
+				by 
+		
+		
+			
+				  msmash
+			
+		
+		
+
+		
+		
+		<time id="fhtime-170055826" datetime="on Monday January 09, 2023 @03:40PM">on Monday January 09, 2023 @03:40PM</time>
+		
+		
+			 from the <span class="dept-text">closer-look</span> dept.
+		
+		</span>
+	</div>
+</header>
+
+<div class="body" id="fhbody-170055826">
+	
+
+	
+		
+		<div id="text-170055826" class="p">
+			
+		 	
+				Using many of the same techniques that underpin DALL-E and other art generators, these scientists are <a href="https://www.nytimes.com/2023/01/09/science/artificial-intelligence-proteins.html">generating blueprints for new proteins</a> -- tiny biological mechanisms that can change the way of our bodies behave. From a report:<i> Our bodies naturally produce about 20,000 proteins, which handle everything from digesting food to moving oxygen through the bloodstream. Now, researchers are working to create proteins that are not found in nature, hoping to improve our ability to fight disease and do things that our bodies cannot on their own.<br> <br>
+
+David Baker, the director of the Institute for Protein Design at the University of Washington, has been working to build artisanal proteins for more than 30 years. By 2017, he and his team had shown this was possible. But they did not anticipate how the rise of new A.I. technologies would suddenly accelerate this work, shrinking the time needed to generate new blueprints from years down to weeks. "What we need are new proteins that can solve modern-day problems, like cancer and viral pandemics," Dr. Baker said. "We can't wait for evolution." He added, "Now, we can design these proteins much faster, and with much higher success rates, and create much more sophisticated molecules that can help solve these problems."<br> <br>
+
+Last year, Dr. Baker and his fellow researchers published a pair of papers in the journal Science describing how <a href="https://www.science.org/doi/10.1126/science.add2187">various A.I. techniques</a> could <a href="https://www.science.org/doi/10.1126/science.add1964">accelerate protein design</a>. But these papers have already been <a href="https://www.biorxiv.org/content/10.1101/2022.12.09.519842v1">eclipsed by a newer one</a> that draws on the techniques that drive tools like DALL-E, showing how new proteins can be generated from scratch much like digital photos. "One of the most powerful things about this technology is that, like DALL-E, it does what you tell it to do," said Nate Bennett, one of the researchers working in the University of Washington lab. "From a single prompt, it can generate an endless number of designs."</i><br>
+		 	
+		</div>
+
+		
+
+		
+
+		
+	</div>
+	<aside class="novote">
+		
+	</aside>
+	
+	  	
+
+		
+		<footer class="clearfix meta article-foot">
+			<div class="story-controls">
+				
+                    
+					
+				
+			</div>
+			
+				
+				<div class="story-tags">
+					<span class="tright tags"><menu type="toolbar" class="edit-bar">
+		<span id="tagbar-170055826" class="tag-bar none">
+			
+		</span>
+		
+		<!--
+			<a class="edit-toggle" href="/my/login/" onclick="show_login_box();return false;">
+				<span class="icon-tag btn collapse"></span>
+			</a>
+			-->
+		
+		
+		<div class="tag-menu">
+			<input class="tag-entry default" type="text" value="apply tags">
+		</div>
+		
+
+		
+		
+
+	</menu></span>
+				</div>
+				
+			
+		</footer>
+	
+
+
+
+	</article><article id="firehose-170055402" data-fhid="170055402" data-fhtype="story" class="fhitem fhitem-story article usermode thumbs grid_24">
+		<span class="sd-info-block" style="display: none">
+			<span class="sd-key-firehose-id">170055402</span>
+			<span class="type">story</span>
+			
+		</span>
+
+
+
+
+
+
+
+	
+	
+
+<header>
+	
+		<span class="topic" id="topic-170055402">
+			<a href="//slashdot.org/index2.pl?fhfilter=apple" onclick="return addfhfilter('apple');">
+			
+				<img src="//a.fsdn.com/sd/topics/apple_64.png" width="64" height="64" alt="Apple" title="Apple">
+			
+		</a>
+		</span>
+	
+
+	<h2 class="story">
+		
+
+		
+
+		
+		
+
+		
+
+		
+
+		
+
+		<span id="title-170055402" class="story-title"> <a onclick="return toggle_fh_body_wrap_return(this);"  href="//apple.slashdot.org/story/23/01/09/173217/apple-will-talk-up-its-mixed-reality-headset-in-2023-but-not-much-else">Apple Will Talk Up Its Mixed-Reality Headset in 2023 But Not Much Else</a> <span class=" no extlnk"><a class="story-sourcelnk" href="https://www.bloomberg.com/news/newsletters/2023-01-08/when-will-apple-launch-the-reality-pro-mixed-reality-headset-apple-2023-devices-lcnfzkc7"  title="External link - https://www.bloomberg.com/news/newsletters/2023-01-08/when-will-apple-launch-the-reality-pro-mixed-reality-headset-apple-2023-devices-lcnfzkc7" target="_blank"> (bloomberg.com) </a></span></span>
+
+		
+		
+		<!--<span class="comments commentcnt-170055402" >26</span>-->
+		
+
+		
+		<!-- comment bubble -->
+		
+			<span class="comment-bubble"><a href="//apple.slashdot.org/story/23/01/09/173217/apple-will-talk-up-its-mixed-reality-headset-in-2023-but-not-much-else#comments" title="">26</a></span>
+		
+	</h2>
+	<div class="details" id="details-170055402">
+		<span class="story-details">
+		<span class="story-views">
+			<span class="sodify" onclick="firehose_set_options('color', 'red')" title="Filter Firehose to entries rated red or better"></span><span class="icon-beaker pop1 " alt="Popularity" title="Filter Firehose to entries rated red or better" onclick="firehose_set_options('color', 'red')"><span></span></span> 
+		</span>
+		</span>
+		<span class="story-byline">
+	
+				
+			Posted
+				by 
+		
+		
+			
+				  msmash
+			
+		
+		
+
+		
+		
+		<time id="fhtime-170055402" datetime="on Monday January 09, 2023 @03:00PM">on Monday January 09, 2023 @03:00PM</time>
+		
+		
+			 from the <span class="dept-text">shape-of-things-to-come</span> dept.
+		
+		</span>
+	</div>
+</header>
+
+<div class="body" id="fhbody-170055402">
+	
+
+	
+		
+		<div id="text-170055402" class="p">
+			
+		 	
+				Apple, after seven years of development, is nearly ready to launch its first mixed-reality headset. But the focus on this new product will lead to an otherwise muted 2023. Bloomberg:<i> I first wrote in 2017 about Apple's ambition to launch a high-performance AR-based headset -- complete with its own operating system, App Store and dedicated chips. Back then, Apple had aimed to get it to market by 2019. Over time, the delays stacked up. Apple had plans to launch the device in 2020, then 2021 and then 2022. The final postponement, at least for the moment, happened last year. Up until fairly recently, Apple had aimed to introduce the headset in January 2023 and ship it later this year. Now the <a href="https://www.bloomberg.com/news/newsletters/2023-01-08/when-will-apple-launch-the-reality-pro-mixed-reality-headset-apple-2023-devices-lcnfzkc7">company is aiming to unveil it this spring</a> ahead of the annual Worldwide Developers Conference in June, I'm told.<br> <br>
+
+Apple has already shared the device with a small number of high-profile software developers for testing, letting them get started on third-party apps. The device's operating system, dubbed "Borealis" inside the company, will be publicly named xrOS. With the current plan, Apple could introduce the device to consumers -- likely under the name Reality Pro -- and then get developers up to speed on its software features in June. On this timeline, the company would then ship the product later in the fall of 2023.</i><br>
+		 	
+		</div>
+
+		
+
+		
+
+		
+	</div>
+	<aside class="novote">
+		
+	</aside>
+	
+	  	
+
+		
+		<footer class="clearfix meta article-foot">
+			<div class="story-controls">
+				
+                    
+					
+				
+			</div>
+			
+				
+				<div class="story-tags">
+					<span class="tright tags"><menu type="toolbar" class="edit-bar">
+		<span id="tagbar-170055402" class="tag-bar none">
+			
+		</span>
+		
+		<!--
+			<a class="edit-toggle" href="/my/login/" onclick="show_login_box();return false;">
+				<span class="icon-tag btn collapse"></span>
+			</a>
+			-->
+		
+		
+		<div class="tag-menu">
+			<input class="tag-entry default" type="text" value="apply tags">
+		</div>
+		
+
+		
+		
+
+	</menu></span>
+				</div>
+				
+			
+		</footer>
+	
+
+
+
+	</article><article id="firehose-170055214" data-fhid="170055214" data-fhtype="story" class="fhitem fhitem-story article usermode thumbs grid_24">
+		<span class="sd-info-block" style="display: none">
+			<span class="sd-key-firehose-id">170055214</span>
+			<span class="type">story</span>
+			
+		</span>
+
+
+
+
+
+
+
+	
+	
+
+<header>
+	
+		<span class="topic" id="topic-170055214">
+			<a href="//slashdot.org/index2.pl?fhfilter=it" onclick="return addfhfilter('it');">
+			
+				<img src="//a.fsdn.com/sd/topics/it_64.png" width="64" height="64" alt="IT" title="IT">
+			
+		</a>
+		</span>
+	
+
+	<h2 class="story">
+		
+
+		
+
+		
+		
+
+		
+
+		
+
+		
+
+		<span id="title-170055214" class="story-title"> <a onclick="return toggle_fh_body_wrap_return(this);"  href="//tech.slashdot.org/story/23/01/09/1647247/raspberry-pi-launches-higher-resolution-camera-module-now-with-autofocus">Raspberry Pi Launches Higher Resolution Camera Module, Now With Autofocus</a> <span class=" no extlnk"><a class="story-sourcelnk" href="https://www.theverge.com/2023/1/9/23546129/raspberry-pi-camera-module-3-resolution-specs-price-release-date-features"  title="External link - https://www.theverge.com/2023/1/9/23546129/raspberry-pi-camera-module-3-resolution-specs-price-release-date-features" target="_blank"> (theverge.com) </a></span></span>
+
+		
+		
+		<!--<span class="comments commentcnt-170055214" >27</span>-->
+		
+
+		
+		<!-- comment bubble -->
+		
+			<span class="comment-bubble"><a href="//tech.slashdot.org/story/23/01/09/1647247/raspberry-pi-launches-higher-resolution-camera-module-now-with-autofocus#comments" title="">27</a></span>
+		
+	</h2>
+	<div class="details" id="details-170055214">
+		<span class="story-details">
+		<span class="story-views">
+			<span class="sodify" onclick="firehose_set_options('color', 'red')" title="Filter Firehose to entries rated red or better"></span><span class="icon-beaker pop1 " alt="Popularity" title="Filter Firehose to entries rated red or better" onclick="firehose_set_options('color', 'red')"><span></span></span> 
+		</span>
+		</span>
+		<span class="story-byline">
+	
+				
+			Posted
+				by 
+		
+		
+			
+				  msmash
+			
+		
+		
+
+		
+		
+		<time id="fhtime-170055214" datetime="on Monday January 09, 2023 @02:21PM">on Monday January 09, 2023 @02:21PM</time>
+		
+		
+			 from the <span class="dept-text">moving-forward</span> dept.
+		
+		</span>
+	</div>
+</header>
+
+<div class="body" id="fhbody-170055214">
+	
+
+	
+		
+		<div id="text-170055214" class="p">
+			
+		 	
+				Raspberry Pi is launching a new camera module for use with its diminutive DIY computers -- the Camera Module 3. Its upgraded Sony IMX708 sensor is higher resolution, but perhaps more important is that the new module <a href="https://www.theverge.com/2023/1/9/23546129/raspberry-pi-camera-module-3-resolution-specs-price-release-date-features">supports high dynamic range photography and autofocus</a>. Alongside it, Raspberry Pi is also releasing a new camera board for use with M12-mount lenses. From a report:<i> Combined, the new features mean the Camera Module 3 should be able to take more detailed photographs (especially in low light), and can focus on objects as little as 5cm away. The autofocus uses a Phase Detection Autofocus (PDAF) system, with Contrast Detection Autofocus used as a backup. In contrast, previous versions of the camera module had fixed-focus lenses, which Raspberry Pi CEO Eben Upton writes were "optimized to focus at infinity" and could only take a "reasonably sharp image" of objects around a meter away. <br> <br>
+
+The new module's sensor has a resolution of 11.9 megapixels (compared to 8.1 megapixels for the last version), and has a higher horizontal resolution that should allow it to film HD video. HDR support means the Camera Module 3 can take several exposures of the same scene, and combine them so that both darker and lighter parts of an image are properly exposed (at the expense of some resolution) -- a trick commonly performed by just about every smartphone. Prices start at $25 for the Camera Module 3 with a standard field-of-view, while the ultra-wide angle version with a 102-degree field of view is $35.</i><br>
+		 	
+		</div>
+
+		
+
+		
+
+		
+	</div>
+	<aside class="novote">
+		
+	</aside>
+	
+	  	
+
+		
+		<footer class="clearfix meta article-foot">
+			<div class="story-controls">
+				
+                    
+					
+				
+			</div>
+			
+				
+				<div class="story-tags">
+					<span class="tright tags"><menu type="toolbar" class="edit-bar">
+		<span id="tagbar-170055214" class="tag-bar none">
+			
+		</span>
+		
+		<!--
+			<a class="edit-toggle" href="/my/login/" onclick="show_login_box();return false;">
+				<span class="icon-tag btn collapse"></span>
+			</a>
+			-->
+		
+		
+		<div class="tag-menu">
+			<input class="tag-entry default" type="text" value="apply tags">
+		</div>
+		
+
+		
+		
+
+	</menu></span>
+				</div>
+				
+			
+		</footer>
+	
+
+
+
+	</article><article id="firehose-170055094" data-fhid="170055094" data-fhtype="story" class="fhitem fhitem-story article usermode thumbs grid_24">
+		<span class="sd-info-block" style="display: none">
+			<span class="sd-key-firehose-id">170055094</span>
+			<span class="type">story</span>
+			
+		</span>
+
+
+
+
+
+
+
+	
+	
+
+<header>
+	
+		<span class="topic" id="topic-170055094">
+			<a href="//slashdot.org/index2.pl?fhfilter=games" onclick="return addfhfilter('games');">
+			
+				<img src="//a.fsdn.com/sd/topics/games_64.png" width="64" height="64" alt="Games" title="Games">
+			
+		</a>
+		</span>
+	
+
+	<h2 class="story">
+		
+
+		
+
+		
+		
+
+		
+
+		
+
+		
+
+		<span id="title-170055094" class="story-title"> <a onclick="return toggle_fh_body_wrap_return(this);"  href="//games.slashdot.org/story/23/01/09/1637234/steam-reaches-10-million-concurrent-in-game-players-for-the-first-time">Steam Reaches 10 Million Concurrent In-Game Players for the First Time</a> <span class=" no extlnk"><a class="story-sourcelnk" href="https://www.ign.com/articles/steam-reaches-10-million-concurrent-in-game-players-for-the-first-time"  title="External link - https://www.ign.com/articles/steam-reaches-10-million-concurrent-in-game-players-for-the-first-time" target="_blank"> (ign.com) </a></span></span>
+
+		
+		
+		<!--<span class="comments commentcnt-170055094" >9</span>-->
+		
+
+		
+		<!-- comment bubble -->
+		
+			<span class="comment-bubble"><a href="//games.slashdot.org/story/23/01/09/1637234/steam-reaches-10-million-concurrent-in-game-players-for-the-first-time#comments" title="">9</a></span>
+		
+	</h2>
+	<div class="details" id="details-170055094">
+		<span class="story-details">
+		<span class="story-views">
+			<span class="sodify" onclick="firehose_set_options('color', 'red')" title="Filter Firehose to entries rated red or better"></span><span class="icon-beaker pop1 " alt="Popularity" title="Filter Firehose to entries rated red or better" onclick="firehose_set_options('color', 'red')"><span></span></span> 
+		</span>
+		</span>
+		<span class="story-byline">
+	
+				
+			Posted
+				by 
+		
+		
+			
+				  msmash
+			
+		
+		
+
+		
+		
+		<time id="fhtime-170055094" datetime="on Monday January 09, 2023 @01:41PM">on Monday January 09, 2023 @01:41PM</time>
+		
+		
+			 from the <span class="dept-text">moving-forward</span> dept.
+		
+		</span>
+	</div>
+</header>
+
+<div class="body" id="fhbody-170055094">
+	
+
+	
+		
+		<div id="text-170055094" class="p">
+			
+		 	
+				Alongside reaching 32 million concurrently online users, Steam has also just <a href="https://www.ign.com/articles/steam-reaches-10-million-concurrent-in-game-players-for-the-first-time">surpassed 10 million concurrent in-game players</a> for the first time. From a report:<i> The news was shared by SteamDB, and it shows the milestones were reached on Saturday, January 7, where the in-game concurrents were at 10,082,055 million and the concurrently online users -- those who are simply on Steam but not necessarily playing a game -- were at 32,186,301. As for what these millions of people were playing, the #1 played game in the past 24 hours as of this writing was Counter-Strike: Global Offensive at 1.08 million concurrent players. Sitting behind Counter-Strike were DOTA 2 (766,096), Goose Goose Duck (605,694), PUBG: Battlegrounds (439,944), and Apex Legends (367,585).</i><br>
+		 	
+		</div>
+
+		
+
+		
+
+		
+	</div>
+	<aside class="novote">
+		
+	</aside>
+	
+	  	
+
+		
+		<footer class="clearfix meta article-foot">
+			<div class="story-controls">
+				
+                    
+					
+				
+			</div>
+			
+				
+				<div class="story-tags">
+					<span class="tright tags"><menu type="toolbar" class="edit-bar">
+		<span id="tagbar-170055094" class="tag-bar none">
+			
+		</span>
+		
+		<!--
+			<a class="edit-toggle" href="/my/login/" onclick="show_login_box();return false;">
+				<span class="icon-tag btn collapse"></span>
+			</a>
+			-->
+		
+		
+		<div class="tag-menu">
+			<input class="tag-entry default" type="text" value="apply tags">
+		</div>
+		
+
+		
+		
+
+	</menu></span>
+				</div>
+				
+			
+		</footer>
+	
+
+
+
+	</article><article id="firehose-170054638" data-fhid="170054638" data-fhtype="story" class="fhitem fhitem-story article usermode thumbs grid_24">
+		<span class="sd-info-block" style="display: none">
+			<span class="sd-key-firehose-id">170054638</span>
+			<span class="type">story</span>
+			
+		</span>
+
+
+
+
+
+
+
+	
+	
+
+<header>
+	
+		<span class="topic" id="topic-170054638">
+			<a href="//slashdot.org/index2.pl?fhfilter=usa" onclick="return addfhfilter('usa');">
+			
+				<img src="//a.fsdn.com/sd/topics/usa_64.png" width="64" height="64" alt="United States" title="United States">
+			
+		</a>
+		</span>
+	
+
+	<h2 class="story">
+		
+
+		
+
+		
+		
+
+		
+
+		
+
+		
+
+		<span id="title-170054638" class="story-title"> <a onclick="return toggle_fh_body_wrap_return(this);"  href="//news.slashdot.org/story/23/01/09/1559216/us-supreme-court-lets-metas-whatsapp-pursue-pegasus-spyware-suit">US Supreme Court Lets Meta's WhatsApp Pursue 'Pegasus' Spyware Suit</a> <span class=" no extlnk"><a class="story-sourcelnk" href="https://www.reuters.com/legal/us-supreme-court-lets-metas-whatsapp-pursue-pegasus-spyware-suit-2023-01-09/"  title="External link - https://www.reuters.com/legal/us-supreme-court-lets-metas-whatsapp-pursue-pegasus-spyware-suit-2023-01-09/" target="_blank"> (reuters.com) </a></span></span>
+
+		
+		
+		<!--<span class="comments commentcnt-170054638" >10</span>-->
+		
+
+		
+		<!-- comment bubble -->
+		
+			<span class="comment-bubble"><a href="//news.slashdot.org/story/23/01/09/1559216/us-supreme-court-lets-metas-whatsapp-pursue-pegasus-spyware-suit#comments" title="">10</a></span>
+		
+	</h2>
+	<div class="details" id="details-170054638">
+		<span class="story-details">
+		<span class="story-views">
+			<span class="sodify" onclick="firehose_set_options('color', 'red')" title="Filter Firehose to entries rated red or better"></span><span class="icon-beaker pop1 " alt="Popularity" title="Filter Firehose to entries rated red or better" onclick="firehose_set_options('color', 'red')"><span></span></span> 
+		</span>
+		</span>
+		<span class="story-byline">
+	
+				
+			Posted
+				by 
+		
+		
+			
+				  msmash
+			
+		
+		
+
+		
+		
+		<time id="fhtime-170054638" datetime="on Monday January 09, 2023 @01:01PM">on Monday January 09, 2023 @01:01PM</time>
+		
+		
+			 from the <span class="dept-text">moving-forward</span> dept.
+		
+		</span>
+	</div>
+</header>
+
+<div class="body" id="fhbody-170054638">
+	
+
+	
+		
+		<div id="text-170054638" class="p">
+			
+		 	
+				The U.S. Supreme Court on Monday let Meta's WhatsApp <a href="https://www.reuters.com/legal/us-supreme-court-lets-metas-whatsapp-pursue-pegasus-spyware-suit-2023-01-09/">pursue a lawsuit accusing Israel's NSO Group</a> of exploiting a bug in its WhatsApp messaging app to install spy software allowing the surveillance of 1,400 people, including journalists, human rights activists and dissidents. From a report:<i> The justices turned away NSO's appeal of a lower court's decision that the lawsuit could move forward. NSO has argued that it is immune from being sued because it was acting as an agent for unidentified foreign governments when it installed the "Pegasus" spyware.<br> <br>
+
+President Joe Biden's administration had urged the justices to reject NSO's appeal, noting that the U.S. State Department had never before recognized a private entity acting as an agent of a foreign state as being entitled to immunity. WhatsApp in 2019 <a href="https://yro.slashdot.org/story/19/10/29/2032239/facebook-sues-israels-nso-group-over-alleged-whatsapp-hack">sued NSO</a> seeking an injunction and damages, accusing it of accessing WhatsApp servers without permission six months earlier to install the Pegasus software on victims' mobile devices.</i><br>
+		 	
+		</div>
+
+		
+
+		
+
+		
+	</div>
+	<aside class="novote">
+		
+	</aside>
+	
+	  	
+
+		
+		<footer class="clearfix meta article-foot">
+			<div class="story-controls">
+				
+                    
+					
+				
+			</div>
+			
+				
+				<div class="story-tags">
+					<span class="tright tags"><menu type="toolbar" class="edit-bar">
+		<span id="tagbar-170054638" class="tag-bar none">
+			<a  class="topic tag" rel="statictag" href="//slashdot.org/tag/" target="_blank"></a>
+
+		</span>
+		
+		<!--
+			<a class="edit-toggle" href="/my/login/" onclick="show_login_box();return false;">
+				<span class="icon-tag btn collapse"></span>
+			</a>
+			-->
+		
+		
+		<div class="tag-menu">
+			<input class="tag-entry default" type="text" value="apply tags">
+		</div>
+		
+
+		
+		
+
+	</menu></span>
+				</div>
+				
+			
+		</footer>
+	
+
+
+
+	</article><article id="firehose-170053974" data-fhid="170053974" data-fhtype="story" class="fhitem fhitem-story article usermode thumbs grid_24">
+		<span class="sd-info-block" style="display: none">
+			<span class="sd-key-firehose-id">170053974</span>
+			<span class="type">story</span>
+			
+		</span>
+
+
+
+
+
+
+
+	
+	
+
+<header>
+	
+		<span class="topic" id="topic-170053974">
+			<a href="//slashdot.org/index2.pl?fhfilter=microsoft" onclick="return addfhfilter('microsoft');">
+			
+				<img src="//a.fsdn.com/sd/topics/microsoft_64100.png" width="100" height="64" alt="Microsoft" title="Microsoft">
+			
+		</a>
+		</span>
+	
+
+	<h2 class="story">
+		
+
+		
+
+		
+		
+
+		
+
+		
+
+		
+
+		<span id="title-170053974" class="story-title"> <a onclick="return toggle_fh_body_wrap_return(this);"  href="//slashdot.org/story/23/01/09/1511251/microsoft-looks-to-add-openais-chatbot-technology-to-word-email">Microsoft Looks To Add OpenAI's Chatbot Technology To Word, Email</a> <span class=" no extlnk"><a class="story-sourcelnk" href="https://www.theinformation.com/articles/ghost-writer-microsoft-looks-to-add-openais-chatbot-technology-to-word-email"  title="External link - https://www.theinformation.com/articles/ghost-writer-microsoft-looks-to-add-openais-chatbot-technology-to-word-email" target="_blank"> (theinformation.com) </a></span></span>
+
+		
+		
+		<!--<span class="comments commentcnt-170053974" >38</span>-->
+		
+
+		
+		<!-- comment bubble -->
+		
+			<span class="comment-bubble"><a href="//slashdot.org/story/23/01/09/1511251/microsoft-looks-to-add-openais-chatbot-technology-to-word-email#comments" title="">38</a></span>
+		
+	</h2>
+	<div class="details" id="details-170053974">
+		<span class="story-details">
+		<span class="story-views">
+			<span class="sodify" onclick="firehose_set_options('color', 'red')" title="Filter Firehose to entries rated red or better"></span><span class="icon-beaker pop1 " alt="Popularity" title="Filter Firehose to entries rated red or better" onclick="firehose_set_options('color', 'red')"><span></span></span> 
+		</span>
+		</span>
+		<span class="story-byline">
+	
+				
+			Posted
+				by 
+		
+		
+			
+				  msmash
+			
+		
+		
+
+		
+		
+		<time id="fhtime-170053974" datetime="on Monday January 09, 2023 @12:21PM">on Monday January 09, 2023 @12:21PM</time>
+		
+		
+			 from the <span class="dept-text">shape-of-things-to-come</span> dept.
+		
+		</span>
+	</div>
+</header>
+
+<div class="body" id="fhbody-170053974">
+	
+
+	
+		
+		<div id="text-170053974" class="p">
+			
+		 	
+				In a move that could change how more than a billion people write documents, presentations and emails, Microsoft has discussed <a href="https://www.theinformation.com/articles/ghost-writer-microsoft-looks-to-add-openais-chatbot-technology-to-word-email">incorporating OpenAI's artificial intelligence in Word, PowerPoint, Outlook and other apps</a> so customers can automatically generate text using simple prompts, <em>The Information</em> reported, citing a person with direct knowledge of the effort. From a report:<i> These goals won't be easy to accomplish. For more than a year, Microsoft's engineers and researchers have worked to create personalized AI tools for composing emails and documents by applying OpenAI's machine-learning models to customers' private data, said another person with direct knowledge of the plan, which hasn't previously been reported. Engineers are developing methods to train these models on the customer data without it leaking to other customers or falling into the hands of bad actors, this person said. <br> <br>
+
+The AI-powered writing and editing tools also run the risk of turning off customers if those features introduce mistakes. Since 2019, the year Microsoft struck a pact to work with OpenAI on new technologies, both companies have been largely mum about how Microsoft would implement and commercialize them. Microsoft last year released Copilot, a highly touted tool that uses OpenAI technology to help programmers write computer code automatically. Then on Tuesday, The Information reported that Microsoft's Bing search <a href="https://tech.slashdot.org/story/23/01/04/0456241/microsoft-and-openai-working-on-chatgpt-powered-bing-in-challenge-to-google">plans to use OpenAI's ChatGPT</a> technology, which can understand and generate polished text, to answer some search queries with full sentences rather than just showing a list of links. The machine-learning models behind ChatGPT are similar to the ones that power Copilot.</i><br>
+		 	
+		</div>
+
+		
+
+		
+
+		
+	</div>
+	<aside class="novote">
+		
+	</aside>
+	
+	  	
+
+		
+		<footer class="clearfix meta article-foot">
+			<div class="story-controls">
+				
+                    
+					
+				
+			</div>
+			
+				
+				<div class="story-tags">
+					<span class="tright tags"><menu type="toolbar" class="edit-bar">
+		<span id="tagbar-170053974" class="tag-bar none">
+			
+		</span>
+		
+		<!--
+			<a class="edit-toggle" href="/my/login/" onclick="show_login_box();return false;">
+				<span class="icon-tag btn collapse"></span>
+			</a>
+			-->
+		
+		
+		<div class="tag-menu">
+			<input class="tag-entry default" type="text" value="apply tags">
+		</div>
+		
+
+		
+		
+
+	</menu></span>
+				</div>
+				
+			
+		</footer>
+	
+
+
+
+	</article><article id="firehose-170053680" data-fhid="170053680" data-fhtype="story" class="fhitem fhitem-story article usermode thumbs grid_24">
+		<span class="sd-info-block" style="display: none">
+			<span class="sd-key-firehose-id">170053680</span>
+			<span class="type">story</span>
+			
+		</span>
+
+
+
+
+
+
+
+	
+	
+
+<header>
+	
+		<span class="topic" id="topic-170053680">
+			<a href="//slashdot.org/index2.pl?fhfilter=usa" onclick="return addfhfilter('usa');">
+			
+				<img src="//a.fsdn.com/sd/topics/usa_64.png" width="64" height="64" alt="United States" title="United States">
+			
+		</a>
+		</span>
+	
+
+	<h2 class="story">
+		
+
+		
+
+		
+		
+
+		
+
+		
+
+		
+
+		<span id="title-170053680" class="story-title"> <a onclick="return toggle_fh_body_wrap_return(this);"  href="//news.slashdot.org/story/23/01/09/1448215/us-tech-giants-say-indian-panels-recommended-competition-act-absolutist-and-regressive">US Tech Giants Say Indian Panel's Recommended Competition Act 'Absolutist and Regressive'</a> <span class=" no extlnk"><a class="story-sourcelnk" href="https://techcrunch.com/2023/01/08/us-tech-giants-say-indian-panels-recommended-competition-act-absolutist-and-regressive/"  title="External link - https://techcrunch.com/2023/01/08/us-tech-giants-say-indian-panels-recommended-competition-act-absolutist-and-regressive/" target="_blank"> (techcrunch.com) </a></span></span>
+
+		
+		
+		<!--<span class="comments commentcnt-170053680" >21</span>-->
+		
+
+		
+		<!-- comment bubble -->
+		
+			<span class="comment-bubble"><a href="//news.slashdot.org/story/23/01/09/1448215/us-tech-giants-say-indian-panels-recommended-competition-act-absolutist-and-regressive#comments" title="">21</a></span>
+		
+	</h2>
+	<div class="details" id="details-170053680">
+		<span class="story-details">
+		<span class="story-views">
+			<span class="sodify" onclick="firehose_set_options('color', 'red')" title="Filter Firehose to entries rated red or better"></span><span class="icon-beaker pop1 " alt="Popularity" title="Filter Firehose to entries rated red or better" onclick="firehose_set_options('color', 'red')"><span></span></span> 
+		</span>
+		</span>
+		<span class="story-byline">
+	
+				
+			Posted
+				by 
+		
+		
+			
+				  msmash
+			
+		
+		
+
+		
+		
+		<time id="fhtime-170053680" datetime="on Monday January 09, 2023 @11:42AM">on Monday January 09, 2023 @11:42AM</time>
+		
+		
+			 from the <span class="dept-text">closer-look</span> dept.
+		
+		</span>
+	</div>
+</header>
+
+<div class="body" id="fhbody-170053680">
+	
+
+	
+		
+		<div id="text-170053680" class="p">
+			
+		 	
+				An influential industry group that represents Google, Meta and Amazon among other tech firms has expressed concerns about the digital competition law recommended by an Indian parliamentary panel that seeks to regulate their alleged anticompetitive practices, <a href="https://techcrunch.com/2023/01/08/us-tech-giants-say-indian-panels-recommended-competition-act-absolutist-and-regressive/">calling the proposal "absolutist and regressive" in nature</a> in the latest escalation of tension between U.S. tech giants and New Delhi. From a report:<i> The Parliamentary Standing Committee on Finance recommended last month that the government enact a digital competition act to regulate anticompetitive business practices by Big Tech companies on its platforms, prohibiting them from preferentially promoting their in-house brands or not supporting third-party systems. The competition act, the panel said, "will be a boon not only for our country and its nascent startup economy but also for the entire world."<br> <br>
+
+Industry group Asia Internet Coalition said in a statement that the proposed digital competition law may hurt digital innovation in India and could impact the investments by businesses in India and have "disproportionate costs" to consumers in the South Asian market. "The report put forward by the committee is prescriptive, absolutist and regressive in nature," it added.</i><br>
+		 	
+		</div>
+
+		
+
+		
+
+		
+	</div>
+	<aside class="novote">
+		
+	</aside>
+	
+	  	
+
+		
+		<footer class="clearfix meta article-foot">
+			<div class="story-controls">
+				
+                    
+					
+				
+			</div>
+			
+				
+				<div class="story-tags">
+					<span class="tright tags"><menu type="toolbar" class="edit-bar">
+		<span id="tagbar-170053680" class="tag-bar none">
+			
+		</span>
+		
+		<!--
+			<a class="edit-toggle" href="/my/login/" onclick="show_login_box();return false;">
+				<span class="icon-tag btn collapse"></span>
+			</a>
+			-->
+		
+		
+		<div class="tag-menu">
+			<input class="tag-entry default" type="text" value="apply tags">
+		</div>
+		
+
+		
+		
+
+	</menu></span>
+				</div>
+				
+			
+		</footer>
+	
+
+
+
+	</article><article id="firehose-170054670" data-fhid="170054670" data-fhtype="story" class="fhitem fhitem-story article usermode thumbs grid_24">
+		<span class="sd-info-block" style="display: none">
+			<span class="sd-key-firehose-id">170054670</span>
+			<span class="type">story</span>
+			
+		</span>
+
+
+
+
+
+
+
+	
+	
+
+<header>
+	
+		<span class="topic" id="topic-170054670">
+			<a href="//slashdot.org/index2.pl?fhfilter=piracy" onclick="return addfhfilter('piracy');">
+			
+				<img src="//a.fsdn.com/sd/topics/piracy_64.png" width="64" height="60" alt="Piracy" title="Piracy">
+			
+		</a>
+		</span>
+	
+
+	<h2 class="story">
+		
+
+		
+
+		
+		
+
+		
+
+		
+
+		
+
+		<span id="title-170054670" class="story-title"> <a onclick="return toggle_fh_body_wrap_return(this);"  href="//yro.slashdot.org/story/23/01/09/161249/belarus-legalizes-piracy-of-movies-music-and-software-of-unfriendly-nations">Belarus Legalizes Piracy of Movies, Music and Software of 'Unfriendly' Nations</a> <span class=" no extlnk"><a class="story-sourcelnk" href="https://torrentfreak.com/belarus-legalizes-piracy-of-movies-music-software-of-unfriendly-nations-230109/"  title="External link - https://torrentfreak.com/belarus-legalizes-piracy-of-movies-music-software-of-unfriendly-nations-230109/" target="_blank"> (torrentfreak.com) </a></span></span>
+
+		
+		
+		<!--<span class="comments commentcnt-170054670" >118</span>-->
+		
+
+		
+		<!-- comment bubble -->
+		
+			<span class="comment-bubble"><a href="//yro.slashdot.org/story/23/01/09/161249/belarus-legalizes-piracy-of-movies-music-and-software-of-unfriendly-nations#comments" title="">118</a></span>
+		
+	</h2>
+	<div class="details" id="details-170054670">
+		<span class="story-details">
+		<span class="story-views">
+			<span class="sodify" onclick="firehose_set_options('color', 'red')" title="Filter Firehose to entries rated red or better"></span><span class="icon-beaker pop1 " alt="Popularity" title="Filter Firehose to entries rated red or better" onclick="firehose_set_options('color', 'red')"><span></span></span> 
+		</span>
+		</span>
+		<span class="story-byline">
+	
+				
+			Posted
+				by 
+		
+		
+			
+				  msmash
+			
+		
+		
+
+		
+		
+		<time id="fhtime-170054670" datetime="on Monday January 09, 2023 @11:02AM">on Monday January 09, 2023 @11:02AM</time>
+		
+		
+			 from the <span class="dept-text">how-about-that</span> dept.
+		
+		</span>
+	</div>
+</header>
+
+<div class="body" id="fhbody-170054670">
+	
+
+	
+		
+		<div id="text-170054670" class="p">
+			
+		 	
+				<a href="/~AmiMoJo">AmiMoJo</a> writes: <i>Belarusian dictator Alexander Lukashenko has signed a new law that legalizes piracy of movies, music, TV shows and software owned by <a href="https://torrentfreak.com/belarus-legalizes-piracy-of-movies-music-software-of-unfriendly-nations-230109/">rightsholders from 'unfriendly countries'</a>. The law also allows goods protected by intellectual property law to be imported from any country without obtaining permission from rightsholders.<br> <br>Lukashenko's support for Russia's invasion of Ukraine led to new sanctions being imposed by the EU, U.S. and other countries. In common with Russia, Belarus relies on intellectual property owned by foreign rightsholders that are currently unable or unwilling to supply and/or license it. So, to ensure legal access to pirated movies, music, TV shows and software, the government drafted a new law to restrict intellectual property rights.</i><br>
+		 	
+		</div>
+
+		
+
+		
+
+		
+	</div>
+	<aside class="novote">
+		
+	</aside>
+	
+	  	
+
+		
+		<footer class="clearfix meta article-foot">
+			<div class="story-controls">
+				
+                    
+					
+				
+			</div>
+			
+				
+				<div class="story-tags">
+					<span class="tright tags"><menu type="toolbar" class="edit-bar">
+		<span id="tagbar-170054670" class="tag-bar none">
+			<a  class="topic tag" rel="statictag" href="//slashdot.org/tag/" target="_blank"></a>
+
+		</span>
+		
+		<!--
+			<a class="edit-toggle" href="/my/login/" onclick="show_login_box();return false;">
+				<span class="icon-tag btn collapse"></span>
+			</a>
+			-->
+		
+		
+		<div class="tag-menu">
+			<input class="tag-entry default" type="text" value="apply tags">
+		</div>
+		
+
+		
+		
+
+	</menu></span>
+				</div>
+				
+			
+		</footer>
+	
+
+
+
+	</article><article id="firehose-170054100" data-fhid="170054100" data-fhtype="story" class="fhitem fhitem-story article usermode thumbs grid_24">
+		<span class="sd-info-block" style="display: none">
+			<span class="sd-key-firehose-id">170054100</span>
+			<span class="type">story</span>
+			
+		</span>
+
+
+
+
+
+
+
+	
+	
+
+<header>
+	
+		<span class="topic" id="topic-170054100">
+			<a href="//slashdot.org/index2.pl?fhfilter=security" onclick="return addfhfilter('security');">
+			
+				<img src="//a.fsdn.com/sd/topics/security_64.png" width="64" height="64" alt="Security" title="Security">
+			
+		</a>
+		</span>
+	
+
+	<h2 class="story">
+		
+
+		
+
+		
+		
+
+		
+
+		
+
+		
+
+		<span id="title-170054100" class="story-title"> <a onclick="return toggle_fh_body_wrap_return(this);"  href="//news.slashdot.org/story/23/01/09/1520238/identity-thieves-bypassed-experian-security-to-view-credit-reports">Identity Thieves Bypassed Experian Security To View Credit Reports</a> <span class=" no extlnk"><a class="story-sourcelnk" href="https://krebsonsecurity.com/2023/01/identity-thieves-bypassed-experian-security-to-view-credit-reports/"  title="External link - https://krebsonsecurity.com/2023/01/identity-thieves-bypassed-experian-security-to-view-credit-reports/" target="_blank"> (krebsonsecurity.com) </a></span></span>
+
+		
+		
+		<!--<span class="comments commentcnt-170054100" >30</span>-->
+		
+
+		
+		<!-- comment bubble -->
+		
+			<span class="comment-bubble"><a href="//news.slashdot.org/story/23/01/09/1520238/identity-thieves-bypassed-experian-security-to-view-credit-reports#comments" title="">30</a></span>
+		
+	</h2>
+	<div class="details" id="details-170054100">
+		<span class="story-details">
+		<span class="story-views">
+			<span class="sodify" onclick="firehose_set_options('color', 'red')" title="Filter Firehose to entries rated red or better"></span><span class="icon-beaker pop1 " alt="Popularity" title="Filter Firehose to entries rated red or better" onclick="firehose_set_options('color', 'red')"><span></span></span> 
+		</span>
+		</span>
+		<span class="story-byline">
+	
+				
+			Posted
+				by 
+		
+		
+			
+				  msmash
+			
+		
+		
+
+		
+		
+		<time id="fhtime-170054100" datetime="on Monday January 09, 2023 @10:21AM">on Monday January 09, 2023 @10:21AM</time>
+		
+		
+			 from the <span class="dept-text">security-woes</span> dept.
+		
+		</span>
+	</div>
+</header>
+
+<div class="body" id="fhbody-170054100">
+	
+
+	
+		
+		<div id="text-170054100" class="p">
+			
+		 	
+				Identity thieves have been exploiting a glaring <a href="https://krebsonsecurity.com/2023/01/identity-thieves-bypassed-experian-security-to-view-credit-reports/">security weakness in the website of Experian</a>, one of the big three consumer credit reporting bureausBrian Krebs reported Monday. From the report:<i> Normally, Experian requires that those seeking a copy of their credit report successfully answer several multiple choice questions about their financial history. But until the end of 2022, Experian's website allowed anyone to bypass these questions and go straight to the consumer's report. All that was needed was the person's name, address, birthday and Social Security number. In December, KrebsOnSecurity heard from Jenya Kushnir, a security researcher living in Ukraine who said he discovered the method being used by identity thieves after spending time on Telegram chat channels dedicated to the cashing out of compromised identities.<br> <br>
+
+"I want to try and help to put a stop to it and make it more difficult for [ID thieves] to access, since [Experian is] not doing shit and regular people struggle," Kushnir wrote in an email to KrebsOnSecurity explaining his motivations for reaching out. "If somehow I can make small change and help to improve this, inside myself I can feel that I did something that actually matters and helped others." Kushnir said the crooks learned they could trick Experian into giving them access to anyone's credit report, just by editing the address displayed in the browser URL bar at a specific point in Experian's identity verification process. </i><br>
+		 	
+		</div>
+
+		
+
+		
+
+		
+	</div>
+	<aside class="novote">
+		
+	</aside>
+	
+	  	
+
+		
+		<footer class="clearfix meta article-foot">
+			<div class="story-controls">
+				
+                    
+					
+				
+			</div>
+			
+				
+				<div class="story-tags">
+					<span class="tright tags"><menu type="toolbar" class="edit-bar">
+		<span id="tagbar-170054100" class="tag-bar none">
+			
+		</span>
+		
+		<!--
+			<a class="edit-toggle" href="/my/login/" onclick="show_login_box();return false;">
+				<span class="icon-tag btn collapse"></span>
+			</a>
+			-->
+		
+		
+		<div class="tag-menu">
+			<input class="tag-entry default" type="text" value="apply tags">
+		</div>
+		
+
+		
+		
+
+	</menu></span>
+				</div>
+				
+			
+		</footer>
+	
+
+
+
+	</article><article id="firehose-170053334" data-fhid="170053334" data-fhtype="story" class="fhitem fhitem-story article usermode thumbs grid_24">
+		<span class="sd-info-block" style="display: none">
+			<span class="sd-key-firehose-id">170053334</span>
+			<span class="type">story</span>
+			
+		</span>
+
+
+
+
+
+
+
+	
+	
+
+<header>
+	
+		<span class="topic" id="topic-170053334">
+			<a href="//slashdot.org/index2.pl?fhfilter=usa" onclick="return addfhfilter('usa');">
+			
+				<img src="//a.fsdn.com/sd/topics/usa_64.png" width="64" height="64" alt="United States" title="United States">
+			
+		</a>
+		</span>
+	
+
+	<h2 class="story">
+		
+
+		
+
+		
+		
+
+		
+
+		
+
+		
+
+		<span id="title-170053334" class="story-title"> <a onclick="return toggle_fh_body_wrap_return(this);"  href="//news.slashdot.org/story/23/01/09/1420239/mccarthys-fast-start-big-tech-is-a-top-target">McCarthy's Fast Start: Big Tech is a Top Target</a> <span class=" no extlnk"><a class="story-sourcelnk" href="https://www.axios.com/2023/01/09/kevin-mccarthy-house-gop-big-tech-targets"  title="External link - https://www.axios.com/2023/01/09/kevin-mccarthy-house-gop-big-tech-targets" target="_blank"> (axios.com) </a></span></span>
+
+		
+		
+		<!--<span class="comments commentcnt-170053334" >224</span>-->
+		
+
+		
+		<!-- comment bubble -->
+		
+			<span class="comment-bubble"><a href="//news.slashdot.org/story/23/01/09/1420239/mccarthys-fast-start-big-tech-is-a-top-target#comments" title="">224</a></span>
+		
+	</h2>
+	<div class="details" id="details-170053334">
+		<span class="story-details">
+		<span class="story-views">
+			<span class="sodify" onclick="firehose_set_options('color', 'red')" title="Filter Firehose to entries rated red or better"></span><span class="icon-beaker pop1 " alt="Popularity" title="Filter Firehose to entries rated red or better" onclick="firehose_set_options('color', 'red')"><span></span></span> 
+		</span>
+		</span>
+		<span class="story-byline">
+	
+				
+			Posted
+				by 
+		
+		
+			
+				  msmash
+			
+		
+		
+
+		
+		
+		<time id="fhtime-170053334" datetime="on Monday January 09, 2023 @09:41AM">on Monday January 09, 2023 @09:41AM</time>
+		
+		
+			 from the <span class="dept-text">up-next</span> dept.
+		
+		</span>
+	</div>
+</header>
+
+<div class="body" id="fhbody-170053334">
+	
+
+	
+		
+		<div id="text-170053334" class="p">
+			
+		 	
+				House Republicans plan to launch a new investigative panel this week that will demand copies of White House emails, memos and other <a href="https://www.axios.com/2023/01/09/kevin-mccarthy-house-gop-big-tech-targets">communications with Big Tech companies</a>, <em>Axios</em> reported Monday, citing sources. From the report:<i> Speaker Kevin McCarthy plans a quick spate of red-meat actions and announcements to reward hardliners who backed him through his harrowing fight for the gavel. The new panel, the Select Subcommittee on the Weaponization of the Federal Government, is partly a response to revelations from Elon Musk in the internal documents he branded the "Twitter Files."<br> <br>
+
+The subcommittee will be chaired by House Judiciary Chairman Jim Jordan -- a close McCarthy ally, and a favorite of the hard right. The probe into communications between tech giants and President Biden's aides will look for government pressure that could have resulted in censorship or harassment of conservatives -- or squelching of debate on polarizing policies, including the CDC on COVID. The request for documents will be followed by "compulsory processes," including subpoenas if needed, a GOP source tells Axios. In December, Jordan wrote letters to top tech platforms asking for information about "'collusion' with the Biden administration to censor conservatives on their platforms."</i><br>
+		 	
+		</div>
+
+		
+
+		
+
+		
+	</div>
+	<aside class="novote">
+		
+	</aside>
+	
+	  	
+
+		
+		<footer class="clearfix meta article-foot">
+			<div class="story-controls">
+				
+                    
+					
+				
+			</div>
+			
+				
+				<div class="story-tags">
+					<span class="tright tags"><menu type="toolbar" class="edit-bar">
+		<span id="tagbar-170053334" class="tag-bar none">
+			
+		</span>
+		
+		<!--
+			<a class="edit-toggle" href="/my/login/" onclick="show_login_box();return false;">
+				<span class="icon-tag btn collapse"></span>
+			</a>
+			-->
+		
+		
+		<div class="tag-menu">
+			<input class="tag-entry default" type="text" value="apply tags">
+		</div>
+		
+
+		
+		
+
+	</menu></span>
+				</div>
+				
+			
+		</footer>
+	
+
+
+
+	</article><article id="firehose-170053096" data-fhid="170053096" data-fhtype="story" class="fhitem fhitem-story article usermode thumbs grid_24">
+		<span class="sd-info-block" style="display: none">
+			<span class="sd-key-firehose-id">170053096</span>
+			<span class="type">story</span>
+			
+		</span>
+
+
+
+
+
+
+
+	
+	
+
+<header>
+	
+		<span class="topic" id="topic-170053096">
+			<a href="//slashdot.org/index2.pl?fhfilter=usa" onclick="return addfhfilter('usa');">
+			
+				<img src="//a.fsdn.com/sd/topics/usa_64.png" width="64" height="64" alt="United States" title="United States">
+			
+		</a>
+		</span>
+	
+
+	<h2 class="story">
+		
+
+		
+
+		
+		
+
+		
+
+		
+
+		
+
+		<span id="title-170053096" class="story-title"> <a onclick="return toggle_fh_body_wrap_return(this);"  href="//yro.slashdot.org/story/23/01/09/141245/deere-will-allow-farmers-to-repair-their-own-equipment">Deere Will Allow Farmers To Repair Their Own Equipment</a> <span class=" no extlnk"><a class="story-sourcelnk" href="https://www.reuters.com/markets/commodities/farm-bureau-deere-co-sign-mou-ensuring-farmers-right-repair-equipment-2023-01-08/"  title="External link - https://www.reuters.com/markets/commodities/farm-bureau-deere-co-sign-mou-ensuring-farmers-right-repair-equipment-2023-01-08/" target="_blank"> (reuters.com) </a></span></span>
+
+		
+		
+		<!--<span class="comments commentcnt-170053096" >48</span>-->
+		
+
+		
+		<!-- comment bubble -->
+		
+			<span class="comment-bubble"><a href="//yro.slashdot.org/story/23/01/09/141245/deere-will-allow-farmers-to-repair-their-own-equipment#comments" title="">48</a></span>
+		
+	</h2>
+	<div class="details" id="details-170053096">
+		<span class="story-details">
+		<span class="story-views">
+			<span class="sodify" onclick="firehose_set_options('color', 'red')" title="Filter Firehose to entries rated red or better"></span><span class="icon-beaker pop1 " alt="Popularity" title="Filter Firehose to entries rated red or better" onclick="firehose_set_options('color', 'red')"><span></span></span> 
+		</span>
+		</span>
+		<span class="story-byline">
+	
+				
+			Posted
+				by 
+		
+		
+			
+				  msmash
+			
+		
+		
+
+		
+		
+		<time id="fhtime-170053096" datetime="on Monday January 09, 2023 @09:02AM">on Monday January 09, 2023 @09:02AM</time>
+		
+		
+			 from the <span class="dept-text">closer-look</span> dept.
+		
+		</span>
+	</div>
+</header>
+
+<div class="body" id="fhbody-170053096">
+	
+
+	
+		
+		<div id="text-170053096" class="p">
+			
+		 	
+				The American Farm Bureau Federation and machinery manufacturer Deere signed a memorandum of understanding on Sunday that ensures farmers have the <a href="https://www.reuters.com/markets/commodities/farm-bureau-deere-co-sign-mou-ensuring-farmers-right-repair-equipment-2023-01-08/">right to repair their own farm equipment</a> or go to an independent technician. From a report:<i> As the agriculture sector accelerates its adoption of technology, the reliance on high-tech machinery such as GPS-guided combines and tractors has become more common-place.<br> <br>
+
+But equipment makers such as Deere have generally required customers to use their parts and service divisions for repairs and until recently, only allowed authorized dealers the means and tools to access the complex computerized systems of their tractors and other machinery. The Farm Bureau's memorandum of understanding with Deere "will ensure farmers everywhere are able to repair our own equipment," Farm Bureau president Zippy Duvall said, speaking at the federation's convention in Puerto Rico.</i><br>
+		 	
+		</div>
+
+		
+
+		
+
+		
+	</div>
+	<aside class="novote">
+		
+	</aside>
+	
+	  	
+
+		
+		<footer class="clearfix meta article-foot">
+			<div class="story-controls">
+				
+                    
+					
+				
+			</div>
+			
+				
+				<div class="story-tags">
+					<span class="tright tags"><menu type="toolbar" class="edit-bar">
+		<span id="tagbar-170053096" class="tag-bar none">
+			<a  class="topic tag" rel="statictag" href="//slashdot.org/tag/" target="_blank"></a>
+
+		</span>
+		
+		<!--
+			<a class="edit-toggle" href="/my/login/" onclick="show_login_box();return false;">
+				<span class="icon-tag btn collapse"></span>
+			</a>
+			-->
+		
+		
+		<div class="tag-menu">
+			<input class="tag-entry default" type="text" value="apply tags">
+		</div>
+		
+
+		
+		
+
+	</menu></span>
+				</div>
+				
+			
+		</footer>
+	
+
+
+
+	</article><article id="firehose-170038910" data-fhid="170038910" data-fhtype="story" class="fhitem fhitem-story article usermode thumbs grid_24">
+		<span class="sd-info-block" style="display: none">
+			<span class="sd-key-firehose-id">170038910</span>
+			<span class="type">story</span>
+			
+		</span>
+
+
+
+
+
+
+
+	
+	
+
+<header>
+	
+		<span class="topic" id="topic-170038910">
+			<a href="//slashdot.org/index2.pl?fhfilter=crime" onclick="return addfhfilter('crime');">
+			
+				<img src="//a.fsdn.com/sd/topics/crime_64.png" width="64" height="64" alt="Crime" title="Crime">
+			
+		</a>
+		</span>
+	
+
+	<h2 class="story">
+		
+
+		
+
+		
+		
+
+		
+
+		
+
+		
+
+		<span id="title-170038910" class="story-title"> <a onclick="return toggle_fh_body_wrap_return(this);"  href="//yro.slashdot.org/story/23/01/09/0211246/san-jose-police-announce-three-stolen-vehicles-recovered-using-automatic-license-plate-reader">San Jose Police Announce Three Stolen Vehicles Recovered Using Automatic License Plate Reader</a> <span class=" no extlnk"><a class="story-sourcelnk" href="https://www.kron4.com/news/bay-area/san-jose-police-recover-three-stolen-cars-using-license-plate-recognition-and-helicopter/"  title="External link - https://www.kron4.com/news/bay-area/san-jose-police-recover-three-stolen-cars-using-license-plate-recognition-and-helicopter/" target="_blank"> (kron4.com) </a></span></span>
+
+		
+		
+		<!--<span class="comments commentcnt-170038910" >98</span>-->
+		
+
+		
+		<!-- comment bubble -->
+		
+			<span class="comment-bubble"><a href="//yro.slashdot.org/story/23/01/09/0211246/san-jose-police-announce-three-stolen-vehicles-recovered-using-automatic-license-plate-reader#comments" title="">98</a></span>
+		
+	</h2>
+	<div class="details" id="details-170038910">
+		<span class="story-details">
+		<span class="story-views">
+			<span class="sodify" onclick="firehose_set_options('color', 'red')" title="Filter Firehose to entries rated red or better"></span><span class="icon-beaker pop1 " alt="Popularity" title="Filter Firehose to entries rated red or better" onclick="firehose_set_options('color', 'red')"><span></span></span> 
+		</span>
+		</span>
+		<span class="story-byline">
+	
+				
+			Posted
+				by 
+		
+		
+			
+				  EditorDavid
+			
+		
+		
+
+		
+		
+		<time id="fhtime-170038910" datetime="on Monday January 09, 2023 @07:34AM">on Monday January 09, 2023 @07:34AM</time>
+		
+		
+			 from the <span class="dept-text">taking-licenses</span> dept.
+		
+		</span>
+	</div>
+</header>
+
+<div class="body" id="fhbody-170038910">
+	
+
+	
+		
+		<div id="text-170038910" class="p">
+			
+		 	
+				Saturday night in the Silicon Valley city of San Jose, the assistant police chief tweeted out <a href="https://twitter.com/SJPD_AC_Joseph/status/1611894973867364354">praise for their recently-upgraded Automatic License Plate Readers</a>:
+
+<i>Officers in Air3 [police helicopter], monitoring the ALPR system, got alerted to 3 stolen cars.   They directed ground units to the cars. All 3 drivers in custody! No dangerous vehicle pursuits occurred, nor were they needed.<br> <br>
+
+2 drivers tried to run away. But, you can't outrun a helicopter!"
+
+</i> <br>
+
+There's photos &mdash; one of the vehicles appears to be a U-Haul pickup truck &mdash; and the tweet drew exactly one response, from San Jose mayor Matt Mahan:
+<i>"Nice job...!  Appreciate the excellent police work and great to see ALPRs having an impact. Don't steal cars in San Jose!"</i> <br>
+
+
+
+Some context:    The <em>San Jose Spotlight</em> (a nonprofit local news site) noted that prior to last year license plate readers <a href="https://sanjosespotlight.com/san-jose-restricts-use-of-automated-license-plate-reader-camera-data-digital-privacy-rights-surveillance-police-sjpd/">had been mounted exclusively on police patrol cars</a> (and in use since 2006).  But last year the San Jose Police Department launched a new "pilot program" with four cameras mounted at a busy intersection, that "captured nearly 300,000 plate scans in just the last month, according to city data."<br> <br>
+
+By August this had led to plans for 150 more stationary ALPR cameras, <a href="https://www.nbcbayarea.com/news/local/south-bay/san-jose-license-plate-readers/2985879/">a local TV station reported</a>.  "Just this week, police said they solved an armed robbery and arrested a suspected shooter thanks to the cameras."
+
+
+
+<i>During a forum to update the community, San Jose police also mentioned success stories in other cities like Vallejo where they've reported a 100% increase in identifying stolen vehicles. San Jose is now installing hundreds around the city and the first batch is coming in the next two to three months....<br> <br>
+
+The biggest concern among those attending Wednesday's virtual forum was privacy. But the city made it clear the data is only shared with trained police officers and certain city staff, no out-of-state or federal agencies.  "Anytime that someone from the San Jose Police Department accesses the ALPR system, they have to input a reason, the specific plates they are looking for and all of that information is logged so that we can keep track of how many times its being used and what its being used for," said Albert Gehami, Digital Privacy Officer for San Jose.</i> <br>
+More privacy concerns were raised in September, <a href="https://sanjosespotlight.com/san-jose-restricts-use-of-automated-license-plate-reader-camera-data-digital-privacy-rights-surveillance-police-sjpd/">reports the <em>San Jose Spotlight</em></a>:
+<i>The San Jose City Council unanimously approved a policy Tuesday that formally bans the police department from selling any license plate data, using that information for investigating a person's immigration status or for monitoring legally protected activities like protests or rallies.<br> <br>
+
+
+
+Even with these new rules, some privacy advocates and community groups are still opposed to the technology. Victor Sin, chair of the Santa Clara Valley Chapter of ACLU of Northern California, expressed doubt that the readers are improving public safety. He made the comments in a letter to the council from himself and leaders of four other community organizations.  "Despite claims that (automated license plate reader) systems can reduce crime, researchers have expressed concerns about the rapid acquisition of this technology by law enforcement without evidence of its efficacy," the letter reads.  Groups including the Asian Law Alliance and San Jose-Silicon Valley NAACP also said the city should reduce the amount of time it keeps license plate data on file down from one year.....<br> <br>
+
+Mayor Sam Liccardo said he's already convinced the readers are useful, but added the council should try to find a way to measure their effect.  "It's probably not a bad idea for us to decide what are the outcomes we're trying to achieve, and if there is some reasonable metric that captures that outcome in a meaningful way," Liccardo said. "Was this used to actually help us arrest anybody, or solve a crime or prevent an accident?"</i> <br>
+
+
+An EFF position paper argues that "ALPR data is gathered indiscriminately, collecting information on millions of ordinary people."
+
+<i>By plotting vehicle times and locations and tracing past movements, police can use stored data to paint a very specific portrait of drivers' lives, determining past patterns of behavior and possibly <a href="https://www.eff.org/files/2017/02/22/neal_v._fairfax_pd_-_eff_amicus_brief_file_endorsed.pdf">even predicting future ones</a> &mdash; in spite of the fact that the vast majority of people whose license plate data is collected and stored have not even been accused of a crime.... [ALPR technology] allows officers to track everyone..."</i> <br>
+
+Maybe the police officer's tweet was to boost public support for the technology?  It's already led to <a href="https://www.kron4.com/news/bay-area/san-jose-police-recover-three-stolen-cars-using-license-plate-recognition-and-helicopter/">a short report from another local news station</a>:
+<i>San Jose police recovered three stolen cars using their automated license-plate recognition technology (ALPR) on Saturday, according to officials with the San Jose Police Department. <br> <br>
+
+Officers inside of Air3, one of SJPD's helicopters, spotted three stolen cars using ALPR before directing ground units their way. Police say no pursuits occurred, though two of the drivers tried to run away. </i><br>
+		 	
+		</div>
+
+		
+
+		
+
+		
+	</div>
+	<aside class="novote">
+		
+	</aside>
+	
+	  	
+
+		
+		<footer class="clearfix meta article-foot">
+			<div class="story-controls">
+				
+                    
+					
+				
+			</div>
+			
+				
+				<div class="story-tags">
+					<span class="tright tags"><menu type="toolbar" class="edit-bar">
+		<span id="tagbar-170038910" class="tag-bar none">
+			<a  class="topic tag" rel="statictag" href="//slashdot.org/tag/" target="_blank"></a>
+
+		</span>
+		
+		<!--
+			<a class="edit-toggle" href="/my/login/" onclick="show_login_box();return false;">
+				<span class="icon-tag btn collapse"></span>
+			</a>
+			-->
+		
+		
+		<div class="tag-menu">
+			<input class="tag-entry default" type="text" value="apply tags">
+		</div>
+		
+
+		
+		
+
+	</menu></span>
+				</div>
+				
+			
+		</footer>
+	
+
+
+
+	</article>
+				</div>
+
+				<!-- LOWER PAGINATION -->
+				<div class="row">
+					<div class="paginate" id="fh-pag-div">
+<div class="menu2" id="fh-paginate">
+
+
+
+
+
+	 
+	 <a class="prevnextbutdis" href="#" onclick="return false;">&laquo; Newer</a>
+
+	
+		<a class="prevnextbutact" href="//slashdot.org/?page=1" >Older &raquo;</a>
+
+	<span class="inactive more">
+		
+	</span>
+
+
+
+
+
+</div>
+</div>
+				</div>
+
+				<!-- WIT -->
+				<span id="itemsreturned" class="row">
+					
+				</span>
+				
+
+				<div class="row">
+				</div>
+
+				
+
+				<!-- Taboola: below articles widget -->
+<div class="row">
+	<div id="taboola-below-article-thumbnails-2nd"></div>
+	<script type="text/javascript">
+		window._taboola = window._taboola || [];
+		_taboola.push({
+			mode: 'thumbnails-b',
+			container: 'taboola-below-article-thumbnails-2nd',
+			placement: 'Below Article Thumbnails 2nd',
+			target_type: 'mix'
+		});
+	</script>
+</div>
+
+				<!-- Slashdot Deals 6 Best Sellers -->
+				<div class="row">
+					<div class="deals-wrapper">
+					  <div class="deals-header"><h1>Slashdot Top Deals</h1></div>
+					  <div id="deals-output">
+						<script id="deals-template" type="text/x-handlebars-template">
+						  {{#each deal}}
+							<div class="deal">
+							  <a href="{{urlPath permalink}}?&utm_source=slashdot.org&utm_medium=dealfeed-footerfeed&utm_campaign={{slug}}" target="_blank">
+							  	<img src="{{main_image}}" alt="" />
+							  </a>
+							  <p class="title"><a href="{{urlPath permalink}}?&utm_source=slashdot.org&utm_medium=dealfeed-footerfeed&utm_campaign={{slug}}" target="_blank">{{title}}</a></p>
+							  <p class="deal-price">{{centConversion price_in_cents}}</p>
+							</div>
+						  {{/each}}
+						</script>
+					  </div>
+					</div>
+				</div>
+				<script>
+					if ( isAdBlockActive && window.is_euro_union === 0) {
+                                            bizx.cmp.ifConsent('', ['all'], function () {
+						$.ajaxSetup({
+							cache: true
+						});
+						$.getScript( "//a.fsdn.com/sd/js/scripts/min/deals-min.js", function(){
+							runDealsWidget();
+						});
+                                            });
+					}
+				</script>
+
+			<!-- End Slashdot Deals 6 Best Sellers -->
+
+				<!-- SLASH-4560 NEW AD HERE (dhand) -->
+				<div id="bottomadspace">
+					<table id="bottomadtable">
+						<tr>
+							<td><div id='div-gpt-ad-728x90_b'><script type='text/javascript'>
+googletag.cmd.push(function(){
+googletag.display('div-gpt-ad-728x90_b');});</script></div></td>
+						</tr>
+					</table>
+				</div>
+			</div>
+			<div id='horizontal' class='jobbioapp'></div>
+		</div>
+	</div>
+
+		
+	<aside id="slashboxes" class="rail-right scroll-fixable">
+
+	   
+		   <div class="advertisement railad adwrap-unviewed">
+<div id='div-gpt-ad-300x250_a'><script type='text/javascript'>
+googletag.cmd.push(function(){
+googletag.display('div-gpt-ad-300x250_a');});</script></div>
+</div>
+	   
+           <div id="sidebar" class="jobbioapp"></div>
+
+		<article class="deals-rail">
+		  <header id="slashdot_deals-title"><h2>Slashdot Top Deals</h2></header>
+		  <div id="deals-rail-output">
+			<script id="deals-rail-template" type="text/x-handlebars-template">
+				{{#each deal}}
+					<div class="">
+					  <a href="{{urlPath permalink}}?&utm_source=slashdot.org&utm_medium=dealfeed-righthand&utm_campaign={{slug}}" target="_blank">
+					  	<img src="{{main_image}}" alt="" />
+					  </a>
+					  <div class="deal-overlay">
+						  <div class="title"><a href="{{urlPath permalink}}?&utm_source=slashdot.org&utm_medium=dealfeed-righthand&utm_campaign={{slug}}" target="_blank">{{title}}</a></div>
+						  <div class="deal-price">{{centConversion price_in_cents}}</div>
+						</div>
+					</div>
+				{{/each}}
+			</script>
+		  </div>
+		</article>
+
+		<!-- Newsletter image -->
+		<div class="ad-blocked-newsletter">
+			<a href="//slashdot.org/newsletter" target="_blank"><img src="//a.fsdn.com/sd/NewsletterSubscription.png" alt="" /></a>
+		</div>
+
+
+		
+
+
+			<script type="text/javascript">
+				$(function() {
+					// Poll/Pulse
+					(function(){
+						var sd_poll = $('#poll'),
+								pulsead = $('#div-gpt-ad-pulse_300x600_a');
+
+						sd_poll.hide();
+
+						function showSdPoll(){
+							if( pulsead.closest('.advertisement').height() < 250 ) {
+								sd_poll.fadeIn();
+								pulsead.closest('.advertisement').hide();
+							}
+						}
+						//this function will display the Slashdot Poll if the Pulse Ad is not delivered
+						setTimeout(function() { showSdPoll(); }, 2000);
+					})();
+				});
+			</script>
+			<div id='my_forgebox'>
+				 
+			</div>
+
+			
+
+					<article id="slashdot_deals" class="nosort">
+		<header id="slashdot_deals-title">
+			<h2><a href="http://deals.slashdot.org/">Slashdot Deals</a></h2>
+		</header>
+		<section class="b" id="slashdot_deals-content">
+			<script type='text/javascript'>
+googletag.cmd.push(function()
+{ googletag.defineSlot('/7346874/sld-300x250', [300, 250], 'div-gpt-ad-1435005138111-0').addService(googletag.pubads()); googletag.pubads().enableSingleRequest(); googletag.enableServices(); }
+);
+</script>
+<div id='div-gpt-ad-1435005138111-0' style='height:250px; width:300px;'>
+<script type='text/javascript'>
+googletag.cmd.push(function()
+{ googletag.display('div-gpt-ad-1435005138111-0'); }
+);
+</script>
+
+</div>
+			
+		</section>
+	</article><div class="railad advertisement">
+<div id='div-gpt-ad-300x250_b'><script type='text/javascript'>
+googletag.cmd.push(function(){
+googletag.display('div-gpt-ad-300x250_b');});</script></div>
+</div><article class="nosort">
+	<header id="poll-title">
+		<h2>Slashdot Poll</h2>
+	</header>
+	<section class="b" id="poll-content">
+		<style>
+		.poll-voted { display: none; }
+	</style>
+	
+		<div class="units-6 poll-group-form">
+			
+				<h3>Is 2023 the Year of the Linux Desktop?</h3>
+			
+			<h3 class="output"></h3>
+			<form id="pollBooth" action="//slashdot.org/pollBooth.pl" method="post">
+				<input type="hidden" name="qid" value="3236">
+				
+					<input type="hidden" name="section" value="slashdot">
+				
+					
+						<label>
+							<input type="radio" name="aid" value="1">
+							Yes
+						</label>
+					
+						<label>
+							<input type="radio" name="aid" value="2">
+							No, it'll be 2024
+						</label>
+					
+						<label>
+							<input type="radio" name="aid" value="3">
+							No, it'll be 2025
+						</label>
+					
+						<label>
+							<input type="radio" name="aid" value="4">
+							No, it'll be 2026
+						</label>
+					
+						<label>
+							<input type="radio" name="aid" value="5">
+							No, it'll be 2027
+						</label>
+					
+						<label>
+							<input type="radio" name="aid" value="6">
+							No it'll be 5+ years away
+						</label>
+					
+						<label>
+							<input type="radio" name="aid" value="7">
+							It will never happen
+						</label>
+					
+					<div class="poll-controls">
+						<button type="submit" class="btn-polls">vote now</button>
+						
+					</div>
+					<footer>
+						<span>
+							<a href="/poll/3236/is-2023-the-year-of-the-linux-desktop">Read the <strong>76</strong> comments </a> |
+							<strong>5758</strong> votes
+						</span>
+					</footer>
+			</form>
+		</div>
+		<div class="units-6 poll-results-inline">
+			<h3 id="message-completed-poll">
+				
+					Looks like someone has already voted from this IP. If you would like to vote please login and try again.
+				
+			</h3>
+			
+				<h3>Is 2023 the Year of the Linux Desktop?</h3>
+			
+			<div class="doughnut-chart-wrapper">
+				<div class="doughnut-chart" data-percent="0"><span>0</span></div>
+				<div class="doughnut-chart-label">
+					<span>Percentage of others that also voted for:</span>
+					<h3></h3>
+				</div>
+			</div>
+
+			<div class="poll-controls">
+				<ul class="poll-options">
+					<li>
+						<a href="/poll/3236/is-2023-the-year-of-the-linux-desktop" class="btn-polls">view results</a>
+					</li>
+					<li class="poll-choice"> Or <li>
+					<li>
+						<a href="//slashdot.org/polls" class="btn-polls">view more</a>
+						<input type="hidden" id="reskey" name="reskey" value="GFGE9mZX3c5GDDiveUlM">
+					</li>
+				</ul>
+			</div>
+			<footer>
+				<span>
+					<a href="/poll/3236/is-2023-the-year-of-the-linux-desktop">Read the <strong>76</strong> comments </a> |
+					<strong>5758</strong> voted
+				</span>
+			</footer>
+		</div>
+	</section>
+</article><div class="railad advertisement">
+<div id='div-gpt-ad-300x250_c'><script type='text/javascript'>
+googletag.cmd.push(function(){
+googletag.display('div-gpt-ad-300x250_c');});</script></div>
+</div><div id="taboola-below-main-column-thumbnails"></div>
+<script type="text/javascript">
+  if ( 1 || isAdBlockActive ) {
+    bizx.cmp.ifConsent('', ['all'], function () {
+        if (window.is_euro_union === 0) {
+        window._taboola = window._taboola || [];
+        _taboola.push({
+            mode: 'thumbnails-rr3',
+            container: 'taboola-below-main-column-thumbnails',
+            placement: 'Below Main Column Thumbnails',
+            target_type: 'mix'
+        });
+        }
+    });
+  };
+</script><article class="nosort">
+	<header id="mostdiscussed-title">
+		<h2>Most Discussed</h2>
+	</header>
+	<section class="b" id="mostdiscussed-content">
+		<ul id="mostdiscussed">
+
+
+<li>
+<span class="cmntcnt"><span class="slant"></span><span >221<span class="hide"> comments</span></span></span>
+ <a href="//news.slashdot.org/story/23/01/09/1420239/mccarthys-fast-start-big-tech-is-a-top-target?sbsrc=md">McCarthy's Fast Start: Big Tech is a Top Target</a>
+</li>
+
+
+<li>
+<span class="cmntcnt"><span class="slant"></span><span >162<span class="hide"> comments</span></span></span>
+ <a href="//science.slashdot.org/story/23/01/09/006229/cryonics-company-charges-a-monthly-subscription-fee-plus-your-life-insurance-payout?sbsrc=md">Cryonics Company Charges a Monthly Subscription Fee (Plus Your Life Insurance Payout)</a>
+</li>
+
+
+<li>
+<span class="cmntcnt"><span class="slant"></span><span >155<span class="hide"> comments</span></span></span>
+ <a href="//news.slashdot.org/story/23/01/08/0439255/seattle-public-schools-sue-social-media-giants-for-youth-mental-health-crisis?sbsrc=md">Seattle Public Schools Sue Social Media Giants for Youth Mental Health Crisis</a>
+</li>
+
+
+<li>
+<span class="cmntcnt"><span class="slant"></span><span >137<span class="hide"> comments</span></span></span>
+ <a href="//yro.slashdot.org/story/23/01/08/2041240/please-dont-film-me-in-2023?sbsrc=md">'Please Don't Film Me in 2023'</a>
+</li>
+
+
+<li>
+<span class="cmntcnt"><span class="slant"></span><span >114<span class="hide"> comments</span></span></span>
+ <a href="//yro.slashdot.org/story/23/01/09/161249/belarus-legalizes-piracy-of-movies-music-and-software-of-unfriendly-nations?sbsrc=md">Belarus Legalizes Piracy of Movies, Music and Software of 'Unfriendly' Nations</a>
+</li>
+
+</ul>
+	</section>
+</article><article class="nosort">
+	<header id="srandblock-title">
+		<h2><a href="//slashdot.org/recent/">Firehose</a></h2>
+	</header>
+	<section class="b" id="srandblock-content">
+		<ul>
+<li>
+
+	
+	<a href="//slashdot.org/submission/17158450/vanilla-os-2210-an-arch-and-fedora-compatible-ubuntu?utm_source=rss1.0&amp;utm_medium=feed&amp;sbsrc=firehose">
+		 Vanilla OS 22.10: An Arch and Fedora-compatible Ubuntu
+	</a>
+</li><li>
+
+	
+	<a href="//slashdot.org/submission/17153762/android-satellite-sms?utm_source=rss1.0&amp;utm_medium=feed&amp;sbsrc=firehose">
+		Android Satellite SMS
+	</a>
+</li><li>
+
+	
+	<a href="//slashdot.org/submission/17153756/terror-incident-at-vegas-power-plant?utm_source=rss1.0&amp;utm_medium=feed&amp;sbsrc=firehose">
+		Terror Incident At Vegas Power Plant
+	</a>
+</li><li>
+
+	
+	<a href="//slashdot.org/submission/17153728/holy-grail-wheat-gene-discovery-could-feed-our-overheated-world?utm_source=rss1.0&amp;utm_medium=feed&amp;sbsrc=firehose">
+		'Holy grail' wheat gene discovery could feed our overheated world
+	</a>
+</li><li>
+
+	
+	<a href="//slashdot.org/submission/17152968/seattle-public-schools-sues-social-media-giants-for-youth-mental-health-crisis?utm_source=rss1.0&amp;utm_medium=feed&amp;sbsrc=firehose">
+		Seattle Public Schools Sues Social Media Giants for Youth Mental Health Crisis
+	</a>
+</li>
+</ul>
+	</section>
+</article><article id="thisday" class="nosort">
+		<header id="thisday-title">
+			<h2><a href="">This Day on Slashdot</a></h2>
+		</header>
+		<section class="b" id="thisday-content">
+			<table bgcolor="333333" class="thisday-tb"><tbody>
+
+
+<tr>
+	<td class="thisday-yr">
+		2013
+	</td>
+	<td>
+		<a href="//yro.slashdot.org/story/13/01/09/1850257/smart-guns-to-stop-mass-killings?sbsrc=thisday">Smart Guns To Stop Mass Killings</a>
+	</td>
+	<td>
+	<span style="" class="cmntcnt"><span style="background:#333" class="slant"></span><span style="background: #333; color:#fff; font-weight:bold; font-size:.85em">1388<span class="hide"> comments</span></span></span>
+	</td>
+</tr>
+
+
+<tr>
+	<td class="thisday-yr">
+		2007
+	</td>
+	<td>
+		<a href="//apple.slashdot.org/story/07/01/09/1857231/iphone-apple-tv-headline-macworld-keynote?sbsrc=thisday">iPhone, Apple TV Headline MacWorld Keynote</a>
+	</td>
+	<td>
+	<span style="" class="cmntcnt"><span style="background:#333" class="slant"></span><span style="background: #333; color:#fff; font-weight:bold; font-size:.85em">1619<span class="hide"> comments</span></span></span>
+	</td>
+</tr>
+
+
+<tr>
+	<td class="thisday-yr">
+		2004
+	</td>
+	<td>
+		<a href="//science.slashdot.org/story/04/01/09/0334253/bush-to-announce-manned-trip-to-moon-mars?sbsrc=thisday">Bush To Announce Manned Trip To Moon, Mars</a>
+	</td>
+	<td>
+	<span style="" class="cmntcnt"><span style="background:#333" class="slant"></span><span style="background: #333; color:#fff; font-weight:bold; font-size:.85em">1595<span class="hide"> comments</span></span></span>
+	</td>
+</tr>
+
+
+<tr>
+	<td class="thisday-yr">
+		2002
+	</td>
+	<td>
+		<a href="//slashdot.org/story/02/01/09/2019215/drivers-licenses-to-become-national-id-cards?sbsrc=thisday">Driver's Licenses to Become National ID Cards</a>
+	</td>
+	<td>
+	<span style="" class="cmntcnt"><span style="background:#333" class="slant"></span><span style="background: #333; color:#fff; font-weight:bold; font-size:.85em">976<span class="hide"> comments</span></span></span>
+	</td>
+</tr>
+
+
+<tr>
+	<td class="thisday-yr">
+		2001
+	</td>
+	<td>
+		<a href="//developers.slashdot.org/story/01/01/09/1420258/the-object-oriented-hype?sbsrc=thisday">The Object Oriented Hype</a>
+	</td>
+	<td>
+	<span style="" class="cmntcnt"><span style="background:#333" class="slant"></span><span style="background: #333; color:#fff; font-weight:bold; font-size:.85em">730<span class="hide"> comments</span></span></span>
+	</td>
+</tr>
+
+</tbody></table>
+			
+		</section>
+	</article><article id="sourceforge2" class="nosort">
+		<header id="sourceforge2-title">
+			<h2><a href="">Sourceforge Top Downloads</a></h2>
+		</header>
+		<section class="b" id="sourceforge2-content">
+			<ul class="sf_widget">
+<li>
+<a onclick="trackLink(this, 'sfSlashboxDownloadLink', 'https://sourceforge.net/projects/corefonts/?source=sd_slashbox'); return false;" href="https://sourceforge.net/projects/corefonts/?source=sd_slashbox" title="Microsoft&#39;s TrueType core fonts">
+TrueType core fonts <span class="sf-size">2.2B downloads</span></a>
+</li>
+<li>
+<a onclick="trackLink(this, 'sfSlashboxDownloadLink', 'https://sourceforge.net/projects/npppluginmgr/?source=sd_slashbox'); return false;" href="https://sourceforge.net/projects/npppluginmgr/?source=sd_slashbox" title="Notepad++ Plugin Manager (old repo)">
+Notepad++ Plugin Mgr <span class="sf-size">1.5B downloads</span></a>
+</li>
+<li>
+<a onclick="trackLink(this, 'sfSlashboxDownloadLink', 'https://sourceforge.net/projects/vlc/?source=sd_slashbox'); return false;" href="https://sourceforge.net/projects/vlc/?source=sd_slashbox" title="VLC media player">
+VLC media player <span class="sf-size">899M downloads</span></a>
+</li>
+<li>
+<a onclick="trackLink(this, 'sfSlashboxDownloadLink', 'https://sourceforge.net/projects/emule/?source=sd_slashbox'); return false;" href="https://sourceforge.net/projects/emule/?source=sd_slashbox" title="eMule">
+eMule <span class="sf-size">686M downloads</span></a>
+</li>
+<li>
+<a onclick="trackLink(this, 'sfSlashboxDownloadLink', 'https://sourceforge.net/projects/mingw/?source=sd_slashbox'); return false;" href="https://sourceforge.net/projects/mingw/?source=sd_slashbox" title="MinGW - Minimalist GNU for Windows">
+MinGW <span class="sf-size">631M downloads</span></a>
+</li>
+</ul>
+<div id="sf-logo">
+<p>Powered By</p>
+<a onclick="trackLink(this, 'sfSlashboxHomeLink', 'https://sourceforge.net/?source=sd_slashbox'); return false;" href="https://sourceforge.net/?source=sd_slashbox">sf</a>
+</div>
+
+			
+		</section>
+	</article>
+					<div class="advertisement railad">
+<div id='div-gpt-ad-300x250_d'><script type='text/javascript'>
+googletag.cmd.push(function(){
+googletag.display('div-gpt-ad-300x250_d');});</script></div>
+</div>
+					
+						
+						
+					
+				
+			
+	</aside>
+</div>
+
+<script type="text/javascript">
+	firehose_exists = 1;
+	$(function(){
+	$('#firehose-filter').focus(function(event){ gFocusedText = this; })
+	.blur(function(event){
+		if ( gFocusedText === this ) {
+			gFocusedText = null;
+		}
+	});
+
+	
+	apply_updates_when(		'at-end', true);
+});
+
+			
+					firehose_settings.startdate = "";
+					firehose_settings.mode = "mixed";
+					firehose_settings.fhfilter = "";
+					firehose_settings.orderdir = "DESC";
+					firehose_settings.orderby = "createtime";
+					firehose_settings.duration = -1;
+					firehose_settings.color = "green";
+					firehose_settings.view = "stories";
+					firehose_settings.viewtitle = "";
+					firehose_settings.tab = "";
+					firehose_settings.base_filter = "";
+					firehose_settings.user_view_uid = "";
+					firehose_settings.sectionname = "Main";
+	
+	firehose_settings.issue = "";
+	firehose_settings.section = 13;
+	$('#searchquery').val(firehose_settings.fhfilter);
+
+	
+
+    fh_is_admin = 0;
+
+	firehose_sitename = "Slashdot";
+	firehose_slogan = "News for nerds, stuff that matters";
+    if (fh_is_admin) {
+	   firehose_update_title_count();
+    }
+	firehose_smallscreen = 0;
+
+	
+
+	
+	
+		firehose_settings.index = 1;
+	
+
+	
+
+	var firehose_action_time = 0;
+	var firehose_user_class = 0;
+	
+	
+	
+	var fh_color = "green";
+	fh_colors = [ "red", "orange", "yellow", "green", "blue", "indigo", "violet", "black" ];
+	var fh_colors_hash = new Array(0);
+	for (var i=0; i< fh_colors.length; i++) {
+		fh_colors_hash[fh_colors[i]] = i;
+	}
+
+	var fh_view_mode = "mixed";
+	firehose_settings.page = 0;
+	
+	fh_is_admin = 0;
+	var updateIntervalType = 2;
+	var inactivity_timeout = 3600;
+	setFirehoseAction();
+	var update_time = "2023-01-09 22:54:58";
+
+	var maxtime = "2023-01-09 22:54:58";
+	var insert_new_at = "top";
+
+	
+
+fh_ticksize = 15;
+sitename = 'idle.slashdot.org';
+
+
+
+
+
+</script><!-- footer type=current begin -->
+
+	
+	</section>
+	
+	
+
+
+	<footer id="fhft" class="grid_24 nf">
+		<div id="logo_nf" class="fleft">
+			<a href="//slashdot.org"><span>Slashdot</span></a>
+		</div>
+		<nav role="firehose footer">
+			
+
+			
+				<ul id="pagination-controls">
+					
+						
+						<li class="fleft">
+							<a href="//hardware.slashdot.org/?issue=20230109">Today</a>
+						</li>
+					
+						
+						<li class="fleft">
+							<a href="//hardware.slashdot.org/?issue=20230108">Sunday</a>
+						</li>
+					
+						
+						<li class="fleft">
+							<a href="//hardware.slashdot.org/?issue=20230107">Saturday</a>
+						</li>
+					
+						
+						<li class="fleft">
+							<a href="//hardware.slashdot.org/?issue=20230106">Friday</a>
+						</li>
+					
+						
+						<li class="fleft">
+							<a href="//hardware.slashdot.org/?issue=20230105">Thursday</a>
+						</li>
+					
+						
+						<li class="fleft">
+							<a href="//hardware.slashdot.org/?issue=20230104">Wednesday</a>
+						</li>
+					
+						
+						<li class="fleft">
+							<a href="//hardware.slashdot.org/?issue=20230103">Tuesday</a>
+						</li>
+					
+						
+						<li class="fleft">
+							<a href="//hardware.slashdot.org/?issue=20230102">Monday</a>
+						</li>
+					
+				</ul>
+				<script> /* fh_pag_update() */</script>
+			
+			<ul class="fright submitstory">
+					<li class="fright">
+						<a href="/submit">Submit<span class="opt"> Story</span></a>
+					</li>
+			</ul>
+		</nav>
+		
+
+
+	</footer>
+	<section class="bq">
+		<blockquote class="msg grid_24" cite="https://slashdot.org">
+			<p>"I have just one word for you, my boy...plastics."
+- from "The Graduate"</p>
+			<span class="slant"></span>
+		</blockquote>
+	</section>
+	<footer id="ft" class="grid_24">
+		<nav class="grid_10" role="footer">
+			<ul>
+				<li><a href="//slashdot.org/faq">FAQ</a></li>
+				<li><a href="//slashdot.org/archive.pl">Story Archive</a></li>
+				<li><a href="//slashdot.org/hof.shtml">Hall of Fame</a></li>
+				<li><a href="https://slashdotmedia.com/advertising-and-marketing-services/" rel="nofollow">Advertising</a></li>
+				<li><a href="https://slashdotmedia.com/terms-of-use/" rel="nofollow">Terms</a></li>
+				<li><a href="https://slashdotmedia.com/privacy-statement/" rel="nofollow">Privacy Statement</a></li>
+				<li><a href="//slashdot.org/faq/slashmeta.shtml">About</a></li>
+				<li><a href="mailto:feedback@slashdot.org">Feedback</a></li>
+				<li><a href="#" onclick="set_mobile_pref('mobile',1);return false;">Mobile View</a></li>
+				<li><a href="//slashdot.org/blog">Blog</a></li>
+				<li><a href="#" id="opt-out-link"></a></li>
+				<li><button class="btn opt-out" id="opt-out-button" style="display:none">
+					<img src="//a.fsdn.com/sd/ccpa-optout.png" alt="Icon">
+					Do Not Sell My Personal Information</button></li>
+
+			</ul>
+		</nav>
+		<br>
+		
+		<div class="grid_14 tright tm">Trademarks property of their respective owners. Comments owned by the poster. <span class="nobr">Copyright &copy; 2023 SlashdotMedia. All Rights Reserved.</span></div>
+
+	<div class="modal-custom overlay-custom" id="ccpa-modal" style="max-width:100%">
+		<div class="modal-content modal-content-ccpa">
+	    	<span class="close" id="modal-close">&times;</span>
+			<div class="modal-header" id="ccpa-modal-content-destination"></div>
+		</div>
+	</div>
+
+	</footer>
+	
+	<div class="overlay"></div>
+<div class="modal-box">
+    <a href="#" id="close-modal">Close</a>
+    <article class="modal-content">
+    </article>
+    <footer>
+</div>
+
+
+
+
+<div id="modal_cover" class="hide" onclick="hide_modal_box(); return false;"></div>
+<div id="modal_box" class="hide">
+      <div id="modal_box_content"></div>
+      <header class="n">
+                  <span class="fadeout"></span>
+                  <span class="fadeoutfade"></span>
+		  <span class="pf"><a class="ico close" onclick="hide_modal_box(); return false;" href="#"><span>Close</span></a></span>
+		  <h3 class="pf"><div id="logo"><a href="//slashdot.org">Slashdot</a></div><span id="preference_title"></span></h3>
+      </header>
+</div>
+	
+	<!-- CCM Tag -->
+<script type="text/javascript">
+bizx.cmp.ifConsent('', ['all','bombora'], function() {
+        /*global _ml:true, window */
+        _ml = window._ml || {};
+        _ml.eid = '771';
+
+        var s = document.getElementsByTagName('script')[0], cd = new Date(), mltag = document.createElement('script');
+        mltag.type = 'text/javascript'; mltag.async = true;
+        mltag.src = '//ml314.com/tag.aspx?' + cd.getDate() + cd.getMonth() + cd.getFullYear();
+        s.parentNode.insertBefore(mltag, s);
+});
+</script>
+<!-- End CCM Tag -->
+
+<script type="text/javascript">
+window.google_analytics_uacct = "UA-199823890-2";
+
+var _gaq = _gaq || [];
+
+
+
+
+
+  _gaq.push(['_setAccount', 'UA-199823890-2']);
+  _gaq.push(['_setDomainName', '.slashdot.org']);
+
+	
+		_gaq.push(['_addIgnoredRef', 'slashdot.org']);
+	
+
+
+  _gaq.push(['_setCustomVar', 1, 'User Type',  'Anon', 3]);
+	
+	_gaq.push(['_setCustomVar', 2, 'Page','index2', 3]);
+
+	
+
+
+
+// track beta behavior for user
+var betamatches = document.cookie.match(/betagroup=(-?\d+)/);
+
+if(betamatches && betamatches[1]) {
+  if(betamatches[1] == -1) {
+    _gaq.push(['_setCustomVar', 3, 'Beta-Usage','opt-out', 3]);
+  } else {
+    _gaq.push(['_setCustomVar', 3, 'Beta-Usage','unredirected', 3]);
+  }
+}
+
+
+
+  _gaq.push(['_trackPageview']);
+  _gaq.push(['_trackPageLoadTime']);
+
+
+if (window.is_euro_union === 0) {
+bizx.cmp.ifConsent('', ['all'], function () {
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+});
+}
+</script>
+
+<!-- CCM GA Push -->
+<script>
+    if (typeof _ml !== 'undefined' && _ml.us) {
+        if (_ml.us.tp && _ml.us.tp.length > 0) {
+            ga('set', 'dimension2', _ml.us.tp[0]);
+        }
+        if (_ml.us.pc && _ml.us.pc.length > 0) {
+            ga('set', 'dimension7', _ml.us.pc[0]);
+        }
+        ga('set', 'dimension3', _ml.us.ind);
+        ga('set', 'dimension4', _ml.us.cr);
+        ga('set', 'dimension5', _ml.us.cs);
+        ga('set', 'dimension6', _ml.us.dm);
+        ga('set', 'dimension8', _ml.us.sn);
+    }
+</script>
+
+<!-- Sticky Ads -->
+<script type="text/javascript">
+var topBannerViewed = false;
+function initSticky(){
+	if (SD.Ads.acceptable_ads_active) {
+		return;
+	}
+		
+	if($('#div-gpt-ad-728x90_a').length > 0 && $('#div-gpt-ad-300x250_a').length > 0 && window.outerWidth >= 1070 && !isAdBlockActive){
+	    $(window).scroll(function(){
+		var y = $(document).scrollTop();
+		var z =  y + window.outerHeight;
+		var navOffset = 0;
+		var offset = [
+		    $('.nav-wrap').outerHeight(true),
+		    $('.nav-secondary-wrap').outerHeight(true)
+		];
+		for(row in offset){
+		    if(offset[row]) navOffset = navOffset + parseInt(offset[row]);
+		}
+		$('.adwrap-unviewed').each(function(){
+		    var cls = 'adwrap-sticky';
+		    var toggleCls = 'adwrap';
+				//$('.banner-wrapper').css('height', $('.banner-contain').outerHeight());
+		    if($(this).hasClass('railad')) {
+			if(topBannerViewed){
+			    var topPixels = $(this).offset().top;
+			    navOffset += $('.adwrap').outerHeight();
+			    if(y >= topPixels && y >= navOffset){
+				$('#slashboxes').css('top', 0).css('position','fixed').css('right',13);
+			    } else {
+				$('#slashboxes').removeAttr('style');
+			    }
+			}
+			return;
+		    }
+		    var topPixels = $(this).offset().top;
+		if(y >= topPixels && y >= navOffset){
+			$(this).addClass(cls);
+			$(this).removeClass('adwrap');
+					if(cls == 'adwrap-sticky') { //top banner
+			    topBannerViewed = false;
+						$('#slashboxes').css('top',$(this).outerHeight() || 0).css('position','fixed').css('right',13);
+					}
+		if(topBannerViewed) {
+			    //console.log('hereeee');
+						$('#slashboxes').css('top', 0).css('position','fixed').css('right',13);
+					}
+		    }else{
+									//console.log('topBannerViewed', topBannerViewed);
+			$(this).removeClass(cls);
+			$(this).addClass(toggleCls);
+			$('#slashboxes').removeAttr('style');
+		    }
+		});
+			if($('.adwrap-viewed-banner').length > 0){
+			  //console.log('ads topBanner displayed');
+				topBannerViewed = true;
+				$('.adwrap-viewed-banner').removeClass('adwrap-unviewed').removeClass('adwrap-sticky').addClass('adwrap');
+			}
+	    if($('.adwrap-viewed-railad').length > 0){
+							//console.log('ads sidebar displayed');
+		    $('.adwrap-viewed-railad').removeClass('adwrap-unviewed').removeClass('adwrap-railad-sticky');
+				$('#slashboxes').removeAttr('style');
+			}
+	    });
+	}
+}
+bizx.cmp.ifConsent('', ['all', 'google-ads'], function () {
+	if (!isAdBlockActive) {
+		initSticky();
+	}
+	if (SD.Ads.acceptable_ads_active) {
+		// similar to remove* code above in initSticky
+		$('.adwrap-unviewed').removeClass('adwrap-unviewed').removeClass('adwrap-sticky').addClass('adwrap').removeClass('adwrap-railad-sticky');
+		$('#slashboxes').removeAttr('style');
+	}
+});
+</script>
+
+<!-- Piwik -->
+<script type="text/javascript">
+  var _paq = _paq || [];
+  _paq.push(["setCookieDomain", "*.slashdot.org"]);
+  _paq.push(['trackPageView']);
+  _paq.push(['enableLinkTracking']);
+function initPiwikAndNels() {
+  (function() {
+    var u="//analytics.slashdotmedia.com/";
+    _paq.push(['setTrackerUrl', u+'sd.php']);
+    _paq.push(['setSiteId', 40]);
+    var d=document, g=d.createElement('script'), s=d.getElementsByTagName('script')[0];
+    g.type='text/javascript'; g.async=true; g.defer=true; g.src=u+'sd.js'; s.parentNode.insertBefore(g,s);
+  })();
+
+    if(window.location.pathname == '/'){
+        var nelId = (location.search.split('nel_id=')[1] || '').split('&')[0];
+        var url = '/ajax.pl?op=nel';
+        if(nelId){
+            url += '&nel_id='+nelId;
+        }
+        $.ajax({
+            url: url,
+            type: 'POST',
+            success: function(html){
+                $('#firehoselist article').eq(1).after(html);
+            }
+        });
+    }
+    //announcement NEL
+    if(document.getElementById('announcementText')){
+      $('#announcementText').hide();
+      var hlUrl = '/ajax.pl?op=hl_nel';
+      if(nelId){
+        hlUrl += '&nel_id='+nelId;
+      }
+      $.ajax({
+        url: hlUrl,
+        type: 'POST',
+        success: function(html){
+          if(html.length < 10){
+            $('#announcementText').show();
+            return;
+          }
+          $('#announcementText').html(html).show();
+        },
+        error: function () {
+          $('#announcementText').show();
+        }
+      });
+    }
+}
+bizx.cmp.ifConsent('', ['storage', 'measurement'], initPiwikAndNels);
+</script>
+
+
+<script type="text/javascript">
+_linkedin_data_partner_id = "113712";
+</script><script type="text/javascript">
+if (window.is_euro_union === 0) {
+bizx.cmp.ifConsent('', ['all'], function (){
+    (function(){var s = document.getElementsByTagName("script")[0];
+    var b = document.createElement("script");
+    b.type = "text/javascript";b.async = true;
+    b.src = "https://snap.licdn.com/li.lms-analytics/insight.min.js";
+    s.parentNode.insertBefore(b, s);})();
+    });
+}
+</script>
+<noscript>
+<img height="1" width="1" style="display:none;" alt="" src="https://dc.ads.linkedin.com/collect/?pid=113712&fmt=gif" />
+</noscript>
+
+<!-- Datonics -->
+<script type="text/javascript">
+if (window.is_euro_union === 0) {
+    bizx.cmp.ifConsent('', ['all'], function () {
+        bizx.cmp.embedScript("//ads.pro-market.net/ads/scripts/site-143573.js", true);
+    });
+}
+</script>
+	<script id="after-content" type="text/javascript">
+(function( $, fn, console ){
+	$ && fn && $(function(){ fn($, console); });
+})(window.jQuery, window.pageload_done, window.console);
+</script>
+	
+	<script type='text/javascript'>
+	if(!document.location.href.match(/source=autorefresh/)) {
+		document.write('<img src="//slashdot.org/images/js.gif?265">');
+	}
+</script>
+<noscript>
+	<img src="//slashdot.org/images/njs.gif?493">
+</noscript>
+	<div class="busy genericspinner hide"><span>Working...</span></div>
+
+	    <script>
+            var regular_opt_out_link = true;
+
+            if (window.region == 'CA' && window.country_code2 == 'US') {
+                regular_opt_out_link = false;
+                 document.getElementById('opt-out-button').setAttribute('style', 'display:inline');
+            }
+
+            if (window.is_euro_union === 1) {
+                regular_opt_out_link = false;
+                var elem = '<a href="#" title="Privacy Choices" onclick="bizx.cmp.promptConsent(); return false;">Privacy Choices</a>';
+                document.getElementById('opt-out-link').innerHTML = elem;
+            }
+
+            if (regular_opt_out_link == true) {
+                var elem = '<a href="http://slashdotmedia.com/opt-out-choices" title="Opt Out" rel="nofollow">Opt Out</a>';
+                document.getElementById('opt-out-link').innerHTML = elem;
+            }
+            var cmp_modal = document.getElementById('ccpa-modal');
+            var btn = document.getElementById('opt-out-button');
+            var span = document.getElementById('modal-close');
+
+            btn.onclick = function() {
+            	cmp_modal.style.display = 'block';
+            };
+
+            span.onclick = function() {
+            	cmp_modal.style.display = 'none';
+            };
+
+         </script>
+
+	<script>
+		if(typeof(Storage)!=="undefined"){
+			window.scrollTo(0,sessionStorage.scrollPos);
+				$(window).scroll(function () {
+				//You've scrolled this much:
+				sessionStorage.scrollPos = $(window).scrollTop();
+			});
+		}
+		$(function(){
+			$('a').click(function(){
+				delete sessionStorage.scrollPos;
+			})
+		});
+		// window.onbeforeunload = function () {
+		// 	console.log('bakc button clicked');
+		// 	delete sessionStorage.scrollPos;
+		// }
+		window.onpopstate=function() {
+			delete sessionStorage.scrollPos;
+		}
+	</script>
+	
+
+	
+		<!-- 1x1 home page -->
+		<div id='div-gpt-ad-1x1'><script type='text/javascript'>
+googletag.cmd.push(function(){
+googletag.display('div-gpt-ad-1x1');});</script></div>
+	
+
+	<script type="text/javascript">
+        bizx.cmp.ifConsent('', ['all'], function () {
+            if (window.is_euro_union === 0) {
+                            window._taboola = window._taboola || [];
+                            _taboola.push({flush: true});
+            }
+        });
+	</script>
+        <script>
+            if (window.is_euro_union === 0) {
+                document.querySelectorAll('body')[0].classList.add('no-cmp');
+            }
+
+        </script>
+	</body>
+	</html>
+
+
+	<!-- footer type=current end -->

@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 pub mod hacker_news;
+mod html;
 pub mod legacy_import;
 pub mod lobsters;
 pub mod reddit_json;
@@ -224,6 +225,10 @@ pub mod test {
     use std::fs::read_to_string;
     use std::path::PathBuf;
     use std::str::FromStr;
+
+    pub fn slashdot_files() -> Vec<&'static str> {
+        vec!["slashdot1.html", "slashdot2.html"]
+    }
 
     pub fn hacker_news_files() -> Vec<&'static str> {
         vec!["hn1.html", "hn2.html", "hn3.html", "hn4.html"]
