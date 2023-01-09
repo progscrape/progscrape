@@ -1,6 +1,6 @@
-use chrono::{DateTime, Datelike, Months, NaiveDateTime, TimeZone, Utc};
+use chrono::{DateTime, Datelike, Months, NaiveDateTime, TimeZone, Utc, Duration};
 use serde::{Deserialize, Serialize};
-use std::{fmt::Display, time::SystemTime};
+use std::{fmt::Display, time::SystemTime, ops::Sub};
 
 /// Story-specific date that wraps all of the operations we're interested in. This is a thin wrapper on top
 /// of `DateTime<Utc>` and other `chrono` utilities for now.
@@ -58,6 +58,13 @@ impl StoryDate {
         self.internal_date
             .checked_sub_months(Months::new(months))
             .map(StoryDate::new)
+    }
+}
+
+impl Sub for StoryDate {
+    type Output = Duration;
+    fn sub(self, rhs: Self) -> Self::Output {
+        self.internal_date - rhs.internal_date
     }
 }
 

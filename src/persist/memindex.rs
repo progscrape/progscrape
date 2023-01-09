@@ -4,7 +4,7 @@ use itertools::Itertools;
 
 use crate::{
     scrapers::ScrapeData,
-    story::{StoryDate, StoryUrlNorm},
+    story::{StoryDate, StoryUrlNorm, StoryScoreType},
 };
 
 use super::*;
@@ -50,6 +50,8 @@ impl YearMonth {
 /// Builds an index of stories in memory, useful for pre-aggregation of scrapes into normalized URL collections.
 #[derive(Default, Serialize, Deserialize)]
 pub struct MemIndex {
+    most_recent_story: StoryDate,
+
     /// A map from year/month to normalized story URL, to scrape source/ID to scrape.
     stories: HashMap<YearMonth, HashMap<StoryUrlNorm, Story>>,
 }
@@ -107,12 +109,14 @@ impl StorageWriter for MemIndex {
                 if let Some(mut story) = map0.remove(normalized_url) {
                     // Merge and then re-insert the story in the correct shard
                     story.merge(scrape);
+                    self.most_recent_story = self.most_recent_story.max(story.date());
                     self.map_mut(YearMonth::from_date_time(story.date()))
                         .insert(normalized_url.clone(), story);
                     continue 'outer;
                 }
             }
 
+            self.most_recent_story = self.most_recent_story.max(scrape.date());
             // Not found!
             if let Some(_old) = self
                 .map_mut(date)
@@ -127,6 +131,10 @@ impl StorageWriter for MemIndex {
 }
 
 impl Storage for MemIndex {
+    fn most_recent_story(&self) -> StoryDate {
+        self.most_recent_story
+    }
+
     fn story_count(&self) -> Result<StorageSummary, PersistError> {
         let mut summary = StorageSummary::default();
         summary.by_shard = self
@@ -162,11 +170,11 @@ impl Storage for MemIndex {
         }
     }
 
-    fn query_frontpage(&self, offset: usize, max_count: usize) -> Result<Vec<Story>, PersistError> {
+    fn query_frontpage(&self, relative_date: StoryDate, offset: usize, max_count: usize) -> Result<Vec<Story>, PersistError> {
         const LIMIT: usize = 500;
         let rev = self.get_all_stories().rev();
-        let mut sort = rev.take(LIMIT).collect::<Vec<_>>();
-        sort.sort_by_cached_key(|story| (story.score() * -1000.0) as i32);
+        let mut sort = rev.filter(|story| story.date() <= relative_date).take(LIMIT).collect::<Vec<_>>();
+        sort.sort_by_cached_key(|story| (story.score(StoryScoreType::AgedFrom(relative_date)) * -1000.0) as i32);
         Ok(sort[offset..offset+max_count].to_vec())
     }
 

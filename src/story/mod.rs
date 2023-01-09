@@ -2,6 +2,7 @@ use base64::{
     alphabet::{self, Alphabet},
     engine::fast_portable::{self, FastPortable, FastPortableConfig},
 };
+use chrono::Duration;
 use serde::{Deserialize, Serialize};
 
 use crate::scrapers::{Scrape, ScrapeData, ScrapeDataInit, ScrapeId, ScrapeSource};
@@ -161,12 +162,12 @@ impl Story {
         self.title_choice().1
     }
 
-    pub fn score(&self) -> f32 {
-        StoryScorer::score(self, StoryScoreType::Base)
+    pub fn score(&self, score_type: StoryScoreType) -> f32 {
+        StoryScorer::score(self, score_type)
     }
 
-    pub fn score_detail(&self) -> Vec<(String, f32)> {
-        StoryScorer::score_detail(self, StoryScoreType::Base)
+    pub fn score_detail(&self, score_type: StoryScoreType) -> Vec<(String, f32)> {
+        StoryScorer::score_detail(self, score_type)
     }
 
     /// Choose a title based on source priority, with preference for shorter titles if the priority is the same.
@@ -215,11 +216,11 @@ impl Story {
             .unwrap_or_default()
     }
 
-    pub fn render(&self) -> StoryRender {
+    pub fn render(&self, relative_to: StoryDate) -> StoryRender {
         let scrapes = HashMap::from_iter(self.scrapes.iter().map(|(k, v)| (k.as_str(), v.clone())));
         StoryRender {
             id: self.id.to_base64(),
-            score: self.score(),
+            score: self.score(StoryScoreType::AgedFrom(relative_to)),
             url: self.url().to_string(),
             domain: self.url().host().to_owned(),
             title: self.title(),
@@ -238,6 +239,7 @@ pub enum StoryScoreType {
 
 #[derive(Debug)]
 enum StoryScore {
+    Age,
     SourceCount,
     LongRedditTitle,
     LongTitle,
@@ -257,6 +259,20 @@ impl StoryScorer {
 
         let title = story.title();
         let url = story.url();
+
+        // Story age decay
+        if let StoryScoreType::AgedFrom(relative_date) = score_type {
+            let age = relative_date - story.date();
+            if age > Duration::days(1) {
+                accum(StoryScore::Age, -100.0 * age.num_days() as f32);
+            } else if age > Duration::hours(2) {
+                accum(StoryScore::Age, -20.0 + (-5.0 * age.num_hours() as f32));
+            } else if age > Duration::hours(1) {
+                accum(StoryScore::Age, -20.0);
+            } else {
+                accum(StoryScore::Age, -10.0);
+            }
+        }
 
         let mut reddit = None;
         let mut hn = None;

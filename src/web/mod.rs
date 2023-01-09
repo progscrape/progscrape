@@ -13,7 +13,7 @@ use thiserror::Error;
 
 use crate::{
     persist::StorageSummary,
-    story::{Story, StoryIdentifier, StoryRender},
+    story::{Story, StoryIdentifier, StoryRender, StoryDate, StoryScoreType},
 };
 
 use self::generate::GeneratedSource;
@@ -113,8 +113,8 @@ impl StorySort {
     }
 }
 
-fn render_stories(iter: impl Iterator<Item = Story>, sort: StorySort) -> Vec<StoryRender> {
-    let mut v = iter.map(|x| x.render()).collect::<Vec<_>>();
+fn render_stories(iter: impl Iterator<Item = Story>, render_date: StoryDate, sort: StorySort) -> Vec<StoryRender> {
+    let mut v = iter.map(|x| x.render(render_date)).collect::<Vec<_>>();
     match sort {
         StorySort::None => {}
         StorySort::Title => v.sort_by(|a, b| a.title.cmp(&b.title)),
@@ -124,12 +124,18 @@ fn render_stories(iter: impl Iterator<Item = Story>, sort: StorySort) -> Vec<Sto
     v
 }
 
+fn now(global: &index::Global) -> StoryDate {
+    global.storage.most_recent_story()
+}
+
 // basic handler that responds with a static string
 async fn root(
     State((state, generated)): State<(index::Global, GeneratedSource)>,
 ) -> Result<Html<String>, WebError> {
+    let now = now(&state);
     let stories = render_stories(
-        state.storage.query_frontpage(0, 30)?.into_iter(),
+        state.storage.query_frontpage(StoryDate::now(), 0, 30)?.into_iter(),
+        now,
         StorySort::None,
     );
     let top_tags = vec![
@@ -180,9 +186,11 @@ async fn status_frontpage(
     struct Status {
         stories: Vec<StoryRender>,
     }
+    let now = now(&state);
     let context = Context::from_serialize(&Status {
         stories: render_stories(
-            state.storage.query_frontpage(0, 500)?.into_iter(),
+            state.storage.query_frontpage(now, 0, 500)?.into_iter(),
+            now,
             StorySort::None,
         ),
     })?;
@@ -205,7 +213,7 @@ async fn status_shard(
     let sort = StorySort::from_key(&sort.get("sort").map(|x| x.clone()).unwrap_or_default());
     let context = Context::from_serialize(&ShardStatus {
         shard: shard.clone(),
-        stories: render_stories(state.storage.stories_by_shard(&shard)?.into_iter(), sort),
+        stories: render_stories(state.storage.stories_by_shard(&shard)?.into_iter(), StoryDate::now(), sort),
     })?;
     Ok(generated
         .templates()
@@ -223,12 +231,13 @@ async fn status_story(
         score: Vec<(String, f32)>,
     }
     let id = StoryIdentifier::from_base64(id).ok_or(WebError::NotFound)?;
+    let now = now(&state);
     tracing::info!("Loading story = {:?}", id);
     let story = state
         .storage
         .get_story(&id)
         .ok_or(WebError::NotFound)?;
-    let context = Context::from_serialize(&StoryStatus { story: story.render(), score: story.score_detail() })?;
+    let context = Context::from_serialize(&StoryStatus { story: story.render(now), score: story.score_detail(StoryScoreType::AgedFrom(now)) })?;
     Ok(generated
         .templates()
         .render("admin_story.html", &context)?

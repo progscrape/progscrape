@@ -292,6 +292,10 @@ impl StorageWriter for StoryIndex {
 }
 
 impl Storage for StoryIndex {
+    fn most_recent_story(&self) -> StoryDate {
+        unimplemented!()
+    }
+
     fn story_count(&self) -> Result<StorageSummary, PersistError> {
         let now = StoryDate::now();
         let mut summary = StorageSummary::default();
@@ -316,7 +320,7 @@ impl Storage for StoryIndex {
         unimplemented!()
     }
 
-    fn query_frontpage(&self, _offset: usize, _max_count: usize) -> Result<Vec<Story>, PersistError> {
+    fn query_frontpage(&self, _relative_date: StoryDate, _offset: usize, _max_count: usize) -> Result<Vec<Story>, PersistError> {
         unimplemented!()
     }
 

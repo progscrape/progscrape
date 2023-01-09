@@ -1,4 +1,4 @@
-use crate::story::Story;
+use crate::story::{Story, StoryDate};
 use crate::{scrapers::Scrape, story::StoryIdentifier};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -32,6 +32,8 @@ pub struct StorageSummary {
 
 /// The underlying storage engine.
 pub trait Storage: Send + Sync {
+    fn most_recent_story(&self) -> StoryDate;
+
     /// Count the docs in this index, breaking it out by index segment.
     fn story_count(&self) -> Result<StorageSummary, PersistError>;
 
@@ -42,7 +44,7 @@ pub trait Storage: Send + Sync {
     fn stories_by_shard(&self, shard: &str) -> Result<Vec<Story>, PersistError>;
 
     /// Query the current front page, scored mainly by "hotness".
-    fn query_frontpage(&self, offset: usize, max_count: usize) -> Result<Vec<Story>, PersistError>;
+    fn query_frontpage(&self, relative_date: StoryDate, offset: usize, max_count: usize) -> Result<Vec<Story>, PersistError>;
 
     /// Query a search, scored mostly by date but may include some "hotness".
     fn query_search(&self, search: String, max_count: usize) -> Result<Vec<Story>, PersistError>;
