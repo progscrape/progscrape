@@ -6,19 +6,7 @@
 <tr><th><a href="?sort=date">Date</a></th><th>Source</th><th><a href="?sort=domain">Domain</a></th><th><a href="?sort=title">Story</a></th></tr>
 {% for story in stories %}
 <tr><td><a href="../../story/{{ story.id }}/">{{ story.date | date }}</a></td><td>
-    {% for source, scrape in story.scrapes %}
-    {% if source is matching("hackernews-") %}
-    ⒣
-    {% elif source is matching("reddit-") %}
-    ⒭
-    {% elif source is matching("lobsters-") %}
-    ⒧
-    {% elif source is matching("slashdot-") %}
-    ⒮
-    {% else %}
-    <span title="{{ source }}">unknown</span>
-    {% endif %}
-    {% endfor %}
+    {{ macros_story::comment_links(story=story) }}
 </td><td>{{ story.domain }}</td><td><a href="{{ story.url }}">{{ story.title }}</a></td></tr>
 {% endfor %}
 </table>

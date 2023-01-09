@@ -2,20 +2,8 @@
 {% block content %}
 <table>
 {% for story in stories %}
-<tr><td>{{ story.score }}</td><td><a href="../story/{{ story.id }}/">{{ story.date | date }}</a></td><td>{{ story.domain }}</td><td>
-    {% for source, scrape in story.scrapes %}
-    {% if source is matching("hackernews-") %}
-    ⒣
-    {% elif source is matching("reddit-") %}
-    ⒭
-    {% elif source is matching("lobsters-") %}
-    ⒧
-    {% elif source is matching("slashdot-") %}
-    ⒮
-    {% else %}
-    <span title="{{ source }}">unknown</span>
-    {% endif %}
-    {% endfor %}
+<tr><td>{{ story.score | round(precision=2) }}</td><td><a href="../story/{{ story.id }}/">{{ story.date | date }}</a></td><td>{{ story.domain }}</td><td>
+    {{ macros_story::comment_links(story=story) }}
 </td><td>{{ story.title }}</td></tr>
 {% endfor %}
 </table>

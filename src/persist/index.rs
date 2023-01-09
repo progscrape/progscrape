@@ -200,11 +200,11 @@ impl StoryIndex {
     ) -> Result<(), PersistError> {
         // Split stories by index shard
         let mut sharded = HashMap::<u32, Vec<Story>>::new();
-        for scrape in scrapes {
+        for story in scrapes {
             sharded
-                .entry(self.index_for_date(scrape.date()))
+                .entry(self.index_for_date(story.date()))
                 .or_default()
-                .push(scrape);
+                .push(story);
         }
 
         for (shard, stories) in sharded {
@@ -268,10 +268,11 @@ impl StoryIndex {
     /// Insert a list of scrapes into the index.
     fn insert_scrapes<'a, I: Iterator<Item = Scrape> + 'a>(
         &mut self,
+        config: &StoryScoreConfig,
         scrapes: I,
     ) -> Result<(), PersistError> {
         let mut memindex = memindex::MemIndex::default();
-        memindex.insert_scrapes(scrapes)?;
+        memindex.insert_scrapes(config, scrapes)?;
 
         for chunk in &memindex.get_all_stories().chunks(STORY_INDEXING_CHUNK_SIZE) {
             println!("Chunk");
@@ -285,9 +286,10 @@ impl StoryIndex {
 impl StorageWriter for StoryIndex {
     fn insert_scrapes<'a, I: Iterator<Item = Scrape> + 'a>(
         &mut self,
+        config: &StoryScoreConfig,
         scrapes: I,
     ) -> Result<(), PersistError> {
-        self.insert_scrapes(scrapes)
+        self.insert_scrapes(config, scrapes)
     }
 }
 
@@ -320,7 +322,7 @@ impl Storage for StoryIndex {
         unimplemented!()
     }
 
-    fn query_frontpage(&self, _relative_date: StoryDate, _offset: usize, _max_count: usize) -> Result<Vec<Story>, PersistError> {
+    fn query_frontpage_hot_set(&self, max_count: usize) -> Result<Vec<Story>, PersistError> {
         unimplemented!()
     }
 
@@ -415,8 +417,7 @@ mod test {
     #[test]
     fn test_index_lots() {
         let stories = crate::scrapers::legacy_import::import_legacy()
-            .expect("Failed to read scrapes")
-            .collect::<Vec<_>>();
+            .expect("Failed to read scrapes");
         let start_date = stories
             .iter()
             .fold(StoryDate::MAX, |a, b| std::cmp::min(a, b.date()));
@@ -425,8 +426,9 @@ mod test {
         let _dir = RamDirectory::create();
         let mut index = StoryIndex::initialize(start_date, |_n| RamDirectory::create())
             .expect("Failed to initialize index");
+        let config = StoryScoreConfig::default();
         index
-            .insert_scrapes(stories.into_iter())
+            .insert_scrapes(&config, stories.into_iter())
             .expect("Failed to insert scrapes");
         index.query_search("rust".to_owned(), 10);
     }

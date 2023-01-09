@@ -12,8 +12,8 @@ use tera::Context;
 use thiserror::Error;
 
 use crate::{
-    persist::StorageSummary,
-    story::{Story, StoryIdentifier, StoryRender, StoryDate, StoryScoreType},
+    persist::{StorageSummary, PersistError},
+    story::{Story, StoryIdentifier, StoryRender, StoryDate, StoryScoreType, StoryScoreConfig, rescore_stories},
 };
 
 use self::resource::Resources;
@@ -42,6 +42,8 @@ pub enum WebError {
     NotifyError(#[from] notify::Error),
     #[error("CBOR error")]
     CBORError(#[from] serde_cbor::Error),
+    #[error("JSON error")]
+    JSONError(#[from] serde_json::Error),
     #[error("Item not found")]
     NotFound,
 }
@@ -57,7 +59,7 @@ pub async fn start_server() -> Result<(), WebError> {
     tracing_subscriber::fmt::init();
     let resources = resource::start_watcher().await?;
 
-    let global = index::initialize_with_testing_data()?;
+    let global = index::initialize_with_testing_data(&resources.config())?;
 
     // build our application with a route
     let app = Router::new()
@@ -113,8 +115,8 @@ impl StorySort {
     }
 }
 
-fn render_stories(iter: impl Iterator<Item = Story>, render_date: StoryDate, sort: StorySort) -> Vec<StoryRender> {
-    let mut v = iter.map(|x| x.render(render_date)).collect::<Vec<_>>();
+fn render_stories<'a>(iter: impl Iterator<Item = &'a Story>, config: &StoryScoreConfig, render_date: StoryDate, sort: StorySort) -> Vec<StoryRender> {
+    let mut v = iter.map(|x| x.render(config, render_date)).collect::<Vec<_>>();
     match sort {
         StorySort::None => {}
         StorySort::Title => v.sort_by(|a, b| a.title.cmp(&b.title)),
@@ -128,13 +130,21 @@ fn now(global: &index::Global) -> StoryDate {
     global.storage.most_recent_story()
 }
 
+fn hot_set(now: StoryDate, global: &index::Global, config: &crate::config::Config) -> Result<Vec<Story>, PersistError> {
+    let mut hot_set = global.storage.query_frontpage_hot_set(500)?;
+    rescore_stories(&config.score, now, &mut hot_set);
+    hot_set.sort_by(|a, b| a.compare_score(b).reverse());
+    Ok(hot_set)
+}
+
 // basic handler that responds with a static string
 async fn root(
     State((state, resources)): State<(index::Global, Resources)>,
 ) -> Result<Html<String>, WebError> {
     let now = now(&state);
     let stories = render_stories(
-        state.storage.query_frontpage(StoryDate::now(), 0, 30)?.into_iter(),
+        hot_set(now, &state, &resources.config())?[0..30].into_iter(),
+        &resources.config().score,
         now,
         StorySort::None,
     );
@@ -189,7 +199,8 @@ async fn status_frontpage(
     let now = now(&state);
     let context = Context::from_serialize(&Status {
         stories: render_stories(
-            state.storage.query_frontpage(now, 0, 500)?.into_iter(),
+            hot_set(now, &state, &resources.config())?.iter(),
+            &resources.config().score,
             now,
             StorySort::None,
         ),
@@ -213,7 +224,7 @@ async fn status_shard(
     let sort = StorySort::from_key(&sort.get("sort").map(|x| x.clone()).unwrap_or_default());
     let context = Context::from_serialize(&ShardStatus {
         shard: shard.clone(),
-        stories: render_stories(state.storage.stories_by_shard(&shard)?.into_iter(), StoryDate::now(), sort),
+        stories: render_stories(state.storage.stories_by_shard(&shard)?.iter(), &resources.config().score, StoryDate::now(), sort),
     })?;
     Ok(resources
         .templates()
@@ -237,7 +248,7 @@ async fn status_story(
         .storage
         .get_story(&id)
         .ok_or(WebError::NotFound)?;
-    let context = Context::from_serialize(&StoryStatus { story: story.render(now), score: story.score_detail(StoryScoreType::AgedFrom(now)) })?;
+    let context = Context::from_serialize(&StoryStatus { story: story.render(&resources.config().score, now), score: story.score_detail(&resources.config().score, StoryScoreType::AgedFrom(now)) })?;
     Ok(resources
         .templates()
         .render("admin_story.html", &context)?

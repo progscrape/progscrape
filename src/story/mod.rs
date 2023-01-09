@@ -1,6 +1,6 @@
 use base64::{
-    alphabet::{self, Alphabet},
-    engine::fast_portable::{self, FastPortable, FastPortableConfig},
+    alphabet::{self},
+    engine::fast_portable::{self, FastPortable},
 };
 use chrono::Duration;
 use serde::{Deserialize, Serialize};
@@ -24,6 +24,8 @@ pub use self::{
 pub struct StoryRender {
     pub id: String,
     pub url: String,
+    pub url_norm: String,
+    pub url_norm_hash: i64,
     pub domain: String,
     pub title: String,
     pub date: StoryDate,
@@ -114,20 +116,25 @@ impl StoryIdentifier {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Story {
     pub id: StoryIdentifier,
+    pub score: f32,
     pub scrapes: HashMap<ScrapeId, Scrape>,
 }
 
 impl Story {
-    pub fn new(scrape: Scrape) -> Self {
+    pub fn new(score_config: &StoryScoreConfig, scrape: Scrape) -> Self {
         let id = StoryIdentifier::new(scrape.date(), scrape.url().normalization());
         let scrape_id = ScrapeId::new(scrape.source(), scrape.id());
-        Self {
+        // This is a bit awkward as we should probably be scoring from the raw scrapes rather than the story itself
+        let mut story = Self {
             id,
+            score: 0.0,
             scrapes: HashMap::from_iter([(scrape_id, scrape)]),
-        }
+        };
+        story.score = StoryScorer::score(score_config, &story, StoryScoreType::Base);
+        story
     }
 
-    pub fn merge(&mut self, scrape: Scrape) {
+    pub fn merge(&mut self, score_config: &StoryScoreConfig, scrape: Scrape) {
         let scrape_id = ScrapeId::new(scrape.source(), scrape.id());
         match self.scrapes.entry(scrape_id) {
             Entry::Occupied(mut x) => {
@@ -158,16 +165,27 @@ impl Story {
         }
     }
 
+    /// Compares two stories, ordering by score.
+    pub fn compare_score(&self, other: &Story) -> std::cmp::Ordering {
+        // Sort by score, but fall back to date if score is somehow a NaN (it shouldn't be, but we'll just be robust here)
+        f32::partial_cmp(&self.score, &other.score).unwrap_or_else(|| self.date().cmp(&other.date()))
+    }
+
+    /// Compares two stories, ordering by date.
+    pub fn compare_date(&self, other: &Story) -> std::cmp::Ordering {
+        self.date().cmp(&other.date())
+    }
+
     pub fn title(&self) -> String {
         self.title_choice().1
     }
 
-    pub fn score(&self, score_type: StoryScoreType) -> f32 {
-        StoryScorer::score(self, score_type)
+    pub fn score(&self, config: &StoryScoreConfig, score_type: StoryScoreType) -> f32 {
+        StoryScorer::score(config, self, score_type)
     }
 
-    pub fn score_detail(&self, score_type: StoryScoreType) -> Vec<(String, f32)> {
-        StoryScorer::score_detail(self, score_type)
+    pub fn score_detail(&self, config: &StoryScoreConfig, score_type: StoryScoreType) -> Vec<(String, f32)> {
+        StoryScorer::score_detail(config, self, score_type)
     }
 
     /// Choose a title based on source priority, with preference for shorter titles if the priority is the same.
@@ -216,12 +234,14 @@ impl Story {
             .unwrap_or_default()
     }
 
-    pub fn render(&self, relative_to: StoryDate) -> StoryRender {
+    pub fn render(&self, config: &StoryScoreConfig, relative_to: StoryDate) -> StoryRender {
         let scrapes = HashMap::from_iter(self.scrapes.iter().map(|(k, v)| (k.as_str(), v.clone())));
         StoryRender {
             id: self.id.to_base64(),
-            score: self.score(StoryScoreType::AgedFrom(relative_to)),
+            score: self.score,
             url: self.url().to_string(),
+            url_norm: self.url().normalization().string().to_owned(),
+            url_norm_hash: self.url().normalization().hash(),
             domain: self.url().host().to_owned(),
             title: self.title(),
             date: self.date(),
@@ -232,6 +252,12 @@ impl Story {
     }
 }
 
+#[derive(Default, Serialize, Deserialize)]
+pub struct StoryScoreConfig {
+    age_breakpoint_days: [u32; 2],
+    hour_scores: [f32; 3],
+}
+
 pub enum StoryScoreType {
     Base,
     AgedFrom(StoryDate),
@@ -240,6 +266,7 @@ pub enum StoryScoreType {
 #[derive(Debug)]
 enum StoryScore {
     Age,
+    Random,
     SourceCount,
     LongRedditTitle,
     LongTitle,
@@ -249,45 +276,56 @@ enum StoryScore {
     LobstersPosition,
 }
 
+/// Re-scores stories w/age score.
+pub fn rescore_stories(config: &StoryScoreConfig, relative_to: StoryDate, stories: &mut Vec<Story>) {
+    for story in stories.iter_mut() {
+        story.score = story.score + StoryScorer::score_age(config, relative_to - story.date());
+    }
+}
+
 struct StoryScorer {
 }
 
 impl StoryScorer {
     #[inline(always)]
-    fn score_age(age: chrono::Duration) -> f32 {
-        let BREAKPOINT_1 = Duration::days(1);
-        let BREAKPOINT_2 = Duration::days(30);
-        let HOUR_SCORE_0 = -5.0;
-        let HOUR_SCORE_1 = -3.0;
-        let HOUR_SCORE_2 = -0.1;
+    fn score_age(config: &StoryScoreConfig, age: chrono::Duration) -> f32 {
+        let breakpoint1 = Duration::days(config.age_breakpoint_days[0] as i64);
+        let breakpoint2 = Duration::days(config.age_breakpoint_days[1] as i64);
+        let hour_score0 = config.hour_scores[0];
+        let hour_score1 = config.hour_scores[1];
+        let hour_score2 = config.hour_scores[2];
 
-        let MILLIS_TO_HOURS = Duration::hours(1).num_milliseconds() as f32;
+        // Equivalent to Duration::hours(1).num_milliseconds() as f32;
+        const MILLIS_TO_HOURS: f32 = 60.0*60.0*1000.0;
 
         // Fractional hours, clamped to zero
         let fractional_hours = f32::max(0.0, age.num_milliseconds() as f32 / MILLIS_TO_HOURS);
 
-        if age < BREAKPOINT_1 {
-            fractional_hours * HOUR_SCORE_0
-        } else if age < BREAKPOINT_2 {
-            BREAKPOINT_1.num_hours() as f32 * HOUR_SCORE_0 + (fractional_hours - BREAKPOINT_1.num_hours() as f32) * HOUR_SCORE_1
+        if age < breakpoint1 {
+            fractional_hours * hour_score0
+        } else if age < breakpoint2 {
+            breakpoint1.num_hours() as f32 * hour_score0 + (fractional_hours - breakpoint1.num_hours() as f32) * hour_score1
         } else {
-            BREAKPOINT_1.num_hours() as f32 * HOUR_SCORE_0 
-                + (BREAKPOINT_2 - BREAKPOINT_1).num_hours() as f32 * HOUR_SCORE_1 
-                + (fractional_hours - BREAKPOINT_2.num_hours() as f32) * HOUR_SCORE_2
+            breakpoint1.num_hours() as f32 * hour_score0 
+                + (breakpoint2 - breakpoint1).num_hours() as f32 * hour_score1 
+                + (fractional_hours - breakpoint2.num_hours() as f32) * hour_score2
         }
     }
 
     #[inline(always)]
-    fn score_impl<T: FnMut(StoryScore, f32) -> ()>(story: &Story, score_type: StoryScoreType, mut accum: T) {
+    fn score_impl<T: FnMut(StoryScore, f32) -> ()>(config: &StoryScoreConfig, story: &Story, score_type: StoryScoreType, mut accum: T) {
         use StoryScore::*;
 
         let title = story.title();
         let url = story.url();
 
+        // Small random shuffle for stories to mix up the front page a bit
+        accum(Random, (url.normalization().hash() % 6000000) as f32 / 1000000.0);
+
         // Story age decay
         if let StoryScoreType::AgedFrom(relative_date) = score_type {
             let age = relative_date - story.date();
-            accum(StoryScore::Age, Self::score_age(age));
+            accum(StoryScore::Age, Self::score_age(config, age));
         }
 
         let mut reddit = None;
@@ -325,17 +363,17 @@ impl StoryScorer {
         }
     }
 
-    pub fn score(story: &Story, score_type: StoryScoreType) -> f32 {
+    pub fn score(config: &StoryScoreConfig, story: &Story, score_type: StoryScoreType) -> f32 {
         let mut score_total = 0_f32;
         let accum = |_, score| score_total += score;
-        Self::score_impl(story, score_type, accum);
+        Self::score_impl(config, story, score_type, accum);
         score_total
     }
 
-    pub fn score_detail(story: &Story, score_type: StoryScoreType) -> Vec<(String, f32)> {
+    pub fn score_detail(config: &StoryScoreConfig, story: &Story, score_type: StoryScoreType) -> Vec<(String, f32)> {
         let mut score_bits = vec![];
         let accum = |score_type, score| score_bits.push((format!("{:?}", score_type), score));
-        Self::score_impl(story, score_type, accum);
+        Self::score_impl(config, story, score_type, accum);
         score_bits
     }
 }
@@ -348,9 +386,14 @@ mod test {
     /// Make sure that the scores are decreasing.
     #[test]
     fn test_age_score() {
+        let config = StoryScoreConfig {
+            age_breakpoint_days: [1, 30],
+            hour_scores: [-5.0, -3.0, -0.1],
+            ..Default::default()
+        };
         let mut last_score = f32::MAX;
         for i in 0..Duration::days(60).num_hours() {
-            let score = StoryScorer::score_age(Duration::hours(i));
+            let score = StoryScorer::score_age(&config, Duration::hours(i));
             assert!(score < last_score, "{} < {}", score, last_score);
             last_score = score;
         }

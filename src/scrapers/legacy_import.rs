@@ -135,13 +135,13 @@ fn import_legacy_2() -> Result<impl Iterator<Item = Scrape>, LegacyError> {
     Ok(out.into_iter())
 }
 
-pub fn import_legacy() -> Result<impl Iterator<Item = Scrape>, LegacyError> {
+pub fn import_legacy() -> Result<Vec<Scrape>, LegacyError> {
     let cache_file = "target/legacycache.bin";
     if let Ok(f) = File::open(cache_file) {
         tracing::info!("Reading cache '{}'...", cache_file);
         if let Ok(value) = serde_cbor::from_reader::<Vec<Scrape>, _>(BufReader::new(f)) {
             tracing::info!("Cache OK");
-            return Ok(value.into_iter());
+            return Ok(value);
         }
         tracing::info!("Cache not OK");
     }
@@ -152,7 +152,7 @@ pub fn import_legacy() -> Result<impl Iterator<Item = Scrape>, LegacyError> {
     v.sort_by_cached_key(|story| story.date());
     let f = File::create(cache_file)?;
     serde_cbor::to_writer(BufWriter::new(f), &v)?;
-    Ok(v.into_iter())
+    Ok(v)
 }
 
 #[cfg(test)]

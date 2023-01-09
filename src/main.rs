@@ -1,3 +1,4 @@
+mod config;
 mod datasci;
 mod persist;
 mod scrapers;

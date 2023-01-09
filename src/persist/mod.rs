@@ -1,4 +1,4 @@
-use crate::story::{Story, StoryDate};
+use crate::story::{Story, StoryDate, StoryScoreConfig};
 use crate::{scrapers::Scrape, story::StoryIdentifier};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -43,8 +43,8 @@ pub trait Storage: Send + Sync {
     /// Retrieves all stories in a shard.
     fn stories_by_shard(&self, shard: &str) -> Result<Vec<Story>, PersistError>;
 
-    /// Query the current front page, scored mainly by "hotness".
-    fn query_frontpage(&self, relative_date: StoryDate, offset: usize, max_count: usize) -> Result<Vec<Story>, PersistError>;
+    /// Query the current front page hot set, sorted by overall base score.
+    fn query_frontpage_hot_set(&self, max_count: usize) -> Result<Vec<Story>, PersistError>;
 
     /// Query a search, scored mostly by date but may include some "hotness".
     fn query_search(&self, search: String, max_count: usize) -> Result<Vec<Story>, PersistError>;
@@ -54,6 +54,7 @@ pub trait StorageWriter: Storage {
     /// Insert a set of scrapes, merging with existing stories if necessary.
     fn insert_scrapes<'a, I: Iterator<Item = Scrape> + 'a>(
         &mut self,
+        config: &StoryScoreConfig,
         scrapes: I,
     ) -> Result<(), PersistError>;
 }

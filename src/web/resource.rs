@@ -1,11 +1,15 @@
 use notify::RecursiveMode;
 use notify::Watcher;
+use std::fs::File;
+use std::io::BufReader;
+use std::io::Read;
 use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
 use tera::Tera;
 use tokio::sync::watch;
 
+use crate::config::Config;
 use crate::web::filters::*;
 use crate::web::static_files::StaticFileRegistry;
 use crate::web::WebError;
@@ -15,6 +19,7 @@ struct ResourceHolder {
     templates: Arc<Tera>,
     static_files: Arc<StaticFileRegistry>,
     static_files_root: Arc<StaticFileRegistry>,
+    config: Arc<Config>,
 }
 
 #[derive(Clone)]
@@ -31,6 +36,9 @@ impl Resources {
     }
     pub fn static_files_root(&self) -> Arc<StaticFileRegistry> {
         self.rx.borrow().static_files_root.clone()
+    }
+    pub fn config(&self) -> Arc<Config> {
+        self.rx.borrow().config.clone()
     }
 }
 
@@ -79,16 +87,23 @@ fn create_admin_css() -> Result<String, WebError> {
     Ok(out)
 }
 
+fn create_config() -> Result<Config, WebError> {
+    let reader = BufReader::new(File::open("resource/config/config.json")?);
+    Ok(serde_json::from_reader(reader)?)
+}
+
 fn generate() -> Result<ResourceHolder, WebError> {
     let css = create_css()?;
     let admin_css = create_admin_css()?;
     let static_files = Arc::new(create_static_files(css, admin_css)?);
     let static_files_root = Arc::new(create_static_files_root()?);
     let templates = Arc::new(create_templates(static_files.clone())?);
+    let config = Arc::new(create_config()?);
     Ok(ResourceHolder {
         templates,
         static_files,
         static_files_root,
+        config,
     })
 }
 

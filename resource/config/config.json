@@ -1,0 +1,6 @@
+{
+    "score": {
+        "age_breakpoint_days": [1, 30],
+        "hour_scores": [-5, -3, -0.1]
+    }
+}
