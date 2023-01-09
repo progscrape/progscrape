@@ -146,6 +146,8 @@ impl Story {
                 x.insert(scrape);
             }
         }
+        // Re-score this story
+        self.score = StoryScorer::score(score_config, self, StoryScoreType::Base);
         // The ID may change if the date changes
         self.id.update_date(self.date());
     }
