@@ -13,10 +13,7 @@ use thiserror::Error;
 
 use crate::{
     persist::{PersistError, StorageSummary},
-    story::{
-        rescore_stories, Story, StoryDate, StoryIdentifier, StoryRender, StoryScoreConfig,
-        StoryScoreType,
-    },
+    story::{rescore_stories, Story, StoryDate, StoryIdentifier, StoryRender, StoryScoreType},
 };
 
 use self::resource::Resources;
@@ -93,18 +90,8 @@ pub async fn start_server() -> Result<(), WebError> {
     Ok(())
 }
 
-#[derive(Serialize, Deserialize)]
-struct FrontPage {
-    top_tags: Vec<String>,
-    stories: Vec<StoryRender>,
-}
-
-fn render_stories<'a>(
-    iter: impl Iterator<Item = &'a Story>,
-    config: &StoryScoreConfig,
-    render_date: StoryDate,
-) -> Vec<StoryRender> {
-    let mut v = iter
+fn render_stories<'a>(iter: impl Iterator<Item = &'a Story>) -> Vec<StoryRender> {
+    let v = iter
         .enumerate()
         .map(|(n, x)| x.render(n))
         .collect::<Vec<_>>();
@@ -129,7 +116,7 @@ fn hot_set(
 macro_rules! context {
     ( $($id:ident : $typ:ty = $expr:expr),* ) => {
         {
-            #[derive(Serialize, Deserialize)]
+            #[derive(Serialize)]
             struct TempStruct {
                 $(
                     $id: $typ,
@@ -150,11 +137,7 @@ async fn root(
     State((state, resources)): State<(index::Global, Resources)>,
 ) -> Result<Html<String>, WebError> {
     let now = now(&state);
-    let stories = render_stories(
-        hot_set(now, &state, &resources.config())?[0..30].into_iter(),
-        &resources.config().score,
-        now,
-    );
+    let stories = render_stories(hot_set(now, &state, &resources.config())?[0..30].into_iter());
     let top_tags = vec![
         "github.com",
         "rust",
@@ -186,10 +169,6 @@ async fn root(
 async fn status(
     State((state, resources)): State<(index::Global, Resources)>,
 ) -> Result<Html<String>, WebError> {
-    #[derive(Serialize)]
-    struct Status {
-        storage: StorageSummary,
-    }
     let context = context!(storage: StorageSummary = state.storage.story_count()?);
     Ok(resources
         .templates()
@@ -201,21 +180,13 @@ async fn status_frontpage(
     State((state, resources)): State<(index::Global, Resources)>,
     sort: Query<HashMap<String, String>>,
 ) -> Result<Html<String>, WebError> {
-    #[derive(Serialize)]
-    struct Status {
-        stories: Vec<StoryRender>,
-        sort: String,
-    }
     let now = now(&state);
     let sort = sort.get("sort").map(|x| x.clone()).unwrap_or_default();
-    let context = Context::from_serialize(&Status {
-        stories: render_stories(
-            hot_set(now, &state, &resources.config())?.iter(),
-            &resources.config().score,
-            now,
-        ),
-        sort,
-    })?;
+    let context = context!(
+        stories: Vec<StoryRender> =
+            render_stories(hot_set(now, &state, &resources.config())?.iter(),),
+        sort: String = sort
+    );
     Ok(resources
         .templates()
         .render("admin_frontpage.html", &context)?
@@ -227,22 +198,12 @@ async fn status_shard(
     Path(shard): Path<String>,
     sort: Query<HashMap<String, String>>,
 ) -> Result<Html<String>, WebError> {
-    #[derive(Serialize)]
-    struct ShardStatus {
-        shard: String,
-        stories: Vec<StoryRender>,
-        sort: String,
-    }
     let sort = sort.get("sort").map(|x| x.clone()).unwrap_or_default();
-    let context = Context::from_serialize(&ShardStatus {
-        shard: shard.clone(),
-        stories: render_stories(
-            state.storage.stories_by_shard(&shard)?.iter(),
-            &resources.config().score,
-            StoryDate::now(),
-        ),
-        sort,
-    })?;
+    let context = context!(
+        shard: String = shard.clone(),
+        stories: Vec<StoryRender> = render_stories(state.storage.stories_by_shard(&shard)?.iter(),),
+        sort: String = sort
+    );
     Ok(resources
         .templates()
         .render("admin_shard.html", &context)?
@@ -253,19 +214,15 @@ async fn status_story(
     State((state, resources)): State<(index::Global, Resources)>,
     Path(id): Path<String>,
 ) -> Result<Html<String>, WebError> {
-    #[derive(Serialize)]
-    struct StoryStatus {
-        story: StoryRender,
-        score: Vec<(String, f32)>,
-    }
     let id = StoryIdentifier::from_base64(id).ok_or(WebError::NotFound)?;
     let now = now(&state);
     tracing::info!("Loading story = {:?}", id);
     let story = state.storage.get_story(&id).ok_or(WebError::NotFound)?;
-    let context = Context::from_serialize(&StoryStatus {
-        story: story.render(0),
-        score: story.score_detail(&resources.config().score, StoryScoreType::AgedFrom(now)),
-    })?;
+    let context = context!(
+        story: StoryRender = story.render(0),
+        score: Vec<(String, f32)> =
+            story.score_detail(&resources.config().score, StoryScoreType::AgedFrom(now))
+    );
     Ok(resources
         .templates()
         .render("admin_story.html", &context)?
