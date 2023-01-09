@@ -12,4 +12,22 @@
     <span title="{{ source }}">unknown</span>
     {% endif %}
 {% endfor %}
-{% endmacro input %}
+{% endmacro %}
+
+{% macro sort(sort) -%}
+{%- if sort == "date" -%}
+date
+{%- elif sort == "score" -%}
+score
+{%- elif sort == "domain" -%}
+domain
+{%- elif sort == "title" -%}
+title
+{%- else -%}
+order
+{%- endif -%}
+{%- endmacro %}
+
+{% macro sort_header(name, field, sort) %}
+<a href="{% if field == 'order' %}?{% else %}?sort={{ field }}{% endif %}">{{ name }}{% if field == self::sort(sort=sort) %}&nbsp;↓{% endif %}</a>
+{% endmacro %}

@@ -96,33 +96,8 @@ struct FrontPage {
     stories: Vec<StoryRender>,
 }
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
-enum StorySort {
-    None,
-    Title,
-    Date,
-    Domain,
-}
-
-impl StorySort {
-    pub fn from_key(s: &str) -> Self {
-        match s {
-            "title" => Self::Title,
-            "date" => Self::Date,
-            "domain" => Self::Domain,
-            _ => Self::None,
-        }
-    }
-}
-
-fn render_stories<'a>(iter: impl Iterator<Item = &'a Story>, config: &StoryScoreConfig, render_date: StoryDate, sort: StorySort) -> Vec<StoryRender> {
-    let mut v = iter.map(|x| x.render(config, render_date)).collect::<Vec<_>>();
-    match sort {
-        StorySort::None => {}
-        StorySort::Title => v.sort_by(|a, b| a.title.cmp(&b.title)),
-        StorySort::Date => v.sort_by(|a, b| a.date.cmp(&b.date)),
-        StorySort::Domain => v.sort_by(|a, b| a.domain.cmp(&b.domain)),
-    }
+fn render_stories<'a>(iter: impl Iterator<Item = &'a Story>, config: &StoryScoreConfig, render_date: StoryDate) -> Vec<StoryRender> {
+    let mut v = iter.enumerate().map(|(n, x)| x.render(n)).collect::<Vec<_>>();
     v
 }
 
@@ -146,7 +121,6 @@ async fn root(
         hot_set(now, &state, &resources.config())?[0..30].into_iter(),
         &resources.config().score,
         now,
-        StorySort::None,
     );
     let top_tags = vec![
         "github.com",
@@ -191,19 +165,22 @@ async fn status(
 
 async fn status_frontpage(
     State((state, resources)): State<(index::Global, Resources)>,
+    sort: Query<HashMap<String, String>>,
 ) -> Result<Html<String>, WebError> {
     #[derive(Serialize)]
     struct Status {
         stories: Vec<StoryRender>,
+        sort: String,
     }
     let now = now(&state);
+    let sort = sort.get("sort").map(|x| x.clone()).unwrap_or_default();
     let context = Context::from_serialize(&Status {
         stories: render_stories(
             hot_set(now, &state, &resources.config())?.iter(),
             &resources.config().score,
             now,
-            StorySort::None,
         ),
+        sort,
     })?;
     Ok(resources
         .templates()
@@ -220,11 +197,13 @@ async fn status_shard(
     struct ShardStatus {
         shard: String,
         stories: Vec<StoryRender>,
+        sort: String,
     }
-    let sort = StorySort::from_key(&sort.get("sort").map(|x| x.clone()).unwrap_or_default());
+    let sort = sort.get("sort").map(|x| x.clone()).unwrap_or_default();
     let context = Context::from_serialize(&ShardStatus {
         shard: shard.clone(),
-        stories: render_stories(state.storage.stories_by_shard(&shard)?.iter(), &resources.config().score, StoryDate::now(), sort),
+        stories: render_stories(state.storage.stories_by_shard(&shard)?.iter(), &resources.config().score, StoryDate::now()),
+        sort,
     })?;
     Ok(resources
         .templates()
@@ -248,7 +227,7 @@ async fn status_story(
         .storage
         .get_story(&id)
         .ok_or(WebError::NotFound)?;
-    let context = Context::from_serialize(&StoryStatus { story: story.render(&resources.config().score, now), score: story.score_detail(&resources.config().score, StoryScoreType::AgedFrom(now)) })?;
+    let context = Context::from_serialize(&StoryStatus { story: story.render(0), score: story.score_detail(&resources.config().score, StoryScoreType::AgedFrom(now)) })?;
     Ok(resources
         .templates()
         .render("admin_story.html", &context)?

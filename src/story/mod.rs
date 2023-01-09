@@ -22,6 +22,8 @@ pub use self::{
 /// Rendered story with all properties hydrated from the underlying scrapes. Extraneous data is removed at this point.
 #[derive(Clone, Default, Deserialize, Serialize)]
 pub struct StoryRender {
+    /// Natural story order in its container list.
+    pub order: usize,
     pub id: String,
     pub url: String,
     pub url_norm: String,
@@ -234,9 +236,10 @@ impl Story {
             .unwrap_or_default()
     }
 
-    pub fn render(&self, config: &StoryScoreConfig, relative_to: StoryDate) -> StoryRender {
+    pub fn render(&self, order: usize) -> StoryRender {
         let scrapes = HashMap::from_iter(self.scrapes.iter().map(|(k, v)| (k.as_str(), v.clone())));
         StoryRender {
+            order,
             id: self.id.to_base64(),
             score: self.score,
             url: self.url().to_string(),
