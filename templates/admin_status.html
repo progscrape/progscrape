@@ -1,20 +1,10 @@
-<!DOCTYPE html>
-<html>
-    <head>
-        <title>progscrape: status</title>
-        <link rel="stylesheet" type="text/css" href="{{ 'admin.css' | static }}"></link>
-    </head>
-    <body>
-        <div id="header">
-            <h1><a href="/">&gt;progscrape &#x2592;</a></h1>
-            <h2>All the news that's fit to scrape</h2>
-        </div>
-        <table>
-        <tr><th>Shard Identifier</th><th>Story Count</th></tr>
-        {% for shard in storage.by_shard %}
-        <tr><td><a href="shard/{{ shard.0 }}/">{{ shard.0 }}</a></td><td>{{ shard.1 | comma }}</td></tr>
-        {% endfor %}
-        <tr><td>Total</td><td>{{ storage.total | comma }}</td></tr>
-        </table>
-    </body>
-</html>
+{% extends "admin_base.html" %}
+{% block content %}
+<table>
+<tr><th>Shard Identifier</th><th>Story Count</th></tr>
+{% for shard in storage.by_shard %}
+<tr><td><a href="shard/{{ shard.0 }}/">{{ shard.0 }}</a></td><td>{{ shard.1 | comma }}</td></tr>
+{% endfor %}
+<tr><td>Total</td><td>{{ storage.total | comma }}</td></tr>
+</table>
+{% endblock %}

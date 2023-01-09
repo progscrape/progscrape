@@ -1,33 +1,22 @@
-<!DOCTYPE html>
-<html>
-    <head>
-        <title>progscrape: status</title>
-        <link rel="stylesheet" type="text/css" href="{{ 'admin.css' | static }}"></link>
-    </head>
-    <body>
-        <div id="header">
-            <h1><a href="/">&gt;progscrape &#x2592;</a></h1>
-            <h2>All the news that's fit to scrape</h2>
-        </div>
-        <h1>Frontpage</h1>
-        <table>
-        {% for story in stories %}
-        <tr><td>{{ story.score }}</td><td><a href="../story/{{ story.id }}/">{{ story.date | date }}</a></td><td>{{ story.domain }}</td><td>
-            {% for source, scrape in story.scrapes %}
-            {% if source is matching("hackernews-") %}
-            ⒣
-            {% elif source is matching("reddit-") %}
-            ⒭
-            {% elif source is matching("lobsters-") %}
-            ⒧
-            {% elif source is matching("slashdot-") %}
-            ⒮
-            {% else %}
-            <span title="{{ source }}">unknown</span>
-            {% endif %}
-            {% endfor %}
-        </td><td>{{ story.title }}</td></tr>
-        {% endfor %}
-        </table>
-    </body>
-</html>
+{% extends "admin_base.html" %}
+{% block content %}
+<table>
+{% for story in stories %}
+<tr><td>{{ story.score }}</td><td><a href="../story/{{ story.id }}/">{{ story.date | date }}</a></td><td>{{ story.domain }}</td><td>
+    {% for source, scrape in story.scrapes %}
+    {% if source is matching("hackernews-") %}
+    ⒣
+    {% elif source is matching("reddit-") %}
+    ⒭
+    {% elif source is matching("lobsters-") %}
+    ⒧
+    {% elif source is matching("slashdot-") %}
+    ⒮
+    {% else %}
+    <span title="{{ source }}">unknown</span>
+    {% endif %}
+    {% endfor %}
+</td><td>{{ story.title }}</td></tr>
+{% endfor %}
+</table>
+{% endblock %}

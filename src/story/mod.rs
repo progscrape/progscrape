@@ -162,11 +162,11 @@ impl Story {
     }
 
     pub fn score(&self) -> f32 {
-        StoryScorer::score(self)
+        StoryScorer::score(self, StoryScoreType::Base)
     }
 
     pub fn score_detail(&self) -> Vec<(String, f32)> {
-        StoryScorer::score_detail(self)
+        StoryScorer::score_detail(self, StoryScoreType::Base)
     }
 
     /// Choose a title based on source priority, with preference for shorter titles if the priority is the same.
@@ -231,6 +231,11 @@ impl Story {
     }
 }
 
+pub enum StoryScoreType {
+    Base,
+    AgedFrom(StoryDate),
+}
+
 #[derive(Debug)]
 enum StoryScore {
     SourceCount,
@@ -247,7 +252,7 @@ struct StoryScorer {
 
 impl StoryScorer {
     #[inline(always)]
-    fn score_impl<T: FnMut(StoryScore, f32) -> ()>(story: &Story, mut accum: T) {
+    fn score_impl<T: FnMut(StoryScore, f32) -> ()>(story: &Story, score_type: StoryScoreType, mut accum: T) {
         use StoryScore::*;
 
         let title = story.title();
@@ -288,17 +293,17 @@ impl StoryScorer {
         }
     }
 
-    pub fn score(story: &Story) -> f32 {
+    pub fn score(story: &Story, score_type: StoryScoreType) -> f32 {
         let mut score_total = 0_f32;
-        let accum = |score_type: StoryScore, score: f32| score_total += score;
-        Self::score_impl(story, accum);
+        let accum = |_, score| score_total += score;
+        Self::score_impl(story, score_type, accum);
         score_total
     }
 
-    pub fn score_detail(story: &Story) -> Vec<(String, f32)> {
+    pub fn score_detail(story: &Story, score_type: StoryScoreType) -> Vec<(String, f32)> {
         let mut score_bits = vec![];
-        let accum = |score_type: StoryScore, score: f32| score_bits.push((format!("{:?}", score_type), score));
-        Self::score_impl(story, accum);
+        let accum = |score_type, score| score_bits.push((format!("{:?}", score_type), score));
+        Self::score_impl(story, score_type, accum);
         score_bits
     }
 }
