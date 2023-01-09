@@ -36,7 +36,7 @@ impl GeneratedSource {
 
 fn create_static_files(css: String, admin_css: String) -> Result<StaticFileRegistry, WebError> {
     let mut static_files = StaticFileRegistry::default();
-    static_files.register_files("static/")?;
+    static_files.register_files("resource/static/")?;
     let mut css_vars = ":root {\n".to_owned();
     for key in static_files.keys() {
         let url = static_files.lookup_key(&key).unwrap_or_default();
@@ -50,7 +50,7 @@ fn create_static_files(css: String, admin_css: String) -> Result<StaticFileRegis
 
 fn create_static_files_root() -> Result<StaticFileRegistry, WebError> {
     let mut static_files = StaticFileRegistry::default();
-    static_files.register_files("static/root/")?;
+    static_files.register_files("resource/static/root/")?;
     Ok(static_files)
 }
 
@@ -65,7 +65,7 @@ fn create_css() -> Result<String, WebError> {
     let opts = grass::Options::default()
         .input_syntax(grass::InputSyntax::Scss)
         .style(grass::OutputStyle::Expanded)
-        .load_path("static/css/");
+        .load_path("resource/static/css/");
     let out = grass::from_string("@use 'root'".to_owned(), &opts)?;
     Ok(out)
 }
@@ -74,7 +74,7 @@ fn create_admin_css() -> Result<String, WebError> {
     let opts = grass::Options::default()
         .input_syntax(grass::InputSyntax::Scss)
         .style(grass::OutputStyle::Expanded)
-        .load_path("static/css/");
+        .load_path("resource/static/css/");
     let out = grass::from_string("@use 'admin'".to_owned(), &opts)?;
     Ok(out)
 }
