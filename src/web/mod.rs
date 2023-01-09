@@ -132,6 +132,18 @@ macro_rules! context {
     };
 }
 
+/// Render a context with a given template name.
+fn render(
+    resources: &Resources,
+    template_name: &str,
+    context: Context,
+) -> Result<Html<String>, WebError> {
+    Ok(resources
+        .templates()
+        .render(template_name, &context)?
+        .into())
+}
+
 // basic handler that responds with a static string
 async fn root(
     State((state, resources)): State<(index::Global, Resources)>,
@@ -156,24 +168,24 @@ async fn root(
     .into_iter()
     .map(str::to_owned)
     .collect();
-    let context = context!(
-        top_tags: Vec<String> = top_tags,
-        stories: Vec<StoryRender> = stories
-    );
-    Ok(resources
-        .templates()
-        .render("index2.html", &context)?
-        .into())
+    render(
+        &resources,
+        "index2.html",
+        context!(
+            top_tags: Vec<String> = top_tags,
+            stories: Vec<StoryRender> = stories
+        ),
+    )
 }
 
 async fn status(
     State((state, resources)): State<(index::Global, Resources)>,
 ) -> Result<Html<String>, WebError> {
-    let context = context!(storage: StorageSummary = state.storage.story_count()?);
-    Ok(resources
-        .templates()
-        .render("admin_status.html", &context)?
-        .into())
+    render(
+        &resources,
+        "admin_status.html",
+        context!(storage: StorageSummary = state.storage.story_count()?),
+    )
 }
 
 async fn status_frontpage(
@@ -182,15 +194,15 @@ async fn status_frontpage(
 ) -> Result<Html<String>, WebError> {
     let now = now(&state);
     let sort = sort.get("sort").map(|x| x.clone()).unwrap_or_default();
-    let context = context!(
-        stories: Vec<StoryRender> =
-            render_stories(hot_set(now, &state, &resources.config())?.iter(),),
-        sort: String = sort
-    );
-    Ok(resources
-        .templates()
-        .render("admin_frontpage.html", &context)?
-        .into())
+    render(
+        &resources,
+        "admin_frontpage.html",
+        context!(
+            stories: Vec<StoryRender> =
+                render_stories(hot_set(now, &state, &resources.config())?.iter(),),
+            sort: String = sort
+        ),
+    )
 }
 
 async fn status_shard(
@@ -199,15 +211,16 @@ async fn status_shard(
     sort: Query<HashMap<String, String>>,
 ) -> Result<Html<String>, WebError> {
     let sort = sort.get("sort").map(|x| x.clone()).unwrap_or_default();
-    let context = context!(
-        shard: String = shard.clone(),
-        stories: Vec<StoryRender> = render_stories(state.storage.stories_by_shard(&shard)?.iter(),),
-        sort: String = sort
-    );
-    Ok(resources
-        .templates()
-        .render("admin_shard.html", &context)?
-        .into())
+    render(
+        &resources,
+        "admin_shard.html",
+        context!(
+            shard: String = shard.clone(),
+            stories: Vec<StoryRender> =
+                render_stories(state.storage.stories_by_shard(&shard)?.iter(),),
+            sort: String = sort
+        ),
+    )
 }
 
 async fn status_story(
@@ -218,15 +231,15 @@ async fn status_story(
     let now = now(&state);
     tracing::info!("Loading story = {:?}", id);
     let story = state.storage.get_story(&id).ok_or(WebError::NotFound)?;
-    let context = context!(
-        story: StoryRender = story.render(0),
-        score: Vec<(String, f32)> =
-            story.score_detail(&resources.config().score, StoryScoreType::AgedFrom(now))
-    );
-    Ok(resources
-        .templates()
-        .render("admin_story.html", &context)?
-        .into())
+    render(
+        &resources,
+        "admin_story.html",
+        context!(
+            story: StoryRender = story.render(0),
+            score: Vec<(String, f32)> =
+                story.score_detail(&resources.config().score, StoryScoreType::AgedFrom(now))
+        ),
+    )
 }
 
 pub async fn serve_static_files_immutable(
