@@ -1,8 +1,11 @@
-use super::*;
 use serde::{Deserialize, Serialize};
 
+use crate::story::{StoryDate, StoryUrl};
+
+use super::{ScrapeData, ScrapeDataInit, ScrapeSource};
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct LobstersStory {
+pub struct SlashdotStory {
     pub id: String,
     pub title: String,
     pub url: StoryUrl,
@@ -12,7 +15,7 @@ pub struct LobstersStory {
     pub tags: Vec<String>,
 }
 
-impl ScrapeData for LobstersStory {
+impl ScrapeData for SlashdotStory {
     fn id(&self) -> String {
         self.id.clone()
     }
@@ -30,7 +33,7 @@ impl ScrapeData for LobstersStory {
     }
 
     fn source(&self) -> super::ScrapeSource {
-        return ScrapeSource::Lobsters;
+        return ScrapeSource::Slashdot;
     }
 
     fn date(&self) -> StoryDate {
@@ -38,14 +41,14 @@ impl ScrapeData for LobstersStory {
     }
 }
 
-impl ScrapeDataInit<LobstersStory> for LobstersStory {
+impl ScrapeDataInit<SlashdotStory> for SlashdotStory {
     fn initialize_required(
         id: String,
         title: String,
         url: StoryUrl,
         date: StoryDate,
-    ) -> LobstersStory {
-        LobstersStory {
+    ) -> SlashdotStory {
+        SlashdotStory {
             id,
             title,
             url,
@@ -56,7 +59,7 @@ impl ScrapeDataInit<LobstersStory> for LobstersStory {
         }
     }
 
-    fn merge(&mut self, other: LobstersStory) {
+    fn merge(&mut self, other: SlashdotStory) {
         self.title = other.title;
         self.url = other.url;
         self.date = std::cmp::min(self.date, other.date);

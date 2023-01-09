@@ -159,6 +159,7 @@ impl Story {
             (HackerNews(a), HackerNews(b)) => a.merge(b),
             (Reddit(a), Reddit(b)) => a.merge(b),
             (Lobsters(a), Lobsters(b)) => a.merge(b),
+            (Slashdot(a), Slashdot(b)) => a.merge(b),
             (a, b) => {
                 tracing::warn!(
                     "Unable to merge incompatible scrapes {:?} and {:?}, ignoring",
@@ -353,7 +354,7 @@ impl StoryScorer {
         let mut reddit = None;
         let mut hn = None;
         let mut lobsters = None;
-        // let mut slashdot = None;
+        let mut slashdot = None;
 
         // Pick out the first source we find for each source
         for (_, scrape) in &story.scrapes {
@@ -366,12 +367,17 @@ impl StoryScorer {
                 }
                 Scrape::Reddit(x) => reddit = Some(x),
                 Scrape::Lobsters(x) => lobsters = Some(x),
+                Scrape::Slashdot(x) => slashdot = Some(x),
             }
         }
 
         accum(
             SourceCount,
-            (hn.is_some() as u8 + reddit.is_some() as u8 + lobsters.is_some() as u8) as f32 * 5.0,
+            (hn.is_some() as u8
+                + reddit.is_some() as u8
+                + lobsters.is_some() as u8
+                + slashdot.is_some() as u8) as f32
+                * 5.0,
         );
 
         // Penalize a long title if reddit is a source

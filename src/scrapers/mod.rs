@@ -6,6 +6,7 @@ pub mod hacker_news;
 pub mod legacy_import;
 pub mod lobsters;
 pub mod reddit_json;
+pub mod slashdot;
 
 #[derive(Error, Debug)]
 pub enum ScrapeError {
@@ -88,6 +89,7 @@ pub enum Scrape {
     HackerNews(hacker_news::HackerNewsStory),
     Reddit(reddit_json::RedditStory),
     Lobsters(lobsters::LobstersStory),
+    Slashdot(slashdot::SlashdotStory),
 }
 
 impl From<hacker_news::HackerNewsStory> for Scrape {
@@ -108,12 +110,19 @@ impl From<lobsters::LobstersStory> for Scrape {
     }
 }
 
+impl From<slashdot::SlashdotStory> for Scrape {
+    fn from(story: slashdot::SlashdotStory) -> Self {
+        Self::Slashdot(story)
+    }
+}
+
 impl AsRef<dyn ScrapeData + 'static> for Scrape {
     fn as_ref(&self) -> &(dyn ScrapeData + 'static) {
         match self {
             &Scrape::HackerNews(ref x) => x,
             &Scrape::Reddit(ref x) => x,
             &Scrape::Lobsters(ref x) => x,
+            &Scrape::Slashdot(ref x) => x,
         }
     }
 }
