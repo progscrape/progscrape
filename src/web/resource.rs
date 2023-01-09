@@ -11,18 +11,18 @@ use crate::web::static_files::StaticFileRegistry;
 use crate::web::WebError;
 
 #[derive(Clone)]
-struct Generated {
+struct ResourceHolder {
     templates: Arc<Tera>,
     static_files: Arc<StaticFileRegistry>,
     static_files_root: Arc<StaticFileRegistry>,
 }
 
 #[derive(Clone)]
-pub struct GeneratedSource {
-    rx: watch::Receiver<Generated>,
+pub struct Resources {
+    rx: watch::Receiver<ResourceHolder>,
 }
 
-impl GeneratedSource {
+impl Resources {
     pub fn templates(&self) -> Arc<Tera> {
         self.rx.borrow().templates.clone()
     }
@@ -79,13 +79,13 @@ fn create_admin_css() -> Result<String, WebError> {
     Ok(out)
 }
 
-fn generate() -> Result<Generated, WebError> {
+fn generate() -> Result<ResourceHolder, WebError> {
     let css = create_css()?;
     let admin_css = create_admin_css()?;
     let static_files = Arc::new(create_static_files(css, admin_css)?);
     let static_files_root = Arc::new(create_static_files_root()?);
     let templates = Arc::new(create_templates(static_files.clone())?);
-    Ok(Generated {
+    Ok(ResourceHolder {
         templates,
         static_files,
         static_files_root,
@@ -93,7 +93,7 @@ fn generate() -> Result<Generated, WebError> {
 }
 
 /// Starts a process to watch all the templates/static data and regenerates everything if something changes.
-pub async fn start_watcher() -> Result<GeneratedSource, WebError> {
+pub async fn start_watcher() -> Result<Resources, WebError> {
     let (tx, rx) = watch::channel(generate()?);
     let (tx_dirty, mut rx_dirty) = watch::channel(false);
     let mut watcher = notify::recommended_watcher(move |res| {
@@ -126,5 +126,5 @@ pub async fn start_watcher() -> Result<GeneratedSource, WebError> {
         // Keep the watcher alive in this task
         drop(watcher);
     });
-    Ok(GeneratedSource { rx })
+    Ok(Resources { rx })
 }

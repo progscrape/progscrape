@@ -16,10 +16,10 @@ use crate::{
     story::{Story, StoryIdentifier, StoryRender, StoryDate, StoryScoreType},
 };
 
-use self::generate::GeneratedSource;
+use self::resource::Resources;
 
 mod filters;
-mod generate;
+mod resource;
 mod index;
 mod serve_static_files;
 mod static_files;
@@ -55,27 +55,27 @@ impl IntoResponse for WebError {
 
 pub async fn start_server() -> Result<(), WebError> {
     tracing_subscriber::fmt::init();
-    let generated = generate::start_watcher().await?;
+    let resources = resource::start_watcher().await?;
 
     let global = index::initialize_with_testing_data()?;
 
     // build our application with a route
     let app = Router::new()
         .route("/", get(root))
-        .with_state((global.clone(), generated.clone()))
+        .with_state((global.clone(), resources.clone()))
         .route("/static/:file", get(serve_static_files_immutable))
-        .with_state(generated.clone())
+        .with_state(resources.clone())
         .route("/admin/status/", get(status))
-        .with_state((global.clone(), generated.clone()))
+        .with_state((global.clone(), resources.clone()))
         .route("/admin/status/frontpage/", get(status_frontpage))
-        .with_state((global.clone(), generated.clone()))
+        .with_state((global.clone(), resources.clone()))
         .route("/admin/status/shard/:shard/", get(status_shard))
-        .with_state((global.clone(), generated.clone()))
+        .with_state((global.clone(), resources.clone()))
         .route("/admin/status/story/:story/", get(status_story))
-        .with_state((global.clone(), generated.clone()))
+        .with_state((global.clone(), resources.clone()))
         .route(
             "/:file",
-            get(serve_static_files_well_known).with_state(generated.clone()),
+            get(serve_static_files_well_known).with_state(resources.clone()),
         );
     // run our app with hyper
     // `axum::Server` is a re-export of `hyper::Server`
@@ -130,7 +130,7 @@ fn now(global: &index::Global) -> StoryDate {
 
 // basic handler that responds with a static string
 async fn root(
-    State((state, generated)): State<(index::Global, GeneratedSource)>,
+    State((state, resources)): State<(index::Global, Resources)>,
 ) -> Result<Html<String>, WebError> {
     let now = now(&state);
     let stories = render_stories(
@@ -157,14 +157,14 @@ async fn root(
     .map(str::to_owned)
     .collect();
     let context = Context::from_serialize(&FrontPage { top_tags, stories })?;
-    Ok(generated
+    Ok(resources
         .templates()
         .render("index2.html", &context)?
         .into())
 }
 
 async fn status(
-    State((state, generated)): State<(index::Global, GeneratedSource)>,
+    State((state, resources)): State<(index::Global, Resources)>,
 ) -> Result<Html<String>, WebError> {
     #[derive(Serialize)]
     struct Status {
@@ -173,14 +173,14 @@ async fn status(
     let context = Context::from_serialize(&Status {
         storage: state.storage.story_count()?,
     })?;
-    Ok(generated
+    Ok(resources
         .templates()
         .render("admin_status.html", &context)?
         .into())
 }
 
 async fn status_frontpage(
-    State((state, generated)): State<(index::Global, GeneratedSource)>,
+    State((state, resources)): State<(index::Global, Resources)>,
 ) -> Result<Html<String>, WebError> {
     #[derive(Serialize)]
     struct Status {
@@ -194,14 +194,14 @@ async fn status_frontpage(
             StorySort::None,
         ),
     })?;
-    Ok(generated
+    Ok(resources
         .templates()
         .render("admin_frontpage.html", &context)?
         .into())
 }
 
 async fn status_shard(
-    State((state, generated)): State<(index::Global, GeneratedSource)>,
+    State((state, resources)): State<(index::Global, Resources)>,
     Path(shard): Path<String>,
     sort: Query<HashMap<String, String>>,
 ) -> Result<Html<String>, WebError> {
@@ -215,14 +215,14 @@ async fn status_shard(
         shard: shard.clone(),
         stories: render_stories(state.storage.stories_by_shard(&shard)?.into_iter(), StoryDate::now(), sort),
     })?;
-    Ok(generated
+    Ok(resources
         .templates()
         .render("admin_shard.html", &context)?
         .into())
 }
 
 async fn status_story(
-    State((state, generated)): State<(index::Global, GeneratedSource)>,
+    State((state, resources)): State<(index::Global, Resources)>,
     Path(id): Path<String>,
 ) -> Result<Html<String>, WebError> {
     #[derive(Serialize)]
@@ -238,7 +238,7 @@ async fn status_story(
         .get_story(&id)
         .ok_or(WebError::NotFound)?;
     let context = Context::from_serialize(&StoryStatus { story: story.render(now), score: story.score_detail(StoryScoreType::AgedFrom(now)) })?;
-    Ok(generated
+    Ok(resources
         .templates()
         .render("admin_story.html", &context)?
         .into())
@@ -247,15 +247,15 @@ async fn status_story(
 pub async fn serve_static_files_immutable(
     headers_in: HeaderMap,
     Path(key): Path<String>,
-    State(generated): State<GeneratedSource>,
+    State(resources): State<Resources>,
 ) -> Result<impl IntoResponse, WebError> {
-    serve_static_files::immutable(headers_in, key, generated.static_files()).await
+    serve_static_files::immutable(headers_in, key, resources.static_files()).await
 }
 
 pub async fn serve_static_files_well_known(
     headers_in: HeaderMap,
     Path(file): Path<String>,
-    State(generated): State<GeneratedSource>,
+    State(resources): State<Resources>,
 ) -> Result<impl IntoResponse, WebError> {
-    serve_static_files::well_known(headers_in, file, generated.static_files_root()).await
+    serve_static_files::well_known(headers_in, file, resources.static_files_root()).await
 }
