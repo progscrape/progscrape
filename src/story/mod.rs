@@ -254,6 +254,30 @@ struct StoryScorer {
 
 impl StoryScorer {
     #[inline(always)]
+    fn score_age(age: chrono::Duration) -> f32 {
+        let BREAKPOINT_1 = Duration::days(1);
+        let BREAKPOINT_2 = Duration::days(30);
+        let HOUR_SCORE_0 = -5.0;
+        let HOUR_SCORE_1 = -3.0;
+        let HOUR_SCORE_2 = -0.1;
+
+        let MILLIS_TO_HOURS = Duration::hours(1).num_milliseconds() as f32;
+
+        // Fractional hours, clamped to zero
+        let fractional_hours = f32::max(0.0, age.num_milliseconds() as f32 / MILLIS_TO_HOURS);
+
+        if age < BREAKPOINT_1 {
+            fractional_hours * HOUR_SCORE_0
+        } else if age < BREAKPOINT_2 {
+            BREAKPOINT_1.num_hours() as f32 * HOUR_SCORE_0 + (fractional_hours - BREAKPOINT_1.num_hours() as f32) * HOUR_SCORE_1
+        } else {
+            BREAKPOINT_1.num_hours() as f32 * HOUR_SCORE_0 
+                + (BREAKPOINT_2 - BREAKPOINT_1).num_hours() as f32 * HOUR_SCORE_1 
+                + (fractional_hours - BREAKPOINT_2.num_hours() as f32) * HOUR_SCORE_2
+        }
+    }
+
+    #[inline(always)]
     fn score_impl<T: FnMut(StoryScore, f32) -> ()>(story: &Story, score_type: StoryScoreType, mut accum: T) {
         use StoryScore::*;
 
@@ -263,15 +287,7 @@ impl StoryScorer {
         // Story age decay
         if let StoryScoreType::AgedFrom(relative_date) = score_type {
             let age = relative_date - story.date();
-            if age > Duration::days(1) {
-                accum(StoryScore::Age, -100.0 * age.num_days() as f32);
-            } else if age > Duration::hours(2) {
-                accum(StoryScore::Age, -20.0 + (-5.0 * age.num_hours() as f32));
-            } else if age > Duration::hours(1) {
-                accum(StoryScore::Age, -20.0);
-            } else {
-                accum(StoryScore::Age, -10.0);
-            }
+            accum(StoryScore::Age, Self::score_age(age));
         }
 
         let mut reddit = None;
@@ -326,7 +342,19 @@ impl StoryScorer {
 
 #[cfg(test)]
 mod test {
-    use super::{StoryDate, StoryIdentifier, StoryUrl};
+    use super::{*};
+    use chrono::Duration;
+
+    /// Make sure that the scores are decreasing.
+    #[test]
+    fn test_age_score() {
+        let mut last_score = f32::MAX;
+        for i in 0..Duration::days(60).num_hours() {
+            let score = StoryScorer::score_age(Duration::hours(i));
+            assert!(score < last_score, "{} < {}", score, last_score);
+            last_score = score;
+        }
+    }
 
     #[test]
     fn test_story_identifier() {
