@@ -26,6 +26,7 @@ pub struct StoryRender {
     pub domain: String,
     pub title: String,
     pub date: StoryDate,
+    pub score: f32,
     pub tags: Vec<String>,
     pub comment_links: HashMap<String, String>,
     pub scrapes: HashMap<String, Scrape>,
@@ -160,6 +161,14 @@ impl Story {
         self.title_choice().1
     }
 
+    pub fn score(&self) -> f32 {
+        StoryScorer::score(self)
+    }
+
+    pub fn score_detail(&self) -> Vec<(String, f32)> {
+        StoryScorer::score_detail(self)
+    }
+
     /// Choose a title based on source priority, with preference for shorter titles if the priority is the same.
     fn title_choice(&self) -> (ScrapeSource, String) {
         let title_score = |source: &ScrapeSource| {
@@ -210,6 +219,7 @@ impl Story {
         let scrapes = HashMap::from_iter(self.scrapes.iter().map(|(k, v)| (k.as_str(), v.clone())));
         StoryRender {
             id: self.id.to_base64(),
+            score: self.score(),
             url: self.url().to_string(),
             domain: self.url().host().to_owned(),
             title: self.title(),
@@ -218,6 +228,78 @@ impl Story {
             comment_links: HashMap::new(),
             scrapes,
         }
+    }
+}
+
+#[derive(Debug)]
+enum StoryScore {
+    SourceCount,
+    LongRedditTitle,
+    LongTitle,
+    ImageLink,
+    HNPosition,
+    RedditPosition,
+    LobstersPosition,
+}
+
+struct StoryScorer {
+}
+
+impl StoryScorer {
+    #[inline(always)]
+    fn score_impl<T: FnMut(StoryScore, f32) -> ()>(story: &Story, mut accum: T) {
+        use StoryScore::*;
+
+        let title = story.title();
+        let url = story.url();
+
+        let mut reddit = None;
+        let mut hn = None;
+        let mut lobsters = None;
+        // let mut slashdot = None;
+        
+        // Pick out the first source we find for each source
+        for (_, scrape) in &story.scrapes {
+            match scrape {
+                Scrape::HackerNews(x) => { if x.position != 0 { accum(HNPosition, (30.0 - x.position as f32) * 1.2) }; hn = Some(x) },
+                Scrape::Reddit(x) => reddit = Some(x),
+                Scrape::Lobsters(x) => lobsters = Some(x),
+            }
+        }
+
+        accum(SourceCount, (hn.is_some() as u8 + reddit.is_some() as u8 + lobsters.is_some() as u8) as f32 * 5.0);
+
+        // Penalize a long title if reddit is a source
+        if title.len() > 130 && reddit.is_some() {
+            accum(LongRedditTitle, -5.0);
+        }
+
+        // Penalize a really long title regardless of source
+        if title.len() > 250 {
+            accum(LongTitle, -15.0);
+        }
+
+        if url.host().contains("gfycat") || url.host().contains("imgur") || url.host().contains("i.reddit.com") {
+            if hn.is_some() {
+                accum(ImageLink, -5.0);
+            } else {
+                accum(ImageLink, -10.0);
+            }
+        }
+    }
+
+    pub fn score(story: &Story) -> f32 {
+        let mut score_total = 0_f32;
+        let accum = |score_type: StoryScore, score: f32| score_total += score;
+        Self::score_impl(story, accum);
+        score_total
+    }
+
+    pub fn score_detail(story: &Story) -> Vec<(String, f32)> {
+        let mut score_bits = vec![];
+        let accum = |score_type: StoryScore, score: f32| score_bits.push((format!("{:?}", score_type), score));
+        Self::score_impl(story, accum);
+        score_bits
     }
 }
 

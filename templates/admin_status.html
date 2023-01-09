@@ -12,7 +12,7 @@
         <table>
         <tr><th>Shard Identifier</th><th>Story Count</th></tr>
         {% for shard in storage.by_shard %}
-        <tr><td><a href="{{ shard.0 }}/">{{ shard.0 }}</a></td><td>{{ shard.1 | comma }}</td></tr>
+        <tr><td><a href="shard/{{ shard.0 }}/">{{ shard.0 }}</a></td><td>{{ shard.1 | comma }}</td></tr>
         {% endfor %}
         <tr><td>Total</td><td>{{ storage.total | comma }}</td></tr>
         </table>

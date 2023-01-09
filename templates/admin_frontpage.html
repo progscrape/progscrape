@@ -9,12 +9,10 @@
             <h1><a href="/">&gt;progscrape &#x2592;</a></h1>
             <h2>All the news that's fit to scrape</h2>
         </div>
+        <h1>Frontpage</h1>
         <table>
-        <h1>Shard Dump</h1>
-        <h2>ID: {{ shard }}</h2>
-        <tr><th><a href="?sort=date">Date</a></th><th>Source</th><th><a href="?sort=domain">Domain</a></th><th><a href="?sort=title">Story</a></th></tr>
         {% for story in stories %}
-        <tr><td><a href="../../story/{{ story.id }}/">{{ story.date | date }}</a></td><td>
+        <tr><td>{{ story.score }}</td><td><a href="../story/{{ story.id }}/">{{ story.date | date }}</a></td><td>{{ story.domain }}</td><td>
             {% for source, scrape in story.scrapes %}
             {% if source is matching("hackernews-") %}
             ⒣
@@ -28,7 +26,7 @@
             <span title="{{ source }}">unknown</span>
             {% endif %}
             {% endfor %}
-        </td><td>{{ story.domain }}</td><td><a href="{{ story.url }}">{{ story.title }}</a></td></tr>
+        </td><td>{{ story.title }}</td></tr>
         {% endfor %}
         </table>
     </body>

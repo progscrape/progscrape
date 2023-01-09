@@ -15,6 +15,7 @@ pub struct HackerNewsStory {
     pub id: String,
     pub points: u32,
     pub comments: u32,
+    pub position: u32,
     pub date: StoryDate,
 }
 
@@ -58,6 +59,7 @@ impl ScrapeDataInit<HackerNewsStory> for HackerNewsStory {
             date,
             points: Default::default(),
             comments: Default::default(),
+            position: Default::default(),
         }
     }
 
@@ -143,14 +145,19 @@ impl HackerNewsScraper {
             let first_link =
                 find_first(p, titleline, "a").ok_or(format!("Failed to query first link"))?;
             let title = unescape_entities(first_link.inner_text(p).borrow());
-            let url = unescape_entities(
+            let mut url = unescape_entities(
                 &get_attribute(p, first_link, "href").ok_or(format!("Failed to get href"))?,
             );
-            let url = StoryUrl::parse(url).ok_or(format!("Failed to parse URL"))?;
+            if url.starts_with("item?") {
+                url.insert_str(0, "https://news.ycombinator.com/");
+            }
+            let url = StoryUrl::parse(&url).ok_or(format!("Failed to parse URL {}", url))?;
             let id = get_attribute(p, node, "id").ok_or(format!("Failed to get id node"))?;
+            let rank = find_first(p, node, ".rank").ok_or(format!("Failed to get rank"))?;
+            let position = rank.inner_text(p).trim_end_matches('.').parse().or(Err(format!("Failed to parse rank")))?;
             Ok(HackerNewsNode::StoryLine(HackerNewsStoryLine {
                 id,
-                position: 0,
+                position,
                 url,
                 title,
             }))
@@ -224,11 +231,13 @@ impl Scraper<HackerNewsArgs, HackerNewsStory> for HackerNewsScraper {
                     points: info.points,
                     comments: info.comments,
                     date: info.date,
+                    position: v.position,
                 })
             } else {
                 errors.push(format!("Unmatched story/info for id {}", k));
             }
         }
+        stories.sort_by_key(|x| x.position);
         Ok((stories, errors))
     }
 }
@@ -257,10 +266,11 @@ pub mod test {
             let stories = scraper
                 .scrape(HackerNewsArgs::default(), load_file(file))
                 .unwrap();
+            assert!(stories.0.len() >= 25);
             for story in stories.0 {
                 println!(
-                    "[{}] {} ({}) c={} p={}",
-                    story.id, story.title, story.url, story.comments, story.points
+                    "{}. [{}] {} ({}) c={} p={}",
+                    story.position, story.id, story.title, story.url, story.comments, story.points
                 );
             }
         }

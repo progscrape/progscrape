@@ -316,7 +316,7 @@ impl Storage for StoryIndex {
         unimplemented!()
     }
 
-    fn query_frontpage(&self, _max_count: usize) -> Result<Vec<Story>, PersistError> {
+    fn query_frontpage(&self, _offset: usize, _max_count: usize) -> Result<Vec<Story>, PersistError> {
         unimplemented!()
     }
 

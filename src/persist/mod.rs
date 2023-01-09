@@ -42,7 +42,7 @@ pub trait Storage: Send + Sync {
     fn stories_by_shard(&self, shard: &str) -> Result<Vec<Story>, PersistError>;
 
     /// Query the current front page, scored mainly by "hotness".
-    fn query_frontpage(&self, max_count: usize) -> Result<Vec<Story>, PersistError>;
+    fn query_frontpage(&self, offset: usize, max_count: usize) -> Result<Vec<Story>, PersistError>;
 
     /// Query a search, scored mostly by date but may include some "hotness".
     fn query_search(&self, search: String, max_count: usize) -> Result<Vec<Story>, PersistError>;

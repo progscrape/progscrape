@@ -67,9 +67,11 @@ pub async fn start_server() -> Result<(), WebError> {
         .with_state(generated.clone())
         .route("/admin/status/", get(status))
         .with_state((global.clone(), generated.clone()))
-        .route("/admin/status/:shard/", get(status_shard))
+        .route("/admin/status/frontpage/", get(status_frontpage))
         .with_state((global.clone(), generated.clone()))
-        .route("/admin/status/:shard/:story/", get(status_story))
+        .route("/admin/status/shard/:shard/", get(status_shard))
+        .with_state((global.clone(), generated.clone()))
+        .route("/admin/status/story/:story/", get(status_story))
         .with_state((global.clone(), generated.clone()))
         .route(
             "/:file",
@@ -127,7 +129,7 @@ async fn root(
     State((state, generated)): State<(index::Global, GeneratedSource)>,
 ) -> Result<Html<String>, WebError> {
     let stories = render_stories(
-        state.storage.query_frontpage(30)?.into_iter(),
+        state.storage.query_frontpage(0, 30)?.into_iter(),
         StorySort::None,
     );
     let top_tags = vec![
@@ -171,6 +173,25 @@ async fn status(
         .into())
 }
 
+async fn status_frontpage(
+    State((state, generated)): State<(index::Global, GeneratedSource)>,
+) -> Result<Html<String>, WebError> {
+    #[derive(Serialize)]
+    struct Status {
+        stories: Vec<StoryRender>,
+    }
+    let context = Context::from_serialize(&Status {
+        stories: render_stories(
+            state.storage.query_frontpage(0, 500)?.into_iter(),
+            StorySort::None,
+        ),
+    })?;
+    Ok(generated
+        .templates()
+        .render("admin_frontpage.html", &context)?
+        .into())
+}
+
 async fn status_shard(
     State((state, generated)): State<(index::Global, GeneratedSource)>,
     Path(shard): Path<String>,
@@ -194,20 +215,20 @@ async fn status_shard(
 
 async fn status_story(
     State((state, generated)): State<(index::Global, GeneratedSource)>,
-    Path((_shard, id)): Path<(String, String)>,
+    Path(id): Path<String>,
 ) -> Result<Html<String>, WebError> {
     #[derive(Serialize)]
     struct StoryStatus {
         story: StoryRender,
+        score: Vec<(String, f32)>,
     }
     let id = StoryIdentifier::from_base64(id).ok_or(WebError::NotFound)?;
     tracing::info!("Loading story = {:?}", id);
     let story = state
         .storage
         .get_story(&id)
-        .ok_or(WebError::NotFound)?
-        .render();
-    let context = Context::from_serialize(&StoryStatus { story })?;
+        .ok_or(WebError::NotFound)?;
+    let context = Context::from_serialize(&StoryStatus { story: story.render(), score: story.score_detail() })?;
     Ok(generated
         .templates()
         .render("admin_story.html", &context)?

@@ -162,9 +162,12 @@ impl Storage for MemIndex {
         }
     }
 
-    fn query_frontpage(&self, max_count: usize) -> Result<Vec<Story>, PersistError> {
+    fn query_frontpage(&self, offset: usize, max_count: usize) -> Result<Vec<Story>, PersistError> {
+        const LIMIT: usize = 500;
         let rev = self.get_all_stories().rev();
-        Ok(rev.take(max_count).collect())
+        let mut sort = rev.take(LIMIT).collect::<Vec<_>>();
+        sort.sort_by_cached_key(|story| (story.score() * -1000.0) as i32);
+        Ok(sort[offset..offset+max_count].to_vec())
     }
 
     fn query_search(&self, _search: String, _max_count: usize) -> Result<Vec<Story>, PersistError> {
