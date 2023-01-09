@@ -170,7 +170,8 @@ impl Story {
     /// Compares two stories, ordering by score.
     pub fn compare_score(&self, other: &Story) -> std::cmp::Ordering {
         // Sort by score, but fall back to date if score is somehow a NaN (it shouldn't be, but we'll just be robust here)
-        f32::partial_cmp(&self.score, &other.score).unwrap_or_else(|| self.date().cmp(&other.date()))
+        f32::partial_cmp(&self.score, &other.score)
+            .unwrap_or_else(|| self.date().cmp(&other.date()))
     }
 
     /// Compares two stories, ordering by date.
@@ -186,7 +187,11 @@ impl Story {
         StoryScorer::score(config, self, score_type)
     }
 
-    pub fn score_detail(&self, config: &StoryScoreConfig, score_type: StoryScoreType) -> Vec<(String, f32)> {
+    pub fn score_detail(
+        &self,
+        config: &StoryScoreConfig,
+        score_type: StoryScoreType,
+    ) -> Vec<(String, f32)> {
         StoryScorer::score_detail(config, self, score_type)
     }
 
@@ -280,14 +285,17 @@ enum StoryScore {
 }
 
 /// Re-scores stories w/age score.
-pub fn rescore_stories(config: &StoryScoreConfig, relative_to: StoryDate, stories: &mut Vec<Story>) {
+pub fn rescore_stories(
+    config: &StoryScoreConfig,
+    relative_to: StoryDate,
+    stories: &mut Vec<Story>,
+) {
     for story in stories.iter_mut() {
         story.score = story.score + StoryScorer::score_age(config, relative_to - story.date());
     }
 }
 
-struct StoryScorer {
-}
+struct StoryScorer {}
 
 impl StoryScorer {
     #[inline(always)]
@@ -299,7 +307,7 @@ impl StoryScorer {
         let hour_score2 = config.hour_scores[2];
 
         // Equivalent to Duration::hours(1).num_milliseconds() as f32;
-        const MILLIS_TO_HOURS: f32 = 60.0*60.0*1000.0;
+        const MILLIS_TO_HOURS: f32 = 60.0 * 60.0 * 1000.0;
 
         // Fractional hours, clamped to zero
         let fractional_hours = f32::max(0.0, age.num_milliseconds() as f32 / MILLIS_TO_HOURS);
@@ -307,23 +315,32 @@ impl StoryScorer {
         if age < breakpoint1 {
             fractional_hours * hour_score0
         } else if age < breakpoint2 {
-            breakpoint1.num_hours() as f32 * hour_score0 + (fractional_hours - breakpoint1.num_hours() as f32) * hour_score1
+            breakpoint1.num_hours() as f32 * hour_score0
+                + (fractional_hours - breakpoint1.num_hours() as f32) * hour_score1
         } else {
-            breakpoint1.num_hours() as f32 * hour_score0 
-                + (breakpoint2 - breakpoint1).num_hours() as f32 * hour_score1 
+            breakpoint1.num_hours() as f32 * hour_score0
+                + (breakpoint2 - breakpoint1).num_hours() as f32 * hour_score1
                 + (fractional_hours - breakpoint2.num_hours() as f32) * hour_score2
         }
     }
 
     #[inline(always)]
-    fn score_impl<T: FnMut(StoryScore, f32) -> ()>(config: &StoryScoreConfig, story: &Story, score_type: StoryScoreType, mut accum: T) {
+    fn score_impl<T: FnMut(StoryScore, f32) -> ()>(
+        config: &StoryScoreConfig,
+        story: &Story,
+        score_type: StoryScoreType,
+        mut accum: T,
+    ) {
         use StoryScore::*;
 
         let title = story.title();
         let url = story.url();
 
         // Small random shuffle for stories to mix up the front page a bit
-        accum(Random, (url.normalization().hash() % 6000000) as f32 / 1000000.0);
+        accum(
+            Random,
+            (url.normalization().hash() % 6000000) as f32 / 1000000.0,
+        );
 
         // Story age decay
         if let StoryScoreType::AgedFrom(relative_date) = score_type {
@@ -335,17 +352,25 @@ impl StoryScorer {
         let mut hn = None;
         let mut lobsters = None;
         // let mut slashdot = None;
-        
+
         // Pick out the first source we find for each source
         for (_, scrape) in &story.scrapes {
             match scrape {
-                Scrape::HackerNews(x) => { if x.position != 0 { accum(HNPosition, (30.0 - x.position as f32) * 1.2) }; hn = Some(x) },
+                Scrape::HackerNews(x) => {
+                    if x.position != 0 {
+                        accum(HNPosition, (30.0 - x.position as f32) * 1.2)
+                    };
+                    hn = Some(x)
+                }
                 Scrape::Reddit(x) => reddit = Some(x),
                 Scrape::Lobsters(x) => lobsters = Some(x),
             }
         }
 
-        accum(SourceCount, (hn.is_some() as u8 + reddit.is_some() as u8 + lobsters.is_some() as u8) as f32 * 5.0);
+        accum(
+            SourceCount,
+            (hn.is_some() as u8 + reddit.is_some() as u8 + lobsters.is_some() as u8) as f32 * 5.0,
+        );
 
         // Penalize a long title if reddit is a source
         if title.len() > 130 && reddit.is_some() {
@@ -357,7 +382,10 @@ impl StoryScorer {
             accum(LongTitle, -15.0);
         }
 
-        if url.host().contains("gfycat") || url.host().contains("imgur") || url.host().contains("i.reddit.com") {
+        if url.host().contains("gfycat")
+            || url.host().contains("imgur")
+            || url.host().contains("i.reddit.com")
+        {
             if hn.is_some() {
                 accum(ImageLink, -5.0);
             } else {
@@ -373,7 +401,11 @@ impl StoryScorer {
         score_total
     }
 
-    pub fn score_detail(config: &StoryScoreConfig, story: &Story, score_type: StoryScoreType) -> Vec<(String, f32)> {
+    pub fn score_detail(
+        config: &StoryScoreConfig,
+        story: &Story,
+        score_type: StoryScoreType,
+    ) -> Vec<(String, f32)> {
         let mut score_bits = vec![];
         let accum = |score_type, score| score_bits.push((format!("{:?}", score_type), score));
         Self::score_impl(config, story, score_type, accum);
@@ -383,7 +415,7 @@ impl StoryScorer {
 
 #[cfg(test)]
 mod test {
-    use super::{*};
+    use super::*;
     use chrono::Duration;
 
     /// Make sure that the scores are decreasing.

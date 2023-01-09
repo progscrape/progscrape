@@ -12,15 +12,18 @@ use tera::Context;
 use thiserror::Error;
 
 use crate::{
-    persist::{StorageSummary, PersistError},
-    story::{Story, StoryIdentifier, StoryRender, StoryDate, StoryScoreType, StoryScoreConfig, rescore_stories},
+    persist::{PersistError, StorageSummary},
+    story::{
+        rescore_stories, Story, StoryDate, StoryIdentifier, StoryRender, StoryScoreConfig,
+        StoryScoreType,
+    },
 };
 
 use self::resource::Resources;
 
 mod filters;
-mod resource;
 mod index;
+mod resource;
 mod serve_static_files;
 mod static_files;
 
@@ -96,8 +99,15 @@ struct FrontPage {
     stories: Vec<StoryRender>,
 }
 
-fn render_stories<'a>(iter: impl Iterator<Item = &'a Story>, config: &StoryScoreConfig, render_date: StoryDate) -> Vec<StoryRender> {
-    let mut v = iter.enumerate().map(|(n, x)| x.render(n)).collect::<Vec<_>>();
+fn render_stories<'a>(
+    iter: impl Iterator<Item = &'a Story>,
+    config: &StoryScoreConfig,
+    render_date: StoryDate,
+) -> Vec<StoryRender> {
+    let mut v = iter
+        .enumerate()
+        .map(|(n, x)| x.render(n))
+        .collect::<Vec<_>>();
     v
 }
 
@@ -105,7 +115,11 @@ fn now(global: &index::Global) -> StoryDate {
     global.storage.most_recent_story()
 }
 
-fn hot_set(now: StoryDate, global: &index::Global, config: &crate::config::Config) -> Result<Vec<Story>, PersistError> {
+fn hot_set(
+    now: StoryDate,
+    global: &index::Global,
+    config: &crate::config::Config,
+) -> Result<Vec<Story>, PersistError> {
     let mut hot_set = global.storage.query_frontpage_hot_set(500)?;
     rescore_stories(&config.score, now, &mut hot_set);
     hot_set.sort_by(|a, b| a.compare_score(b).reverse());
@@ -121,7 +135,7 @@ macro_rules! context {
                     $id: $typ,
                 )*
             }
-            
+
             Context::from_serialize(&TempStruct {
                 $(
                     $id: $expr,
@@ -159,7 +173,10 @@ async fn root(
     .into_iter()
     .map(str::to_owned)
     .collect();
-    let context = context!(top_tags: Vec<String> = top_tags, stories: Vec<StoryRender> = stories);
+    let context = context!(
+        top_tags: Vec<String> = top_tags,
+        stories: Vec<StoryRender> = stories
+    );
     Ok(resources
         .templates()
         .render("index2.html", &context)?
@@ -219,7 +236,11 @@ async fn status_shard(
     let sort = sort.get("sort").map(|x| x.clone()).unwrap_or_default();
     let context = Context::from_serialize(&ShardStatus {
         shard: shard.clone(),
-        stories: render_stories(state.storage.stories_by_shard(&shard)?.iter(), &resources.config().score, StoryDate::now()),
+        stories: render_stories(
+            state.storage.stories_by_shard(&shard)?.iter(),
+            &resources.config().score,
+            StoryDate::now(),
+        ),
         sort,
     })?;
     Ok(resources
@@ -240,11 +261,11 @@ async fn status_story(
     let id = StoryIdentifier::from_base64(id).ok_or(WebError::NotFound)?;
     let now = now(&state);
     tracing::info!("Loading story = {:?}", id);
-    let story = state
-        .storage
-        .get_story(&id)
-        .ok_or(WebError::NotFound)?;
-    let context = Context::from_serialize(&StoryStatus { story: story.render(0), score: story.score_detail(&resources.config().score, StoryScoreType::AgedFrom(now)) })?;
+    let story = state.storage.get_story(&id).ok_or(WebError::NotFound)?;
+    let context = Context::from_serialize(&StoryStatus {
+        story: story.render(0),
+        score: story.score_detail(&resources.config().score, StoryScoreType::AgedFrom(now)),
+    })?;
     Ok(resources
         .templates()
         .render("admin_story.html", &context)?

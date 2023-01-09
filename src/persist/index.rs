@@ -416,8 +416,8 @@ mod test {
 
     #[test]
     fn test_index_lots() {
-        let stories = crate::scrapers::legacy_import::import_legacy()
-            .expect("Failed to read scrapes");
+        let stories =
+            crate::scrapers::legacy_import::import_legacy().expect("Failed to read scrapes");
         let start_date = stories
             .iter()
             .fold(StoryDate::MAX, |a, b| std::cmp::min(a, b.date()));

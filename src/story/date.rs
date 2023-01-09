@@ -1,6 +1,6 @@
-use chrono::{DateTime, Datelike, Months, NaiveDateTime, TimeZone, Utc, Duration};
+use chrono::{DateTime, Datelike, Duration, Months, NaiveDateTime, TimeZone, Utc};
 use serde::{Deserialize, Serialize};
-use std::{fmt::Display, time::SystemTime, ops::Sub};
+use std::{fmt::Display, ops::Sub, time::SystemTime};
 
 /// Story-specific date that wraps all of the operations we're interested in. This is a thin wrapper on top
 /// of `DateTime<Utc>` and other `chrono` utilities for now.

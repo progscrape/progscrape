@@ -5,8 +5,10 @@ use std::{
 };
 
 use crate::{
+    config::Config,
     persist::{MemIndex, Storage, StorageWriter},
-    scrapers::ScrapeData, config::Config, story::StoryDate,
+    scrapers::ScrapeData,
+    story::StoryDate,
 };
 
 use super::WebError;
@@ -35,8 +37,7 @@ pub fn initialize_with_testing_data(config: &Config) -> Result<Global, WebError>
     scrapes.retain(|x| x.date().year() == 2017);
 
     let mut index = MemIndex::default();
-    index
-        .insert_scrapes(&config.score, scrapes.into_iter())?;
+    index.insert_scrapes(&config.score, scrapes.into_iter())?;
     let f = File::create(cache_file)?;
     serde_cbor::to_writer(BufWriter::new(f), &index)?;
     Ok(Global {

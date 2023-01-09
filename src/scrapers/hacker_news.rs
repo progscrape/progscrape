@@ -154,7 +154,11 @@ impl HackerNewsScraper {
             let url = StoryUrl::parse(&url).ok_or(format!("Failed to parse URL {}", url))?;
             let id = get_attribute(p, node, "id").ok_or(format!("Failed to get id node"))?;
             let rank = find_first(p, node, ".rank").ok_or(format!("Failed to get rank"))?;
-            let position = rank.inner_text(p).trim_end_matches('.').parse().or(Err(format!("Failed to parse rank")))?;
+            let position = rank
+                .inner_text(p)
+                .trim_end_matches('.')
+                .parse()
+                .or(Err(format!("Failed to parse rank")))?;
             Ok(HackerNewsNode::StoryLine(HackerNewsStoryLine {
                 id,
                 position,
