@@ -55,7 +55,7 @@ fn create_static_files_root() -> Result<StaticFileRegistry, WebError> {
 }
 
 fn create_templates(static_files: Arc<StaticFileRegistry>) -> Result<Tera, WebError> {
-    let mut tera = Tera::new("templates/**/*")?;
+    let mut tera = Tera::new("resource/templates/**/*")?;
     tera.register_filter("comma", CommaFilter::default());
     tera.register_filter("static", StaticFileFilter::new(static_files));
     Ok(tera)
@@ -102,7 +102,7 @@ pub async fn start_watcher() -> Result<GeneratedSource, WebError> {
             let _ = tx_dirty.send(true);
         }
     })?;
-    for path in ["templates", "static"] {
+    for path in ["resource"] {
         tracing::info!("Watching path {}/...", path);
         watcher.watch(Path::new(path), RecursiveMode::Recursive)?;
     }
