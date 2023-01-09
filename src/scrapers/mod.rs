@@ -256,6 +256,11 @@ pub mod test {
                 .into_iter()
                 .map(Scrape::Reddit),
         );
+        v.extend(
+            super::slashdot::test::scrape_all()
+                .into_iter()
+                .map(Scrape::Slashdot),
+        );
         v
     }
 
