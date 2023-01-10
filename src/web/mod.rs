@@ -57,11 +57,12 @@ impl IntoResponse for WebError {
 
 pub fn admin_routes<S>(resources: Resources, global: index::Global) -> Router<S> {
     Router::new()
+        .route("/", get(admin))
         .route("/scrape/", get(admin_scrape))
-        .route("/status/", get(status))
-        .route("/status/frontpage/", get(status_frontpage))
-        .route("/status/shard/:shard/", get(status_shard))
-        .route("/status/story/:story/", get(status_story))
+        .route("/index/", get(admin_index_status))
+        .route("/index/frontpage/", get(admin_status_frontpage))
+        .route("/index/shard/:shard/", get(admin_status_shard))
+        .route("/index/story/:story/", get(admin_status_story))
         .with_state((global, resources))
 }
 
@@ -181,6 +182,16 @@ async fn root(
     )
 }
 
+async fn admin(
+    State((state, resources)): State<(index::Global, Resources)>,
+) -> Result<Html<String>, WebError> {
+    render(
+        &resources,
+        "admin/admin.html",
+        context!(config: std::sync::Arc<crate::config::Config> = resources.config().clone()),
+    )
+}
+
 async fn admin_scrape(
     State((state, resources)): State<(index::Global, Resources)>,
 ) -> Result<Html<String>, WebError> {
@@ -191,17 +202,20 @@ async fn admin_scrape(
     )
 }
 
-async fn status(
+async fn admin_index_status(
     State((state, resources)): State<(index::Global, Resources)>,
 ) -> Result<Html<String>, WebError> {
     render(
         &resources,
         "admin/status.html",
-        context!(storage: StorageSummary = state.storage.story_count()?, config: std::sync::Arc<crate::config::Config> = resources.config().clone()),
+        context!(
+            storage: StorageSummary = state.storage.story_count()?,
+            config: std::sync::Arc<crate::config::Config> = resources.config().clone()
+        ),
     )
 }
 
-async fn status_frontpage(
+async fn admin_status_frontpage(
     State((state, resources)): State<(index::Global, Resources)>,
     sort: Query<HashMap<String, String>>,
 ) -> Result<Html<String>, WebError> {
@@ -218,7 +232,7 @@ async fn status_frontpage(
     )
 }
 
-async fn status_shard(
+async fn admin_status_shard(
     State((state, resources)): State<(index::Global, Resources)>,
     Path(shard): Path<String>,
     sort: Query<HashMap<String, String>>,
@@ -236,7 +250,7 @@ async fn status_shard(
     )
 }
 
-async fn status_story(
+async fn admin_status_story(
     State((state, resources)): State<(index::Global, Resources)>,
     Path(id): Path<String>,
 ) -> Result<Html<String>, WebError> {
