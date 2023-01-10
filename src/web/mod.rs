@@ -55,6 +55,16 @@ impl IntoResponse for WebError {
     }
 }
 
+pub fn admin_routes<S>(resources: Resources, global: index::Global) -> Router<S> {
+    Router::new()
+        .route("/scrape/", get(admin_scrape))
+        .route("/status/", get(status))
+        .route("/status/frontpage/", get(status_frontpage))
+        .route("/status/shard/:shard/", get(status_shard))
+        .route("/status/story/:story/", get(status_story))
+        .with_state((global, resources))
+}
+
 pub async fn start_server() -> Result<(), WebError> {
     tracing_subscriber::fmt::init();
     let resources = resource::start_watcher().await?;
@@ -67,14 +77,7 @@ pub async fn start_server() -> Result<(), WebError> {
         .with_state((global.clone(), resources.clone()))
         .route("/static/:file", get(serve_static_files_immutable))
         .with_state(resources.clone())
-        .route("/admin/status/", get(status))
-        .with_state((global.clone(), resources.clone()))
-        .route("/admin/status/frontpage/", get(status_frontpage))
-        .with_state((global.clone(), resources.clone()))
-        .route("/admin/status/shard/:shard/", get(status_shard))
-        .with_state((global.clone(), resources.clone()))
-        .route("/admin/status/story/:story/", get(status_story))
-        .with_state((global.clone(), resources.clone()))
+        .nest("/admin", admin_routes(resources.clone(), global.clone()))
         .route(
             "/:file",
             get(serve_static_files_well_known).with_state(resources.clone()),
@@ -175,6 +178,16 @@ async fn root(
             top_tags: Vec<String> = top_tags,
             stories: Vec<StoryRender> = stories
         ),
+    )
+}
+
+async fn admin_scrape(
+    State((state, resources)): State<(index::Global, Resources)>,
+) -> Result<Html<String>, WebError> {
+    render(
+        &resources,
+        "admin/scrape.html",
+        context!(config: std::sync::Arc<crate::config::Config> = resources.config().clone()),
     )
 }
 
