@@ -183,7 +183,7 @@ async fn status(
 ) -> Result<Html<String>, WebError> {
     render(
         &resources,
-        "admin_status.html",
+        "admin/status.html",
         context!(storage: StorageSummary = state.storage.story_count()?, config: std::sync::Arc<crate::config::Config> = resources.config().clone()),
     )
 }
@@ -196,7 +196,7 @@ async fn status_frontpage(
     let sort = sort.get("sort").map(|x| x.clone()).unwrap_or_default();
     render(
         &resources,
-        "admin_frontpage.html",
+        "admin/frontpage.html",
         context!(
             stories: Vec<StoryRender> =
                 render_stories(hot_set(now, &state, &resources.config())?.iter(),),
@@ -213,7 +213,7 @@ async fn status_shard(
     let sort = sort.get("sort").map(|x| x.clone()).unwrap_or_default();
     render(
         &resources,
-        "admin_shard.html",
+        "admin/shard.html",
         context!(
             shard: String = shard.clone(),
             stories: Vec<StoryRender> =
@@ -233,7 +233,7 @@ async fn status_story(
     let story = state.storage.get_story(&id).ok_or(WebError::NotFound)?;
     render(
         &resources,
-        "admin_story.html",
+        "admin/story.html",
         context!(
             story: StoryRender = story.render(0),
             score: Vec<(String, f32)> =
