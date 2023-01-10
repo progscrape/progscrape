@@ -216,7 +216,7 @@ impl RedditScraper {
 impl Scraper<RedditConfig, RedditStory> for RedditScraper {
     fn scrape(
         &self,
-        _args: RedditConfig,
+        _args: &RedditConfig,
         input: String,
     ) -> Result<(Vec<RedditStory>, Vec<String>), ScrapeError> {
         let value: Value = serde_json::from_str(&input)?;
@@ -254,7 +254,7 @@ pub mod test {
         let scraper = RedditScraper::default();
         for file in reddit_files() {
             let stories = scraper
-                .scrape(RedditConfig::default(), load_file(file))
+                .scrape(&RedditConfig::default(), load_file(file))
                 .expect(&format!("Failed to parse a story from {}", file));
             all.extend(stories.0);
         }
@@ -266,7 +266,7 @@ pub mod test {
         let scraper = RedditScraper::default();
         for file in reddit_files() {
             let stories = scraper
-                .scrape(RedditConfig::default(), load_file(file))
+                .scrape(&RedditConfig::default(), load_file(file))
                 .unwrap();
             for story in stories.0 {
                 println!("[{}] {} ({})", story.subreddit, story.title, story.url);

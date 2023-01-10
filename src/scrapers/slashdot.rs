@@ -184,7 +184,7 @@ impl SlashdotScraper {
 impl Scraper<SlashdotConfig, SlashdotStory> for SlashdotScraper {
     fn scrape(
         &self,
-        args: SlashdotConfig,
+        args: &SlashdotConfig,
         input: String,
     ) -> Result<(Vec<SlashdotStory>, Vec<String>), super::ScrapeError> {
         let dom = tl::parse(&input, ParserOptions::default())?;
@@ -214,7 +214,7 @@ pub mod test {
         let scraper = SlashdotScraper::default();
         for file in slashdot_files() {
             let stories = scraper
-                .scrape(SlashdotConfig::default(), load_file(file))
+                .scrape(&SlashdotConfig::default(), load_file(file))
                 .expect(&format!("Failed to parse a story from {}", file));
             all.extend(stories.0);
         }
@@ -236,7 +236,7 @@ pub mod test {
         let scraper = SlashdotScraper::default();
         for file in slashdot_files() {
             let stories = scraper
-                .scrape(SlashdotConfig::default(), load_file(file))
+                .scrape(&SlashdotConfig::default(), load_file(file))
                 .unwrap();
             for error in stories.1 {
                 println!("{}", error);

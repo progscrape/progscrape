@@ -16,6 +16,10 @@ pub trait ScrapeSource2 {
     type Scrape: ScrapeData;
     type Scraper: Scraper<Self::Config, Self::Scrape>;
     const TYPE: ScrapeSource;
+
+    fn scrape(args: &Self::Config, input: String) -> Result<(Vec<Self::Scrape>, Vec<String>), ScrapeError> {
+        Self::Scraper::default().scrape(args, input)
+    }
 }
 
 #[derive(Default, Serialize, Deserialize)]
@@ -180,14 +184,13 @@ impl ScrapeData for Scrape {
     }
 }
 
-pub trait Scraper<Config: ScrapeConfigSource, Output: ScrapeData> {
-    fn scrape(&self, args: Config, input: String) -> Result<(Vec<Output>, Vec<String>), ScrapeError>;
+pub trait Scraper<Config: ScrapeConfigSource, Output: ScrapeData>: Default {
+    fn scrape(&self, args: &Config, input: String) -> Result<(Vec<Output>, Vec<String>), ScrapeError>;
 }
 
 #[cfg(test)]
 pub mod test {
     use super::*;
-    use rstest::*;
     use std::fs::read_to_string;
     use std::path::PathBuf;
     use std::str::FromStr;

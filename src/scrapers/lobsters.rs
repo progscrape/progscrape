@@ -85,10 +85,11 @@ impl ScrapeDataInit<LobstersStory> for LobstersStory {
     }
 }
 
+#[derive(Default)]
 pub struct LobstersScraper{}
 
 impl Scraper<LobstersConfig, LobstersStory> for LobstersScraper {
-    fn scrape(&self, args: LobstersConfig, input: String) -> Result<(Vec<LobstersStory>, Vec<String>), ScrapeError> {
+    fn scrape(&self, args: &LobstersConfig, input: String) -> Result<(Vec<LobstersStory>, Vec<String>), ScrapeError> {
         unimplemented!()
     }
 }

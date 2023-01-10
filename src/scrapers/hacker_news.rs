@@ -193,7 +193,7 @@ impl HackerNewsScraper {
 impl Scraper<HackerNewsConfig, HackerNewsStory> for HackerNewsScraper {
     fn scrape(
         &self,
-        _args: HackerNewsConfig,
+        _args: &HackerNewsConfig,
         input: String,
     ) -> Result<(Vec<HackerNewsStory>, Vec<String>), ScrapeError> {
         let dom = tl::parse(&input, ParserOptions::default())?;
@@ -246,7 +246,7 @@ pub mod test {
         let scraper = HackerNewsScraper::default();
         for file in hacker_news_files() {
             let stories = scraper
-                .scrape(HackerNewsConfig::default(), load_file(file))
+                .scrape(&HackerNewsConfig::default(), load_file(file))
                 .expect(&format!("Failed to parse a story from {}", file));
             all.extend(stories.0);
         }
@@ -258,7 +258,7 @@ pub mod test {
         let scraper = HackerNewsScraper::default();
         for file in hacker_news_files() {
             let stories = scraper
-                .scrape(HackerNewsConfig::default(), load_file(file))
+                .scrape(&HackerNewsConfig::default(), load_file(file))
                 .unwrap();
             assert!(stories.0.len() >= 25);
             for story in stories.0 {
