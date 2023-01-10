@@ -3,5 +3,22 @@
 <h1>Scrape</h1>
 
 <h2>Sources</h2>
+<table>
+{% for key, value in scrapes.scrapes %}
+<tr><th>{{ key }}</th><td>{{ value }}</td><td><button onclick="test_file('{{key}}')">Test File 🔬</button> <button onclick="test_live('{{key}}')">Test Live 🚀</button></td></tr>
+{% endfor %}
+</table>
 
+<script>
+const TEST_ENDPOINT = {{ endpoint | json_encode() | safe }};
+const HEADERS = { 'Content-Type': 'application/json' };
+
+function test_file(service) {
+    fetch(TEST_ENDPOINT, {method:'post', headers: HEADERS, body: JSON.stringify({ source: service })})
+}
+
+function test_live(service) {
+    fetch(TEST_ENDPOINT, {method:'post', headers: HEADERS, body: JSON.stringify({ source: service })})
+}
+</script>
 {% endblock %}

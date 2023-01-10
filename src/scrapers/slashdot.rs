@@ -1,13 +1,21 @@
-use std::{panic, time::SystemTime};
-
-use chrono::{DateTime, TimeZone};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use tl::{HTMLTag, Parser, ParserOptions};
 
 use crate::story::{StoryDate, StoryUrl};
 
-use super::{html::*, ScrapeData, ScrapeDataInit, ScrapeSource, Scraper, ScrapeConfigSource, ScrapeId};
+use super::{
+    html::*, ScrapeConfigSource, ScrapeData, ScrapeDataInit, ScrapeId, ScrapeSource, Scraper, ScrapeSource2,
+};
+
+pub struct Slashdot{}
+
+impl ScrapeSource2 for Slashdot {
+    type Config = SlashdotConfig;
+    type Scrape = SlashdotStory;
+    type Scraper = SlashdotScraper;
+    const TYPE: ScrapeSource = ScrapeSource::Slashdot;
+}
 
 #[derive(Default, Serialize, Deserialize)]
 pub struct SlashdotConfig {
@@ -15,7 +23,11 @@ pub struct SlashdotConfig {
 }
 
 impl ScrapeConfigSource for SlashdotConfig {
-    fn provide_urls(&self) -> Vec<String> {
+    fn subsources(&self) -> Vec<String> {
+        vec![]
+    }
+
+    fn provide_urls(&self, _: Vec<String>) -> Vec<String> {
         vec![self.homepage.clone()]
     }
 }
@@ -76,9 +88,6 @@ impl ScrapeDataInit<SlashdotStory> for SlashdotStory {
         self.num_comments = std::cmp::max(self.num_comments, other.num_comments);
     }
 }
-
-#[derive(Default)]
-pub struct SlashdotArgs {}
 
 #[derive(Default)]
 pub struct SlashdotScraper {}
@@ -172,10 +181,10 @@ impl SlashdotScraper {
     }
 }
 
-impl Scraper<SlashdotArgs, SlashdotStory> for SlashdotScraper {
+impl Scraper<SlashdotConfig, SlashdotStory> for SlashdotScraper {
     fn scrape(
         &self,
-        args: SlashdotArgs,
+        args: SlashdotConfig,
         input: String,
     ) -> Result<(Vec<SlashdotStory>, Vec<String>), super::ScrapeError> {
         let dom = tl::parse(&input, ParserOptions::default())?;
@@ -205,7 +214,7 @@ pub mod test {
         let scraper = SlashdotScraper::default();
         for file in slashdot_files() {
             let stories = scraper
-                .scrape(SlashdotArgs::default(), load_file(file))
+                .scrape(SlashdotConfig::default(), load_file(file))
                 .expect(&format!("Failed to parse a story from {}", file));
             all.extend(stories.0);
         }
@@ -227,7 +236,7 @@ pub mod test {
         let scraper = SlashdotScraper::default();
         for file in slashdot_files() {
             let stories = scraper
-                .scrape(SlashdotArgs::default(), load_file(file))
+                .scrape(SlashdotConfig::default(), load_file(file))
                 .unwrap();
             for error in stories.1 {
                 println!("{}", error);

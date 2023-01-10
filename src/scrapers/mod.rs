@@ -8,7 +8,15 @@ pub mod legacy_import;
 pub mod lobsters;
 pub mod reddit_json;
 pub mod slashdot;
-mod web_scraper;
+pub mod web_scraper;
+
+/// Our scrape sources, and the associated data types for each.
+pub trait ScrapeSource2 {
+    type Config: ScrapeConfigSource;
+    type Scrape: ScrapeData;
+    type Scraper: Scraper<Self::Config, Self::Scrape>;
+    const TYPE: ScrapeSource;
+}
 
 #[derive(Default, Serialize, Deserialize)]
 pub struct ScrapeConfig {
@@ -18,8 +26,9 @@ pub struct ScrapeConfig {
     reddit: reddit_json::RedditConfig,
 }
 
-trait ScrapeConfigSource {
-    fn provide_urls(&self) -> Vec<String>;
+pub trait ScrapeConfigSource {
+    fn subsources(&self) -> Vec<String>;
+    fn provide_urls(&self, subsources: Vec<String>) -> Vec<String>;
 }
 
 #[derive(Error, Debug)]
@@ -34,7 +43,7 @@ pub enum ScrapeError {
     StructureError(String),
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Hash, PartialOrd, Ord, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, PartialOrd, Ord, Deserialize, Serialize)]
 pub enum ScrapeSource {
     HackerNews,
     Reddit,
@@ -52,7 +61,7 @@ impl Into<&'static str> for &ScrapeSource {
             Lobsters => "lobsters",
             Slashdot => "slashdot",
             Other => "other",
-       }
+        }
     }
 }
 
@@ -66,7 +75,11 @@ pub struct ScrapeId {
 
 impl ScrapeId {
     pub fn new(source: ScrapeSource, subsource: Option<String>, id: String) -> Self {
-        Self { source, subsource, id }
+        Self {
+            source,
+            subsource,
+            id,
+        }
     }
 
     pub fn as_str(&self) -> String {
@@ -167,8 +180,8 @@ impl ScrapeData for Scrape {
     }
 }
 
-trait Scraper<Args, Output: ScrapeData> {
-    fn scrape(&self, args: Args, input: String) -> Result<(Vec<Output>, Vec<String>), ScrapeError>;
+pub trait Scraper<Config: ScrapeConfigSource, Output: ScrapeData> {
+    fn scrape(&self, args: Config, input: String) -> Result<(Vec<Output>, Vec<String>), ScrapeError>;
 }
 
 /// This method will unescape standard HTML entities. It is limited to a subset of the most common entities and the decimal/hex

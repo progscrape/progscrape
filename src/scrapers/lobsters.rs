@@ -1,13 +1,26 @@
 use super::*;
 use serde::{Deserialize, Serialize};
 
+pub struct Lobsters{}
+
+impl ScrapeSource2 for Lobsters {
+    type Config = LobstersConfig;
+    type Scrape = LobstersStory;
+    type Scraper = LobstersScraper;
+    const TYPE: ScrapeSource = ScrapeSource::Lobsters;
+}
+
 #[derive(Default, Serialize, Deserialize)]
 pub struct LobstersConfig {
     feed: String,
 }
 
 impl ScrapeConfigSource for LobstersConfig {
-    fn provide_urls(&self) -> Vec<String> {
+    fn subsources(&self) -> Vec<String> {
+        vec![]
+    }
+
+    fn provide_urls(&self, _: Vec<String>) -> Vec<String> {
         vec![self.feed.clone()]
     }
 }
@@ -69,5 +82,13 @@ impl ScrapeDataInit<LobstersStory> for LobstersStory {
         self.date = std::cmp::min(self.date, other.date);
         self.score = std::cmp::max(self.score, other.score);
         self.num_comments = std::cmp::max(self.num_comments, other.num_comments);
+    }
+}
+
+pub struct LobstersScraper{}
+
+impl Scraper<LobstersConfig, LobstersStory> for LobstersScraper {
+    fn scrape(&self, args: LobstersConfig, input: String) -> Result<(Vec<LobstersStory>, Vec<String>), ScrapeError> {
+        unimplemented!()
     }
 }

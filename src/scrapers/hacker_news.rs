@@ -3,9 +3,19 @@ use std::{borrow::Borrow, collections::HashMap};
 use tl::{HTMLTag, Parser, ParserOptions};
 
 use super::{
-    html::*, unescape_entities, ScrapeData, ScrapeDataInit, ScrapeError, ScrapeSource, Scraper, ScrapeConfigSource, ScrapeId,
+    html::*, unescape_entities, ScrapeConfigSource, ScrapeData, ScrapeDataInit, ScrapeError,
+    ScrapeId, ScrapeSource, Scraper, ScrapeSource2,
 };
 use crate::story::{StoryDate, StoryUrl};
+
+pub struct HackerNews{}
+
+impl ScrapeSource2 for HackerNews {
+    type Config = HackerNewsConfig;
+    type Scrape = HackerNewsStory;
+    type Scraper = HackerNewsScraper;
+    const TYPE: ScrapeSource = ScrapeSource::HackerNews;
+}
 
 #[derive(Default, Serialize, Deserialize)]
 pub struct HackerNewsConfig {
@@ -13,13 +23,14 @@ pub struct HackerNewsConfig {
 }
 
 impl ScrapeConfigSource for HackerNewsConfig {
-    fn provide_urls(&self) -> Vec<String> {
+    fn subsources(&self) -> Vec<String> {
+        vec![]
+    }
+
+    fn provide_urls(&self, _: Vec<String>) -> Vec<String> {
         vec![self.homepage.clone()]
     }
 }
-
-#[derive(Debug, Default)]
-pub struct HackerNewsArgs {}
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct HackerNewsStory {
@@ -179,10 +190,10 @@ impl HackerNewsScraper {
     }
 }
 
-impl Scraper<HackerNewsArgs, HackerNewsStory> for HackerNewsScraper {
+impl Scraper<HackerNewsConfig, HackerNewsStory> for HackerNewsScraper {
     fn scrape(
         &self,
-        _args: HackerNewsArgs,
+        _args: HackerNewsConfig,
         input: String,
     ) -> Result<(Vec<HackerNewsStory>, Vec<String>), ScrapeError> {
         let dom = tl::parse(&input, ParserOptions::default())?;
@@ -235,7 +246,7 @@ pub mod test {
         let scraper = HackerNewsScraper::default();
         for file in hacker_news_files() {
             let stories = scraper
-                .scrape(HackerNewsArgs::default(), load_file(file))
+                .scrape(HackerNewsConfig::default(), load_file(file))
                 .expect(&format!("Failed to parse a story from {}", file));
             all.extend(stories.0);
         }
@@ -247,7 +258,7 @@ pub mod test {
         let scraper = HackerNewsScraper::default();
         for file in hacker_news_files() {
             let stories = scraper
-                .scrape(HackerNewsArgs::default(), load_file(file))
+                .scrape(HackerNewsConfig::default(), load_file(file))
                 .unwrap();
             assert!(stories.0.len() >= 25);
             for story in stories.0 {

@@ -3,8 +3,8 @@ use std::{collections::HashMap, net::SocketAddr};
 use axum::{
     extract::{Path, Query, State},
     response::{Html, IntoResponse, Response},
-    routing::get,
-    Router,
+    routing::{get, post},
+    Json, Router,
 };
 use hyper::{HeaderMap, StatusCode};
 use serde::{Deserialize, Serialize};
@@ -13,6 +13,7 @@ use thiserror::Error;
 
 use crate::{
     persist::{PersistError, StorageSummary},
+    scrapers::{web_scraper::{WebScrapeInput, WebScraper}, ScrapeSource},
     story::{rescore_stories, Story, StoryDate, StoryIdentifier, StoryRender, StoryScoreType},
 };
 
@@ -59,6 +60,7 @@ pub fn admin_routes<S>(resources: Resources, global: index::Global) -> Router<S>
     Router::new()
         .route("/", get(admin))
         .route("/scrape/", get(admin_scrape))
+        .route("/scrape/test", post(admin_scrape_test))
         .route("/index/", get(admin_index_status))
         .route("/index/frontpage/", get(admin_status_frontpage))
         .route("/index/shard/:shard/", get(admin_status_shard))
@@ -195,11 +197,34 @@ async fn admin(
 async fn admin_scrape(
     State((state, resources)): State<(index::Global, Resources)>,
 ) -> Result<Html<String>, WebError> {
+    let config = resources.config().clone();
     render(
         &resources,
         "admin/scrape.html",
-        context!(config: std::sync::Arc<crate::config::Config> = resources.config().clone()),
+        context!(
+            config: std::sync::Arc<crate::config::Config> = config.clone(),
+            scrapes: WebScrapeInput = WebScraper::calculate_inputs(&config.scrape),
+            endpoint: &'static str = "/admin/scrape/test"
+        ),
     )
+}
+
+#[derive(Deserialize)]
+struct AdminScrapeTestParams {
+    /// Which source do we want to scrape?
+    source: ScrapeSource,
+
+}
+
+async fn admin_scrape_test(
+    State((state, resources)): State<(index::Global, Resources)>,
+    Json(params): Json<AdminScrapeTestParams>,
+) -> Result<Html<String>, WebError> {
+    let config = resources.config().clone();
+    
+    render(&resources, "admin/scrape_test.html", context!(
+        // scrapes: Vec<Scrape> = WebScraper::scrape()
+    ))
 }
 
 async fn admin_index_status(

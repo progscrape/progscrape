@@ -1,8 +1,20 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use super::{unescape_entities, ScrapeData, ScrapeDataInit, ScrapeError, ScrapeSource, Scraper, ScrapeConfigSource, ScrapeId};
+use super::{
+    unescape_entities, ScrapeConfigSource, ScrapeData, ScrapeDataInit, ScrapeError, ScrapeId,
+    ScrapeSource, Scraper, ScrapeSource2,
+};
 use crate::story::{StoryDate, StoryUrl};
+
+pub struct Reddit{}
+
+impl ScrapeSource2 for Reddit {
+    type Config = RedditConfig;
+    type Scrape = RedditStory;
+    type Scraper = RedditScraper;
+    const TYPE: ScrapeSource = ScrapeSource::Reddit;
+}
 
 #[derive(Default, Serialize, Deserialize)]
 pub struct RedditConfig {
@@ -10,13 +22,14 @@ pub struct RedditConfig {
 }
 
 impl ScrapeConfigSource for RedditConfig {
-    fn provide_urls(&self) -> Vec<String> {
+    fn subsources(&self) -> Vec<String> {
+        vec![]
+    }
+
+    fn provide_urls(&self, _: Vec<String>) -> Vec<String> {
         vec![self.api.clone()]
     }
 }
-
-#[derive(Default)]
-pub struct RedditArgs {}
 
 #[derive(Default)]
 pub struct RedditScraper {}
@@ -51,7 +64,11 @@ impl ScrapeData for RedditStory {
     }
 
     fn source(&self) -> ScrapeId {
-        ScrapeId::new(ScrapeSource::Reddit, Some(self.subreddit.clone()), self.id.clone())
+        ScrapeId::new(
+            ScrapeSource::Reddit,
+            Some(self.subreddit.clone()),
+            self.id.clone(),
+        )
     }
 
     fn date(&self) -> StoryDate {
@@ -196,10 +213,10 @@ impl RedditScraper {
     }
 }
 
-impl Scraper<RedditArgs, RedditStory> for RedditScraper {
+impl Scraper<RedditConfig, RedditStory> for RedditScraper {
     fn scrape(
         &self,
-        _args: RedditArgs,
+        _args: RedditConfig,
         input: String,
     ) -> Result<(Vec<RedditStory>, Vec<String>), ScrapeError> {
         let value: Value = serde_json::from_str(&input)?;
@@ -237,7 +254,7 @@ pub mod test {
         let scraper = RedditScraper::default();
         for file in reddit_files() {
             let stories = scraper
-                .scrape(RedditArgs::default(), load_file(file))
+                .scrape(RedditConfig::default(), load_file(file))
                 .expect(&format!("Failed to parse a story from {}", file));
             all.extend(stories.0);
         }
@@ -249,7 +266,7 @@ pub mod test {
         let scraper = RedditScraper::default();
         for file in reddit_files() {
             let stories = scraper
-                .scrape(RedditArgs::default(), load_file(file))
+                .scrape(RedditConfig::default(), load_file(file))
                 .unwrap();
             for story in stories.0 {
                 println!("[{}] {} ({})", story.subreddit, story.title, story.url);
