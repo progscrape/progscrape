@@ -1,3 +1,7 @@
+use std::{time::SystemTime, panic};
+
+use chrono::{DateTime, TimeZone};
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use tl::{HTMLTag, Parser, ParserOptions};
 
@@ -73,6 +77,30 @@ pub struct SlashdotArgs {}
 pub struct SlashdotScraper {}
 
 impl SlashdotScraper {
+    fn parse_time(date: &str) -> Result<StoryDate, String> {
+        // Expected input: 'on Monday January 09, 2023 @08:25PM'
+
+        // Clean up "on " prefix, @ signs and commas
+        let date = date.trim_start_matches("on ").replace(['@', ','], "").to_string();
+
+        // Expected at point: 'Monday January 09 2023 08:25PM'
+
+        // https://docs.rs/chrono/latest/chrono/format/strftime/index.html
+        let day_of_week = ["%A ", ""];
+        let day = ["%d", "%e"];
+        let am_pm = ["%p", "%P"];
+
+        // Attempt to use multiple patterns to parse
+        for ((day_of_week, day), am_pm) in day_of_week.iter().cartesian_product(day).cartesian_product(am_pm) {
+            let pattern = format!("{}%B {} %Y %I:%M{}", day_of_week, day, am_pm);
+            if let Some(date) = StoryDate::from_string(&date, &pattern) {
+                return Ok(date);
+            }
+        }
+
+        Err(format!("Failed to parse date: {}", date))
+    }
+
     fn map_story(p: &Parser, article: &HTMLTag) -> Result<SlashdotStory, String> {
         let title = find_first(p, article, ".story-title").ok_or("Missing .story-title")?;
         let mut links = html_tag_iterator(p, title.query_selector(p, "a"));
@@ -116,8 +144,11 @@ impl SlashdotScraper {
             );
         }
 
+        let date = find_first(p, article, "time").ok_or(format!("Could not locate time"))?;
+        let date = Self::parse_time(&date.inner_text(p))?;
+
         Ok(SlashdotStory {
-            date: StoryDate::now(),
+            date,
             id,
             num_comments,
             tags,
@@ -153,6 +184,7 @@ impl Scraper<SlashdotArgs, SlashdotStory> for SlashdotScraper {
 pub mod test {
     use super::super::test::*;
     use super::*;
+    use rstest::*;
 
     pub fn scrape_all() -> Vec<SlashdotStory> {
         let mut all = vec![];
@@ -164,6 +196,16 @@ pub mod test {
             all.extend(stories.0);
         }
         all
+    }
+
+    #[rstest]
+    #[case("on Monday January 09, 2023 @08:25PM")]
+    #[case("on Wednesday January 1, 2020 @11:00AM")]
+    #[case("on Wednesday January 1, 2020 @12:00AM")]
+    #[case("on Wednesday January 1, 2020 @12:30PM")]
+    #[case("on January 1, 2020 @12:30PM")]
+    fn test_date_parse(#[case] s: &str) {
+        SlashdotScraper::parse_time(s).expect("Expected this to parse");
     }
 
     #[test]
