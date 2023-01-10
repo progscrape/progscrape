@@ -1,4 +1,4 @@
-use std::{time::SystemTime, panic};
+use std::{panic, time::SystemTime};
 
 use chrono::{DateTime, TimeZone};
 use itertools::Itertools;
@@ -81,7 +81,10 @@ impl SlashdotScraper {
         // Expected input: 'on Monday January 09, 2023 @08:25PM'
 
         // Clean up "on " prefix, @ signs and commas
-        let date = date.trim_start_matches("on ").replace(['@', ','], "").to_string();
+        let date = date
+            .trim_start_matches("on ")
+            .replace(['@', ','], "")
+            .to_string();
 
         // Expected at point: 'Monday January 09 2023 08:25PM'
 
@@ -91,7 +94,11 @@ impl SlashdotScraper {
         let am_pm = ["%p", "%P"];
 
         // Attempt to use multiple patterns to parse
-        for ((day_of_week, day), am_pm) in day_of_week.iter().cartesian_product(day).cartesian_product(am_pm) {
+        for ((day_of_week, day), am_pm) in day_of_week
+            .iter()
+            .cartesian_product(day)
+            .cartesian_product(am_pm)
+        {
             let pattern = format!("{}%B {} %Y %I:%M{}", day_of_week, day, am_pm);
             if let Some(date) = StoryDate::from_string(&date, &pattern) {
                 return Ok(date);

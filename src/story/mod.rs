@@ -1,7 +1,3 @@
-use base64::{
-    alphabet::{self},
-    engine::fast_portable::{self, FastPortable},
-};
 use chrono::Duration;
 use serde::{Deserialize, Serialize};
 
@@ -57,8 +53,8 @@ impl Display for StoryIdentifier {
 }
 
 impl StoryIdentifier {
-    const BASE64_CONFIG: FastPortable =
-        FastPortable::from(&alphabet::URL_SAFE, fast_portable::NO_PAD);
+    const BASE64_CONFIG: base64::engine::GeneralPurpose =
+        base64::engine::general_purpose::URL_SAFE_NO_PAD;
 
     pub fn new(date: StoryDate, norm: &StoryUrlNorm) -> Self {
         Self {
@@ -77,13 +73,15 @@ impl StoryIdentifier {
     }
 
     pub fn to_base64(&self) -> String {
-        base64::encode_engine(self.to_string().as_bytes(), &Self::BASE64_CONFIG)
+        use base64::Engine;
+        Self::BASE64_CONFIG.encode(self.to_string().as_bytes())
     }
 
     pub fn from_base64<T: AsRef<[u8]>>(s: T) -> Option<Self> {
         // Use an inner function so we can make use of ? (is there an easier way?)
         fn from_base64_res<T: AsRef<[u8]>>(s: T) -> Result<StoryIdentifier, ()> {
-            let s = base64::decode_engine(s, &StoryIdentifier::BASE64_CONFIG).map_err(drop)?;
+            use base64::Engine;
+            let s = StoryIdentifier::BASE64_CONFIG.decode(s).map_err(drop)?;
             let s = String::from_utf8(s).map_err(drop)?;
             let mut bits = s.splitn(4, ':');
             let year = bits.next().ok_or(())?;
