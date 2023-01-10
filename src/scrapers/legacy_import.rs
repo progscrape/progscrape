@@ -9,7 +9,7 @@ use serde_json::Value;
 use super::{
     hacker_news::HackerNewsStory, lobsters::LobstersStory, Scrape, ScrapeData, ScrapeDataInit,
 };
-use crate::scrapers::unescape_entities;
+use crate::scrapers::html::unescape_entities;
 use crate::story::StoryDate;
 use crate::{scrapers::reddit_json::RedditStory, story::StoryUrl};
 use thiserror::Error;

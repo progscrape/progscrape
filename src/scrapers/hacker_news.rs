@@ -3,7 +3,7 @@ use std::{borrow::Borrow, collections::HashMap};
 use tl::{HTMLTag, Parser, ParserOptions};
 
 use super::{
-    html::*, unescape_entities, ScrapeConfigSource, ScrapeData, ScrapeDataInit, ScrapeError,
+    html::*, ScrapeConfigSource, ScrapeData, ScrapeDataInit, ScrapeError,
     ScrapeId, ScrapeSource, Scraper, ScrapeSource2,
 };
 use crate::story::{StoryDate, StoryUrl};

@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::{
-    unescape_entities, ScrapeConfigSource, ScrapeData, ScrapeDataInit, ScrapeError, ScrapeId,
+    html::unescape_entities, ScrapeConfigSource, ScrapeData, ScrapeDataInit, ScrapeError, ScrapeId,
     ScrapeSource, Scraper, ScrapeSource2,
 };
 use crate::story::{StoryDate, StoryUrl};
