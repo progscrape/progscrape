@@ -1,12 +1,18 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use super::{unescape_entities, ScrapeData, ScrapeDataInit, ScrapeError, ScrapeSource, Scraper};
+use super::{unescape_entities, ScrapeData, ScrapeDataInit, ScrapeError, ScrapeSource, Scraper, ScrapeConfigSource, ScrapeId};
 use crate::story::{StoryDate, StoryUrl};
 
 #[derive(Default, Serialize, Deserialize)]
 pub struct RedditConfig {
     api: String,
+}
+
+impl ScrapeConfigSource for RedditConfig {
+    fn provide_urls(&self) -> Vec<String> {
+        vec![self.api.clone()]
+    }
 }
 
 #[derive(Default)]
@@ -32,10 +38,6 @@ pub struct RedditStory {
 }
 
 impl ScrapeData for RedditStory {
-    fn id(&self) -> String {
-        self.id.clone()
-    }
-
     fn title(&self) -> String {
         return self.title.clone();
     }
@@ -48,8 +50,8 @@ impl ScrapeData for RedditStory {
         unimplemented!()
     }
 
-    fn source(&self) -> super::ScrapeSource {
-        return ScrapeSource::Reddit(self.subreddit.clone());
+    fn source(&self) -> ScrapeId {
+        ScrapeId::new(ScrapeSource::Reddit, Some(self.subreddit.clone()), self.id.clone())
     }
 
     fn date(&self) -> StoryDate {

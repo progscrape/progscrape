@@ -3,13 +3,19 @@ use std::{borrow::Borrow, collections::HashMap};
 use tl::{HTMLTag, Parser, ParserOptions};
 
 use super::{
-    html::*, unescape_entities, ScrapeData, ScrapeDataInit, ScrapeError, ScrapeSource, Scraper,
+    html::*, unescape_entities, ScrapeData, ScrapeDataInit, ScrapeError, ScrapeSource, Scraper, ScrapeConfigSource, ScrapeId,
 };
 use crate::story::{StoryDate, StoryUrl};
 
 #[derive(Default, Serialize, Deserialize)]
 pub struct HackerNewsConfig {
     homepage: String,
+}
+
+impl ScrapeConfigSource for HackerNewsConfig {
+    fn provide_urls(&self) -> Vec<String> {
+        vec![self.homepage.clone()]
+    }
 }
 
 #[derive(Debug, Default)]
@@ -27,10 +33,6 @@ pub struct HackerNewsStory {
 }
 
 impl ScrapeData for HackerNewsStory {
-    fn id(&self) -> String {
-        self.id.clone()
-    }
-
     fn title(&self) -> String {
         self.title.clone()
     }
@@ -39,8 +41,8 @@ impl ScrapeData for HackerNewsStory {
         self.url.clone()
     }
 
-    fn source(&self) -> ScrapeSource {
-        ScrapeSource::HackerNews
+    fn source(&self) -> ScrapeId {
+        ScrapeId::new(ScrapeSource::HackerNews, None, self.id.clone())
     }
 
     fn comments_url(&self) -> String {

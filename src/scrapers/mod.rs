@@ -8,6 +8,7 @@ pub mod legacy_import;
 pub mod lobsters;
 pub mod reddit_json;
 pub mod slashdot;
+mod web_scraper;
 
 #[derive(Default, Serialize, Deserialize)]
 pub struct ScrapeConfig {
@@ -15,6 +16,10 @@ pub struct ScrapeConfig {
     slashdot: slashdot::SlashdotConfig,
     lobsters: lobsters::LobstersConfig,
     reddit: reddit_json::RedditConfig,
+}
+
+trait ScrapeConfigSource {
+    fn provide_urls(&self) -> Vec<String>;
 }
 
 #[derive(Error, Debug)]
@@ -32,21 +37,22 @@ pub enum ScrapeError {
 #[derive(Clone, Debug, Eq, PartialEq, Hash, PartialOrd, Ord, Deserialize, Serialize)]
 pub enum ScrapeSource {
     HackerNews,
-    Reddit(String),
+    Reddit,
     Lobsters,
     Slashdot,
     Other,
 }
 
-impl ScrapeSource {
-    pub fn as_str(&self) -> String {
+impl Into<&'static str> for &ScrapeSource {
+    fn into(self) -> &'static str {
+        use ScrapeSource::*;
         match self {
-            Self::HackerNews => "hackernews".to_owned(),
-            Self::Reddit(s) => format!("reddit-{}", s),
-            Self::Lobsters => "lobsters".to_owned(),
-            Self::Slashdot => "slashdot".to_owned(),
-            Self::Other => "other".to_owned(),
-        }
+            HackerNews => "hacker_news",
+            Reddit => "reddit",
+            Lobsters => "lobsters",
+            Slashdot => "slashdot",
+            Other => "other",
+       }
     }
 }
 
@@ -54,23 +60,26 @@ impl ScrapeSource {
 #[derive(Clone, Debug, Eq, PartialEq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct ScrapeId {
     pub source: ScrapeSource,
+    pub subsource: Option<String>,
     pub id: String,
 }
 
 impl ScrapeId {
-    pub fn new(source: ScrapeSource, id: String) -> Self {
-        Self { source, id }
+    pub fn new(source: ScrapeSource, subsource: Option<String>, id: String) -> Self {
+        Self { source, subsource, id }
     }
 
     pub fn as_str(&self) -> String {
-        format!("{}-{}", self.source.as_str(), self.id)
+        let source: &'static str = (&self.source).into();
+        if let Some(subsource) = &self.subsource {
+            format!("{}-{}-{}", source, subsource, self.id)
+        } else {
+            format!("{}-{}", source, self.id)
+        }
     }
 }
 
 pub trait ScrapeData {
-    /// Retrieve the scrape ID.
-    fn id(&self) -> String;
-
     /// Retrieve the scrape title.
     fn title(&self) -> String;
 
@@ -81,7 +90,7 @@ pub trait ScrapeData {
     fn comments_url(&self) -> String;
 
     /// Retrieve the scrape source.
-    fn source(&self) -> ScrapeSource;
+    fn source(&self) -> ScrapeId;
 
     /// Retrieve the scrape date.
     fn date(&self) -> StoryDate;
@@ -137,10 +146,6 @@ impl AsRef<dyn ScrapeData + 'static> for Scrape {
 }
 
 impl ScrapeData for Scrape {
-    fn id(&self) -> String {
-        self.as_ref().id()
-    }
-
     fn url(&self) -> StoryUrl {
         self.as_ref().url()
     }
@@ -157,7 +162,7 @@ impl ScrapeData for Scrape {
         self.as_ref().comments_url()
     }
 
-    fn source(&self) -> ScrapeSource {
+    fn source(&self) -> ScrapeId {
         self.as_ref().source()
     }
 }

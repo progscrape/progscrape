@@ -123,7 +123,7 @@ pub struct Story {
 impl Story {
     pub fn new(score_config: &StoryScoreConfig, scrape: Scrape) -> Self {
         let id = StoryIdentifier::new(scrape.date(), scrape.url().normalization());
-        let scrape_id = ScrapeId::new(scrape.source(), scrape.id());
+        let scrape_id = scrape.source();
         // This is a bit awkward as we should probably be scoring from the raw scrapes rather than the story itself
         let mut story = Self {
             id,
@@ -135,7 +135,7 @@ impl Story {
     }
 
     pub fn merge(&mut self, score_config: &StoryScoreConfig, scrape: Scrape) {
-        let scrape_id = ScrapeId::new(scrape.source(), scrape.id());
+        let scrape_id = scrape.source();
         match self.scrapes.entry(scrape_id) {
             Entry::Occupied(mut x) => {
                 Self::merge_scrape(&mut x.get_mut(), scrape);
@@ -205,7 +205,7 @@ impl Story {
                 ScrapeSource::Lobsters => 1,
                 ScrapeSource::Slashdot => 2,
                 // User-submitted titles are generally just OK
-                ScrapeSource::Reddit(_) => 3,
+                ScrapeSource::Reddit => 3,
                 ScrapeSource::Other => 99,
             }
         };

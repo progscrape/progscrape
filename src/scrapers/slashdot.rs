@@ -7,11 +7,17 @@ use tl::{HTMLTag, Parser, ParserOptions};
 
 use crate::story::{StoryDate, StoryUrl};
 
-use super::{html::*, ScrapeData, ScrapeDataInit, ScrapeSource, Scraper};
+use super::{html::*, ScrapeData, ScrapeDataInit, ScrapeSource, Scraper, ScrapeConfigSource, ScrapeId};
 
 #[derive(Default, Serialize, Deserialize)]
 pub struct SlashdotConfig {
     homepage: String,
+}
+
+impl ScrapeConfigSource for SlashdotConfig {
+    fn provide_urls(&self) -> Vec<String> {
+        vec![self.homepage.clone()]
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -25,10 +31,6 @@ pub struct SlashdotStory {
 }
 
 impl ScrapeData for SlashdotStory {
-    fn id(&self) -> String {
-        self.id.clone()
-    }
-
     fn title(&self) -> String {
         return self.title.clone();
     }
@@ -41,8 +43,8 @@ impl ScrapeData for SlashdotStory {
         unimplemented!()
     }
 
-    fn source(&self) -> super::ScrapeSource {
-        return ScrapeSource::Slashdot;
+    fn source(&self) -> ScrapeId {
+        ScrapeId::new(ScrapeSource::Slashdot, None, self.id.clone())
     }
 
     fn date(&self) -> StoryDate {

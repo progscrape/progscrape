@@ -6,6 +6,12 @@ pub struct LobstersConfig {
     feed: String,
 }
 
+impl ScrapeConfigSource for LobstersConfig {
+    fn provide_urls(&self) -> Vec<String> {
+        vec![self.feed.clone()]
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct LobstersStory {
     pub id: String,
@@ -18,10 +24,6 @@ pub struct LobstersStory {
 }
 
 impl ScrapeData for LobstersStory {
-    fn id(&self) -> String {
-        self.id.clone()
-    }
-
     fn title(&self) -> String {
         return self.title.clone();
     }
@@ -34,8 +36,8 @@ impl ScrapeData for LobstersStory {
         unimplemented!()
     }
 
-    fn source(&self) -> super::ScrapeSource {
-        return ScrapeSource::Lobsters;
+    fn source(&self) -> ScrapeId {
+        ScrapeId::new(ScrapeSource::Lobsters, None, self.id.clone())
     }
 
     fn date(&self) -> StoryDate {
