@@ -1,6 +1,12 @@
 use super::*;
 use serde::{Deserialize, Serialize};
 
+
+#[derive(Default, Serialize, Deserialize)]
+pub struct LobstersConfig {
+    feed: String,
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct LobstersStory {
     pub id: String,

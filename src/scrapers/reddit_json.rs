@@ -4,6 +4,11 @@ use serde_json::Value;
 use super::{unescape_entities, ScrapeData, ScrapeDataInit, ScrapeError, ScrapeSource, Scraper};
 use crate::story::{StoryDate, StoryUrl};
 
+#[derive(Default, Serialize, Deserialize)]
+pub struct RedditConfig {
+    api: String,
+}
+
 #[derive(Default)]
 pub struct RedditArgs {}
 

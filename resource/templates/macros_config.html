@@ -1,0 +1,14 @@
+{% macro print_config(config) %}
+<table>
+{% for key, value in config %}
+<tr><th>{{ key }}</th><td>
+{% if value is object %}
+    {# Workaround for self not working: https://github.com/Keats/tera/issues/562 #}
+    {{ macros_config::print_config(config=value) }}
+{% else %}
+    {{ value }}
+{% endif %}
+</td></tr>
+{% endfor %}
+</table>
+{% endmacro %}

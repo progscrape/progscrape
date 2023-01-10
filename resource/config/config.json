@@ -2,5 +2,20 @@
     "score": {
         "age_breakpoint_days": [1, 30],
         "hour_scores": [-5, -3, -0.1]
+    },
+    "scrape": {
+        "hacker_news": {
+            "homepage": "https://news.ycombinator.com/news"
+        },
+        "slashdot": {
+            "homepage": "https://slashdot.org/"
+        },
+        "lobsters": {
+            "feed": "https://lobste.rs/rss"
+        },
+        "reddit": {
+            "api": "http://reddit.com/r/{}/.json",
+            "limit": 50
+        }
     }
 }

@@ -184,7 +184,7 @@ async fn status(
     render(
         &resources,
         "admin_status.html",
-        context!(storage: StorageSummary = state.storage.story_count()?),
+        context!(storage: StorageSummary = state.storage.story_count()?, config: std::sync::Arc<crate::config::Config> = resources.config().clone()),
     )
 }
 

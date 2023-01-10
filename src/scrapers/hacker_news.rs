@@ -7,6 +7,11 @@ use super::{
 };
 use crate::story::{StoryDate, StoryUrl};
 
+#[derive(Default, Serialize, Deserialize)]
+pub struct HackerNewsConfig {
+    homepage: String,
+}
+
 #[derive(Debug, Default)]
 pub struct HackerNewsArgs {}
 

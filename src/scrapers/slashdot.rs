@@ -9,6 +9,11 @@ use crate::story::{StoryDate, StoryUrl};
 
 use super::{html::*, ScrapeData, ScrapeDataInit, ScrapeSource, Scraper};
 
+#[derive(Default, Serialize, Deserialize)]
+pub struct SlashdotConfig {
+    homepage: String,
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct SlashdotStory {
     pub id: String,

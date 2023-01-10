@@ -9,6 +9,14 @@ pub mod lobsters;
 pub mod reddit_json;
 pub mod slashdot;
 
+#[derive(Default, Serialize, Deserialize)]
+pub struct ScrapeConfig {
+    hacker_news: hacker_news::HackerNewsConfig,
+    slashdot: slashdot::SlashdotConfig,
+    lobsters: lobsters::LobstersConfig,
+    reddit: reddit_json::RedditConfig,
+}
+
 #[derive(Error, Debug)]
 pub enum ScrapeError {
     #[error("I/O error")]
