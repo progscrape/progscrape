@@ -13,7 +13,7 @@ use thiserror::Error;
 
 use crate::{
     persist::{PersistError, StorageSummary},
-    scrapers::{web_scraper::{WebScrapeInput, WebScraper}, ScrapeSource},
+    scrapers::{web_scraper::{WebScrapeInput, WebScraper}, ScrapeSource, Scrape},
     story::{rescore_stories, Story, StoryDate, StoryIdentifier, StoryRender, StoryScoreType},
 };
 
@@ -33,6 +33,8 @@ pub enum WebError {
     HyperError(#[from] hyper::Error),
     #[error("Persistence error")]
     PersistError(#[from] crate::persist::PersistError),
+    #[error("Scrape error")]
+    ScrapeError(#[from] crate::scrapers::ScrapeError),
     #[error("I/O error")]
     IOError(#[from] std::io::Error),
     #[error("Invalid header")]
@@ -45,6 +47,8 @@ pub enum WebError {
     CBORError(#[from] serde_cbor::Error),
     #[error("JSON error")]
     JSONError(#[from] serde_json::Error),
+    #[error("Reqwest error")]
+    ReqwestError(#[from] reqwest::Error),
     #[error("Item not found")]
     NotFound,
 }
@@ -213,7 +217,7 @@ async fn admin_scrape(
 struct AdminScrapeTestParams {
     /// Which source do we want to scrape?
     source: ScrapeSource,
-
+    subsources: Vec<String>,
 }
 
 async fn admin_scrape_test(
@@ -221,9 +225,14 @@ async fn admin_scrape_test(
     Json(params): Json<AdminScrapeTestParams>,
 ) -> Result<Html<String>, WebError> {
     let config = resources.config().clone();
-    
+    let urls = WebScraper::compute_urls(&config.scrape, params.source, params.subsources);
+    let mut results = vec![];
+    for url in urls {
+        let text = reqwest::get(&url).await?.text().await?;
+        results.push((url, WebScraper::scrape(&config.scrape, params.source, text)?));
+    }
     render(&resources, "admin/scrape_test.html", context!(
-        // scrapes: Vec<Scrape> = WebScraper::scrape()
+        scrapes: Vec<(String, (Vec<Scrape>, Vec<String>))> = results
     ))
 }
 

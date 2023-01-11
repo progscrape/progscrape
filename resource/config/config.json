@@ -14,7 +14,12 @@
             "feed": "https://lobste.rs/rss"
         },
         "reddit": {
-            "api": "http://reddit.com/r/{}/.json",
+            "api": "http://reddit.com/r/${subreddits}/.json",
+            "subreddit_batch": 5,
+            "subreddits": [
+                {"name": "rust"},
+                {"name": "golang"}
+            ],
             "limit": 50
         }
     }

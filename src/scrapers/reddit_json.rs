@@ -19,6 +19,8 @@ impl ScrapeSource2 for Reddit {
 #[derive(Default, Serialize, Deserialize)]
 pub struct RedditConfig {
     api: String,
+    subreddit_batch: usize,
+    limit: usize,
     subreddits: Vec<SubredditConfig>,
 }
 
@@ -27,8 +29,12 @@ impl ScrapeConfigSource for RedditConfig {
         self.subreddits.iter().map(|s| s.name.clone()).collect()
     }
 
-    fn provide_urls(&self, _: Vec<String>) -> Vec<String> {
-        vec![self.api.clone()]
+    fn provide_urls(&self, subsources: Vec<String>) -> Vec<String> {
+        let mut output = vec![];
+        for chunk in subsources.chunks(self.subreddit_batch) {
+            output.push(self.api.replace("${subreddits}", &chunk.join("+")) + &format!("?limit={}", self.limit))
+        }
+        output
     }
 }
 
@@ -210,7 +216,7 @@ impl RedditScraper {
             upvotes: self.require_integer(data, "ups")?,
             upvote_ratio: self.require_float(data, "upvote_ratio")? as f32,
             subreddit: self.require_string(data, "subreddit")?,
-            flair: self.optional_string(data, "link_flair_text")?,
+            flair: unescape_entities(&self.optional_string(data, "link_flair_text")?),
             id: self.require_string(data, "id")?,
             date,
             position,

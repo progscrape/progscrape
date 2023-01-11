@@ -1,2 +1,32 @@
-{% for scrape in scrapes %}
+{% for url in scrapes %}
+<h2>{{ url.0 }}</h2>
+
+<h3>Scrapes</h3>
+<table>
+{% for scrape_outer in url.1.0 %}
+{% if loop.first %}
+{% for scrape_type, scrape in scrape_outer %}
+<tr>
+    {% for key, value in scrape %}
+    <th>{{ key }}</th>
+    {% endfor %}
+</tr>
+{% endfor %}
+{% endif %}
+{% for scrape_type, scrape in scrape_outer %}
+    <tr>
+        {% for key, value in scrape %}
+        <td>{{ value }}</td>
+        {% endfor %}
+    </tr>
+{% endfor %}
+{% endfor %}
+</table>
+
+<h3>Warnings</h3>
+<ul>
+{% for x in url.1.1 %}
+<li>{{ x }}</li>
+{% endfor %}
+</ul>
 {% endfor %}
