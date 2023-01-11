@@ -322,7 +322,7 @@ impl StoryScorer {
     }
 
     #[inline(always)]
-    fn score_impl<T: FnMut(StoryScore, f32) -> ()>(
+    fn score_impl<T: FnMut(StoryScore, f32)>(
         config: &StoryScoreConfig,
         story: &Story,
         score_type: StoryScoreType,

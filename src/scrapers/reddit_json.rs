@@ -185,26 +185,25 @@ impl RedditScraper {
             if let Some(n) = n.as_f64() {
                 return Ok(n);
             }
-            return Err(format!(
+            Err(format!(
                 "Failed to parse {} as float (value was {:?})",
                 key, n
-            ));
+            ))
         } else {
-            return Err(format!(
+            Err(format!(
                 "Missing or invalid field {:?} (value was {:?})",
                 key, data[key]
-            ));
+            ))
         }
     }
 
     fn map_story(&self, child: &Value, position: u32) -> Result<RedditStory, String> {
         let kind = child["kind"].as_str();
-        let data;
-        if kind == Some("t3") {
-            data = &child["data"];
+        let data = if kind == Some("t3") {
+            &child["data"]
         } else {
             return Err(format!("Unknown story type: {:?}", kind));
-        }
+        };
 
         let millis = self.require_integer(data, "created_utc")?;
         let date = StoryDate::from_millis(millis).ok_or(format!("Unmappable date"))?;

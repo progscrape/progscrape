@@ -4,7 +4,7 @@ use lazy_static::lazy_static;
 use regex::Regex;
 use url::Url;
 
-const IGNORED_QUERY_PARAMS: [&'static str; 13] = [
+const IGNORED_QUERY_PARAMS: [&str; 13] = [
     "utm_source",
     "utm_medium",
     "utm_campaign",
@@ -30,7 +30,7 @@ pub struct EscapedCompareToken<'a>(&'a str);
 impl<'a> PartialEq for EscapedCompareToken<'a> {
     fn eq(&self, other: &Self) -> bool {
         fn consume_with_escape(c: char, ci: &mut Chars) -> char {
-            const HEX_DIGIT: &'static str = "0123456789abcdef0123456789ABCDEF";
+            const HEX_DIGIT: &str = "0123456789abcdef0123456789ABCDEF";
             if c == '+' {
                 return ' ';
             }
@@ -57,7 +57,7 @@ impl<'a> PartialEq for EscapedCompareToken<'a> {
                 return false;
             }
         }
-        return it2.next().is_none();
+        it2.next().is_none()
     }
 }
 

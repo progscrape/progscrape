@@ -104,11 +104,10 @@ pub async fn start_server() -> Result<(), WebError> {
 }
 
 fn render_stories<'a>(iter: impl Iterator<Item = &'a Story>) -> Vec<StoryRender> {
-    let v = iter
+    iter
         .enumerate()
         .map(|(n, x)| x.render(n))
-        .collect::<Vec<_>>();
-    v
+        .collect::<Vec<_>>()
 }
 
 fn now(global: &index::Global) -> StoryDate {

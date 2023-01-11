@@ -1,5 +1,4 @@
 use super::*;
-use rusqlite::ToSql;
 use serde::{de::DeserializeOwned, Serialize};
 
 struct DB {

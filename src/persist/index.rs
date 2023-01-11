@@ -69,7 +69,7 @@ impl StoryIndexShard {
             }),
             ..Default::default()
         };
-        let index = Index::create(directory, schema.clone(), settings)?;
+        let index = Index::create(directory, schema, settings)?;
         Ok(Self {
             index,
             url_field,
@@ -149,7 +149,7 @@ impl StoryIndexShard {
                         }
                     }
                 }
-                return true;
+                true
             });
             // Early exit optimization
             if stories.is_empty() {
@@ -185,7 +185,7 @@ impl StoryIndex {
         (date.year() as u32) * 12 + date.month0()
     }
 
-    fn ensure_shard<'a>(&mut self, shard: u32) -> Result<(), PersistError> {
+    fn ensure_shard(&mut self, shard: u32) -> Result<(), PersistError> {
         if !self.index_cache.contains_key(&shard) {
             println!("Creating shard {}", shard);
             let new_shard = StoryIndexShard::initialize((self.directory_fn)(shard))?;
@@ -250,7 +250,7 @@ impl StoryIndex {
                             &mut writer,
                             StoryInsert {
                                 url: story.url().raw(),
-                                url_norm: &story.url().normalization().string(),
+                                url_norm: story.url().normalization().string(),
                                 url_norm_hash: story.url().normalization().hash(),
                                 title: &story.title(),
                                 date: story.date().timestamp(),
@@ -388,8 +388,7 @@ mod test {
         let count_found = |vec: Vec<StoryLookup>| {
             vec.iter()
                 .filter(|x| matches!(x, StoryLookup::Found(..)))
-                .collect::<Vec<_>>()
-                .len()
+                .count()
         };
         macro_rules! test_range {
             ($date:expr, $slop:expr, $expected:expr) => {
