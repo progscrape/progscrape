@@ -22,6 +22,7 @@ use crate::{
 
 use self::resource::Resources;
 
+pub mod cron;
 mod filters;
 mod index;
 mod resource;

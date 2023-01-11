@@ -22,5 +22,13 @@
             ],
             "limit": 50
         }
+    },
+    "cron": {
+        "jobs": {
+            "refresh_homepage": {
+                "url": "/cron/refresh",
+                "interval": [1, "Minute"]
+            }
+        }
     }
 }

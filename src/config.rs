@@ -5,4 +5,5 @@ use serde::{Deserialize, Serialize};
 pub struct Config {
     pub score: crate::story::StoryScoreConfig,
     pub scrape: crate::scrapers::ScrapeConfig,
+    pub cron: crate::web::cron::CronConfig,
 }
