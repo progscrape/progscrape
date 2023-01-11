@@ -19,16 +19,22 @@ impl ScrapeSource2 for Reddit {
 #[derive(Default, Serialize, Deserialize)]
 pub struct RedditConfig {
     api: String,
+    subreddits: Vec<SubredditConfig>,
 }
 
 impl ScrapeConfigSource for RedditConfig {
     fn subsources(&self) -> Vec<String> {
-        vec![]
+        self.subreddits.iter().map(|s| s.name.clone()).collect()
     }
 
     fn provide_urls(&self, _: Vec<String>) -> Vec<String> {
         vec![self.api.clone()]
     }
+}
+
+#[derive(Default, Serialize, Deserialize)]
+pub struct SubredditConfig {
+    name: String,
 }
 
 #[derive(Default)]
@@ -219,26 +225,33 @@ impl Scraper<RedditConfig, RedditStory> for RedditScraper {
         _args: &RedditConfig,
         input: String,
     ) -> Result<(Vec<RedditStory>, Vec<String>), ScrapeError> {
-        let value: Value = serde_json::from_str(&input)?;
-        if let Some(object) = value.as_object() {
-            if let Some(children) = object["data"]["children"].as_array() {
-                let mut vec = vec![];
-                let mut errors = vec![];
-                for (position, child) in children.iter().enumerate() {
-                    match self.map_story(child, position as u32) {
-                        Ok(story) => vec.push(story),
-                        Err(e) => errors.push(e),
-                    }
+        let root: Value = serde_json::from_str(&input)?;
+        let mut value = &root;
+        for path in ["data", "children"] {
+            if let Some(object) = value.as_object() {
+                if let Some(nested_value) = object.get(path) {
+                    value = nested_value;
+                } else {
+                    return Err(ScrapeError::StructureError(
+                        "Failed to parse Reddit JSON data.children".to_owned(),
+                    ))
                 }
-                return Ok((vec, errors));
-            } else {
-                return Err(ScrapeError::StructureError(
-                    "Missing children element".to_owned(),
-                ));
             }
+        }
+
+        if let Some(children) = value.as_array() {
+            let mut vec = vec![];
+            let mut errors = vec![];
+            for (position, child) in children.iter().enumerate() {
+                match self.map_story(child, position as u32) {
+                    Ok(story) => vec.push(story),
+                    Err(e) => errors.push(e),
+                }
+            }
+            return Ok((vec, errors));
         } else {
             return Err(ScrapeError::StructureError(
-                "Failed to parse Reddit JSON".to_owned(),
+                "Missing children element".to_owned(),
             ));
         }
     }
