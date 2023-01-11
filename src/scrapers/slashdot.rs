@@ -134,7 +134,7 @@ impl SlashdotScraper {
             return Err(format!("Title was too short: {}", title));
         }
         let story_url =
-            get_attribute(p, story_link, "href").ok_or("Missing story href".to_string())?;
+            get_attribute(p, story_link, "href").ok_or_else(|| "Missing story href".to_string())?;
         let (_, b) = story_url
             .split_once("/story/")
             .ok_or(format!("Invalid link format: {}", story_url))?;
@@ -145,7 +145,7 @@ impl SlashdotScraper {
         let id = id.join("/");
 
         let external_link = links.next().ok_or("Missing external link")?;
-        let href = get_attribute(p, external_link, "href").ok_or("Missing href".to_string())?;
+        let href = get_attribute(p, external_link, "href").ok_or_else(|| "Missing href".to_string())?;
         let url = StoryUrl::parse(&href).ok_or(format!("Invalid href: {}", href))?;
 
         // This doesn't appear if there are no comments on a story, so we need to be flexible
@@ -158,7 +158,7 @@ impl SlashdotScraper {
             0
         };
 
-        let topics = find_first(p, article, ".topic").ok_or("Mising topics".to_string())?;
+        let topics = find_first(p, article, ".topic").ok_or_else(|| "Mising topics".to_string())?;
         let mut tags = vec![];
         for topic in html_tag_iterator(p, topics.query_selector(p, "img")) {
             tags.push(
@@ -168,7 +168,7 @@ impl SlashdotScraper {
             );
         }
 
-        let date = find_first(p, article, "time").ok_or("Could not locate time".to_string())?;
+        let date = find_first(p, article, "time").ok_or_else(|| "Could not locate time".to_string())?;
         let date = Self::parse_time(&date.inner_text(p))?;
 
         Ok(SlashdotStory {

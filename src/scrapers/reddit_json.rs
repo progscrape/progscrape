@@ -206,9 +206,9 @@ impl RedditScraper {
         };
 
         let millis = self.require_integer(data, "created_utc")?;
-        let date = StoryDate::from_millis(millis).ok_or("Unmappable date".to_string())?;
+        let date = StoryDate::from_millis(millis).ok_or_else(|| "Unmappable date".to_string())?;
         let url = StoryUrl::parse(unescape_entities(&self.require_string(data, "url")?))
-            .ok_or("Unmappable URL".to_string())?;
+            .ok_or_else(|| "Unmappable URL".to_string())?;
         let story = RedditStory {
             title: unescape_entities(&self.require_string(data, "title")?),
             url,
