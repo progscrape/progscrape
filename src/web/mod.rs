@@ -192,7 +192,7 @@ async fn root(
 }
 
 async fn admin(
-    State((state, resources)): State<(index::Global, Resources)>,
+    State((_state, resources)): State<(index::Global, Resources)>,
 ) -> Result<Html<String>, WebError> {
     render(
         &resources,
@@ -202,7 +202,7 @@ async fn admin(
 }
 
 async fn admin_scrape(
-    State((state, resources)): State<(index::Global, Resources)>,
+    State((_state, resources)): State<(index::Global, Resources)>,
 ) -> Result<Html<String>, WebError> {
     let config = resources.config().clone();
     render(
@@ -224,7 +224,7 @@ struct AdminScrapeTestParams {
 }
 
 async fn admin_scrape_test(
-    State((state, resources)): State<(index::Global, Resources)>,
+    State((_state, resources)): State<(index::Global, Resources)>,
     Json(params): Json<AdminScrapeTestParams>,
 ) -> Result<Html<String>, WebError> {
     let config = resources.config().clone();

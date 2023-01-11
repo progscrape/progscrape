@@ -153,7 +153,7 @@ impl SlashdotScraper {
             comments
                 .inner_text(p)
                 .parse()
-                .map_err(|e| "Failed to parse number of comments")?
+                .map_err(|_e| "Failed to parse number of comments")?
         } else {
             0
         };
@@ -185,7 +185,7 @@ impl SlashdotScraper {
 impl Scraper<SlashdotConfig, SlashdotStory> for SlashdotScraper {
     fn scrape(
         &self,
-        args: &SlashdotConfig,
+        _args: &SlashdotConfig,
         input: String,
     ) -> Result<(Vec<SlashdotStory>, Vec<String>), super::ScrapeError> {
         let dom = tl::parse(&input, ParserOptions::default())?;

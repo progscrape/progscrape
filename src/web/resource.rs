@@ -2,7 +2,7 @@ use notify::RecursiveMode;
 use notify::Watcher;
 use std::fs::File;
 use std::io::BufReader;
-use std::io::Read;
+
 use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;

@@ -91,8 +91,8 @@ pub struct LobstersScraper {}
 impl Scraper<LobstersConfig, LobstersStory> for LobstersScraper {
     fn scrape(
         &self,
-        args: &LobstersConfig,
-        input: String,
+        _args: &LobstersConfig,
+        _input: String,
     ) -> Result<(Vec<LobstersStory>, Vec<String>), ScrapeError> {
         unimplemented!()
     }

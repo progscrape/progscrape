@@ -314,7 +314,7 @@ impl Storage for StoryIndex {
         Ok(summary)
     }
 
-    fn get_story(&self, id: &StoryIdentifier) -> Option<Story> {
+    fn get_story(&self, _id: &StoryIdentifier) -> Option<Story> {
         unimplemented!()
     }
 
@@ -322,7 +322,7 @@ impl Storage for StoryIndex {
         unimplemented!()
     }
 
-    fn query_frontpage_hot_set(&self, max_count: usize) -> Result<Vec<Story>, PersistError> {
+    fn query_frontpage_hot_set(&self, _max_count: usize) -> Result<Vec<Story>, PersistError> {
         unimplemented!()
     }
 
