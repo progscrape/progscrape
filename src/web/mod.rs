@@ -162,7 +162,7 @@ async fn root(
     State((state, resources)): State<(index::Global, Resources)>,
 ) -> Result<Html<String>, WebError> {
     let now = now(&state);
-    let stories = render_stories(hot_set(now, &state, &resources.config())?[0..30].into_iter());
+    let stories = render_stories(hot_set(now, &state, &resources.config())?[0..30].iter());
     let top_tags = vec![
         "github.com",
         "rust",
@@ -197,14 +197,14 @@ async fn admin(
     render(
         &resources,
         "admin/admin.html",
-        context!(config: std::sync::Arc<crate::config::Config> = resources.config().clone()),
+        context!(config: std::sync::Arc<crate::config::Config> = resources.config()),
     )
 }
 
 async fn admin_scrape(
     State((_state, resources)): State<(index::Global, Resources)>,
 ) -> Result<Html<String>, WebError> {
-    let config = resources.config().clone();
+    let config = resources.config();
     render(
         &resources,
         "admin/scrape.html",
@@ -227,7 +227,7 @@ async fn admin_scrape_test(
     State((_state, resources)): State<(index::Global, Resources)>,
     Json(params): Json<AdminScrapeTestParams>,
 ) -> Result<Html<String>, WebError> {
-    let config = resources.config().clone();
+    let config = resources.config();
     let urls = WebScraper::compute_urls(&config.scrape, params.source, params.subsources);
     let mut results = vec![];
     for url in urls {
@@ -252,7 +252,7 @@ async fn admin_index_status(
         "admin/status.html",
         context!(
             storage: StorageSummary = state.storage.story_count()?,
-            config: std::sync::Arc<crate::config::Config> = resources.config().clone()
+            config: std::sync::Arc<crate::config::Config> = resources.config()
         ),
     )
 }

@@ -26,7 +26,7 @@ fn mime_type_from(extension: &str, buf: &[u8]) -> Option<&'static str> {
     match extension {
         "txt" => Some("text/plain"),
         "css" => Some("text/css"),
-        _ => infer::get(&buf).map(|x| x.mime_type()),
+        _ => infer::get(buf).map(|x| x.mime_type()),
     }
 }
 
@@ -51,7 +51,7 @@ impl StaticFileRegistry {
         buf: &[u8],
     ) -> Result<(), std::io::Error> {
         let mime_type =
-            mime_type_from(extension, &buf).expect(&format!("File type was not known for {}", key));
+            mime_type_from(extension, buf).expect(&format!("File type was not known for {}", key));
 
         let mut hash = sha2::Sha256::new();
         hash.update(&buf);

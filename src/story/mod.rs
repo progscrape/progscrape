@@ -286,13 +286,9 @@ enum StoryScore {
 }
 
 /// Re-scores stories w/age score.
-pub fn rescore_stories(
-    config: &StoryScoreConfig,
-    relative_to: StoryDate,
-    stories: &mut Vec<Story>,
-) {
+pub fn rescore_stories(config: &StoryScoreConfig, relative_to: StoryDate, stories: &mut [Story]) {
     for story in stories.iter_mut() {
-        story.score = story.score + StoryScorer::score_age(config, relative_to - story.date());
+        story.score += StoryScorer::score_age(config, relative_to - story.date());
     }
 }
 
@@ -430,7 +426,6 @@ mod test {
         let config = StoryScoreConfig {
             age_breakpoint_days: [1, 30],
             hour_scores: [-5.0, -3.0, -0.1],
-            ..Default::default()
         };
         let mut last_score = f32::MAX;
         for i in 0..Duration::days(60).num_hours() {

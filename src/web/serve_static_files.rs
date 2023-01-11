@@ -29,7 +29,9 @@ lazy_static! {
         "progscrape".parse().expect("Failed to parse header");
 }
 
+#[allow(clippy::declare_interior_mutable_const)]
 const NO_RESPONSE: Bytes = Bytes::new();
+
 type StaticResponse = (StatusCode, HeaderMap, axum::body::Bytes);
 
 fn not_found(key: &str, headers: HeaderMap) -> StaticResponse {
@@ -88,7 +90,7 @@ pub async fn well_known(
     if let Some(key) = static_files.lookup_key(&file) {
         headers.append(ETAG, key.parse()?);
 
-        if let Some((bytes, mime)) = static_files.get_bytes_from_key(&key) {
+        if let Some((bytes, mime)) = static_files.get_bytes_from_key(key) {
             headers.append(CACHE_CONTROL, IMMUTABLE_CACHE_WELL_KNOWN_HEADER.clone());
             headers.append(CONTENT_LENGTH, bytes.len().into());
             headers.append(CONTENT_TYPE, mime.parse()?);

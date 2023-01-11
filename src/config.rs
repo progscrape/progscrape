@@ -1,5 +1,3 @@
-
-
 use serde::{Deserialize, Serialize};
 
 /// Root configuration for the application.

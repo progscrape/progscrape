@@ -43,9 +43,9 @@ pub enum ScrapeError {
     #[error("I/O error")]
     IO(#[from] std::io::Error),
     #[error("JSON parse error")]
-    JSON(#[from] serde_json::Error),
+    Json(#[from] serde_json::Error),
     #[error("HTML parse error")]
-    HTML(#[from] tl::ParseError),
+    Html(#[from] tl::ParseError),
     #[error("Structure error")]
     StructureError(String),
 }
@@ -157,10 +157,10 @@ impl From<slashdot::SlashdotStory> for Scrape {
 impl AsRef<dyn ScrapeData + 'static> for Scrape {
     fn as_ref(&self) -> &(dyn ScrapeData + 'static) {
         match self {
-            &Scrape::HackerNews(ref x) => x,
-            &Scrape::Reddit(ref x) => x,
-            &Scrape::Lobsters(ref x) => x,
-            &Scrape::Slashdot(ref x) => x,
+            Scrape::HackerNews(x) => x,
+            Scrape::Reddit(x) => x,
+            Scrape::Lobsters(x) => x,
+            Scrape::Slashdot(x) => x,
         }
     }
 }

@@ -36,7 +36,7 @@ fn import_legacy_1() -> Result<impl Iterator<Item = Scrape>, LegacyError> {
     let mut out = vec![];
     loop {
         let mut buf = vec![];
-        let read = decoder.read_until('\n' as u8, &mut buf)?;
+        let read = decoder.read_until(b'\n', &mut buf)?;
         if read == 0 {
             break;
         }
@@ -57,7 +57,7 @@ fn import_legacy_1() -> Result<impl Iterator<Item = Scrape>, LegacyError> {
         }
         if url.ends_with(" /") {
             let old = url.clone();
-            url = url.replace(" ", "");
+            url = url.replace(' ', "");
             tracing::info!("Fixed up (removed spaces): {}->{}", old, url);
         }
         let url = StoryUrl::parse(&url).ok_or(LegacyError::InvalidField("url", Some(url)))?;

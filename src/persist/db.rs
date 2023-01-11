@@ -87,15 +87,9 @@ impl DB {
             .connection
             .query_row_and_then(&sql, [id], |row| serde_rusqlite::from_row::<T>(row))
         {
-            Err(serde_rusqlite::Error::Rusqlite(rusqlite::Error::QueryReturnedNoRows)) => {
-                return Ok(None);
-            }
-            Err(x) => {
-                return Err(PersistError::SerdeError(x));
-            }
-            Ok(x) => {
-                return Ok(Some(x));
-            }
+            Err(serde_rusqlite::Error::Rusqlite(rusqlite::Error::QueryReturnedNoRows)) => Ok(None),
+            Err(x) => Err(PersistError::SerdeError(x)),
+            Ok(x) => Ok(Some(x)),
         }
     }
 }

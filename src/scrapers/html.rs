@@ -56,7 +56,7 @@ pub fn unescape_entities(input: &str) -> String {
                             continue 'char;
                         }
                     }
-                } else if entity_name.starts_with("#") {
+                } else if entity_name.starts_with('#') {
                     if let Ok(n) = u32::from_str_radix(&entity_name[1..entity_name.len()], 10) {
                         if let Some(c) = char::from_u32(n) {
                             s.push(c);
@@ -87,7 +87,7 @@ pub fn unescape_entities(input: &str) -> String {
     if !entity_name.is_empty() {
         s += &format!("&{}", entity_name);
     }
-    return s;
+    s
 }
 
 #[cfg(test)]

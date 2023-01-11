@@ -124,7 +124,7 @@ impl HackerNewsScraper {
         }
 
         fn extract_number(s: &str) -> Result<u32, String> {
-            str::parse(&s.replace(|c| c < '0' || c > '9', ""))
+            str::parse(&s.replace(|c| !('0'..='9').contains(&c), ""))
                 .map_err(|_| format!("Failed to parse number: '{}'", s))
         }
 

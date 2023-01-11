@@ -222,7 +222,7 @@ impl StoryIndex {
                 )
             });
             let stories = HashMap::<_, _>::from_iter(iter);
-            let story_ids = HashSet::from_iter(stories.keys().map(|x| *x));
+            let story_ids = HashSet::from_iter(stories.keys().copied());
             let one_month = Duration::from_secs(60 * 60 * 24 * 30).as_secs() as i64;
             let result = index.lookup_stories(&searcher, story_ids, (-one_month)..one_month)?;
             for result in result {

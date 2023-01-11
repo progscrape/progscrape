@@ -48,7 +48,7 @@ fn create_static_files(css: String, admin_css: String) -> Result<StaticFileRegis
     let mut css_vars = ":root {\n".to_owned();
     for key in static_files.keys() {
         let url = static_files.lookup_key(&key).unwrap_or_default();
-        css_vars += &format!("--url-{}: url(\"{}\");\n", key.replace(".", "-"), url);
+        css_vars += &format!("--url-{}: url(\"{}\");\n", key.replace('.', "-"), url);
     }
     css_vars += "}\n";
     static_files.register_bytes("style.css", "css", (css_vars.clone() + &css).as_bytes())?;
@@ -130,7 +130,7 @@ pub async fn start_watcher() -> Result<Resources, WebError> {
                 tracing::debug!("Debouncing extra event within timeout period");
             }
             tracing::info!("Regenerating...");
-            let res = tokio::task::spawn_blocking(|| generate()).await;
+            let res = tokio::task::spawn_blocking(generate).await;
             match res {
                 Ok(Ok(v)) => drop(tx.send(v)),
                 Ok(Err(e)) => tracing::error!("Failed to regenerate data: {:?}", e),
