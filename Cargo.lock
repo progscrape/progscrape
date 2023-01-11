@@ -1664,6 +1664,7 @@ dependencies = [
  "lazy_static",
  "notify",
  "num-format",
+ "rand",
  "regex",
  "reqwest",
  "roxmltree",

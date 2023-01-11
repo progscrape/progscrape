@@ -1,0 +1,17 @@
+{% extends "admin/base.html" %}
+{% block content %}
+<h1>Cron</h1>
+
+<table>
+<tr><th>Name</th><th>URL</th><th>Next</th></tr>
+{% for cron in cron %}
+<tr>
+<td>{{ cron.name }}</td><td>{{ cron.url }}</td><td>{{ cron.next }}</td>
+</tr>
+{% endfor %}
+</table>
+
+<h1>Config</h1>
+{{ macros_config::print_config(config=config.cron) }}
+
+{% endblock %}

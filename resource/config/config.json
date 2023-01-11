@@ -28,6 +28,22 @@
             "refresh_homepage": {
                 "url": "/cron/refresh",
                 "interval": [1, "Minute"]
+            },
+            "scrape_hackernews": {
+                "url": "/cron/scrape?source=HackerNews",
+                "interval": [22, "Minute"]
+            },
+            "scrape_reddit": {
+                "url": "/cron/scrape?source=Reddit",
+                "interval": [22, "Minute"]
+            },
+            "scrape_lobsters": {
+                "url": "/cron/scrape?source=Lobsters",
+                "interval": [22, "Minute"]
+            },
+            "scrape_slashdot": {
+                "url": "/cron/scrape?source=Slashdot",
+                "interval": [22, "Minute"]
             }
         }
     }

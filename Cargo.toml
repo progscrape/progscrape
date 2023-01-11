@@ -36,6 +36,7 @@ sha2 = "0.10"
 infer = "0.12"
 grass = "0.12"
 notify = "5.0.0"
+rand = "0.8.5"
 
 [dev-dependencies]
 rstest = "0.16.0"

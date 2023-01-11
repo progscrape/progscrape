@@ -1,4 +1,4 @@
-use std::{collections::HashMap, net::SocketAddr};
+use std::{collections::HashMap, net::SocketAddr, sync::Arc};
 
 use axum::{
     extract::{Path, Query, State},
@@ -10,6 +10,7 @@ use hyper::{HeaderMap, StatusCode};
 use serde::{Deserialize, Serialize};
 use tera::Context;
 use thiserror::Error;
+use tokio::sync::Mutex;
 
 use crate::{
     persist::{PersistError, StorageSummary},
@@ -17,7 +18,7 @@ use crate::{
         web_scraper::{WebScrapeInput, WebScraper},
         Scrape, ScrapeSource,
     },
-    story::{rescore_stories, Story, StoryDate, StoryIdentifier, StoryRender, StoryScoreType},
+    story::{rescore_stories, Story, StoryDate, StoryIdentifier, StoryRender, StoryScoreType}, web::cron::Cron,
 };
 
 use self::resource::Resources;
@@ -64,16 +65,33 @@ impl IntoResponse for WebError {
     }
 }
 
-pub fn admin_routes<S>(resources: Resources, global: index::Global) -> Router<S> {
+#[derive(Clone)]
+struct AdminState {
+    resources: Resources,
+    index: index::Global,
+    cron: Arc<Mutex<Cron>>
+}
+
+pub fn admin_routes<S>(resources: Resources, index: index::Global, cron: Arc<Mutex<Cron>>) -> Router<S> {
     Router::new()
         .route("/", get(admin))
+        .route("/cron/", get(admin_cron))
         .route("/scrape/", get(admin_scrape))
         .route("/scrape/test", post(admin_scrape_test))
         .route("/index/", get(admin_index_status))
         .route("/index/frontpage/", get(admin_status_frontpage))
         .route("/index/shard/:shard/", get(admin_status_shard))
         .route("/index/story/:story/", get(admin_status_story))
-        .with_state((global, resources))
+        .with_state(AdminState { resources, index, cron })
+}
+
+fn start_cron(cron: Arc<Mutex<Cron>>, resources: Resources) {
+    tokio::spawn(async move {
+        loop {
+            cron.lock().await.tick(&resources.config().cron);
+            tokio::time::sleep(std::time::Duration::from_secs(60)).await;
+        }
+    });
 }
 
 pub async fn start_server() -> Result<(), WebError> {
@@ -82,13 +100,16 @@ pub async fn start_server() -> Result<(), WebError> {
 
     let global = index::initialize_with_testing_data(&resources.config())?;
 
+    let cron = Arc::new(Mutex::new(Cron::initialize(&resources.config().cron)));
+    start_cron(cron.clone(), resources.clone());
+
     // build our application with a route
     let app = Router::new()
         .route("/", get(root))
         .with_state((global.clone(), resources.clone()))
         .route("/static/:file", get(serve_static_files_immutable))
         .with_state(resources.clone())
-        .nest("/admin", admin_routes(resources.clone(), global.clone()))
+        .nest("/admin", admin_routes(resources.clone(), global.clone(), cron.clone()))
         .route(
             "/:file",
             get(serve_static_files_well_known).with_state(resources.clone()),
@@ -160,10 +181,10 @@ fn render(
 
 // basic handler that responds with a static string
 async fn root(
-    State((state, resources)): State<(index::Global, Resources)>,
+    State((index, resources)): State<(index::Global, Resources)>,
 ) -> Result<Html<String>, WebError> {
-    let now = now(&state);
-    let stories = render_stories(hot_set(now, &state, &resources.config())?[0..30].iter());
+    let now = now(&index);
+    let stories = render_stories(hot_set(now, &index, &resources.config())?[0..30].iter());
     let top_tags = vec![
         "github.com",
         "rust",
@@ -193,7 +214,7 @@ async fn root(
 }
 
 async fn admin(
-    State((_state, resources)): State<(index::Global, Resources)>,
+    State(AdminState { resources, .. }): State<AdminState>,
 ) -> Result<Html<String>, WebError> {
     render(
         &resources,
@@ -202,8 +223,18 @@ async fn admin(
     )
 }
 
+async fn admin_cron(
+    State(AdminState { cron, resources, .. }): State<AdminState>,
+) -> Result<Html<String>, WebError> {
+    render(
+        &resources,
+        "admin/cron.html",
+        context!(config: std::sync::Arc<crate::config::Config> = resources.config(), cron: Vec<cron::CronTask> = cron.lock().await.inspect()),
+    )
+}
+
 async fn admin_scrape(
-    State((_state, resources)): State<(index::Global, Resources)>,
+    State(AdminState { resources, .. }): State<AdminState>,
 ) -> Result<Html<String>, WebError> {
     let config = resources.config();
     render(
@@ -225,7 +256,7 @@ struct AdminScrapeTestParams {
 }
 
 async fn admin_scrape_test(
-    State((_state, resources)): State<(index::Global, Resources)>,
+    State(AdminState { resources, .. }): State<AdminState>,
     Json(params): Json<AdminScrapeTestParams>,
 ) -> Result<Html<String>, WebError> {
     let config = resources.config();
@@ -246,37 +277,37 @@ async fn admin_scrape_test(
 }
 
 async fn admin_index_status(
-    State((state, resources)): State<(index::Global, Resources)>,
+    State(AdminState { index, resources, .. }): State<AdminState>,
 ) -> Result<Html<String>, WebError> {
     render(
         &resources,
         "admin/status.html",
         context!(
-            storage: StorageSummary = state.storage.story_count()?,
+            storage: StorageSummary = index.storage.story_count()?,
             config: std::sync::Arc<crate::config::Config> = resources.config()
         ),
     )
 }
 
 async fn admin_status_frontpage(
-    State((state, resources)): State<(index::Global, Resources)>,
+    State(AdminState { index, resources, .. }): State<AdminState>,
     sort: Query<HashMap<String, String>>,
 ) -> Result<Html<String>, WebError> {
-    let now = now(&state);
+    let now = now(&index);
     let sort = sort.get("sort").cloned().unwrap_or_default();
     render(
         &resources,
         "admin/frontpage.html",
         context!(
             stories: Vec<StoryRender> =
-                render_stories(hot_set(now, &state, &resources.config())?.iter(),),
+                render_stories(hot_set(now, &index, &resources.config())?.iter(),),
             sort: String = sort
         ),
     )
 }
 
 async fn admin_status_shard(
-    State((state, resources)): State<(index::Global, Resources)>,
+    State(AdminState { index, resources, .. }): State<AdminState>,
     Path(shard): Path<String>,
     sort: Query<HashMap<String, String>>,
 ) -> Result<Html<String>, WebError> {
@@ -287,20 +318,20 @@ async fn admin_status_shard(
         context!(
             shard: String = shard.clone(),
             stories: Vec<StoryRender> =
-                render_stories(state.storage.stories_by_shard(&shard)?.iter(),),
+                render_stories(index.storage.stories_by_shard(&shard)?.iter(),),
             sort: String = sort
         ),
     )
 }
 
 async fn admin_status_story(
-    State((state, resources)): State<(index::Global, Resources)>,
+    State(AdminState { index, resources, .. }): State<AdminState>,
     Path(id): Path<String>,
 ) -> Result<Html<String>, WebError> {
     let id = StoryIdentifier::from_base64(id).ok_or(WebError::NotFound)?;
-    let now = now(&state);
+    let now = now(&index);
     tracing::info!("Loading story = {:?}", id);
-    let story = state.storage.get_story(&id).ok_or(WebError::NotFound)?;
+    let story = index.storage.get_story(&id).ok_or(WebError::NotFound)?;
     render(
         &resources,
         "admin/story.html",
