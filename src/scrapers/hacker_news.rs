@@ -133,17 +133,17 @@ impl HackerNewsScraper {
                 return Err("Missing votelinks".to_string());
             }
             let first_link =
-                find_first(p, titleline, "a").ok_or("Failed to query first link".to_string())?;
+                find_first(p, titleline, "a").ok_or_else(|| "Failed to query first link".to_string())?;
             let title = unescape_entities(first_link.inner_text(p).borrow());
             let mut url = unescape_entities(
-                &get_attribute(p, first_link, "href").ok_or("Failed to get href".to_string())?,
+                &get_attribute(p, first_link, "href").ok_or_else(|| "Failed to get href".to_string())?,
             );
             if url.starts_with("item?") {
                 url.insert_str(0, "https://news.ycombinator.com/");
             }
             let url = StoryUrl::parse(&url).ok_or(format!("Failed to parse URL {}", url))?;
-            let id = get_attribute(p, node, "id").ok_or("Failed to get id node".to_string())?;
-            let rank = find_first(p, node, ".rank").ok_or("Failed to get rank".to_string())?;
+            let id = get_attribute(p, node, "id").ok_or_else(|| "Failed to get id node".to_string())?;
+            let rank = find_first(p, node, ".rank").ok_or_else(|| "Failed to get rank".to_string())?;
             let position = rank
                 .inner_text(p)
                 .trim_end_matches('.')
@@ -156,11 +156,11 @@ impl HackerNewsScraper {
                 title,
             }))
         } else if let Some(..) = find_first(p, node, ".subtext") {
-            let age_node = find_first(p, node, ".age").ok_or("Failed to query .age".to_string())?;
+            let age_node = find_first(p, node, ".age").ok_or_else(|| "Failed to query .age".to_string())?;
             let date = get_attribute(p, age_node, "title")
-                .ok_or("Failed to get age title".to_string())?
+                .ok_or_else(|| "Failed to get age title".to_string())?
                 + "Z";
-            let date = StoryDate::parse_from_rfc3339(&date).ok_or("Failed to map date".to_string())?;
+            let date = StoryDate::parse_from_rfc3339(&date).ok_or_else(|| "Failed to map date".to_string())?;
             let mut comments = None;
             for node in html_tag_iterator(p, node.query_selector(p, "a")) {
                 let text = node.inner_text(p);
@@ -171,13 +171,13 @@ impl HackerNewsScraper {
                 }
             }
             let score_node =
-                find_first(p, node, ".score").ok_or("Failed to query .score".to_string())?;
+                find_first(p, node, ".score").ok_or_else(|| "Failed to query .score".to_string())?;
             let id = get_attribute(p, score_node, "id")
-                .ok_or("Missing ID on score node".to_string())?
+                .ok_or_else(|| "Missing ID on score node".to_string())?
                 .trim_start_matches("score_")
                 .into();
             let points = extract_number(score_node.inner_text(p).borrow())?;
-            let comments = comments.ok_or("Missing comment count".to_string())?;
+            let comments = comments.ok_or_else(|| "Missing comment count".to_string())?;
             Ok(HackerNewsNode::InfoLine(HackerNewsInfoLine {
                 id,
                 comments,
