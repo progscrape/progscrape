@@ -67,11 +67,11 @@ pub struct RedditStory {
 
 impl ScrapeData for RedditStory {
     fn title(&self) -> String {
-        return self.title.clone();
+        self.title.clone()
     }
 
     fn url(&self) -> StoryUrl {
-        return self.url.clone();
+        self.url.clone()
     }
 
     fn comments_url(&self) -> String {
@@ -162,15 +162,15 @@ impl RedditScraper {
                     return Ok(n);
                 }
             }
-            return Err(format!(
+            Err(format!(
                 "Failed to parse {} as integer (value was {:?})",
                 key, n
-            ));
+            ))
         } else {
-            return Err(format!(
+            Err(format!(
                 "Missing or invalid field {:?} (value was {:?})",
                 key, data[key]
-            ));
+            ))
         }
     }
 
@@ -206,9 +206,9 @@ impl RedditScraper {
         };
 
         let millis = self.require_integer(data, "created_utc")?;
-        let date = StoryDate::from_millis(millis).ok_or(format!("Unmappable date"))?;
+        let date = StoryDate::from_millis(millis).ok_or("Unmappable date".to_string())?;
         let url = StoryUrl::parse(unescape_entities(&self.require_string(data, "url")?))
-            .ok_or(format!("Unmappable URL"))?;
+            .ok_or("Unmappable URL".to_string())?;
         let story = RedditStory {
             title: unescape_entities(&self.require_string(data, "title")?),
             url,
@@ -223,7 +223,7 @@ impl RedditScraper {
             date,
             position,
         };
-        return Ok(story);
+        Ok(story)
     }
 }
 
@@ -256,11 +256,11 @@ impl Scraper<RedditConfig, RedditStory> for RedditScraper {
                     Err(e) => errors.push(e),
                 }
             }
-            return Ok((vec, errors));
+            Ok((vec, errors))
         } else {
-            return Err(ScrapeError::StructureError(
+            Err(ScrapeError::StructureError(
                 "Missing children element".to_owned(),
-            ));
+            ))
         }
     }
 }
@@ -276,7 +276,7 @@ pub mod test {
         for file in reddit_files() {
             let stories = scraper
                 .scrape(&RedditConfig::default(), load_file(file))
-                .expect(&format!("Failed to parse a story from {}", file));
+                .unwrap_or_else(|_| panic!("Failed to parse a story from {}", file));
             all.extend(stories.0);
         }
         all

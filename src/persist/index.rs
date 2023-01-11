@@ -186,10 +186,10 @@ impl StoryIndex {
     }
 
     fn ensure_shard(&mut self, shard: u32) -> Result<(), PersistError> {
-        if !self.index_cache.contains_key(&shard) {
+        if let std::collections::hash_map::Entry::Vacant(e) = self.index_cache.entry(shard) {
             println!("Creating shard {}", shard);
             let new_shard = StoryIndexShard::initialize((self.directory_fn)(shard))?;
-            self.index_cache.insert(shard, new_shard);
+            e.insert(new_shard);
         }
         Ok(())
     }

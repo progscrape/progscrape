@@ -138,7 +138,7 @@ impl Story {
         let scrape_id = scrape.source();
         match self.scrapes.entry(scrape_id) {
             Entry::Occupied(mut x) => {
-                Self::merge_scrape(&mut x.get_mut(), scrape);
+                Self::merge_scrape(x.get_mut(), scrape);
             }
             Entry::Vacant(x) => {
                 x.insert(scrape);
@@ -222,7 +222,7 @@ impl Story {
                 continue;
             }
         }
-        (best_title.1.clone(), best_title.2)
+        (*best_title.1, best_title.2)
     }
 
     pub fn url(&self) -> StoryUrl {

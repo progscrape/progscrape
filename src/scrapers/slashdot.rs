@@ -45,11 +45,11 @@ pub struct SlashdotStory {
 
 impl ScrapeData for SlashdotStory {
     fn title(&self) -> String {
-        return self.title.clone();
+        self.title.clone()
     }
 
     fn url(&self) -> StoryUrl {
-        return self.url.clone();
+        self.url.clone()
     }
 
     fn comments_url(&self) -> String {
@@ -101,7 +101,7 @@ impl SlashdotScraper {
         let date = date
             .trim_start_matches("on ")
             .replace(['@', ','], "")
-            .to_string();
+            ;
 
         // Expected at point: 'Monday January 09 2023 08:25PM'
 
@@ -134,7 +134,7 @@ impl SlashdotScraper {
             return Err(format!("Title was too short: {}", title));
         }
         let story_url =
-            get_attribute(p, story_link, "href").ok_or(format!("Missing story href"))?;
+            get_attribute(p, story_link, "href").ok_or("Missing story href".to_string())?;
         let (_, b) = story_url
             .split_once("/story/")
             .ok_or(format!("Invalid link format: {}", story_url))?;
@@ -145,7 +145,7 @@ impl SlashdotScraper {
         let id = id.join("/");
 
         let external_link = links.next().ok_or("Missing external link")?;
-        let href = get_attribute(p, external_link, "href").ok_or(format!("Missing href"))?;
+        let href = get_attribute(p, external_link, "href").ok_or("Missing href".to_string())?;
         let url = StoryUrl::parse(&href).ok_or(format!("Invalid href: {}", href))?;
 
         // This doesn't appear if there are no comments on a story, so we need to be flexible
@@ -158,7 +158,7 @@ impl SlashdotScraper {
             0
         };
 
-        let topics = find_first(p, article, ".topic").ok_or(format!("Mising topics"))?;
+        let topics = find_first(p, article, ".topic").ok_or("Mising topics".to_string())?;
         let mut tags = vec![];
         for topic in html_tag_iterator(p, topics.query_selector(p, "img")) {
             tags.push(
@@ -168,7 +168,7 @@ impl SlashdotScraper {
             );
         }
 
-        let date = find_first(p, article, "time").ok_or(format!("Could not locate time"))?;
+        let date = find_first(p, article, "time").ok_or("Could not locate time".to_string())?;
         let date = Self::parse_time(&date.inner_text(p))?;
 
         Ok(SlashdotStory {
@@ -216,7 +216,7 @@ pub mod test {
         for file in slashdot_files() {
             let stories = scraper
                 .scrape(&SlashdotConfig::default(), load_file(file))
-                .expect(&format!("Failed to parse a story from {}", file));
+                .unwrap_or_else(|_| panic!("Failed to parse a story from {}", file));
             all.extend(stories.0);
         }
         all

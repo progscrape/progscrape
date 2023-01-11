@@ -20,7 +20,7 @@ const IGNORED_QUERY_PARAMS: [&str; 13] = [
     "mc_eid",
 ];
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct CompareToken<'a>(&'a str);
 
 /// We will need to use this if we end up with a non-unescaping URL parser. Not currently used, but tested at a basic level.

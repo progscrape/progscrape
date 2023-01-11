@@ -117,7 +117,8 @@ pub async fn start_watcher() -> Result<Resources, WebError> {
             let _ = tx_dirty.send(true);
         }
     })?;
-    for path in ["resource"] {
+    {
+        let path = "resource";
         tracing::info!("Watching path {}/...", path);
         watcher.watch(Path::new(path), RecursiveMode::Recursive)?;
     }

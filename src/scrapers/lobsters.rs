@@ -38,11 +38,11 @@ pub struct LobstersStory {
 
 impl ScrapeData for LobstersStory {
     fn title(&self) -> String {
-        return self.title.clone();
+        self.title.clone()
     }
 
     fn url(&self) -> StoryUrl {
-        return self.url.clone();
+        self.url.clone()
     }
 
     fn comments_url(&self) -> String {

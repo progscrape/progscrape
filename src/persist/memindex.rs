@@ -30,7 +30,7 @@ impl YearMonth {
                 return Some(Self::from_year_month(a, b));
             }
         }
-        return None;
+        None
     }
 
     fn from_date_time(date: StoryDate) -> Self {
@@ -83,12 +83,10 @@ impl MemIndex {
             for (norm, story) in stories {
                 assert_eq!(YearMonth::from_date_time(story.date()), *shard);
                 assert!(story.id.matches_date(story.date()));
-                self.get_story(&story.id).expect(&format!(
-                    "Expected to find a story by its ID ({:?}), shard {}, norm '{:?}'",
+                self.get_story(&story.id).unwrap_or_else(|| panic!("Expected to find a story by its ID ({:?}), shard {}, norm '{:?}'",
                     &story.id,
                     shard.to_string(),
-                    norm
-                ));
+                    norm));
             }
         }
     }
@@ -142,7 +140,7 @@ impl Storage for MemIndex {
             .stories
             .iter()
             .sorted_by_cached_key(|f| f.0)
-            .map(|f| (format!("{}", f.0.to_string()), f.1.len()))
+            .map(|f| (f.0.to_string(), f.1.len()))
             .filter(|f| f.1 > 0)
             .collect();
         summary.total = summary.by_shard.iter().map(|x| x.1).sum();

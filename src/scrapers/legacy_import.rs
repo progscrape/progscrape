@@ -87,7 +87,7 @@ fn import_legacy_2() -> Result<impl Iterator<Item = Scrape>, LegacyError> {
     'outer: loop {
         let mut buf = vec![];
         while !buf.ends_with("}\n".as_bytes()) {
-            let read = decoder.read_until('\n' as u8, &mut buf)?;
+            let read = decoder.read_until(b'\n', &mut buf)?;
             if read == 0 {
                 break 'outer;
             }

@@ -135,6 +135,7 @@ macro_rules! context {
                 )*
             }
 
+            #[allow(clippy::redundant_field_names)]
             Context::from_serialize(&TempStruct {
                 $(
                     $id: $expr,
@@ -261,7 +262,7 @@ async fn admin_status_frontpage(
     sort: Query<HashMap<String, String>>,
 ) -> Result<Html<String>, WebError> {
     let now = now(&state);
-    let sort = sort.get("sort").map(|x| x.clone()).unwrap_or_default();
+    let sort = sort.get("sort").cloned().unwrap_or_default();
     render(
         &resources,
         "admin/frontpage.html",
@@ -278,7 +279,7 @@ async fn admin_status_shard(
     Path(shard): Path<String>,
     sort: Query<HashMap<String, String>>,
 ) -> Result<Html<String>, WebError> {
-    let sort = sort.get("sort").map(|x| x.clone()).unwrap_or_default();
+    let sort = sort.get("sort").cloned().unwrap_or_default();
     render(
         &resources,
         "admin/shard.html",
