@@ -41,7 +41,7 @@ impl<'a> PartialEq for EscapedCompareToken<'a> {
             let a = HEX_DIGIT.find(a).unwrap_or_default() as u8;
             let b = ci.next().unwrap_or_default();
             let b = HEX_DIGIT.find(b).unwrap_or_default() as u8;
-            return ((a << 4) | b) as char;
+            ((a << 4) | b) as char
         }
 
         if self.0 == other.0 {
@@ -118,23 +118,23 @@ pub fn token_stream(url: &Url) -> impl Iterator<Item = CompareToken> {
         query_pairs.sort();
         for (key, value) in query_pairs {
             if !QUERY_PARAM_REGEX.is_match(key) {
-                out.push(CompareToken(&key));
-                out.push(CompareToken(&value));
+                out.push(CompareToken(key));
+                out.push(CompareToken(value));
             }
         }
     }
 
     let fragment = url.fragment().unwrap_or_default();
-    if fragment.starts_with("!") {
+    if fragment.starts_with('!') {
         // #!-style fragment paths
         out.push(CompareToken(&fragment[1..fragment.len()]));
-    } else if url.path().ends_with("/") && fragment.starts_with("/") {
+    } else if url.path().ends_with('/') && fragment.starts_with('/') {
         // /#/-style fragment paths
         out.push(CompareToken(&fragment[1..fragment.len()]));
     }
 
     // Trim any empty tokens
-    out.into_iter().filter(|s| s.0.len() > 0)
+    out.into_iter().filter(|s| !s.0.is_empty())
 }
 
 pub fn urls_are_same(a: &Url, b: &Url) -> bool {
