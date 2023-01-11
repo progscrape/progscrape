@@ -1,7 +1,7 @@
 use super::*;
 use serde::{Deserialize, Serialize};
 
-pub struct Lobsters{}
+pub struct Lobsters {}
 
 impl ScrapeSource2 for Lobsters {
     type Config = LobstersConfig;
@@ -86,10 +86,14 @@ impl ScrapeDataInit<LobstersStory> for LobstersStory {
 }
 
 #[derive(Default)]
-pub struct LobstersScraper{}
+pub struct LobstersScraper {}
 
 impl Scraper<LobstersConfig, LobstersStory> for LobstersScraper {
-    fn scrape(&self, args: &LobstersConfig, input: String) -> Result<(Vec<LobstersStory>, Vec<String>), ScrapeError> {
+    fn scrape(
+        &self,
+        args: &LobstersConfig,
+        input: String,
+    ) -> Result<(Vec<LobstersStory>, Vec<String>), ScrapeError> {
         unimplemented!()
     }
 }

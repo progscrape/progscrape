@@ -5,10 +5,11 @@ use tl::{HTMLTag, Parser, ParserOptions};
 use crate::story::{StoryDate, StoryUrl};
 
 use super::{
-    html::*, ScrapeConfigSource, ScrapeData, ScrapeDataInit, ScrapeId, ScrapeSource, Scraper, ScrapeSource2,
+    html::*, ScrapeConfigSource, ScrapeData, ScrapeDataInit, ScrapeId, ScrapeSource, ScrapeSource2,
+    Scraper,
 };
 
-pub struct Slashdot{}
+pub struct Slashdot {}
 
 impl ScrapeSource2 for Slashdot {
     type Config = SlashdotConfig;

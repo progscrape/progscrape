@@ -3,12 +3,12 @@ use std::{borrow::Borrow, collections::HashMap};
 use tl::{HTMLTag, Parser, ParserOptions};
 
 use super::{
-    html::*, ScrapeConfigSource, ScrapeData, ScrapeDataInit, ScrapeError,
-    ScrapeId, ScrapeSource, Scraper, ScrapeSource2,
+    html::*, ScrapeConfigSource, ScrapeData, ScrapeDataInit, ScrapeError, ScrapeId, ScrapeSource,
+    ScrapeSource2, Scraper,
 };
 use crate::story::{StoryDate, StoryUrl};
 
-pub struct HackerNews{}
+pub struct HackerNews {}
 
 impl ScrapeSource2 for HackerNews {
     type Config = HackerNewsConfig;

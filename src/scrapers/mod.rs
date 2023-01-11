@@ -17,7 +17,10 @@ pub trait ScrapeSource2 {
     type Scraper: Scraper<Self::Config, Self::Scrape>;
     const TYPE: ScrapeSource;
 
-    fn scrape(args: &Self::Config, input: String) -> Result<(Vec<Self::Scrape>, Vec<String>), ScrapeError> {
+    fn scrape(
+        args: &Self::Config,
+        input: String,
+    ) -> Result<(Vec<Self::Scrape>, Vec<String>), ScrapeError> {
         Self::Scraper::default().scrape(args, input)
     }
 }
@@ -185,7 +188,11 @@ impl ScrapeData for Scrape {
 }
 
 pub trait Scraper<Config: ScrapeConfigSource, Output: ScrapeData>: Default {
-    fn scrape(&self, args: &Config, input: String) -> Result<(Vec<Output>, Vec<String>), ScrapeError>;
+    fn scrape(
+        &self,
+        args: &Config,
+        input: String,
+    ) -> Result<(Vec<Output>, Vec<String>), ScrapeError>;
 }
 
 #[cfg(test)]

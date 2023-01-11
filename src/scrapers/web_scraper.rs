@@ -2,7 +2,10 @@ use std::collections::HashMap;
 
 use serde::Serialize;
 
-use super::{ScrapeConfig, ScrapeConfigSource, ScrapeSource, hacker_news::HackerNews, ScrapeSource2, ScrapeError, Scrape, reddit_json::Reddit, lobsters::Lobsters, slashdot::Slashdot};
+use super::{
+    hacker_news::HackerNews, lobsters::Lobsters, reddit_json::Reddit, slashdot::Slashdot, Scrape,
+    ScrapeConfig, ScrapeConfigSource, ScrapeError, ScrapeSource, ScrapeSource2,
+};
 
 /// Accumulates the URLs required to scrape for all the services.
 #[derive(Serialize)]
@@ -23,7 +26,11 @@ impl WebScraper {
         WebScrapeInput { scrapes }
     }
 
-    pub fn compute_urls(config: &ScrapeConfig, source: ScrapeSource, subsources: Vec<String>) -> Vec<String> {
+    pub fn compute_urls(
+        config: &ScrapeConfig,
+        source: ScrapeSource,
+        subsources: Vec<String>,
+    ) -> Vec<String> {
         if let Some(scrape) = Self::scrapes(config).get(&source) {
             scrape.provide_urls(subsources)
         } else {
@@ -31,18 +38,25 @@ impl WebScraper {
         }
     }
 
-    /// "Box" the `Scrape`s into the `Scrape` enum. 
-    fn map<T>(input: (Vec<T>, Vec<String>)) -> (Vec<Scrape>, Vec<String>) where Scrape: From<T> {
+    /// "Box" the `Scrape`s into the `Scrape` enum.
+    fn map<T>(input: (Vec<T>, Vec<String>)) -> (Vec<Scrape>, Vec<String>)
+    where
+        Scrape: From<T>,
+    {
         (input.0.into_iter().map(|x| x.into()).collect(), input.1)
     }
 
-    pub fn scrape(config: &ScrapeConfig, source: ScrapeSource, input: String) -> Result<(Vec<Scrape>, Vec<String>), ScrapeError> {
+    pub fn scrape(
+        config: &ScrapeConfig,
+        source: ScrapeSource,
+        input: String,
+    ) -> Result<(Vec<Scrape>, Vec<String>), ScrapeError> {
         Ok(match source {
             ScrapeSource::HackerNews => Self::map(HackerNews::scrape(&config.hacker_news, input)?),
             ScrapeSource::Reddit => Self::map(Reddit::scrape(&config.reddit, input)?),
             ScrapeSource::Lobsters => Self::map(Lobsters::scrape(&config.lobsters, input)?),
             ScrapeSource::Slashdot => Self::map(Slashdot::scrape(&config.slashdot, input)?),
-            ScrapeSource::Other => unreachable!()
+            ScrapeSource::Other => unreachable!(),
         })
     }
 

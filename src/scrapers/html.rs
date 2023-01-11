@@ -92,8 +92,8 @@ pub fn unescape_entities(input: &str) -> String {
 
 #[cfg(test)]
 mod test {
-    use rstest::*;
     use super::*;
+    use rstest::*;
 
     #[rstest]
     #[case("a b", "a b")]

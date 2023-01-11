@@ -13,7 +13,10 @@ use thiserror::Error;
 
 use crate::{
     persist::{PersistError, StorageSummary},
-    scrapers::{web_scraper::{WebScrapeInput, WebScraper}, ScrapeSource, Scrape},
+    scrapers::{
+        web_scraper::{WebScrapeInput, WebScraper},
+        Scrape, ScrapeSource,
+    },
     story::{rescore_stories, Story, StoryDate, StoryIdentifier, StoryRender, StoryScoreType},
 };
 
@@ -229,11 +232,16 @@ async fn admin_scrape_test(
     let mut results = vec![];
     for url in urls {
         let text = reqwest::get(&url).await?.text().await?;
-        results.push((url, WebScraper::scrape(&config.scrape, params.source, text)?));
+        results.push((
+            url,
+            WebScraper::scrape(&config.scrape, params.source, text)?,
+        ));
     }
-    render(&resources, "admin/scrape_test.html", context!(
-        scrapes: Vec<(String, (Vec<Scrape>, Vec<String>))> = results
-    ))
+    render(
+        &resources,
+        "admin/scrape_test.html",
+        context!(scrapes: Vec<(String, (Vec<Scrape>, Vec<String>))> = results),
+    )
 }
 
 async fn admin_index_status(

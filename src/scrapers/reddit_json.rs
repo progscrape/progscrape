@@ -3,11 +3,11 @@ use serde_json::Value;
 
 use super::{
     html::unescape_entities, ScrapeConfigSource, ScrapeData, ScrapeDataInit, ScrapeError, ScrapeId,
-    ScrapeSource, Scraper, ScrapeSource2,
+    ScrapeSource, ScrapeSource2, Scraper,
 };
 use crate::story::{StoryDate, StoryUrl};
 
-pub struct Reddit{}
+pub struct Reddit {}
 
 impl ScrapeSource2 for Reddit {
     type Config = RedditConfig;
@@ -32,7 +32,10 @@ impl ScrapeConfigSource for RedditConfig {
     fn provide_urls(&self, subsources: Vec<String>) -> Vec<String> {
         let mut output = vec![];
         for chunk in subsources.chunks(self.subreddit_batch) {
-            output.push(self.api.replace("${subreddits}", &chunk.join("+")) + &format!("?limit={}", self.limit))
+            output.push(
+                self.api.replace("${subreddits}", &chunk.join("+"))
+                    + &format!("?limit={}", self.limit),
+            )
         }
         output
     }
@@ -240,7 +243,7 @@ impl Scraper<RedditConfig, RedditStory> for RedditScraper {
                 } else {
                     return Err(ScrapeError::StructureError(
                         "Failed to parse Reddit JSON data.children".to_owned(),
-                    ))
+                    ));
                 }
             }
         }
