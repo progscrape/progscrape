@@ -31,6 +31,11 @@ impl StoryDate {
             .ok()
             .map(|x| Self::new(x.into()))
     }
+    pub fn parse_from_rfc2822(date: &str) -> Option<Self> {
+        DateTime::parse_from_rfc2822(date)
+            .ok()
+            .map(|x| Self::new(x.into()))
+    }
     pub fn year(&self) -> i32 {
         self.internal_date.year()
     }

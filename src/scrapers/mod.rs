@@ -46,6 +46,8 @@ pub enum ScrapeError {
     Json(#[from] serde_json::Error),
     #[error("HTML parse error")]
     Html(#[from] tl::ParseError),
+    #[error("XML parse error")]
+    Xml(#[from] roxmltree::Error),
     #[error("Structure error")]
     StructureError(String),
 }
@@ -208,6 +210,10 @@ pub mod test {
 
     pub fn hacker_news_files() -> Vec<&'static str> {
         vec!["hn1.html", "hn2.html", "hn3.html", "hn4.html"]
+    }
+
+    pub fn lobsters_files() -> Vec<&'static str> {
+        vec!["lobsters1.rss", "lobsters2.rss"]
     }
 
     pub fn reddit_files() -> Vec<&'static str> {
