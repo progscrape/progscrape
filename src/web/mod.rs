@@ -263,16 +263,24 @@ async fn admin_scrape_test(
     let urls = WebScraper::compute_urls(&config.scrape, params.source, params.subsources);
     let mut results = vec![];
     for url in urls {
-        let text = reqwest::get(&url).await?.text().await?;
+        let resp = reqwest::Client::new().get(&url).header("User-Agent", "progscrape").send().await?;
+        let status = resp.status();
+        let text = resp.text().await?;
+        if text.len() < 100 {
+            tracing::warn!("Got too small of a response for a scrape status={} text={}", status, text);
+        }
+        let res = WebScraper::scrape(&config.scrape, params.source, text.clone());
         results.push((
             url,
-            WebScraper::scrape(&config.scrape, params.source, text)?,
+            text,
+            res.as_ref().err().map(|e| format!("{:?}", e)).unwrap_or_default(),
+            res.ok().unwrap_or_default(),
         ));
     }
     render(
         &resources,
         "admin/scrape_test.html",
-        context!(scrapes: Vec<(String, (Vec<Scrape>, Vec<String>))> = results),
+        context!(scrapes: Vec<(String, String, String, (Vec<Scrape>, Vec<String>))> = results),
     )
 }
 

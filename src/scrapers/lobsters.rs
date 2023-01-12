@@ -110,6 +110,9 @@ impl Scraper<LobstersConfig, LobstersStory> for LobstersScraper {
                     let mut date = None;
                     let mut tags = vec![];
                     for subitem in item.children() {
+                        if !subitem.is_element() {
+                            continue;
+                        }
                         match subitem.tag_name().name() {
                             "title" => title = subitem.text().map(|s| s.to_owned()),
                             "guid" => id = subitem.text().map(|s| s.trim_start_matches("https://lobste.rs/s/").to_owned()),
@@ -117,9 +120,10 @@ impl Scraper<LobstersConfig, LobstersStory> for LobstersScraper {
                             "author" => {},
                             "pubDate" => date = subitem.text().and_then(StoryDate::parse_from_rfc2822),
                             "comments" => {},
-                            "category" => {},
+                            "category" => drop(subitem.text().map(|s| tags.push(s.to_owned()))),
+                            "description" => {},
                             x => {
-                                warnings.push(format!("Unknown sub-node {}", x))
+                                warnings.push(format!("Unknown sub-node '{}'", x))
                             }
                         }
                     }

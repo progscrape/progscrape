@@ -3,7 +3,7 @@
 
 <h3>Scrapes</h3>
 <table>
-{% for scrape_outer in url.1.0 %}
+{% for scrape_outer in url.3.0 %}
 {% if loop.first %}
 {% for scrape_type, scrape in scrape_outer %}
 <tr>
@@ -25,8 +25,15 @@
 
 <h3>Warnings</h3>
 <ul>
-{% for x in url.1.1 %}
+{% for x in url.3.1 %}
 <li>{{ x }}</li>
 {% endfor %}
 </ul>
+
+<h3>Raw</h3>
+
+<pre>
+{{ url.1 }}
+</pre>
 {% endfor %}
+
