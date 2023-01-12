@@ -37,6 +37,7 @@ pub struct CronConfig {
     jobs: HashMap<String, CronJob>,
 }
 
+/// A very basic cron system that allows us to schedule tasks that will be triggered as URL POSTs.
 pub struct Cron {
     queue: Vec<CronTask>,
 }
@@ -65,6 +66,7 @@ fn next_cron(interval: (usize, CronInterval)) -> DateTime<Utc> {
 }
 
 impl Cron {
+    /// Create a new cron system from the given `CronConfig`.
     pub fn initialize(config: &CronConfig) -> Self {
         let mut new = Self { queue: vec![] };
         let _ = new.tick(config);
