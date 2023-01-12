@@ -1,4 +1,4 @@
-use crate::story::{StoryDate, StoryUrl};
+use crate::story::{StoryDate, StoryUrl, TagSet};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -190,11 +190,19 @@ impl ScrapeData for Scrape {
 }
 
 pub trait Scraper<Config: ScrapeConfigSource, Output: ScrapeData>: Default {
+    /// Given input in the correct format, scrapes raw stories.
     fn scrape(
         &self,
         args: &Config,
         input: String,
     ) -> Result<(Vec<Output>, Vec<String>), ScrapeError>;
+
+    /// Given a scrape, processes the tags from it and adds them to the `TagSet`.
+    fn provide_tags(
+        &self,
+        args: &Config,
+        scrape: &Output,
+        tags: &mut TagSet) -> Result<(), ScrapeError>;
 }
 
 #[cfg(test)]

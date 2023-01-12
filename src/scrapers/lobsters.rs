@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use super::*;
 use roxmltree::Document;
 use serde::{Deserialize, Serialize};
@@ -14,6 +16,7 @@ impl ScrapeSource2 for Lobsters {
 #[derive(Default, Serialize, Deserialize)]
 pub struct LobstersConfig {
     feed: String,
+    tag_denylist: HashSet<String>,
 }
 
 impl ScrapeConfigSource for LobstersConfig {
@@ -145,6 +148,20 @@ impl Scraper<LobstersConfig, LobstersStory> for LobstersScraper {
             }
         }
         Ok((stories, warnings))
+    }
+    
+    fn provide_tags(
+        &self,
+        args: &LobstersConfig,
+        scrape: &LobstersStory,
+        tags: &mut crate::story::TagSet) -> Result<(), super::ScrapeError> {
+        for tag in &scrape.tags {
+            if args.tag_denylist.contains(tag) {
+                continue;
+            }
+            tags.add(tag);
+        }
+        Ok(())
     }
 }
 

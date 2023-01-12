@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::scrapers::{Scrape, ScrapeData, ScrapeDataInit, ScrapeId, ScrapeSource};
 use std::{
-    collections::{hash_map::Entry, HashMap},
+    collections::{hash_map::Entry, HashMap, HashSet},
     fmt::Display,
 };
 
@@ -412,6 +412,16 @@ impl StoryScorer {
         let accum = |score_type, score| score_bits.push((format!("{:?}", score_type), score));
         Self::score_impl(config, story, score_type, accum);
         score_bits
+    }
+}
+
+pub struct TagSet {
+    set: HashSet<String>,
+}
+
+impl TagSet {
+    pub fn add(&mut self, tag: impl AsRef<str>) {
+        self.set.insert(tag.as_ref().to_ascii_lowercase());
     }
 }
 

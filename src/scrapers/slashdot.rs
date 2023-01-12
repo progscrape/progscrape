@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use tl::{HTMLTag, Parser, ParserOptions};
@@ -21,6 +23,7 @@ impl ScrapeSource2 for Slashdot {
 #[derive(Default, Serialize, Deserialize)]
 pub struct SlashdotConfig {
     homepage: String,
+    tag_allowlist: HashSet<String>,
 }
 
 impl ScrapeConfigSource for SlashdotConfig {
@@ -201,6 +204,19 @@ impl Scraper<SlashdotConfig, SlashdotStory> for SlashdotScraper {
         }
 
         Ok((v, errors))
+    }
+
+    fn provide_tags(
+            &self,
+            args: &SlashdotConfig,
+            scrape: &SlashdotStory,
+            tags: &mut crate::story::TagSet) -> Result<(), super::ScrapeError> {
+        for tag in &scrape.tags {
+            if args.tag_allowlist.contains(tag) {
+                tags.add(tag);
+            }
+        }
+        Ok(())
     }
 }
 

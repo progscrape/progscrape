@@ -1,10 +1,13 @@
 TODO:
 
- - [ ] Lobsters scraper
  - [ ] Announcements source
  - [ ] Hook up search
  - [ ] Refactor ScrapeData common stuff
- - [ ] Cron
- 
+ - [ ] Tagging
+
 Maybe:
  - [ ] Metrics?
+
+Done:
+ - [ ] Lobsters scraper
+ - [ ] Cron

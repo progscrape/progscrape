@@ -8,18 +8,37 @@
             "homepage": "https://news.ycombinator.com/news"
         },
         "slashdot": {
-            "homepage": "https://slashdot.org/"
+            "homepage": "https://slashdot.org/",
+            "tag_allowlist": [
+                "adobe", "ai", "arm", "att", "blizzard", "china", "cloud", "earth", "facebook", "fcc", "games", "google", "government", "health", "java", "javascript",
+                "mars", "media", "moon", "microsoft", "military", "nasa", "oracle", "php", "power", "programming", "python", "ransomware", "robot", "russia",
+                "samsung", "science", "security", "space", "symantec", "twitter", "usa"
+            ]
         },
         "lobsters": {
-            "feed": "https://lobste.rs/rss"
+            "feed": "https://lobste.rs/rss",
+            "tag_denylist": ["person", "programming", "practices"]
         },
         "reddit": {
             "api": "http://reddit.com/r/${subreddits}/.json",
             "subreddit_batch": 5,
-            "subreddits": [
-                {"name": "rust"},
-                {"name": "golang"}
-            ],
+            "subreddits": {
+                "programming": {},
+                "compsci": {}, 
+                "csbooks": {},
+                "types": {},
+                "systems": {},
+                "compilers": { "is_tag": true },
+                "llvm": { "is_tag": true },
+                "rust": { "is_tag": true },
+                "golang": { "is_tag": true },
+                "appengine": { "is_tag": true },
+                "javascript": { "is_tag": true },
+                "python": { "is_tag": true },
+                "java": { "is_tag": true },
+                "technology": {},
+                "science": { "flair_is_tag": true }
+            },
             "limit": 50
         }
     },

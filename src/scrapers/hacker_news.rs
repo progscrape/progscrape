@@ -234,6 +234,28 @@ impl Scraper<HackerNewsConfig, HackerNewsStory> for HackerNewsScraper {
         stories.sort_by_key(|x| x.position);
         Ok((stories, errors))
     }
+
+    fn provide_tags(
+            &self,
+            args: &HackerNewsConfig,
+            scrape: &HackerNewsStory,
+            tags: &mut crate::story::TagSet) -> Result<(), ScrapeError> {
+        let title = &scrape.title;
+        // TODO: Strip years [ie: (2005)] from end of title
+        if title.starts_with("Show HN") {
+            tags.add("show");
+        }
+        if scrape.title.starts_with("Ask HN") {
+            tags.add("ask");
+        }
+        if scrape.title.ends_with("[pdf]") {
+            tags.add("pdf");
+        }
+        if scrape.title.ends_with("[video]") {
+            tags.add("video");
+        }
+        Ok(())
+    }
 }
 
 #[cfg(test)]

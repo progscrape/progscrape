@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -21,12 +23,12 @@ pub struct RedditConfig {
     api: String,
     subreddit_batch: usize,
     limit: usize,
-    subreddits: Vec<SubredditConfig>,
+    subreddits: HashMap<String, SubredditConfig>,
 }
 
 impl ScrapeConfigSource for RedditConfig {
     fn subsources(&self) -> Vec<String> {
-        self.subreddits.iter().map(|s| s.name.clone()).collect()
+        self.subreddits.iter().map(|s| s.0.clone()).collect()
     }
 
     fn provide_urls(&self, subsources: Vec<String>) -> Vec<String> {
@@ -43,7 +45,10 @@ impl ScrapeConfigSource for RedditConfig {
 
 #[derive(Default, Serialize, Deserialize)]
 pub struct SubredditConfig {
-    name: String,
+    #[serde(default)]
+    is_tag: bool,
+    #[serde(default)]
+    flair_is_tag: bool,
 }
 
 #[derive(Default)]
@@ -263,6 +268,22 @@ impl Scraper<RedditConfig, RedditStory> for RedditScraper {
             ))
         }
     }
+
+    fn provide_tags(
+        &self,
+        args: &RedditConfig,
+        scrape: &RedditStory,
+        tags: &mut crate::story::TagSet) -> Result<(), super::ScrapeError> {
+    if let Some(subreddit) = args.subreddits.get(&scrape.subreddit) {
+        if subreddit.flair_is_tag {
+            tags.add(&scrape.flair);
+        }
+        if subreddit.is_tag {
+            tags.add(&scrape.subreddit);
+        }
+    }
+    Ok(())
+}
 }
 
 #[cfg(test)]
