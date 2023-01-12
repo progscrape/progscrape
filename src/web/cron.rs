@@ -1,4 +1,4 @@
-use std::{collections::{HashMap, HashSet}, time::SystemTime};
+use std::{collections::{HashMap}, time::SystemTime};
 
 use chrono::{DateTime, Utc, Duration};
 use rand::Rng;
@@ -98,6 +98,6 @@ impl Cron {
     }
 
     pub fn inspect(&self) -> Vec<CronTask> {
-        self.queue.iter().cloned().collect()
+        self.queue.to_vec()
     }
 }

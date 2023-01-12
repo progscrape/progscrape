@@ -237,7 +237,7 @@ impl Scraper<HackerNewsConfig, HackerNewsStory> for HackerNewsScraper {
 
     fn provide_tags(
             &self,
-            args: &HackerNewsConfig,
+            _args: &HackerNewsConfig,
             scrape: &HackerNewsStory,
             tags: &mut crate::story::TagSet) -> Result<(), ScrapeError> {
         let title = &scrape.title;

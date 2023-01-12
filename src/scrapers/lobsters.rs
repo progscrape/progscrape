@@ -142,7 +142,7 @@ impl Scraper<LobstersConfig, LobstersStory> for LobstersScraper {
                             url,
                         });
                     } else {
-                        warnings.push(format!("Story did not contain all required fields"));
+                        warnings.push("Story did not contain all required fields".to_string());
                     }
                 }
             }
