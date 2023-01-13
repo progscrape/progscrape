@@ -224,21 +224,3 @@ impl Scraper<HackerNewsConfig, HackerNewsStory> for HackerNewsScraper {
         Ok(())
     }
 }
-
-#[cfg(test)]
-pub mod test {
-    use super::super::test::*;
-    use super::*;
-
-    pub fn scrape_all() -> Vec<Scrape<HackerNewsStory>> {
-        let mut all = vec![];
-        let scraper = HackerNewsScraper::default();
-        for file in hacker_news_files() {
-            let stories = scraper
-                .scrape(&HackerNewsConfig::default(), load_file(file))
-                .unwrap_or_else(|_| panic!("Failed to parse a story from {}", file));
-            all.extend(stories.0);
-        }
-        all
-    }
-}

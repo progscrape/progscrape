@@ -239,21 +239,3 @@ impl Scraper<RedditConfig, RedditStory> for RedditScraper {
         Ok(())
     }
 }
-
-#[cfg(test)]
-pub mod test {
-    use super::super::test::*;
-    use super::*;
-
-    pub fn scrape_all() -> Vec<Scrape<RedditStory>> {
-        let mut all = vec![];
-        let scraper = RedditScraper::default();
-        for file in reddit_files() {
-            let stories = scraper
-                .scrape(&RedditConfig::default(), load_file(file))
-                .unwrap_or_else(|_| panic!("Failed to parse a story from {}", file));
-            all.extend(stories.0);
-        }
-        all
-    }
-}

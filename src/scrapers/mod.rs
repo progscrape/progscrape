@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 use crate::story::{StoryDate, StoryUrl, TagSet};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -60,25 +62,13 @@ pub enum ScrapeSource {
     Other,
 }
 
-impl Into<&'static str> for &ScrapeSource {
-    fn into(self) -> &'static str {
-        use ScrapeSource::*;
-        match self {
-            HackerNews => "hacker_news",
-            Reddit => "reddit",
-            Lobsters => "lobsters",
-            Slashdot => "slashdot",
-            Other => "other",
-        }
-    }
-}
-
 /// Identify a scrape by source an ID.
-#[derive(Clone, Debug, Eq, PartialEq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, PartialOrd, Ord)]
 pub struct ScrapeId {
     pub source: ScrapeSource,
     pub subsource: Option<String>,
     pub id: String,
+    _noinit: PhantomData<()>,
 }
 
 impl ScrapeId {
@@ -87,15 +77,58 @@ impl ScrapeId {
             source,
             subsource,
             id,
+            _noinit: Default::default(),
         }
     }
+}
 
-    pub fn as_str(&self) -> String {
-        let source: &'static str = (&self.source).into();
+impl Serialize for ScrapeId {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let source = match self.source {
+            ScrapeSource::HackerNews => "hackernews",
+            ScrapeSource::Reddit => "reddit",
+            ScrapeSource::Lobsters => "lobsters",
+            ScrapeSource::Slashdot => "slashdot",
+            ScrapeSource::Other => "other",
+        };
         if let Some(subsource) = &self.subsource {
             format!("{}-{}-{}", source, subsource, self.id)
         } else {
             format!("{}-{}", source, self.id)
+        }
+        .serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for ScrapeId {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        if let Some((head, rest)) = s.split_once('-') {
+            let source = match head {
+                "hackernews" => ScrapeSource::HackerNews,
+                "reddit" => ScrapeSource::Reddit,
+                "lobsters" => ScrapeSource::Lobsters,
+                "slashdot" => ScrapeSource::Slashdot,
+                "other" => ScrapeSource::Other,
+                _ => return Err(serde::de::Error::custom("Invalid source")),
+            };
+            if let Some((subsource, id)) = rest.split_once('-') {
+                Ok(ScrapeId::new(
+                    source,
+                    Some(subsource.to_owned()),
+                    id.to_owned(),
+                ))
+            } else {
+                Ok(ScrapeId::new(source, None, rest.to_owned()))
+            }
+        } else {
+            Err(serde::de::Error::custom("Invalid format"))
         }
     }
 }
@@ -118,9 +151,11 @@ pub struct ScrapeCore {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Scrape<T: ScrapeStory> {
+    #[serde(flatten)]
     core: ScrapeCore,
 
     /// The additional underlying data from the scrape.
+    #[serde(flatten)]
     pub data: T,
 }
 
@@ -141,11 +176,7 @@ impl<T: ScrapeStory> Scrape<T> {
     pub fn new(id: String, title: String, url: StoryUrl, date: StoryDate, data: T) -> Self {
         Self {
             core: ScrapeCore {
-                source: ScrapeId {
-                    source: T::TYPE,
-                    subsource: None,
-                    id,
-                },
+                source: ScrapeId::new(T::TYPE, None, id),
                 title,
                 url,
                 date,
@@ -164,11 +195,7 @@ impl<T: ScrapeStory> Scrape<T> {
     ) -> Self {
         Self {
             core: ScrapeCore {
-                source: ScrapeId {
-                    source: T::TYPE,
-                    subsource: Some(subsource),
-                    id,
-                },
+                source: ScrapeId::new(T::TYPE, Some(subsource), id),
                 title,
                 url,
                 date,
@@ -280,6 +307,7 @@ pub trait Scraper<Config: ScrapeConfigSource, Output: ScrapeStory>: Default {
 
 #[cfg(test)]
 pub mod test {
+    use super::web_scraper::WebScraper;
     use super::*;
     use std::fs::read_to_string;
     use std::path::PathBuf;
@@ -307,23 +335,31 @@ pub mod test {
         ]
     }
 
+    pub fn files_by_source(source: ScrapeSource) -> Vec<&'static str> {
+        match source {
+            ScrapeSource::HackerNews => hacker_news_files(),
+            ScrapeSource::Slashdot => slashdot_files(),
+            ScrapeSource::Reddit => reddit_files(),
+            ScrapeSource::Lobsters => lobsters_files(),
+            ScrapeSource::Other => vec![],
+        }
+    }
+
     pub fn scrape_all() -> Vec<TypedScrape> {
         let mut v = vec![];
-        v.extend(
-            super::hacker_news::test::scrape_all()
-                .into_iter()
-                .map(TypedScrape::HackerNews),
-        );
-        v.extend(
-            super::reddit_json::test::scrape_all()
-                .into_iter()
-                .map(TypedScrape::Reddit),
-        );
-        v.extend(
-            super::slashdot::test::scrape_all()
-                .into_iter()
-                .map(TypedScrape::Slashdot),
-        );
+        let config = ScrapeConfig::default();
+        for source in [
+            ScrapeSource::HackerNews,
+            ScrapeSource::Lobsters,
+            ScrapeSource::Reddit,
+            ScrapeSource::Slashdot,
+        ] {
+            for file in files_by_source(source) {
+                let mut res = WebScraper::scrape(&config, source, load_file(file))
+                    .expect(&format!("Scrape of {:?} failed", source));
+                v.append(&mut res.0);
+            }
+        }
         v
     }
 
@@ -332,8 +368,6 @@ pub mod test {
         path.push(f);
         read_to_string(path).unwrap()
     }
-
-    pub fn dump_story(_story: TypedScrape) {}
 
     #[test]
     fn test_scrape_all() {

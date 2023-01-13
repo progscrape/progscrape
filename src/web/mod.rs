@@ -15,7 +15,8 @@ use tokio::sync::Mutex;
 use crate::{
     persist::{PersistError, StorageSummary},
     scrapers::{
-        web_scraper::{WebScrapeInput, WebScraper}, ScrapeSource, TypedScrape,
+        web_scraper::{WebScrapeInput, WebScraper},
+        ScrapeSource, TypedScrape,
     },
     story::{rescore_stories, Story, StoryDate, StoryIdentifier, StoryRender, StoryScoreType},
     web::cron::Cron,

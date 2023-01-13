@@ -180,21 +180,8 @@ impl Scraper<SlashdotConfig, SlashdotStory> for SlashdotScraper {
 
 #[cfg(test)]
 pub mod test {
-    use super::super::test::*;
     use super::*;
     use rstest::*;
-
-    pub fn scrape_all() -> Vec<Scrape<SlashdotStory>> {
-        let mut all = vec![];
-        let scraper = SlashdotScraper::default();
-        for file in slashdot_files() {
-            let stories = scraper
-                .scrape(&SlashdotConfig::default(), load_file(file))
-                .unwrap_or_else(|_| panic!("Failed to parse a story from {}", file));
-            all.extend(stories.0);
-        }
-        all
-    }
 
     #[rstest]
     #[case("on Monday January 09, 2023 @08:25PM")]

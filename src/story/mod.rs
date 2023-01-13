@@ -30,7 +30,7 @@ pub struct StoryRender {
     pub score: f32,
     pub tags: Vec<String>,
     pub comment_links: HashMap<String, String>,
-    pub scrapes: HashMap<String, TypedScrape>,
+    pub scrapes: HashMap<ScrapeId, TypedScrape>,
 }
 
 /// Uniquely identifies a story within the index.
@@ -226,7 +226,7 @@ impl Story {
     }
 
     pub fn render(&self, order: usize) -> StoryRender {
-        let scrapes = HashMap::from_iter(self.scrapes.iter().map(|(k, v)| (k.as_str(), v.clone())));
+        let scrapes = HashMap::from_iter(self.scrapes.iter().map(|(k, v)| (k.clone(), v.clone())));
         StoryRender {
             order,
             id: self.id.to_base64(),

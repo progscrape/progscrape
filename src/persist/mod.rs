@@ -1,6 +1,6 @@
 use crate::scrapers::TypedScrape;
+use crate::story::StoryIdentifier;
 use crate::story::{Story, StoryDate, StoryScoreConfig};
-use crate::{story::StoryIdentifier};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 

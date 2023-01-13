@@ -13,7 +13,7 @@ use super::{
 };
 use crate::scrapers::html::unescape_entities;
 use crate::story::StoryDate;
-use crate::{story::StoryUrl};
+use crate::story::StoryUrl;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -178,27 +178,23 @@ pub fn import_legacy() -> Result<Vec<TypedScrape>, LegacyError> {
 
 #[cfg(test)]
 mod test {
-    use super::super::test::*;
     use super::*;
 
     #[test]
-    fn test_read_legacy_1() {
-        for story in import_legacy_1().expect("Failed to import legacy stories") {
-            dump_story(story);
-        }
+    fn test_read_legacy_1() -> Result<(), Box<dyn std::error::Error>> {
+        assert!(import_legacy_1()?.count() > 0);
+        Ok(())
     }
 
     #[test]
-    fn test_read_legacy_2() {
-        for story in import_legacy_2().expect("Failed to import legacy stories") {
-            dump_story(story);
-        }
+    fn test_read_legacy_2() -> Result<(), Box<dyn std::error::Error>> {
+        assert!(import_legacy_2()?.count() > 0);
+        Ok(())
     }
 
     #[test]
-    fn test_read_legacy_all() {
-        for story in import_legacy().expect("Failed to import legacy stories") {
-            dump_story(story);
-        }
+    fn test_read_legacy_all() -> Result<(), Box<dyn std::error::Error>> {
+        assert!(import_legacy()?.len() > 0);
+        Ok(())
     }
 }

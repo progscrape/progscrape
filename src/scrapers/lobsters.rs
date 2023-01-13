@@ -133,21 +133,3 @@ impl Scraper<LobstersConfig, LobstersStory> for LobstersScraper {
         Ok(())
     }
 }
-
-#[cfg(test)]
-pub mod test {
-    use super::super::test::*;
-    use super::*;
-
-    pub fn scrape_all() -> Vec<Scrape<LobstersStory>> {
-        let mut all = vec![];
-        let scraper = LobstersScraper::default();
-        for file in lobsters_files() {
-            let stories = scraper
-                .scrape(&LobstersConfig::default(), load_file(file))
-                .unwrap_or_else(|_| panic!("Failed to parse a story from {}", file));
-            all.extend(stories.0);
-        }
-        all
-    }
-}
