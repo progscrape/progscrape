@@ -151,7 +151,7 @@ impl RedditScraper {
         }
     }
 
-    fn map_story(&self, child: &Value, position: u32) -> Result<Scrape<RedditStory>, String> {
+    fn map_story(&self, child: &Value, positions: &mut HashMap<String, u32>) -> Result<Scrape<RedditStory>, String> {
         let kind = child["kind"].as_str();
         let data = if kind == Some("t3") {
             &child["data"]
@@ -160,9 +160,11 @@ impl RedditScraper {
         };
 
         let id = self.require_string(data, "id")?;
+        let subreddit = self.require_string(data, "subreddit")?.to_ascii_lowercase();
         if let Some(true) = data["stickied"].as_bool() {
-            return Err(format!("Ignoring stickied story {}", id));
+            return Err(format!("Ignoring stickied story {}/{}", subreddit, id));
         }
+        let position = *positions.entry(subreddit.clone()).and_modify(|n| *n += 1).or_default() + 1;
         let seconds: i64 = self.require_integer(data, "created_utc")?;
         let millis = seconds * 1000;
         let date = StoryDate::from_millis(millis).ok_or_else(|| "Unmappable date".to_string())?;
@@ -170,7 +172,7 @@ impl RedditScraper {
             .ok_or_else(|| "Unmappable URL".to_string())?;
         let story = Scrape::new_subsource(
             id,
-            self.require_string(data, "subreddit")?,
+            subreddit,
             unescape_entities(&self.require_string(data, "title")?),
             url,
             date,
@@ -211,8 +213,9 @@ impl Scraper<RedditConfig, RedditStory> for RedditScraper {
         if let Some(children) = value.as_array() {
             let mut vec = vec![];
             let mut errors = vec![];
-            for (position, child) in children.iter().enumerate() {
-                match self.map_story(child, position as u32) {
+            let mut positions = HashMap::new();
+            for child in children {
+                match self.map_story(child, &mut positions) {
                     Ok(story) => vec.push(story),
                     Err(e) => errors.push(e),
                 }

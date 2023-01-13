@@ -104,7 +104,7 @@ impl Scraper<LobstersConfig, LobstersStory> for LobstersScraper {
                             date,
                             LobstersStory {
                                 num_comments: 0,
-                                position: position as u32,
+                                position: position as u32 + 1,
                                 score: 0,
                                 tags,
                             },
