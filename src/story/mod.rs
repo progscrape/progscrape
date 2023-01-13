@@ -1,7 +1,7 @@
 use chrono::Duration;
 use serde::{Deserialize, Serialize};
 
-use crate::scrapers::{Scrape, ScrapeData, ScrapeDataInit, ScrapeId, ScrapeSource};
+use crate::scrapers::{ScrapeId, ScrapeSource, TypedScrape};
 use std::{
     collections::{hash_map::Entry, HashMap, HashSet},
     fmt::Display,
@@ -30,7 +30,7 @@ pub struct StoryRender {
     pub score: f32,
     pub tags: Vec<String>,
     pub comment_links: HashMap<String, String>,
-    pub scrapes: HashMap<String, Scrape>,
+    pub scrapes: HashMap<String, TypedScrape>,
 }
 
 /// Uniquely identifies a story within the index.
@@ -117,13 +117,13 @@ impl StoryIdentifier {
 pub struct Story {
     pub id: StoryIdentifier,
     pub score: f32,
-    pub scrapes: HashMap<ScrapeId, Scrape>,
+    pub scrapes: HashMap<ScrapeId, TypedScrape>,
 }
 
 impl Story {
-    pub fn new(score_config: &StoryScoreConfig, scrape: Scrape) -> Self {
-        let id = StoryIdentifier::new(scrape.date(), scrape.url().normalization());
-        let scrape_id = scrape.source();
+    pub fn new(score_config: &StoryScoreConfig, scrape: TypedScrape) -> Self {
+        let id = StoryIdentifier::new(scrape.date, scrape.url.normalization());
+        let scrape_id = scrape.source.clone();
         // This is a bit awkward as we should probably be scoring from the raw scrapes rather than the story itself
         let mut story = Self {
             id,
@@ -134,11 +134,11 @@ impl Story {
         story
     }
 
-    pub fn merge(&mut self, score_config: &StoryScoreConfig, scrape: Scrape) {
-        let scrape_id = scrape.source();
+    pub fn merge(&mut self, score_config: &StoryScoreConfig, scrape: TypedScrape) {
+        let scrape_id = scrape.source.clone();
         match self.scrapes.entry(scrape_id) {
             Entry::Occupied(mut x) => {
-                Self::merge_scrape(x.get_mut(), scrape);
+                x.get_mut().merge(scrape);
             }
             Entry::Vacant(x) => {
                 x.insert(scrape);
@@ -148,24 +148,6 @@ impl Story {
         self.score = StoryScorer::score(score_config, self, StoryScoreType::Base);
         // The ID may change if the date changes
         self.id.update_date(self.date());
-    }
-
-    fn merge_scrape(a: &mut Scrape, b: Scrape) {
-        use Scrape::*;
-
-        match (a, b) {
-            (HackerNews(a), HackerNews(b)) => a.merge(b),
-            (Reddit(a), Reddit(b)) => a.merge(b),
-            (Lobsters(a), Lobsters(b)) => a.merge(b),
-            (Slashdot(a), Slashdot(b)) => a.merge(b),
-            (a, b) => {
-                tracing::warn!(
-                    "Unable to merge incompatible scrapes {:?} and {:?}, ignoring",
-                    a.source(),
-                    b.source()
-                );
-            }
-        }
     }
 
     /// Compares two stories, ordering by score.
@@ -180,7 +162,7 @@ impl Story {
         self.date().cmp(&other.date())
     }
 
-    pub fn title(&self) -> String {
+    pub fn title(&self) -> &str {
         self.title_choice().1
     }
 
@@ -197,7 +179,7 @@ impl Story {
     }
 
     /// Choose a title based on source priority, with preference for shorter titles if the priority is the same.
-    fn title_choice(&self) -> (ScrapeSource, String) {
+    fn title_choice(&self) -> (ScrapeSource, &str) {
         let title_score = |source: &ScrapeSource| {
             match source {
                 // HN is moderated and titles are high quality
@@ -209,35 +191,36 @@ impl Story {
                 ScrapeSource::Other => 99,
             }
         };
-        let mut best_title = (99, &ScrapeSource::Other, "Unknown title".to_owned());
+        let mut best_title = (99, &ScrapeSource::Other, "Unknown title");
         for (id, scrape) in &self.scrapes {
             let score = title_score(&id.source);
             if score < best_title.0 {
-                best_title = (score, &id.source, scrape.title());
+                best_title = (score, &id.source, &scrape.title);
                 continue;
             }
-            let title = scrape.title();
+            let title = &scrape.title;
             if score == best_title.0 && title.len() < best_title.2.len() {
-                best_title = (score, &id.source, scrape.title());
+                best_title = (score, &id.source, &scrape.title);
                 continue;
             }
         }
         (*best_title.1, best_title.2)
     }
 
-    pub fn url(&self) -> StoryUrl {
-        self.scrapes
+    pub fn url(&self) -> &StoryUrl {
+        &self
+            .scrapes
             .values()
             .next()
             .expect("Expected at least one")
-            .url()
+            .url
     }
 
     /// Returns the date of this story, which is always the earliest scrape date.
     pub fn date(&self) -> StoryDate {
         self.scrapes
             .values()
-            .map(|s| s.date())
+            .map(|s| s.date)
             .min()
             .unwrap_or_default()
     }
@@ -252,7 +235,7 @@ impl Story {
             url_norm: self.url().normalization().string().to_owned(),
             url_norm_hash: self.url().normalization().hash(),
             domain: self.url().host().to_owned(),
-            title: self.title(),
+            title: self.title().to_owned(),
             date: self.date(),
             tags: vec![],
             comment_links: HashMap::new(),
@@ -350,18 +333,19 @@ impl StoryScorer {
         let mut lobsters = None;
         let mut slashdot = None;
 
+        use TypedScrape::*;
         // Pick out the first source we find for each source
         for (_, scrape) in &story.scrapes {
             match scrape {
-                Scrape::HackerNews(x) => {
-                    if x.position != 0 {
-                        accum(HNPosition, (30.0 - x.position as f32) * 1.2)
+                HackerNews(x) => {
+                    if x.data.position != 0 {
+                        accum(HNPosition, (30.0 - x.data.position as f32) * 1.2)
                     };
                     hn = Some(x)
                 }
-                Scrape::Reddit(x) => reddit = Some(x),
-                Scrape::Lobsters(x) => lobsters = Some(x),
-                Scrape::Slashdot(x) => slashdot = Some(x),
+                Reddit(x) => reddit = Some(x),
+                Lobsters(x) => lobsters = Some(x),
+                Slashdot(x) => slashdot = Some(x),
             }
         }
 

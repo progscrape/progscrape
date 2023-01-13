@@ -7,7 +7,6 @@ use std::{
 use crate::{
     config::Config,
     persist::{MemIndex, Storage, StorageWriter},
-    scrapers::ScrapeData,
 };
 
 use super::WebError;
@@ -33,7 +32,7 @@ pub fn initialize_with_testing_data(config: &Config) -> Result<Global, WebError>
 
     // Filter to just 2017 for performance
     let mut scrapes = crate::scrapers::legacy_import::import_legacy().expect("Failed import");
-    scrapes.retain(|x| x.date().year() == 2017);
+    scrapes.retain(|x| x.date.year() == 2017);
 
     let mut index = MemIndex::default();
     index.insert_scrapes(&config.score, scrapes.into_iter())?;

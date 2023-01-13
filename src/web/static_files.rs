@@ -50,8 +50,8 @@ impl StaticFileRegistry {
         extension: &str,
         buf: &[u8],
     ) -> Result<(), std::io::Error> {
-        let mime_type =
-            mime_type_from(extension, buf).unwrap_or_else(|| panic!("File type was not known for {}", key));
+        let mime_type = mime_type_from(extension, buf)
+            .unwrap_or_else(|| panic!("File type was not known for {}", key));
 
         let mut hash = sha2::Sha256::new();
         hash.update(&buf);

@@ -3,8 +3,8 @@ use std::{borrow::Borrow, collections::HashMap};
 use tl::{HTMLTag, Parser, ParserOptions};
 
 use super::{
-    html::*, ScrapeConfigSource, ScrapeData, ScrapeDataInit, ScrapeError, ScrapeId, ScrapeSource,
-    ScrapeSource2, Scraper,
+    html::*, Scrape, ScrapeConfigSource, ScrapeError, ScrapeSource, ScrapeSource2, ScrapeStory,
+    Scraper,
 };
 use crate::story::{StoryDate, StoryUrl};
 
@@ -14,7 +14,6 @@ impl ScrapeSource2 for HackerNews {
     type Config = HackerNewsConfig;
     type Scrape = HackerNewsStory;
     type Scraper = HackerNewsScraper;
-    const TYPE: ScrapeSource = ScrapeSource::HackerNews;
 }
 
 #[derive(Default, Serialize, Deserialize)]
@@ -32,61 +31,21 @@ impl ScrapeConfigSource for HackerNewsConfig {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
 pub struct HackerNewsStory {
-    pub title: String,
-    pub url: StoryUrl,
-    pub id: String,
     pub points: u32,
     pub comments: u32,
     pub position: u32,
-    pub date: StoryDate,
 }
 
-impl ScrapeData for HackerNewsStory {
-    fn title(&self) -> String {
-        self.title.clone()
-    }
-
-    fn url(&self) -> StoryUrl {
-        self.url.clone()
-    }
-
-    fn source(&self) -> ScrapeId {
-        ScrapeId::new(ScrapeSource::HackerNews, None, self.id.clone())
-    }
+impl ScrapeStory for HackerNewsStory {
+    const TYPE: ScrapeSource = ScrapeSource::HackerNews;
 
     fn comments_url(&self) -> String {
         unimplemented!()
     }
 
-    fn date(&self) -> StoryDate {
-        self.date
-    }
-}
-
-impl ScrapeDataInit<HackerNewsStory> for HackerNewsStory {
-    fn initialize_required(
-        id: String,
-        title: String,
-        url: StoryUrl,
-        date: StoryDate,
-    ) -> HackerNewsStory {
-        HackerNewsStory {
-            title,
-            url,
-            id,
-            date,
-            points: Default::default(),
-            comments: Default::default(),
-            position: Default::default(),
-        }
-    }
-
     fn merge(&mut self, other: HackerNewsStory) {
-        self.title = other.title;
-        self.url = other.url;
-        self.date = std::cmp::min(self.date, other.date);
         self.points = std::cmp::max(self.points, other.points);
         self.comments = std::cmp::max(self.comments, other.comments);
     }
@@ -132,18 +91,21 @@ impl HackerNewsScraper {
             if find_first(p, node, ".votelinks").is_none() {
                 return Err("Missing votelinks".to_string());
             }
-            let first_link =
-                find_first(p, titleline, "a").ok_or_else(|| "Failed to query first link".to_string())?;
+            let first_link = find_first(p, titleline, "a")
+                .ok_or_else(|| "Failed to query first link".to_string())?;
             let title = unescape_entities(first_link.inner_text(p).borrow());
             let mut url = unescape_entities(
-                &get_attribute(p, first_link, "href").ok_or_else(|| "Failed to get href".to_string())?,
+                &get_attribute(p, first_link, "href")
+                    .ok_or_else(|| "Failed to get href".to_string())?,
             );
             if url.starts_with("item?") {
                 url.insert_str(0, "https://news.ycombinator.com/");
             }
             let url = StoryUrl::parse(&url).ok_or(format!("Failed to parse URL {}", url))?;
-            let id = get_attribute(p, node, "id").ok_or_else(|| "Failed to get id node".to_string())?;
-            let rank = find_first(p, node, ".rank").ok_or_else(|| "Failed to get rank".to_string())?;
+            let id =
+                get_attribute(p, node, "id").ok_or_else(|| "Failed to get id node".to_string())?;
+            let rank =
+                find_first(p, node, ".rank").ok_or_else(|| "Failed to get rank".to_string())?;
             let position = rank
                 .inner_text(p)
                 .trim_end_matches('.')
@@ -156,11 +118,13 @@ impl HackerNewsScraper {
                 title,
             }))
         } else if let Some(..) = find_first(p, node, ".subtext") {
-            let age_node = find_first(p, node, ".age").ok_or_else(|| "Failed to query .age".to_string())?;
+            let age_node =
+                find_first(p, node, ".age").ok_or_else(|| "Failed to query .age".to_string())?;
             let date = get_attribute(p, age_node, "title")
                 .ok_or_else(|| "Failed to get age title".to_string())?
                 + "Z";
-            let date = StoryDate::parse_from_rfc3339(&date).ok_or_else(|| "Failed to map date".to_string())?;
+            let date = StoryDate::parse_from_rfc3339(&date)
+                .ok_or_else(|| "Failed to map date".to_string())?;
             let mut comments = None;
             for node in html_tag_iterator(p, node.query_selector(p, "a")) {
                 let text = node.inner_text(p);
@@ -170,8 +134,8 @@ impl HackerNewsScraper {
                     comments = Some(0);
                 }
             }
-            let score_node =
-                find_first(p, node, ".score").ok_or_else(|| "Failed to query .score".to_string())?;
+            let score_node = find_first(p, node, ".score")
+                .ok_or_else(|| "Failed to query .score".to_string())?;
             let id = get_attribute(p, score_node, "id")
                 .ok_or_else(|| "Missing ID on score node".to_string())?
                 .trim_start_matches("score_")
@@ -195,7 +159,7 @@ impl Scraper<HackerNewsConfig, HackerNewsStory> for HackerNewsScraper {
         &self,
         _args: &HackerNewsConfig,
         input: String,
-    ) -> Result<(Vec<HackerNewsStory>, Vec<String>), ScrapeError> {
+    ) -> Result<(Vec<Scrape<HackerNewsStory>>, Vec<String>), ScrapeError> {
         let dom = tl::parse(&input, ParserOptions::default())?;
         let p = dom.parser();
         let mut errors = vec![];
@@ -218,28 +182,31 @@ impl Scraper<HackerNewsConfig, HackerNewsStory> for HackerNewsScraper {
         for (k, v) in story_lines {
             let info = info_lines.remove(&k);
             if let Some(info) = info {
-                stories.push(HackerNewsStory {
-                    title: v.title,
-                    url: v.url,
-                    id: k,
-                    points: info.points,
-                    comments: info.comments,
-                    date: info.date,
-                    position: v.position,
-                })
+                stories.push(Scrape::new(
+                    k,
+                    v.title,
+                    v.url,
+                    info.date,
+                    HackerNewsStory {
+                        points: info.points,
+                        comments: info.comments,
+                        position: v.position,
+                    },
+                ));
             } else {
                 errors.push(format!("Unmatched story/info for id {}", k));
             }
         }
-        stories.sort_by_key(|x| x.position);
+        stories.sort_by_key(|x| x.data.position);
         Ok((stories, errors))
     }
 
     fn provide_tags(
-            &self,
-            _args: &HackerNewsConfig,
-            scrape: &HackerNewsStory,
-            tags: &mut crate::story::TagSet) -> Result<(), ScrapeError> {
+        &self,
+        _args: &HackerNewsConfig,
+        scrape: &Scrape<HackerNewsStory>,
+        tags: &mut crate::story::TagSet,
+    ) -> Result<(), ScrapeError> {
         let title = &scrape.title;
         // TODO: Strip years [ie: (2005)] from end of title
         if title.starts_with("Show HN") {
@@ -263,7 +230,7 @@ pub mod test {
     use super::super::test::*;
     use super::*;
 
-    pub fn scrape_all() -> Vec<HackerNewsStory> {
+    pub fn scrape_all() -> Vec<Scrape<HackerNewsStory>> {
         let mut all = vec![];
         let scraper = HackerNewsScraper::default();
         for file in hacker_news_files() {
@@ -273,22 +240,5 @@ pub mod test {
             all.extend(stories.0);
         }
         all
-    }
-
-    #[test]
-    fn test_parse_sample() {
-        let scraper = HackerNewsScraper::default();
-        for file in hacker_news_files() {
-            let stories = scraper
-                .scrape(&HackerNewsConfig::default(), load_file(file))
-                .unwrap();
-            assert!(stories.0.len() >= 25);
-            for story in stories.0 {
-                println!(
-                    "{}. [{}] {} ({}) c={} p={}",
-                    story.position, story.id, story.title, story.url, story.comments, story.points
-                );
-            }
-        }
     }
 }

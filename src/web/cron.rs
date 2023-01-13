@@ -1,8 +1,8 @@
-use std::{collections::{HashMap}, time::SystemTime};
+use std::{collections::HashMap, time::SystemTime};
 
-use chrono::{DateTime, Utc, Duration};
+use chrono::{DateTime, Duration, Utc};
 use rand::Rng;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub enum CronInterval {
@@ -91,7 +91,11 @@ impl Cron {
 
         // If we find a job in the config and it isn't already in the queue, add it in
         for (name, job) in remaining {
-            self.queue.push(CronTask { name: name.clone(), url: job.url.clone(), next: next_cron(job.interval) });
+            self.queue.push(CronTask {
+                name: name.clone(),
+                url: job.url.clone(),
+                next: next_cron(job.interval),
+            });
         }
 
         ready

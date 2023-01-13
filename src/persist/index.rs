@@ -7,7 +7,7 @@ use tantivy::{
     schema::*, Directory, DocAddress, IndexSettings, IndexSortByField, IndexWriter, Searcher,
 };
 
-use crate::scrapers::Scrape;
+use crate::scrapers::{TypedScrape};
 use crate::story::StoryDate;
 
 use std::collections::{HashMap, HashSet};
@@ -252,7 +252,7 @@ impl StoryIndex {
                                 url: story.url().raw(),
                                 url_norm: story.url().normalization().string(),
                                 url_norm_hash: story.url().normalization().hash(),
-                                title: &story.title(),
+                                title: story.title(),
                                 date: story.date().timestamp(),
                             },
                         )?;
@@ -266,7 +266,7 @@ impl StoryIndex {
     }
 
     /// Insert a list of scrapes into the index.
-    fn insert_scrapes<'a, I: Iterator<Item = Scrape> + 'a>(
+    fn insert_scrapes<I: Iterator<Item = TypedScrape>>(
         &mut self,
         config: &StoryScoreConfig,
         scrapes: I,
@@ -284,7 +284,7 @@ impl StoryIndex {
 }
 
 impl StorageWriter for StoryIndex {
-    fn insert_scrapes<'a, I: Iterator<Item = Scrape> + 'a>(
+    fn insert_scrapes<I: Iterator<Item = TypedScrape>>(
         &mut self,
         config: &StoryScoreConfig,
         scrapes: I,
@@ -354,8 +354,6 @@ impl Storage for StoryIndex {
 mod test {
     use tantivy::directory::RamDirectory;
 
-    use crate::scrapers::ScrapeData;
-
     use super::*;
 
     fn populate_shard(
@@ -419,7 +417,7 @@ mod test {
             crate::scrapers::legacy_import::import_legacy().expect("Failed to read scrapes");
         let start_date = stories
             .iter()
-            .fold(StoryDate::MAX, |a, b| std::cmp::min(a, b.date()));
+            .fold(StoryDate::MAX, |a, b| std::cmp::min(a, b.date));
         // let stories = crate::scrapers::test::scrape_all();
         // let dir = MmapDirectory::open("/tmp/index").expect("Failed to get mmap dir");
         let _dir = RamDirectory::create();

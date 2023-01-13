@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use serde::Serialize;
 
 use super::{
-    hacker_news::HackerNews, lobsters::Lobsters, reddit_json::Reddit, slashdot::Slashdot, Scrape,
-    ScrapeConfig, ScrapeConfigSource, ScrapeError, ScrapeSource, ScrapeSource2,
+    hacker_news::HackerNews, lobsters::Lobsters, reddit_json::Reddit, slashdot::Slashdot,
+    ScrapeConfig, ScrapeConfigSource, ScrapeError, ScrapeSource, ScrapeSource2, TypedScrape,
 };
 
 /// Accumulates the URLs required to scrape for all the services.
@@ -39,9 +39,9 @@ impl WebScraper {
     }
 
     /// "Box" the `Scrape`s into the `Scrape` enum.
-    fn map<T>(input: (Vec<T>, Vec<String>)) -> (Vec<Scrape>, Vec<String>)
+    fn map<T>(input: (Vec<T>, Vec<String>)) -> (Vec<TypedScrape>, Vec<String>)
     where
-        Scrape: From<T>,
+        TypedScrape: From<T>,
     {
         (input.0.into_iter().map(|x| x.into()).collect(), input.1)
     }
@@ -50,7 +50,7 @@ impl WebScraper {
         config: &ScrapeConfig,
         source: ScrapeSource,
         input: String,
-    ) -> Result<(Vec<Scrape>, Vec<String>), ScrapeError> {
+    ) -> Result<(Vec<TypedScrape>, Vec<String>), ScrapeError> {
         Ok(match source {
             ScrapeSource::HackerNews => Self::map(HackerNews::scrape(&config.hacker_news, input)?),
             ScrapeSource::Reddit => Self::map(Reddit::scrape(&config.reddit, input)?),

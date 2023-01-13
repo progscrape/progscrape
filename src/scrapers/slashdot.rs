@@ -7,8 +7,7 @@ use tl::{HTMLTag, Parser, ParserOptions};
 use crate::story::{StoryDate, StoryUrl};
 
 use super::{
-    html::*, ScrapeConfigSource, ScrapeData, ScrapeDataInit, ScrapeId, ScrapeSource, ScrapeSource2,
-    Scraper,
+    html::*, Scrape, ScrapeConfigSource, ScrapeSource, ScrapeSource2, ScrapeStory, Scraper,
 };
 
 pub struct Slashdot {}
@@ -17,7 +16,6 @@ impl ScrapeSource2 for Slashdot {
     type Config = SlashdotConfig;
     type Scrape = SlashdotStory;
     type Scraper = SlashdotScraper;
-    const TYPE: ScrapeSource = ScrapeSource::Slashdot;
 }
 
 #[derive(Default, Serialize, Deserialize)]
@@ -36,59 +34,20 @@ impl ScrapeConfigSource for SlashdotConfig {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
 pub struct SlashdotStory {
-    pub id: String,
-    pub title: String,
-    pub url: StoryUrl,
     pub num_comments: u32,
-    pub date: StoryDate,
     pub tags: Vec<String>,
 }
 
-impl ScrapeData for SlashdotStory {
-    fn title(&self) -> String {
-        self.title.clone()
-    }
-
-    fn url(&self) -> StoryUrl {
-        self.url.clone()
-    }
+impl ScrapeStory for SlashdotStory {
+    const TYPE: ScrapeSource = ScrapeSource::Slashdot;
 
     fn comments_url(&self) -> String {
         unimplemented!()
     }
 
-    fn source(&self) -> ScrapeId {
-        ScrapeId::new(ScrapeSource::Slashdot, None, self.id.clone())
-    }
-
-    fn date(&self) -> StoryDate {
-        unimplemented!()
-    }
-}
-
-impl ScrapeDataInit<SlashdotStory> for SlashdotStory {
-    fn initialize_required(
-        id: String,
-        title: String,
-        url: StoryUrl,
-        date: StoryDate,
-    ) -> SlashdotStory {
-        SlashdotStory {
-            id,
-            title,
-            url,
-            date,
-            num_comments: Default::default(),
-            tags: Default::default(),
-        }
-    }
-
     fn merge(&mut self, other: SlashdotStory) {
-        self.title = other.title;
-        self.url = other.url;
-        self.date = std::cmp::min(self.date, other.date);
         self.num_comments = std::cmp::max(self.num_comments, other.num_comments);
     }
 }
@@ -101,10 +60,7 @@ impl SlashdotScraper {
         // Expected input: 'on Monday January 09, 2023 @08:25PM'
 
         // Clean up "on " prefix, @ signs and commas
-        let date = date
-            .trim_start_matches("on ")
-            .replace(['@', ','], "")
-            ;
+        let date = date.trim_start_matches("on ").replace(['@', ','], "");
 
         // Expected at point: 'Monday January 09 2023 08:25PM'
 
@@ -128,7 +84,7 @@ impl SlashdotScraper {
         Err(format!("Failed to parse date: {}", date))
     }
 
-    fn map_story(p: &Parser, article: &HTMLTag) -> Result<SlashdotStory, String> {
+    fn map_story(p: &Parser, article: &HTMLTag) -> Result<Scrape<SlashdotStory>, String> {
         let title = find_first(p, article, ".story-title").ok_or("Missing .story-title")?;
         let mut links = html_tag_iterator(p, title.query_selector(p, "a"));
         let story_link = links.next().ok_or("Missing story link")?;
@@ -148,7 +104,8 @@ impl SlashdotScraper {
         let id = id.join("/");
 
         let external_link = links.next().ok_or("Missing external link")?;
-        let href = get_attribute(p, external_link, "href").ok_or_else(|| "Missing href".to_string())?;
+        let href =
+            get_attribute(p, external_link, "href").ok_or_else(|| "Missing href".to_string())?;
         let url = StoryUrl::parse(&href).ok_or(format!("Invalid href: {}", href))?;
 
         // This doesn't appear if there are no comments on a story, so we need to be flexible
@@ -171,17 +128,17 @@ impl SlashdotScraper {
             );
         }
 
-        let date = find_first(p, article, "time").ok_or_else(|| "Could not locate time".to_string())?;
+        let date =
+            find_first(p, article, "time").ok_or_else(|| "Could not locate time".to_string())?;
         let date = Self::parse_time(&date.inner_text(p))?;
 
-        Ok(SlashdotStory {
-            date,
+        Ok(Scrape::new(
             id,
-            num_comments,
-            tags,
             title,
             url,
-        })
+            date,
+            SlashdotStory { tags, num_comments },
+        ))
     }
 }
 
@@ -190,7 +147,7 @@ impl Scraper<SlashdotConfig, SlashdotStory> for SlashdotScraper {
         &self,
         _args: &SlashdotConfig,
         input: String,
-    ) -> Result<(Vec<SlashdotStory>, Vec<String>), super::ScrapeError> {
+    ) -> Result<(Vec<Scrape<SlashdotStory>>, Vec<String>), super::ScrapeError> {
         let dom = tl::parse(&input, ParserOptions::default())?;
         let p = dom.parser();
         let mut errors = vec![];
@@ -207,11 +164,12 @@ impl Scraper<SlashdotConfig, SlashdotStory> for SlashdotScraper {
     }
 
     fn provide_tags(
-            &self,
-            args: &SlashdotConfig,
-            scrape: &SlashdotStory,
-            tags: &mut crate::story::TagSet) -> Result<(), super::ScrapeError> {
-        for tag in &scrape.tags {
+        &self,
+        args: &SlashdotConfig,
+        scrape: &Scrape<SlashdotStory>,
+        tags: &mut crate::story::TagSet,
+    ) -> Result<(), super::ScrapeError> {
+        for tag in &scrape.data.tags {
             if args.tag_allowlist.contains(tag) {
                 tags.add(tag);
             }
@@ -226,7 +184,7 @@ pub mod test {
     use super::*;
     use rstest::*;
 
-    pub fn scrape_all() -> Vec<SlashdotStory> {
+    pub fn scrape_all() -> Vec<Scrape<SlashdotStory>> {
         let mut all = vec![];
         let scraper = SlashdotScraper::default();
         for file in slashdot_files() {
@@ -246,24 +204,5 @@ pub mod test {
     #[case("on January 1, 2020 @12:30PM")]
     fn test_date_parse(#[case] s: &str) {
         SlashdotScraper::parse_time(s).expect("Expected this to parse");
-    }
-
-    #[test]
-    fn test_parse_sample() {
-        let scraper = SlashdotScraper::default();
-        for file in slashdot_files() {
-            let stories = scraper
-                .scrape(&SlashdotConfig::default(), load_file(file))
-                .unwrap();
-            for error in stories.1 {
-                println!("{}", error);
-            }
-            for story in stories.0 {
-                println!(
-                    "[{}] {} ({}) c={} t={:?}",
-                    story.id, story.title, story.url, story.num_comments, story.tags
-                );
-            }
-        }
     }
 }

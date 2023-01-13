@@ -13,14 +13,13 @@ pub mod web_scraper;
 /// Our scrape sources, and the associated data types for each.
 pub trait ScrapeSource2 {
     type Config: ScrapeConfigSource;
-    type Scrape: ScrapeData;
+    type Scrape: ScrapeStory;
     type Scraper: Scraper<Self::Config, Self::Scrape>;
-    const TYPE: ScrapeSource;
 
     fn scrape(
         args: &Self::Config,
         input: String,
-    ) -> Result<(Vec<Self::Scrape>, Vec<String>), ScrapeError> {
+    ) -> Result<(Vec<Scrape<Self::Scrape>>, Vec<String>), ScrapeError> {
         Self::Scraper::default().scrape(args, input)
     }
 }
@@ -101,108 +100,182 @@ impl ScrapeId {
     }
 }
 
-pub trait ScrapeData {
-    /// Retrieve the scrape title.
-    fn title(&self) -> String;
+pub trait ScrapeStory: Default {
+    const TYPE: ScrapeSource;
 
-    /// Retrieve the scrape URL.
-    fn url(&self) -> StoryUrl;
-
-    /// Retrieve the scrape comments URL.
     fn comments_url(&self) -> String;
 
-    /// Retrieve the scrape source.
-    fn source(&self) -> ScrapeId;
-
-    /// Retrieve the scrape date.
-    fn date(&self) -> StoryDate;
-}
-
-/// Core partial initialization method.
-pub trait ScrapeDataInit<T: ScrapeData> {
-    fn initialize_required(id: String, title: String, url: StoryUrl, date: StoryDate) -> T;
-    fn merge(&mut self, other: T);
+    fn merge(&mut self, other: Self);
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub enum Scrape {
-    HackerNews(hacker_news::HackerNewsStory),
-    Reddit(reddit_json::RedditStory),
-    Lobsters(lobsters::LobstersStory),
-    Slashdot(slashdot::SlashdotStory),
+pub struct ScrapeCore {
+    pub title: String,
+    pub url: StoryUrl,
+    pub source: ScrapeId,
+    pub date: StoryDate,
 }
 
-impl From<hacker_news::HackerNewsStory> for Scrape {
-    fn from(story: hacker_news::HackerNewsStory) -> Self {
-        Self::HackerNews(story)
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct Scrape<T: ScrapeStory> {
+    core: ScrapeCore,
+
+    /// The additional underlying data from the scrape.
+    pub data: T,
+}
+
+impl<T: ScrapeStory> core::ops::Deref for Scrape<T> {
+    type Target = ScrapeCore;
+    fn deref(&self) -> &Self::Target {
+        &self.core
     }
 }
 
-impl From<reddit_json::RedditStory> for Scrape {
-    fn from(story: reddit_json::RedditStory) -> Self {
-        Self::Reddit(story)
+impl<T: ScrapeStory> core::ops::DerefMut for Scrape<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.core
     }
 }
 
-impl From<lobsters::LobstersStory> for Scrape {
-    fn from(story: lobsters::LobstersStory) -> Self {
-        Self::Lobsters(story)
+impl<T: ScrapeStory> Scrape<T> {
+    pub fn new(id: String, title: String, url: StoryUrl, date: StoryDate, data: T) -> Self {
+        Self {
+            core: ScrapeCore {
+                source: ScrapeId {
+                    source: T::TYPE,
+                    subsource: None,
+                    id,
+                },
+                title,
+                url,
+                date,
+            },
+            data,
+        }
+    }
+
+    pub fn new_subsource(
+        id: String,
+        subsource: String,
+        title: String,
+        url: StoryUrl,
+        date: StoryDate,
+        data: T,
+    ) -> Self {
+        Self {
+            core: ScrapeCore {
+                source: ScrapeId {
+                    source: T::TYPE,
+                    subsource: Some(subsource),
+                    id,
+                },
+                title,
+                url,
+                date,
+            },
+            data,
+        }
+    }
+
+    pub fn merge(&mut self, other: Self) {
+        self.date = std::cmp::min(self.date, other.date);
+        let (other, other_data) = (other.core, other.data);
+        self.title = other.title;
+        self.url = other.url;
+        self.data.merge(other_data);
     }
 }
 
-impl From<slashdot::SlashdotStory> for Scrape {
-    fn from(story: slashdot::SlashdotStory) -> Self {
-        Self::Slashdot(story)
-    }
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub enum TypedScrape {
+    HackerNews(Scrape<hacker_news::HackerNewsStory>),
+    Reddit(Scrape<reddit_json::RedditStory>),
+    Lobsters(Scrape<lobsters::LobstersStory>),
+    Slashdot(Scrape<slashdot::SlashdotStory>),
 }
 
-impl AsRef<dyn ScrapeData + 'static> for Scrape {
-    fn as_ref(&self) -> &(dyn ScrapeData + 'static) {
-        match self {
-            Scrape::HackerNews(x) => x,
-            Scrape::Reddit(x) => x,
-            Scrape::Lobsters(x) => x,
-            Scrape::Slashdot(x) => x,
+impl TypedScrape {
+    pub fn merge(&mut self, b: Self) {
+        match (self, b) {
+            (Self::HackerNews(a), Self::HackerNews(b)) => a.merge(b),
+            (Self::Reddit(a), Self::Reddit(b)) => a.merge(b),
+            (Self::Lobsters(a), Self::Lobsters(b)) => a.merge(b),
+            (Self::Slashdot(a), Self::Slashdot(b)) => a.merge(b),
+            (a, b) => {
+                tracing::warn!(
+                    "Unable to merge incompatible scrapes {:?} and {:?}, ignoring",
+                    &a.source,
+                    &b.source
+                );
+            }
         }
     }
 }
 
-impl ScrapeData for Scrape {
-    fn url(&self) -> StoryUrl {
-        self.as_ref().url()
-    }
-
-    fn title(&self) -> String {
-        self.as_ref().title()
-    }
-
-    fn date(&self) -> StoryDate {
-        self.as_ref().date()
-    }
-
-    fn comments_url(&self) -> String {
-        self.as_ref().comments_url()
-    }
-
-    fn source(&self) -> ScrapeId {
-        self.as_ref().source()
+impl core::ops::Deref for TypedScrape {
+    type Target = ScrapeCore;
+    fn deref(&self) -> &Self::Target {
+        use TypedScrape::*;
+        match self {
+            HackerNews(x) => &x.core,
+            Reddit(x) => &x.core,
+            Lobsters(x) => &x.core,
+            Slashdot(x) => &x.core,
+        }
     }
 }
 
-pub trait Scraper<Config: ScrapeConfigSource, Output: ScrapeData>: Default {
+impl core::ops::DerefMut for TypedScrape {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        use TypedScrape::*;
+        match self {
+            HackerNews(x) => &mut x.core,
+            Reddit(x) => &mut x.core,
+            Lobsters(x) => &mut x.core,
+            Slashdot(x) => &mut x.core,
+        }
+    }
+}
+
+impl From<Scrape<hacker_news::HackerNewsStory>> for TypedScrape {
+    fn from(x: Scrape<hacker_news::HackerNewsStory>) -> Self {
+        TypedScrape::HackerNews(x)
+    }
+}
+
+impl From<Scrape<reddit_json::RedditStory>> for TypedScrape {
+    fn from(x: Scrape<reddit_json::RedditStory>) -> Self {
+        TypedScrape::Reddit(x)
+    }
+}
+
+impl From<Scrape<lobsters::LobstersStory>> for TypedScrape {
+    fn from(x: Scrape<lobsters::LobstersStory>) -> Self {
+        TypedScrape::Lobsters(x)
+    }
+}
+
+impl From<Scrape<slashdot::SlashdotStory>> for TypedScrape {
+    fn from(x: Scrape<slashdot::SlashdotStory>) -> Self {
+        TypedScrape::Slashdot(x)
+    }
+}
+
+pub trait Scraper<Config: ScrapeConfigSource, Output: ScrapeStory>: Default {
     /// Given input in the correct format, scrapes raw stories.
     fn scrape(
         &self,
         args: &Config,
         input: String,
-    ) -> Result<(Vec<Output>, Vec<String>), ScrapeError>;
+    ) -> Result<(Vec<Scrape<Output>>, Vec<String>), ScrapeError>;
 
     /// Given a scrape, processes the tags from it and adds them to the `TagSet`.
     fn provide_tags(
         &self,
         args: &Config,
-        scrape: &Output,
-        tags: &mut TagSet) -> Result<(), ScrapeError>;
+        scrape: &Scrape<Output>,
+        tags: &mut TagSet,
+    ) -> Result<(), ScrapeError>;
 }
 
 #[cfg(test)]
@@ -234,22 +307,22 @@ pub mod test {
         ]
     }
 
-    pub fn scrape_all() -> Vec<Scrape> {
+    pub fn scrape_all() -> Vec<TypedScrape> {
         let mut v = vec![];
         v.extend(
             super::hacker_news::test::scrape_all()
                 .into_iter()
-                .map(Scrape::HackerNews),
+                .map(TypedScrape::HackerNews),
         );
         v.extend(
             super::reddit_json::test::scrape_all()
                 .into_iter()
-                .map(Scrape::Reddit),
+                .map(TypedScrape::Reddit),
         );
         v.extend(
             super::slashdot::test::scrape_all()
                 .into_iter()
-                .map(Scrape::Slashdot),
+                .map(TypedScrape::Slashdot),
         );
         v
     }
@@ -259,6 +332,8 @@ pub mod test {
         path.push(f);
         read_to_string(path).unwrap()
     }
+
+    pub fn dump_story(_story: TypedScrape) {}
 
     #[test]
     fn test_scrape_all() {

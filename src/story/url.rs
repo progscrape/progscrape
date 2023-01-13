@@ -113,7 +113,7 @@ impl StoryUrlNorm {
     pub fn hash(&self) -> i64 {
         let mut hasher = DefaultHasher::new();
         self.norm.hash(&mut hasher);
-        
+
         hasher.finish() as i64
     }
 

@@ -15,10 +15,10 @@ use tokio::sync::Mutex;
 use crate::{
     persist::{PersistError, StorageSummary},
     scrapers::{
-        web_scraper::{WebScrapeInput, WebScraper},
-        Scrape, ScrapeSource,
+        web_scraper::{WebScrapeInput, WebScraper}, ScrapeSource, TypedScrape,
     },
-    story::{rescore_stories, Story, StoryDate, StoryIdentifier, StoryRender, StoryScoreType}, web::cron::Cron,
+    story::{rescore_stories, Story, StoryDate, StoryIdentifier, StoryRender, StoryScoreType},
+    web::cron::Cron,
 };
 
 use self::resource::Resources;
@@ -69,10 +69,14 @@ impl IntoResponse for WebError {
 struct AdminState {
     resources: Resources,
     index: index::Global,
-    cron: Arc<Mutex<Cron>>
+    cron: Arc<Mutex<Cron>>,
 }
 
-pub fn admin_routes<S>(resources: Resources, index: index::Global, cron: Arc<Mutex<Cron>>) -> Router<S> {
+pub fn admin_routes<S>(
+    resources: Resources,
+    index: index::Global,
+    cron: Arc<Mutex<Cron>>,
+) -> Router<S> {
     Router::new()
         .route("/", get(admin))
         .route("/cron/", get(admin_cron))
@@ -82,7 +86,11 @@ pub fn admin_routes<S>(resources: Resources, index: index::Global, cron: Arc<Mut
         .route("/index/frontpage/", get(admin_status_frontpage))
         .route("/index/shard/:shard/", get(admin_status_shard))
         .route("/index/story/:story/", get(admin_status_story))
-        .with_state(AdminState { resources, index, cron })
+        .with_state(AdminState {
+            resources,
+            index,
+            cron,
+        })
 }
 
 fn start_cron(cron: Arc<Mutex<Cron>>, resources: Resources) {
@@ -109,7 +117,10 @@ pub async fn start_server() -> Result<(), WebError> {
         .with_state((global.clone(), resources.clone()))
         .route("/static/:file", get(serve_static_files_immutable))
         .with_state(resources.clone())
-        .nest("/admin", admin_routes(resources.clone(), global.clone(), cron.clone()))
+        .nest(
+            "/admin",
+            admin_routes(resources.clone(), global.clone(), cron.clone()),
+        )
         .route(
             "/:file",
             get(serve_static_files_well_known).with_state(resources.clone()),
@@ -126,8 +137,7 @@ pub async fn start_server() -> Result<(), WebError> {
 }
 
 fn render_stories<'a>(iter: impl Iterator<Item = &'a Story>) -> Vec<StoryRender> {
-    iter
-        .enumerate()
+    iter.enumerate()
         .map(|(n, x)| x.render(n))
         .collect::<Vec<_>>()
 }
@@ -224,12 +234,17 @@ async fn admin(
 }
 
 async fn admin_cron(
-    State(AdminState { cron, resources, .. }): State<AdminState>,
+    State(AdminState {
+        cron, resources, ..
+    }): State<AdminState>,
 ) -> Result<Html<String>, WebError> {
     render(
         &resources,
         "admin/cron.html",
-        context!(config: std::sync::Arc<crate::config::Config> = resources.config(), cron: Vec<cron::CronTask> = cron.lock().await.inspect()),
+        context!(
+            config: std::sync::Arc<crate::config::Config> = resources.config(),
+            cron: Vec<cron::CronTask> = cron.lock().await.inspect()
+        ),
     )
 }
 
@@ -263,29 +278,42 @@ async fn admin_scrape_test(
     let urls = WebScraper::compute_urls(&config.scrape, params.source, params.subsources);
     let mut results = vec![];
     for url in urls {
-        let resp = reqwest::Client::new().get(&url).header("User-Agent", "progscrape").send().await?;
+        let resp = reqwest::Client::new()
+            .get(&url)
+            .header("User-Agent", "progscrape")
+            .send()
+            .await?;
         let status = resp.status();
         let text = resp.text().await?;
         if text.len() < 100 {
-            tracing::warn!("Got too small of a response for a scrape status={} text={}", status, text);
+            tracing::warn!(
+                "Got too small of a response for a scrape status={} text={}",
+                status,
+                text
+            );
         }
         let res = WebScraper::scrape(&config.scrape, params.source, text.clone());
         results.push((
             url,
             text,
-            res.as_ref().err().map(|e| format!("{:?}", e)).unwrap_or_default(),
+            res.as_ref()
+                .err()
+                .map(|e| format!("{:?}", e))
+                .unwrap_or_default(),
             res.ok().unwrap_or_default(),
         ));
     }
     render(
         &resources,
         "admin/scrape_test.html",
-        context!(scrapes: Vec<(String, String, String, (Vec<Scrape>, Vec<String>))> = results),
+        context!(scrapes: Vec<(String, String, String, (Vec<TypedScrape>, Vec<String>))> = results),
     )
 }
 
 async fn admin_index_status(
-    State(AdminState { index, resources, .. }): State<AdminState>,
+    State(AdminState {
+        index, resources, ..
+    }): State<AdminState>,
 ) -> Result<Html<String>, WebError> {
     render(
         &resources,
@@ -298,7 +326,9 @@ async fn admin_index_status(
 }
 
 async fn admin_status_frontpage(
-    State(AdminState { index, resources, .. }): State<AdminState>,
+    State(AdminState {
+        index, resources, ..
+    }): State<AdminState>,
     sort: Query<HashMap<String, String>>,
 ) -> Result<Html<String>, WebError> {
     let now = now(&index);
@@ -315,7 +345,9 @@ async fn admin_status_frontpage(
 }
 
 async fn admin_status_shard(
-    State(AdminState { index, resources, .. }): State<AdminState>,
+    State(AdminState {
+        index, resources, ..
+    }): State<AdminState>,
     Path(shard): Path<String>,
     sort: Query<HashMap<String, String>>,
 ) -> Result<Html<String>, WebError> {
@@ -333,7 +365,9 @@ async fn admin_status_shard(
 }
 
 async fn admin_status_story(
-    State(AdminState { index, resources, .. }): State<AdminState>,
+    State(AdminState {
+        index, resources, ..
+    }): State<AdminState>,
     Path(id): Path<String>,
 ) -> Result<Html<String>, WebError> {
     let id = StoryIdentifier::from_base64(id).ok_or(WebError::NotFound)?;

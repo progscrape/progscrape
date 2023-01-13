@@ -2,10 +2,7 @@ use std::collections::HashMap;
 
 use itertools::Itertools;
 
-use crate::{
-    scrapers::ScrapeData,
-    story::{StoryDate, StoryUrlNorm},
-};
+use crate::story::{StoryDate, StoryUrlNorm};
 
 use super::*;
 
@@ -83,39 +80,42 @@ impl MemIndex {
             for (norm, story) in stories {
                 assert_eq!(YearMonth::from_date_time(story.date()), *shard);
                 assert!(story.id.matches_date(story.date()));
-                self.get_story(&story.id).unwrap_or_else(|| panic!("Expected to find a story by its ID ({:?}), shard {}, norm '{:?}'",
-                    &story.id,
-                    shard.to_string(),
-                    norm));
+                self.get_story(&story.id).unwrap_or_else(|| {
+                    panic!(
+                        "Expected to find a story by its ID ({:?}), shard {}, norm '{:?}'",
+                        &story.id,
+                        shard.to_string(),
+                        norm
+                    )
+                });
             }
         }
     }
 }
 
 impl StorageWriter for MemIndex {
-    fn insert_scrapes<'a, I: Iterator<Item = Scrape> + 'a>(
+    fn insert_scrapes<I: Iterator<Item = TypedScrape>>(
         &mut self,
         config: &StoryScoreConfig,
         scrapes: I,
     ) -> Result<(), PersistError> {
         'outer: for scrape in scrapes {
-            let date = YearMonth::from_date_time(scrape.date());
-            let url = scrape.url();
-            let normalized_url = url.normalization();
+            let date = YearMonth::from_date_time(scrape.date);
+            let normalized_url = scrape.url.normalization();
             // Try to pin it to an existing item
             for n in -2..=2 {
                 let map0 = self.map_mut(date.plus_months(n));
-                if let Some(mut story) = map0.remove(normalized_url) {
+                if let Some((key, mut story)) = map0.remove_entry(normalized_url) {
                     // Merge and then re-insert the story in the correct shard
                     story.merge(config, scrape);
                     self.most_recent_story = self.most_recent_story.max(story.date());
                     self.map_mut(YearMonth::from_date_time(story.date()))
-                        .insert(normalized_url.clone(), story);
+                        .insert(key, story);
                     continue 'outer;
                 }
             }
 
-            self.most_recent_story = self.most_recent_story.max(scrape.date());
+            self.most_recent_story = self.most_recent_story.max(scrape.date);
             // Not found!
             if let Some(_old) = self
                 .map_mut(date)

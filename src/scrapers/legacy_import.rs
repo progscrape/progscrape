@@ -7,11 +7,13 @@ use flate2::bufread::GzDecoder;
 use serde_json::Value;
 
 use super::{
-    hacker_news::HackerNewsStory, lobsters::LobstersStory, Scrape, ScrapeData, ScrapeDataInit,
+    hacker_news::{self},
+    lobsters::{self},
+    reddit_json, Scrape, TypedScrape,
 };
 use crate::scrapers::html::unescape_entities;
 use crate::story::StoryDate;
-use crate::{scrapers::reddit_json::RedditStory, story::StoryUrl};
+use crate::{story::StoryUrl};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -30,7 +32,34 @@ pub enum LegacyError {
     CBORError(#[from] serde_cbor::Error),
 }
 
-fn import_legacy_1() -> Result<impl Iterator<Item = Scrape>, LegacyError> {
+fn make_hacker_news(
+    id: String,
+    title: String,
+    url: StoryUrl,
+    date: StoryDate,
+) -> Scrape<hacker_news::HackerNewsStory> {
+    Scrape::new(id, title, url, date, Default::default())
+}
+
+fn make_reddit(
+    id: String,
+    title: String,
+    url: StoryUrl,
+    date: StoryDate,
+) -> Scrape<reddit_json::RedditStory> {
+    Scrape::new(id, title, url, date, Default::default())
+}
+
+fn make_lobsters(
+    id: String,
+    title: String,
+    url: StoryUrl,
+    date: StoryDate,
+) -> Scrape<lobsters::LobstersStory> {
+    Scrape::new(id, title, url, date, Default::default())
+}
+
+fn import_legacy_1() -> Result<impl Iterator<Item = TypedScrape>, LegacyError> {
     let f = BufReader::new(File::open("import/old.json.gz")?);
     let mut decoder = BufReader::new(GzDecoder::new(f));
     let mut out = vec![];
@@ -63,24 +92,22 @@ fn import_legacy_1() -> Result<impl Iterator<Item = Scrape>, LegacyError> {
         let url = StoryUrl::parse(&url).ok_or(LegacyError::InvalidField("url", Some(url)))?;
         let id = root["redditProgId"].as_str().unwrap_or("None").to_owned();
         if id != "None" {
-            out.push(RedditStory::initialize_required(id, title.clone(), url.clone(), date).into());
+            out.push(make_reddit(id, title.clone(), url.clone(), date).into());
         }
         let id = root["redditTechId"].as_str().unwrap_or("None").to_owned();
         if id != "None" {
-            out.push(RedditStory::initialize_required(id, title.clone(), url.clone(), date).into());
+            out.push(make_reddit(id, title.clone(), url.clone(), date).into());
         }
         let id = root["hackerNewsId"].as_str().unwrap_or("None").to_owned();
         if id != "None" {
-            out.push(
-                HackerNewsStory::initialize_required(id, title.clone(), url.clone(), date).into(),
-            );
+            out.push(make_hacker_news(id, title.clone(), url.clone(), date).into());
         }
     }
 
     Ok(out.into_iter())
 }
 
-fn import_legacy_2() -> Result<impl Iterator<Item = Scrape>, LegacyError> {
+fn import_legacy_2() -> Result<impl Iterator<Item = TypedScrape>, LegacyError> {
     let f = BufReader::new(File::open("import/stories-progscrape-hr.gz")?);
     let mut decoder = BufReader::new(GzDecoder::new(f));
     let mut out = vec![];
@@ -109,9 +136,7 @@ fn import_legacy_2() -> Result<impl Iterator<Item = Scrape>, LegacyError> {
         let url = StoryUrl::parse(&url).ok_or(LegacyError::InvalidField("url", Some(url)))?;
         let id = root["hn"].as_str().unwrap_or("None").to_owned();
         if id != "None" {
-            out.push(
-                HackerNewsStory::initialize_required(id, title.clone(), url.clone(), date).into(),
-            );
+            out.push(make_hacker_news(id, title.clone(), url.clone(), date).into());
         }
         let mut reddit = root["reddit"]
             .as_array()
@@ -120,26 +145,22 @@ fn import_legacy_2() -> Result<impl Iterator<Item = Scrape>, LegacyError> {
         while let Some(value) = reddit.pop() {
             let id = value.as_str().unwrap_or("None").to_owned();
             if id != "None" {
-                out.push(
-                    RedditStory::initialize_required(id, title.clone(), url.clone(), date).into(),
-                );
+                out.push(make_reddit(id, title.clone(), url.clone(), date).into());
             }
         }
         let id = root["lobsters"].as_str().unwrap_or("None").to_owned();
         if id != "None" {
-            out.push(
-                LobstersStory::initialize_required(id, title.clone(), url.clone(), date).into(),
-            );
+            out.push(make_lobsters(id, title.clone(), url.clone(), date).into());
         }
     }
     Ok(out.into_iter())
 }
 
-pub fn import_legacy() -> Result<Vec<Scrape>, LegacyError> {
+pub fn import_legacy() -> Result<Vec<TypedScrape>, LegacyError> {
     let cache_file = "target/legacycache.bin";
     if let Ok(f) = File::open(cache_file) {
         tracing::info!("Reading cache '{}'...", cache_file);
-        if let Ok(value) = serde_cbor::from_reader::<Vec<Scrape>, _>(BufReader::new(f)) {
+        if let Ok(value) = serde_cbor::from_reader::<Vec<_>, _>(BufReader::new(f)) {
             tracing::info!("Cache OK");
             return Ok(value);
         }
@@ -149,7 +170,7 @@ pub fn import_legacy() -> Result<Vec<Scrape>, LegacyError> {
     let mut v: Vec<_> = import_legacy_1()?
         .chain(import_legacy_2()?)
         .collect::<Vec<_>>();
-    v.sort_by_cached_key(|story| story.date());
+    v.sort_by_cached_key(|story| story.date);
     let f = File::create(cache_file)?;
     serde_cbor::to_writer(BufWriter::new(f), &v)?;
     Ok(v)
@@ -157,26 +178,27 @@ pub fn import_legacy() -> Result<Vec<Scrape>, LegacyError> {
 
 #[cfg(test)]
 mod test {
+    use super::super::test::*;
     use super::*;
 
     #[test]
     fn test_read_legacy_1() {
         for story in import_legacy_1().expect("Failed to import legacy stories") {
-            println!("{:?} {} {}", story.source(), story.title(), story.url());
+            dump_story(story);
         }
     }
 
     #[test]
     fn test_read_legacy_2() {
         for story in import_legacy_2().expect("Failed to import legacy stories") {
-            println!("{:?} {} {}", story.source(), story.title(), story.url());
+            dump_story(story);
         }
     }
 
     #[test]
     fn test_read_legacy_all() {
         for story in import_legacy().expect("Failed to import legacy stories") {
-            println!("{:?} {} {}", story.source(), story.title(), story.url());
+            dump_story(story);
         }
     }
 }
