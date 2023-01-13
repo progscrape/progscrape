@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::{borrow::Borrow, collections::HashSet};
 
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
@@ -7,12 +7,12 @@ use tl::{HTMLTag, Parser, ParserOptions};
 use crate::story::{StoryDate, StoryUrl};
 
 use super::{
-    html::*, Scrape, ScrapeConfigSource, ScrapeSource, ScrapeSource2, ScrapeStory, Scraper,
+    html::*, Scrape, ScrapeConfigSource, ScrapeSource, ScrapeSourceDef, ScrapeStory, Scraper,
 };
 
 pub struct Slashdot {}
 
-impl ScrapeSource2 for Slashdot {
+impl ScrapeSourceDef for Slashdot {
     type Config = SlashdotConfig;
     type Scrape = SlashdotStory;
     type Scraper = SlashdotScraper;
@@ -88,7 +88,7 @@ impl SlashdotScraper {
         let title = find_first(p, article, ".story-title").ok_or("Missing .story-title")?;
         let mut links = html_tag_iterator(p, title.query_selector(p, "a"));
         let story_link = links.next().ok_or("Missing story link")?;
-        let title = story_link.inner_text(p).to_string();
+        let title = unescape_entities(story_link.inner_text(p).borrow());
         if title.len() < 5 {
             return Err(format!("Title was too short: {}", title));
         }
@@ -146,7 +146,7 @@ impl Scraper<SlashdotConfig, SlashdotStory> for SlashdotScraper {
     fn scrape(
         &self,
         _args: &SlashdotConfig,
-        input: String,
+        input: &str,
     ) -> Result<(Vec<Scrape<SlashdotStory>>, Vec<String>), super::ScrapeError> {
         let dom = tl::parse(&input, ParserOptions::default())?;
         let p = dom.parser();

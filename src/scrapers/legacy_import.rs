@@ -9,7 +9,8 @@ use serde_json::Value;
 use super::{
     hacker_news::{self},
     lobsters::{self},
-    reddit_json, Scrape, TypedScrape,
+    reddit::{self},
+    Scrape, TypedScrape,
 };
 use crate::scrapers::html::unescape_entities;
 use crate::story::StoryDate;
@@ -46,7 +47,7 @@ fn make_reddit(
     title: String,
     url: StoryUrl,
     date: StoryDate,
-) -> Scrape<reddit_json::RedditStory> {
+) -> Scrape<reddit::RedditStory> {
     Scrape::new(id, title, url, date, Default::default())
 }
 

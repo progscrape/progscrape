@@ -2,10 +2,7 @@ use std::collections::HashMap;
 
 use serde::Serialize;
 
-use super::{
-    hacker_news::HackerNews, lobsters::Lobsters, reddit_json::Reddit, slashdot::Slashdot,
-    ScrapeConfig, ScrapeConfigSource, ScrapeError, ScrapeSource, ScrapeSource2, TypedScrape,
-};
+use super::{scrape, ScrapeConfig, ScrapeError, ScrapeSource, TypedScrape};
 
 /// Accumulates the URLs required to scrape for all the services.
 #[derive(Serialize)]
@@ -13,60 +10,71 @@ pub struct WebScrapeInput {
     pub scrapes: HashMap<ScrapeSource, Vec<String>>,
 }
 
+#[derive(Serialize)]
+pub enum WebScrapeHttpResult {
+    HTTPError(u16, String),
+    Ok(String),
+}
+
+#[derive(Serialize)]
+pub struct WebScrapeURLs {
+    pub urls: Vec<String>,
+}
+
+#[derive(Serialize)]
+pub enum WebScrapeURLResult {
+    Err(WebScrapeHttpResult, String),
+    Ok(String, Vec<TypedScrape>),
+}
+
+#[derive(Serialize)]
+pub struct WebScrapeResult {
+    pub url: String,
+    pub result: Vec<WebScrapeURLResult>,
+}
+
 pub struct WebScraper {}
 
 impl WebScraper {
-    pub fn calculate_inputs(config: &ScrapeConfig) -> WebScrapeInput {
-        let sources = Self::scrapes(config);
+    /// Compute the list of all possible scrapes from all sources and subsources.
+    pub fn compute_all_scrapes(config: &ScrapeConfig) -> WebScrapeInput {
         let mut scrapes = HashMap::new();
-        for (source, scrape_config) in &sources {
-            let subsources = scrape_config.subsources();
-            scrapes.insert(*source, subsources);
+        for source in ScrapeSource::all() {
+            if let Some(config) = config.get(*source) {
+                let subsources = config.subsources();
+                scrapes.insert(*source, subsources);
+            }
         }
         WebScrapeInput { scrapes }
     }
 
+    /// Given a source and subsources, compute the set of URLs to fetch.
     pub fn compute_urls(
         config: &ScrapeConfig,
         source: ScrapeSource,
         subsources: Vec<String>,
     ) -> Vec<String> {
-        if let Some(scrape) = Self::scrapes(config).get(&source) {
+        if let Some(scrape) = config.get(source) {
             scrape.provide_urls(subsources)
         } else {
             vec![]
         }
     }
 
-    /// "Box" the `Scrape`s into the `Scrape` enum.
-    fn map<T>(input: (Vec<T>, Vec<String>)) -> (Vec<TypedScrape>, Vec<String>)
-    where
-        TypedScrape: From<T>,
-    {
-        (input.0.into_iter().map(|x| x.into()).collect(), input.1)
-    }
-
+    /// Given the result of fetching a URL, returns the scraped stories.
     pub fn scrape(
         config: &ScrapeConfig,
         source: ScrapeSource,
-        input: String,
-    ) -> Result<(Vec<TypedScrape>, Vec<String>), ScrapeError> {
-        Ok(match source {
-            ScrapeSource::HackerNews => Self::map(HackerNews::scrape(&config.hacker_news, input)?),
-            ScrapeSource::Reddit => Self::map(Reddit::scrape(&config.reddit, input)?),
-            ScrapeSource::Lobsters => Self::map(Lobsters::scrape(&config.lobsters, input)?),
-            ScrapeSource::Slashdot => Self::map(Slashdot::scrape(&config.slashdot, input)?),
-            ScrapeSource::Other => unreachable!(),
-        })
-    }
-
-    fn scrapes(config: &ScrapeConfig) -> HashMap<ScrapeSource, &dyn ScrapeConfigSource> {
-        use ScrapeSource::*;
-        HashMap::from_iter([
-            (HackerNews, &config.hacker_news as &dyn ScrapeConfigSource),
-            (Lobsters, &config.lobsters as &dyn ScrapeConfigSource),
-            (Slashdot, &config.slashdot as &dyn ScrapeConfigSource),
-            (Reddit, &config.reddit as &dyn ScrapeConfigSource),
-        ])
+        input: WebScrapeHttpResult,
+    ) -> WebScrapeURLResult {
+        match input {
+            WebScrapeHttpResult::Ok(s) => match scrape(config, source, &s) {
+                Ok((scrapes, warnings)) => WebScrapeURLResult::Ok(s, scrapes),
+                Err(e) => WebScrapeURLResult::Err(WebScrapeHttpResult::Ok(s), format!("{:?}", e)),
+            },
+            error @ WebScrapeHttpResult::HTTPError(..) => {
+                WebScrapeURLResult::Err(error, "HTTP Error".to_string())
+            }
+        }
     }
 }

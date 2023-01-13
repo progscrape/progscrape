@@ -3,14 +3,14 @@ use std::{borrow::Borrow, collections::HashMap};
 use tl::{HTMLTag, Parser, ParserOptions};
 
 use super::{
-    html::*, Scrape, ScrapeConfigSource, ScrapeError, ScrapeSource, ScrapeSource2, ScrapeStory,
+    html::*, Scrape, ScrapeConfigSource, ScrapeError, ScrapeSource, ScrapeSourceDef, ScrapeStory,
     Scraper,
 };
 use crate::story::{StoryDate, StoryUrl};
 
 pub struct HackerNews {}
 
-impl ScrapeSource2 for HackerNews {
+impl ScrapeSourceDef for HackerNews {
     type Config = HackerNewsConfig;
     type Scrape = HackerNewsStory;
     type Scraper = HackerNewsScraper;
@@ -158,7 +158,7 @@ impl Scraper<HackerNewsConfig, HackerNewsStory> for HackerNewsScraper {
     fn scrape(
         &self,
         _args: &HackerNewsConfig,
-        input: String,
+        input: &str,
     ) -> Result<(Vec<Scrape<HackerNewsStory>>, Vec<String>), ScrapeError> {
         let dom = tl::parse(&input, ParserOptions::default())?;
         let p = dom.parser();

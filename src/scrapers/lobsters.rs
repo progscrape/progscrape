@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 pub struct Lobsters {}
 
-impl ScrapeSource2 for Lobsters {
+impl ScrapeSourceDef for Lobsters {
     type Config = LobstersConfig;
     type Scrape = LobstersStory;
     type Scraper = LobstersScraper;
@@ -56,7 +56,7 @@ impl Scraper<LobstersConfig, LobstersStory> for LobstersScraper {
     fn scrape(
         &self,
         _args: &LobstersConfig,
-        input: String,
+        input: &str,
     ) -> Result<(Vec<Scrape<LobstersStory>>, Vec<String>), ScrapeError> {
         let doc = Document::parse(&input)?;
         let rss = doc.root_element();

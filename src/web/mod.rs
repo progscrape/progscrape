@@ -15,7 +15,8 @@ use tokio::sync::Mutex;
 use crate::{
     persist::{PersistError, StorageSummary},
     scrapers::{
-        web_scraper::{WebScrapeInput, WebScraper},
+        self,
+        web_scraper::{WebScrapeHttpResult, WebScrapeInput, WebScrapeURLResult, WebScraper},
         ScrapeSource, TypedScrape,
     },
     story::{rescore_stories, Story, StoryDate, StoryIdentifier, StoryRender, StoryScoreType},
@@ -258,7 +259,7 @@ async fn admin_scrape(
         "admin/scrape.html",
         context!(
             config: std::sync::Arc<crate::config::Config> = config.clone(),
-            scrapes: WebScrapeInput = WebScraper::calculate_inputs(&config.scrape),
+            scrapes: WebScrapeInput = WebScraper::compute_all_scrapes(&config.scrape),
             endpoint: &'static str = "/admin/scrape/test"
         ),
     )
@@ -277,7 +278,7 @@ async fn admin_scrape_test(
 ) -> Result<Html<String>, WebError> {
     let config = resources.config();
     let urls = WebScraper::compute_urls(&config.scrape, params.source, params.subsources);
-    let mut results = vec![];
+    let mut map = HashMap::new();
     for url in urls {
         let resp = reqwest::Client::new()
             .get(&url)
@@ -285,29 +286,25 @@ async fn admin_scrape_test(
             .send()
             .await?;
         let status = resp.status();
-        let text = resp.text().await?;
-        if text.len() < 100 {
-            tracing::warn!(
-                "Got too small of a response for a scrape status={} text={}",
-                status,
-                text
+        if status == StatusCode::OK {
+            map.insert(url, WebScrapeHttpResult::Ok(resp.text().await?));
+        } else {
+            map.insert(
+                url,
+                WebScrapeHttpResult::HTTPError(status.as_u16(), status.as_str().to_owned()),
             );
         }
-        let res = WebScraper::scrape(&config.scrape, params.source, text.clone());
-        results.push((
-            url,
-            text,
-            res.as_ref()
-                .err()
-                .map(|e| format!("{:?}", e))
-                .unwrap_or_default(),
-            res.ok().unwrap_or_default(),
-        ));
     }
+
+    let scrapes = HashMap::from_iter(
+        map.into_iter()
+            .map(|(k, v)| (k, WebScraper::scrape(&config.scrape, params.source, v))),
+    );
+
     render(
         &resources,
         "admin/scrape_test.html",
-        context!(scrapes: Vec<(String, String, String, (Vec<TypedScrape>, Vec<String>))> = results),
+        context!(scrapes: HashMap<String, WebScrapeURLResult> = scrapes),
     )
 }
 

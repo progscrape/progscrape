@@ -4,14 +4,14 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::{
-    html::unescape_entities, Scrape, ScrapeConfigSource, ScrapeError, ScrapeSource, ScrapeSource2,
-    ScrapeStory, Scraper,
+    html::unescape_entities, Scrape, ScrapeConfigSource, ScrapeError, ScrapeSource,
+    ScrapeSourceDef, ScrapeStory, Scraper,
 };
 use crate::story::{StoryDate, StoryUrl};
 
 pub struct Reddit {}
 
-impl ScrapeSource2 for Reddit {
+impl ScrapeSourceDef for Reddit {
     type Config = RedditConfig;
     type Scrape = RedditStory;
     type Scraper = RedditScraper;
@@ -159,12 +159,17 @@ impl RedditScraper {
             return Err(format!("Unknown story type: {:?}", kind));
         };
 
-        let millis = self.require_integer(data, "created_utc")?;
+        let id = self.require_string(data, "id")?;
+        if let Some(true) = data["stickied"].as_bool() {
+            return Err(format!("Ignoring stickied story {}", id));
+        }
+        let seconds: i64 = self.require_integer(data, "created_utc")?;
+        let millis = seconds * 1000;
         let date = StoryDate::from_millis(millis).ok_or_else(|| "Unmappable date".to_string())?;
         let url = StoryUrl::parse(unescape_entities(&self.require_string(data, "url")?))
             .ok_or_else(|| "Unmappable URL".to_string())?;
         let story = Scrape::new_subsource(
-            self.require_string(data, "id")?,
+            id,
             self.require_string(data, "subreddit")?,
             unescape_entities(&self.require_string(data, "title")?),
             url,
@@ -187,7 +192,7 @@ impl Scraper<RedditConfig, RedditStory> for RedditScraper {
     fn scrape(
         &self,
         _args: &RedditConfig,
-        input: String,
+        input: &str,
     ) -> Result<(Vec<Scrape<RedditStory>>, Vec<String>), ScrapeError> {
         let root: Value = serde_json::from_str(&input)?;
         let mut value = &root;
