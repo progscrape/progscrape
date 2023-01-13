@@ -105,7 +105,7 @@ impl SlashdotScraper {
 
         let external_link = links.next().ok_or("Missing external link")?;
         let href =
-            get_attribute(p, external_link, "href").ok_or_else(|| "Missing href".to_string())?;
+            unescape_entities(&get_attribute(p, external_link, "href").ok_or_else(|| "Missing href".to_string())?);
         let url = StoryUrl::parse(&href).ok_or(format!("Invalid href: {}", href))?;
 
         // This doesn't appear if there are no comments on a story, so we need to be flexible
