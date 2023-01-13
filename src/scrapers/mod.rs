@@ -375,7 +375,11 @@ pub mod test {
     fn test_scrape_all() {
         for scrape in scrape_all() {
             // Sanity check the scrapes
-            assert!(!scrape.title.contains("&amp") && !scrape.title.contains("&quot") && !scrape.title.contains("&squot"));
+            assert!(
+                !scrape.title.contains("&amp")
+                    && !scrape.title.contains("&quot")
+                    && !scrape.title.contains("&squot")
+            );
             assert!(!scrape.url.raw().contains("&amp"));
             assert!(scrape.date.year() == 2023 || scrape.date.year() == 2022);
         }
