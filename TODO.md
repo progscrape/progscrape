@@ -2,7 +2,6 @@ TODO:
 
  - [ ] Announcements source
  - [ ] Hook up search
- - [ ] Refactor ScrapeData common stuff
  - [ ] Tagging
 
 Maybe:
@@ -11,3 +10,4 @@ Maybe:
 Done:
  - [ ] Lobsters scraper
  - [ ] Cron
+ - [ ] Refactor ScrapeData common stuff
