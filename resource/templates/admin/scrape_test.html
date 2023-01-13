@@ -1,25 +1,63 @@
-{% for url in scrapes %}
-<h2>{{ url.0 }}</h2>
+{% for url, result in scrapes %}
+<h2>{{ url }}</h2>
 
+{# Outer result #}
+{% if result.Ok %}
 <h3>Scrapes</h3>
 <table>
-{% for scrape_outer in url.3.0 %}
-{% if loop.first %}
+{% for scrape_outer in result.Ok.1 %}
+{% set first_row = loop.first %}
+{# We need to unwrap the typed scrape #}
 {% for scrape_type, scrape in scrape_outer %}
+
+{% if first_row %}
+
+{# Compute scrape keys #}
+{% set_global keys = [] %}
+{% for key, value in scrape %}
+    {% if key != 'source' and key != 'date' and key != 'title' and key != 'url' %}
+        {% set_global keys = keys | concat(with=key) %}
+    {% endif %}
+{% endfor %}
+
+{# Write scrape header #}
 <tr>
-    {% for key, value in scrape %}
+    <th>date</th><th>source</th><th>title</th>
+    {% for key in keys %}
     <th>{{ key }}</th>
     {% endfor %}
 </tr>
-{% endfor %}
 {% endif %}
-{% for scrape_type, scrape in scrape_outer %}
-    <tr>
-        {% for key, value in scrape %}
-        <td>{{ value }}</td>
-        {% endfor %}
-    </tr>
+
+{# Write scrape #}
+<tr>
+    <td title="raw = {{ scrape.date }}">{{ scrape.date | date }}</td>
+    <td>{{ scrape.source }}</td>
+    <td><a href="{{ scrape.url.0 }}" title="norm = {{ scrape.url.1 }}">{{ scrape.title }}</a></td>
+    {% for key in keys %}
+    <td>{{ scrape[key] }}</td>
+    {% endfor %}
+</tr>
 {% endfor %}
+{% endfor %}
+</table>
+
+<details>
+<summary>Raw Result</summary>
+<pre style="white-space: pre-wrap;">
+{{ result.Ok.0 }}
+</pre>
+</details>
+{% elif result.Err %}
+{% else %}
+Unknown result type
+{% endif %}
+
+{#
+    <h3>Scrapes</h3>
+    <table>
+{% for scrape_outer in url.3.0 %}
+
 {% endfor %}
 </table>
 
@@ -33,7 +71,7 @@
 <h3>Raw</h3>
 
 <pre>
-{{ url.1 }}
-</pre>
+    {{ url.1 }}
+</pre> #}
 {% endfor %}
 
