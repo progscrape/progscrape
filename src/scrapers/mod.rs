@@ -316,7 +316,7 @@ pub mod test {
     use std::str::FromStr;
 
     pub fn slashdot_files() -> Vec<&'static str> {
-        vec!["slashdot1.html", "slashdot2.html"]
+        vec!["slashdot1.html", "slashdot2.html", "slashdot3.html"]
     }
 
     pub fn hacker_news_files() -> Vec<&'static str> {
@@ -373,6 +373,11 @@ pub mod test {
 
     #[test]
     fn test_scrape_all() {
-        scrape_all();
+        for scrape in scrape_all() {
+            // Sanity check the scrapes
+            assert!(!scrape.title.contains("&amp"));
+            assert!(!scrape.url.raw().contains("&amp"));
+            assert!(scrape.date.year() == 2023 || scrape.date.year() == 2022);
+        }
     }
 }
