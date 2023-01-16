@@ -1,7 +1,10 @@
-use std::{collections::{HashMap, HashSet}, iter::Peekable};
+use std::{
+    collections::{HashMap, HashSet},
+    iter::Peekable,
+};
 
 use itertools::Itertools;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 use super::TagSet;
 
@@ -27,7 +30,7 @@ pub struct TagConfig {
 
 #[derive(Default, Serialize, Deserialize)]
 pub struct TaggerConfig {
-    tags: HashMap<String, HashMap<String, TagConfig>>
+    tags: HashMap<String, HashMap<String, TagConfig>>,
 }
 
 #[derive(Debug)]
@@ -76,7 +79,7 @@ pub struct Tagger {
     exclusions: HashMap<MultiTokenTag, String>,
     /// Maps internal symbols to tags (only required in a handful of cases)
     backward: HashMap<String, String>,
-    /// 
+    ///
     symbols: HashMap<String, usize>,
 }
 
@@ -97,7 +100,11 @@ impl Tagger {
     }
 
     /// From a tag and list of alts, compute all possible permutations
-    fn compute_all_tags(tag: &str, alt: &Option<String>, alts: &Vec<String>) -> (String, HashSet<String>) {
+    fn compute_all_tags(
+        tag: &str,
+        alt: &Option<String>,
+        alts: &Vec<String>,
+    ) -> (String, HashSet<String>) {
         let mut tags = HashSet::new();
         let v = Self::compute_tag(tag);
         let primary = v[0].clone();
@@ -123,7 +130,13 @@ impl Tagger {
         for (category, tags) in &config.tags {
             for (tag, tags) in tags {
                 let (primary, all_tags) = Self::compute_all_tags(tag, &tags.alt, &tags.alts);
-                let excludes = tags.excludes.iter().flat_map(|s| Self::compute_tag(&s)).map(|s| MultiTokenTag { tag: s.split_ascii_whitespace().map(str::to_owned).collect() });
+                let excludes = tags
+                    .excludes
+                    .iter()
+                    .flat_map(|s| Self::compute_tag(&s))
+                    .map(|s| MultiTokenTag {
+                        tag: s.split_ascii_whitespace().map(str::to_owned).collect(),
+                    });
                 for exclude in excludes {
                     new.exclusions.insert(exclude, primary.clone());
                 }
@@ -140,7 +153,9 @@ impl Tagger {
                         new.symbols.insert(tag, new.records.len());
                     } else {
                         if tag.contains(' ') {
-                            let tag = MultiTokenTag { tag: tag.split_ascii_whitespace().map(str::to_owned).collect() };
+                            let tag = MultiTokenTag {
+                                tag: tag.split_ascii_whitespace().map(str::to_owned).collect(),
+                            };
                             new.forward_multi.insert(tag, new.records.len());
                         } else {
                             new.forward.insert(tag, new.records.len());
@@ -170,7 +185,11 @@ impl Tagger {
         }
 
         // Next, we check all the word-like tokens for potential matches
-        let tokens_vec = s.split_ascii_whitespace().map(|s| s.replace(|c: char| !c.is_alphanumeric() && c != '-', "")).filter(|s| !s.is_empty()).collect_vec();
+        let tokens_vec = s
+            .split_ascii_whitespace()
+            .map(|s| s.replace(|c: char| !c.is_alphanumeric() && c != '-', ""))
+            .filter(|s| !s.is_empty())
+            .collect_vec();
         let mut tokens = tokens_vec.as_slice();
 
         let mut mutes = HashMap::new();
@@ -222,7 +241,7 @@ mod test {
 
     use crate::story::TagSet;
 
-    use super::{TaggerConfig, Tagger};
+    use super::{Tagger, TaggerConfig};
 
     #[fixture]
     fn tagger_config() -> TaggerConfig {
@@ -254,7 +273,7 @@ mod test {
         let tagger = Tagger::new(&tagger_config);
         println!("{:?}", tagger);
         tagger
-    } 
+    }
 
     #[rstest]
     #[case("I love rust!", &["rust"])]
@@ -273,7 +292,12 @@ mod test {
     fn test_tag_extraction(tagger: Tagger, #[case] s: &str, #[case] tags: &[&str]) {
         let mut tag_set = TagSet::new();
         tagger.tag(s, &mut tag_set);
-        assert_eq!(tag_set.collect(), tags.to_vec(), "while checking tags for {}", s);
+        assert_eq!(
+            tag_set.collect(),
+            tags.to_vec(),
+            "while checking tags for {}",
+            s
+        );
     }
 
     #[rstest]
@@ -292,7 +316,12 @@ mod test {
     fn test_c_and_d_cases(tagger: Tagger, #[case] s: &str, #[case] tags: &[&str]) {
         let mut tag_set = TagSet::new();
         tagger.tag(s, &mut tag_set);
-        assert_eq!(tag_set.collect(), tags.to_vec(), "while checking tags for {}", s);
+        assert_eq!(
+            tag_set.collect(),
+            tags.to_vec(),
+            "while checking tags for {}",
+            s
+        );
     }
 
     #[rstest]
@@ -308,6 +337,11 @@ mod test {
     fn test_3d_cases(tagger: Tagger, #[case] s: &str, #[case] tags: &[&str]) {
         let mut tag_set = TagSet::new();
         tagger.tag(s, &mut tag_set);
-        assert_eq!(tag_set.collect(), tags.to_vec(), "while checking tags for {}", s);
+        assert_eq!(
+            tag_set.collect(),
+            tags.to_vec(),
+            "while checking tags for {}",
+            s
+        );
     }
 }

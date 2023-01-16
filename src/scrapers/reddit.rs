@@ -151,7 +151,11 @@ impl RedditScraper {
         }
     }
 
-    fn map_story(&self, child: &Value, positions: &mut HashMap<String, u32>) -> Result<Scrape<RedditStory>, String> {
+    fn map_story(
+        &self,
+        child: &Value,
+        positions: &mut HashMap<String, u32>,
+    ) -> Result<Scrape<RedditStory>, String> {
         let kind = child["kind"].as_str();
         let data = if kind == Some("t3") {
             &child["data"]
@@ -164,7 +168,11 @@ impl RedditScraper {
         if let Some(true) = data["stickied"].as_bool() {
             return Err(format!("Ignoring stickied story {}/{}", subreddit, id));
         }
-        let position = *positions.entry(subreddit.clone()).and_modify(|n| *n += 1).or_default() + 1;
+        let position = *positions
+            .entry(subreddit.clone())
+            .and_modify(|n| *n += 1)
+            .or_default()
+            + 1;
         let seconds: i64 = self.require_integer(data, "created_utc")?;
         let millis = seconds * 1000;
         let date = StoryDate::from_millis(millis).ok_or_else(|| "Unmappable date".to_string())?;

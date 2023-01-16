@@ -9,8 +9,8 @@ use std::{
 };
 
 mod date;
-mod url;
 pub mod tagger;
+mod url;
 
 pub use self::{
     date::StoryDate,
@@ -408,7 +408,7 @@ pub struct TagSet {
 impl TagSet {
     pub fn new() -> Self {
         Self {
-            set: HashSet::new()
+            set: HashSet::new(),
         }
     }
 
