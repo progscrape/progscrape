@@ -10,6 +10,7 @@ use tera::Tera;
 use tokio::sync::watch;
 
 use crate::config::Config;
+use crate::story::tagger::Tagger;
 use crate::web::filters::*;
 use crate::web::static_files::StaticFileRegistry;
 use crate::web::WebError;
@@ -20,6 +21,7 @@ struct ResourceHolder {
     static_files: Arc<StaticFileRegistry>,
     static_files_root: Arc<StaticFileRegistry>,
     config: Arc<Config>,
+    tagger: Arc<Tagger>,
 }
 
 #[derive(Clone)]
@@ -39,6 +41,9 @@ impl Resources {
     }
     pub fn config(&self) -> Arc<Config> {
         self.rx.borrow().config.clone()
+    }
+    pub fn tagger(&self) -> Arc<Tagger> {
+        self.rx.borrow().tagger.clone()
     }
 }
 
@@ -99,11 +104,13 @@ fn generate() -> Result<ResourceHolder, WebError> {
     let static_files_root = Arc::new(create_static_files_root()?);
     let templates = Arc::new(create_templates(static_files.clone())?);
     let config = Arc::new(create_config()?);
+    let tagger = Arc::new(Tagger::new(&config.tagger));
     Ok(ResourceHolder {
         templates,
         static_files,
         static_files_root,
         config,
+        tagger,
     })
 }
 

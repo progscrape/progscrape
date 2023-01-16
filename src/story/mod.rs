@@ -1,4 +1,5 @@
 use chrono::Duration;
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 use crate::scrapers::{ScrapeId, ScrapeSource, TypedScrape};
@@ -9,6 +10,7 @@ use std::{
 
 mod date;
 mod url;
+pub mod tagger;
 
 pub use self::{
     date::StoryDate,
@@ -404,8 +406,18 @@ pub struct TagSet {
 }
 
 impl TagSet {
+    pub fn new() -> Self {
+        Self {
+            set: HashSet::new()
+        }
+    }
+
     pub fn add(&mut self, tag: impl AsRef<str>) {
         self.set.insert(tag.as_ref().to_ascii_lowercase());
+    }
+
+    pub fn collect(self) -> Vec<String> {
+        self.set.into_iter().sorted().collect()
     }
 }
 

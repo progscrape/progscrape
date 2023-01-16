@@ -4,7 +4,8 @@ TODO:
  - [ ] Hook up search
  - [ ] Tagging
  - [ ] Restore warnings to scrape test page
-
+ - [ ] Slashdot tags should use URL not title
+ 
 Maybe:
  - [ ] Metrics?
 
