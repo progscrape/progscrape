@@ -6,7 +6,7 @@
     <tr><th>URL</th><td>{{ story.url }}</td></tr>
     <tr><th>URL norm</th><td>{{ story.url_norm }} (hash = {{ story.url_norm_hash }})</td></tr>
     {% for source, scrape in story.scrapes %}
-    <tr><th>{{ source }}</th><td>
+    <tr><th>Scrape: {{ source }}</th><td>
         <table>
             {% for key, value in scrape %}
             {% for key, value in value %}
@@ -29,6 +29,13 @@
             {% for row in score %}
             <tr><th>{{ row.0 }}</th><td>{{ row.1 | round(precision=2) }}</td></tr>
             {% endfor %}
+        </table>
+    </td></tr>
+    <tr><th>Tags</th><td>
+        <table>
+        {% for key, value in tags %}
+            <th>{{ key }}</th><td>{{ value }}</td>
+        {% endfor %}
         </table>
     </td></tr>
 </table>

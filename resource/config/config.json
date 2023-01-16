@@ -82,9 +82,10 @@
                 "algorithm(s)": {},
                 "compiler(s)": {},
                 "3d": {"alts": ["3(-)d", "3(-)dimension(s)", "three(-)d", "three(-)dimension(s)", "three(-)dimensional", "3(-)dimensional"]},
+                "ai": {"alts": ["artificial(-)intelligence"]},
                 "hash": {},
                 "web": {},
-                "api": {},
+                "api(s)": {},
                 "spam": {}
             },
             "concrete_concept": {
@@ -99,7 +100,6 @@
                 "murder": {},
                 "investing": {},
                 "privacy": {},
-                "autism": {},
                 "lawsuit": {},
                 "universe": {},
                 "assembler(s)": {},
@@ -127,7 +127,17 @@
                 "ipv4": {},
                 "ipv6": {},
                 "drone(s)": {},
-                "bytecode": {}
+                "bytecode": {},
+                "vpn(s)": {},
+                "malware": {}
+            },
+            "company": {
+                "volkswagen(s)": {"alt": "volkswagon(s)"},
+                "audi(s)": {},
+                "ford(s)": {},
+                "bosch": {},
+                "fiat": {},
+                "twilio": {}
             },
             "org": {
                 "amd": {},
@@ -156,7 +166,6 @@
                 "baidu": {},
                 "tencent": {},
                 "bytedance": {},
-                "tiktok": {},
                 "reddit": {},
                 "ubuntu": {},
                 "adobe": {},
@@ -221,7 +230,7 @@
                 "snowden": {}
             },
             "geo": {
-                "china": {},
+                "china": {"alt": "chinese"},
                 "taiwan": {},
                 "usa": {},
                 "russia": {},
@@ -230,8 +239,19 @@
                 "chile": {},
                 "canada": {},
                 "earth": {},
-                "antarctica": {},
+                "antarctica": {"alt": "antarctic"},
                 "arctic": {}
+            },
+            "biology": {
+                "genetics": {"alts": ["genetic"]},
+                "biology": {},
+                "covid": {"alts": ["covid 19", "covid19"]},
+                "disease": {},
+                "epilepsy": {},
+                "autism": {},
+                "malaria": {},
+                "mrna": {},
+                "vaccine": {}
             },
             "language": {
                 "php": {},
@@ -241,6 +261,7 @@
                 "java": {},
                 "perl": {},
                 "python": {},
+                "cython": {"implies": "python"},
                 "ruby": {},
                 "html": {},
                 "html5": {},
@@ -269,11 +290,30 @@
                 "c++": {"internal": "cplusplus", "symbol": true},
                 "c#": {"internal": "csharp", "symbol": true},
                 "f#": {"internal": "fsharp", "symbol": true},
-                "swift": {}
+                "swift": {},
+                "graphql": {}
             },
             "product": {
                 "minecraft": {},
-                "gmail": {"implies": "google"}
+                "tiktok": {},
+                "gmail": {"implies": "google"},
+                "iphone": {"implies": "apple"},
+                "ipad": {"implies": "apple"},
+                "ipod": {"implies": "apple"},
+                "ios": {"implies": "apple"},
+                "ipados": {"implies": "apple"},
+                "macos": {"implies": "apple"},
+                "macbook": {"implies": "apple"},
+                "wwdc": {"implies": "apple"},
+                "siri": {"implies": "apple"},
+                "alexa": {"implies": "amazon"},
+                "kindle": {"implies": "amazon"},
+                "godot": {},
+                "kodi": {},
+                "vlc": {},
+                "wannacry": {"implies": "malware"},
+                "signal": {},
+                "progscrape": {}
             },
             "technology": {
                 "kde": {},
@@ -285,9 +325,6 @@
                 "hadoop": {},
                 "android": {},
                 "node": {},
-                "iphone": {},
-                "ipad": {},
-                "ipod": {},
                 "ec2": {},
                 "firefox": {},
                 "safari": {},
@@ -296,7 +333,6 @@
                 "windows": {},
                 "mac": {"alt": "macintosh"},
                 "osx": {},
-                "macos": {},
                 "git": {},
                 "subversion": {},
                 "mercurial": {},
@@ -334,7 +370,6 @@
                 "webrtc": {},
                 "pgp": {},
                 "gpg": {},
-                "ios": {},
                 "ssd": {},
                 "openssh": {},
                 "openssl": {},
@@ -368,7 +403,8 @@
                 "mootools": {},
                 "unity": {},
                 "angular": {"alt": "angularjs"},
-                "ember": {"alt": "emberjs"}
+                "ember": {"alt": "emberjs"},
+                "smb": {}
             }
         }
     }

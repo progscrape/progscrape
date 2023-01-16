@@ -19,7 +19,7 @@ use crate::{
         web_scraper::{WebScrapeHttpResult, WebScrapeInput, WebScrapeURLResult, WebScraper},
         ScrapeSource, TypedScrape,
     },
-    story::{rescore_stories, Story, StoryDate, StoryIdentifier, StoryRender, StoryScoreType},
+    story::{rescore_stories, Story, StoryDate, StoryIdentifier, StoryRender, StoryScoreType, TagSet},
     web::cron::Cron,
 };
 
@@ -372,11 +372,16 @@ async fn admin_status_story(
     let now = now(&index);
     tracing::info!("Loading story = {:?}", id);
     let story = index.storage.get_story(&id).ok_or(WebError::NotFound)?;
+    let mut tags = HashMap::new();
+    let mut tag_set = TagSet::new();
+    resources.tagger().tag(story.title(), &mut tag_set);
+    tags.insert("title".to_owned(), tag_set.collect());
     render(
         &resources,
         "admin/story.html",
         context!(
             story: StoryRender = story.render(0),
+            tags: HashMap<String, Vec<String>> = tags,
             score: Vec<(String, f32)> =
                 story.score_detail(&resources.config().score, StoryScoreType::AgedFrom(now))
         ),

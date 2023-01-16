@@ -171,7 +171,13 @@ impl Tagger {
     }
 
     pub fn tag(&self, s: &str, tag_set: &mut TagSet) {
-        let mut s = s.to_lowercase();
+        let s = s.to_lowercase();
+
+        // Clean up single quotes to a standard type
+        let s = s.replace(|c| c == '`' || c == '\u{2018}' || c == '\u{2019}' || c == '\u{201a}' || c == '\u{201b}', "'");
+        
+        // Replace possessive with non-possessive
+        let mut s = s.replace("'s", "");
 
         // First, we replace all symbols and generate tags
         for (symbol, rec) in &self.symbols {
@@ -204,9 +210,7 @@ impl Tagger {
                 }
             });
             for (exclusion, tag) in &self.exclusions {
-                println!("check {:?} {:?}", exclusion, tokens);
                 if exclusion.matches(tokens) {
-                    println!("mute {:?}", exclusion);
                     mutes.insert(tag.clone(), exclusion.tag.len() - 1);
                 }
             }
