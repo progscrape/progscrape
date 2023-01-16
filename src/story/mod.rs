@@ -119,6 +119,7 @@ impl StoryIdentifier {
 pub struct Story {
     pub id: StoryIdentifier,
     pub score: f32,
+    pub tags: HashSet<String>,
     pub scrapes: HashMap<ScrapeId, TypedScrape>,
 }
 
@@ -129,6 +130,7 @@ impl Story {
         // This is a bit awkward as we should probably be scoring from the raw scrapes rather than the story itself
         let mut story = Self {
             id,
+            tags: HashSet::new(),
             score: 0.0,
             scrapes: HashMap::from_iter([(scrape_id, scrape)]),
         };

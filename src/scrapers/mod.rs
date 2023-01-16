@@ -1,6 +1,7 @@
 use std::marker::PhantomData;
 
 use crate::story::{StoryDate, StoryUrl, TagSet};
+use enumset::{EnumSetType, EnumSet};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -86,7 +87,7 @@ macro_rules! scrapers {
         }
 
         impl TypedScrape {
-            pub fn merge(&mut self, b: Self) {
+            pub fn merge(&mut self, b: Self) -> EnumSet<ScrapeMergeResult> {
                 match (self, b) {
                     $( (Self::$name(a), Self::$name(b)) => a.merge(b), )*
                     (a, b) => {
@@ -95,6 +96,7 @@ macro_rules! scrapers {
                             &a.source,
                             &b.source
                         );
+                        EnumSet::empty()
                     }
                 }
             }
@@ -250,6 +252,13 @@ impl<T: ScrapeStory> core::ops::DerefMut for Scrape<T> {
     }
 }
 
+#[derive(EnumSetType, Debug)]
+pub enum ScrapeMergeResult {
+    Date,
+    Title,
+    URL,
+}
+
 impl<T: ScrapeStory> Scrape<T> {
     pub fn new(id: String, title: String, url: StoryUrl, date: StoryDate, data: T) -> Self {
         Self {
@@ -282,12 +291,23 @@ impl<T: ScrapeStory> Scrape<T> {
         }
     }
 
-    pub fn merge(&mut self, other: Self) {
-        self.date = std::cmp::min(self.date, other.date);
+    pub fn merge(&mut self, other: Self) -> EnumSet<ScrapeMergeResult> {
+        let mut changes = EnumSet::empty();
+        if self.date != other.date {
+            self.date = std::cmp::min(self.date, other.date);
+            changes |= ScrapeMergeResult::Date;
+        }
         let (other, other_data) = (other.core, other.data);
-        self.title = other.title;
-        self.url = other.url;
+        if self.title != other.title {
+            self.title = other.title;
+            changes |= ScrapeMergeResult::Title;
+        }
+        if self.url != other.url {
+            self.url = other.url;
+            changes |= ScrapeMergeResult::URL;
+        }
         self.data.merge(other_data);
+        changes
     }
 }
 
