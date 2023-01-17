@@ -16,8 +16,8 @@ itertools = "0.10.5"
 regex = "1.7.0"
 flate2 = "1.0"
 lazy_static = "1.4"
-base64 = "0.21.0"
 enumset = "1.0"
+tracing = "0.1"
 
 [dev-dependencies]
 rstest = "0.16.0"

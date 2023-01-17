@@ -6,15 +6,10 @@ use std::{
 use flate2::bufread::GzDecoder;
 use serde_json::Value;
 
-use super::{
-    hacker_news::{self},
-    lobsters::{self},
-    reddit::{self},
-    TypedScrape,
-};
-use crate::scrapers::html::unescape_entities;
-use crate::story::StoryDate;
-use crate::story::StoryUrl;
+use super::TypedScrape;
+use super::export::*;
+use crate::types::*;
+use super::utils::html::unescape_entities;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -183,7 +178,7 @@ fn import_legacy_2() -> Result<impl Iterator<Item = TypedScrape>, LegacyError> {
 }
 
 pub fn import_legacy() -> Result<Vec<TypedScrape>, LegacyError> {
-    let cache_file = "target/legacycache.bin";
+    let cache_file = "../target/legacycache.bin";
     if let Ok(f) = File::open(cache_file) {
         tracing::info!("Reading cache '{}'...", cache_file);
         if let Ok(value) = serde_cbor::from_reader::<Vec<_>, _>(BufReader::new(f)) {

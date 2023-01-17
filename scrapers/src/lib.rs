@@ -5,3 +5,5 @@ mod public;
 
 pub use types::*;
 pub use public::*;
+pub use backends::{TypedScrape, ScrapeSource, ScrapeConfig};
+pub use backends::export::*;

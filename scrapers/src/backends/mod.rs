@@ -4,15 +4,20 @@ use serde::{Deserialize, Serialize};
 use crate::types::*;
 pub(crate) use self::def::*;
 
-mod hacker_news;
-mod lobsters;
-mod reddit;
-mod slashdot;
+pub mod hacker_news;
+pub mod lobsters;
+pub mod reddit;
+pub mod slashdot;
+mod legacy;
 mod utils;
 mod def;
 
 macro_rules! scrapers {
     ($($package:ident :: $name:ident ,)*) => {
+        pub mod export {
+            $( pub use super::$package; )*
+        }
+    
         pub fn scrape(
             config: &ScrapeConfig,
             source: ScrapeSource,
@@ -177,7 +182,7 @@ pub mod test {
     }
 
     pub fn load_file(f: &str) -> String {
-        let mut path = PathBuf::from_str("src/testdata").unwrap();
+        let mut path = PathBuf::from_str("testdata").unwrap();
         path.push(f);
         read_to_string(path).unwrap()
     }
