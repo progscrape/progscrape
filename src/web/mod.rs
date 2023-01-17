@@ -15,11 +15,10 @@ use tokio::sync::Mutex;
 use crate::{
     persist::{PersistError, StorageSummary},
     scrapers::{
-        self,
         web_scraper::{WebScrapeHttpResult, WebScrapeInput, WebScrapeURLResult, WebScraper},
-        ScrapeSource, TypedScrape,
+        ScrapeSource,
     },
-    story::{rescore_stories, Story, StoryDate, StoryIdentifier, StoryRender, StoryScoreType, TagSet},
+    story::{Story, StoryDate, StoryIdentifier, StoryRender, TagSet, StoryEvaluator},
     web::cron::Cron,
 };
 
@@ -151,11 +150,10 @@ fn now(global: &index::Global) -> StoryDate {
 fn hot_set(
     now: StoryDate,
     global: &index::Global,
-    config: &crate::config::Config,
+    eval: &StoryEvaluator,
 ) -> Result<Vec<Story>, PersistError> {
     let mut hot_set = global.storage.query_frontpage_hot_set(500)?;
-    rescore_stories(&config.score, now, &mut hot_set);
-    hot_set.sort_by(|a, b| a.compare_score(b).reverse());
+    eval.scorer.resort_stories(now, &mut hot_set);
     Ok(hot_set)
 }
 
@@ -196,7 +194,7 @@ async fn root(
     State((index, resources)): State<(index::Global, Resources)>,
 ) -> Result<Html<String>, WebError> {
     let now = now(&index);
-    let stories = render_stories(hot_set(now, &index, &resources.config())?[0..30].iter());
+    let stories = render_stories(hot_set(now, &index, &resources.story_evaluator())?[0..30].iter());
     let top_tags = vec![
         "github.com",
         "rust",
@@ -336,7 +334,7 @@ async fn admin_status_frontpage(
         "admin/frontpage.html",
         context!(
             stories: Vec<StoryRender> =
-                render_stories(hot_set(now, &index, &resources.config())?.iter(),),
+                render_stories(hot_set(now, &index, &resources.story_evaluator())?.iter(),),
             sort: String = sort
         ),
     )
@@ -372,23 +370,16 @@ async fn admin_status_story(
     let now = now(&index);
     tracing::info!("Loading story = {:?}", id);
     let story = index.storage.get_story(&id).ok_or(WebError::NotFound)?;
-    let mut tags = HashMap::new();
-    let mut tag_set = TagSet::new();
-    resources.tagger().tag(story.title(), &mut tag_set);
-    tags.insert("title".to_owned(), tag_set.collect());
-    for (id, scrape) in &story.scrapes {
-        let mut tag_set = TagSet::new();
-        scrape.tag(&resources.config().scrape, &mut tag_set)?;
-        tags.insert(format!("scrape {:?}", id), tag_set.collect());
-    }
+    let score_details = resources.story_evaluator().scorer.score_detail(&story, now);
+    let tags = Default::default();// _details = resources.story_evaluator().tagger.tag_detail(&story);
+
     render(
         &resources,
         "admin/story.html",
         context!(
             story: StoryRender = story.render(0),
             tags: HashMap<String, Vec<String>> = tags,
-            score: Vec<(String, f32)> =
-                story.score_detail(&resources.config().score, StoryScoreType::AgedFrom(now))
+            score: Vec<(String, f32)> = score_details
         ),
     )
 }

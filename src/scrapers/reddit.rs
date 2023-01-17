@@ -1,13 +1,13 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, borrow::Cow};
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::{
-    html::unescape_entities, Scrape, ScrapeConfigSource, ScrapeError, ScrapeSource,
-    ScrapeSourceDef, ScrapeStory, Scraper,
+    html::unescape_entities, ScrapeConfigSource, ScrapeError, ScrapeSource,
+    ScrapeSourceDef, ScrapeStory, Scraper, ScrapeCore, ScrapeId,
 };
-use crate::story::{StoryDate, StoryUrl, TagAcceptor};
+use crate::story::{StoryDate, StoryUrl};
 
 pub struct Reddit {}
 
@@ -17,7 +17,7 @@ impl ScrapeSourceDef for Reddit {
     type Scraper = RedditScraper;
 }
 
-#[derive(Default, Serialize, Deserialize)]
+#[derive(Clone, Default, Serialize, Deserialize)]
 pub struct RedditConfig {
     api: String,
     subreddit_batch: usize,
@@ -42,7 +42,7 @@ impl ScrapeConfigSource for RedditConfig {
     }
 }
 
-#[derive(Default, Serialize, Deserialize)]
+#[derive(Clone, Default, Serialize, Deserialize)]
 pub struct SubredditConfig {
     #[serde(default)]
     is_tag: bool,
@@ -53,8 +53,13 @@ pub struct SubredditConfig {
 #[derive(Default)]
 pub struct RedditScraper {}
 
-#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct RedditStory {
+    pub id: String,
+    pub subreddit: Option<String>,
+    pub title: String,
+    pub url: StoryUrl,
+    pub date: StoryDate,
     pub flair: String,
     pub position: u32,
     pub upvotes: u32,
@@ -72,7 +77,6 @@ impl ScrapeStory for RedditStory {
     }
 
     fn merge(&mut self, other: RedditStory) {
-        self.flair = other.flair;
         self.position = std::cmp::max(self.position, other.position);
         self.upvotes = std::cmp::max(self.upvotes, other.upvotes);
         self.downvotes = std::cmp::max(self.downvotes, other.downvotes);
@@ -155,7 +159,7 @@ impl RedditScraper {
         &self,
         child: &Value,
         positions: &mut HashMap<String, u32>,
-    ) -> Result<Scrape<RedditStory>, String> {
+    ) -> Result<RedditStory, String> {
         let kind = child["kind"].as_str();
         let data = if kind == Some("t3") {
             &child["data"]
@@ -178,22 +182,20 @@ impl RedditScraper {
         let date = StoryDate::from_millis(millis).ok_or_else(|| "Unmappable date".to_string())?;
         let url = StoryUrl::parse(unescape_entities(&self.require_string(data, "url")?))
             .ok_or_else(|| "Unmappable URL".to_string())?;
-        let story = Scrape::new_subsource(
+        let story = RedditStory {
             id,
-            subreddit,
-            unescape_entities(&self.require_string(data, "title")?),
+            subreddit: Some(subreddit),
+            title: unescape_entities(&self.require_string(data, "title")?),
             url,
             date,
-            RedditStory {
-                num_comments: self.require_integer(data, "num_comments")?,
-                score: self.require_integer(data, "score")?,
-                downvotes: self.require_integer(data, "downs")?,
-                upvotes: self.require_integer(data, "ups")?,
-                upvote_ratio: self.require_float(data, "upvote_ratio")? as f32,
-                flair: unescape_entities(&self.optional_string(data, "link_flair_text")?),
-                position,
-            },
-        );
+            num_comments: self.require_integer(data, "num_comments")?,
+            score: self.require_integer(data, "score")?,
+            downvotes: self.require_integer(data, "downs")?,
+            upvotes: self.require_integer(data, "ups")?,
+            upvote_ratio: self.require_float(data, "upvote_ratio")? as f32,
+            flair: unescape_entities(&self.optional_string(data, "link_flair_text")?),
+            position,
+        };
         Ok(story)
     }
 }
@@ -206,7 +208,7 @@ impl Scraper for RedditScraper {
         &self,
         _args: &RedditConfig,
         input: &str,
-    ) -> Result<(Vec<Scrape<RedditStory>>, Vec<String>), ScrapeError> {
+    ) -> Result<(Vec<RedditStory>, Vec<String>), ScrapeError> {
         let root: Value = serde_json::from_str(&input)?;
         let mut value = &root;
         for path in ["data", "children"] {
@@ -239,22 +241,26 @@ impl Scraper for RedditScraper {
         }
     }
 
-    fn provide_tags<T: TagAcceptor>(
-        &self,
-        args: &Self::Config,
-        scrape: &Scrape<Self::Output>,
-        tags: &mut T,
-    ) -> Result<(), ScrapeError> {
-       if let Some(ref subreddit) = scrape.source.subsource {
+    fn extract_core<'a>(&self, args: &Self::Config, input: &'a Self::Output) -> ScrapeCore<'a> {
+        let mut tags = vec![];
+        if let Some(ref subreddit) = input.subreddit {
             if let Some(config) = args.subreddits.get(subreddit) {
                 if config.flair_is_tag {
-                    tags.tag(&scrape.data.flair);
+                    tags.push(Cow::Owned(input.flair.to_lowercase()));
                 }
                 if config.is_tag {
-                    tags.tag(&subreddit);
+                    tags.push(Cow::Borrowed(subreddit.as_str()));
                 }
             }
         }
-        Ok(())
+
+        ScrapeCore {
+            source: ScrapeId::new(ScrapeSource::Reddit, input.subreddit.clone(), input.id.clone()),
+            title: Cow::Borrowed(&input.title),
+            url: &input.url,
+            date: input.date,
+            rank: (input.position as usize).checked_sub(1),
+            tags
+        }
     }
 }

@@ -1,12 +1,12 @@
 use serde::{Deserialize, Serialize};
-use std::{borrow::Borrow, collections::HashMap};
+use std::{borrow::{Borrow, Cow}, collections::HashMap};
 use tl::{HTMLTag, Parser, ParserOptions};
 
 use super::{
-    html::*, Scrape, ScrapeConfigSource, ScrapeError, ScrapeSource, ScrapeSourceDef, ScrapeStory,
-    Scraper,
+    html::*, ScrapeConfigSource, ScrapeError, ScrapeSource, ScrapeSourceDef, ScrapeStory,
+    Scraper, ScrapeCore, ScrapeId,
 };
-use crate::story::{StoryDate, StoryUrl, TagAcceptor};
+use crate::story::{StoryDate, StoryUrl, TagAcceptor, TagSet};
 
 pub struct HackerNews {}
 
@@ -16,7 +16,7 @@ impl ScrapeSourceDef for HackerNews {
     type Scraper = HackerNewsScraper;
 }
 
-#[derive(Default, Serialize, Deserialize)]
+#[derive(Clone, Default, Serialize, Deserialize)]
 pub struct HackerNewsConfig {
     homepage: String,
 }
@@ -31,8 +31,12 @@ impl ScrapeConfigSource for HackerNewsConfig {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct HackerNewsStory {
+    pub id: String,
+    pub title: String,
+    pub url: StoryUrl,
+    pub date: StoryDate,
     pub points: u32,
     pub comments: u32,
     pub position: u32,
@@ -152,6 +156,28 @@ impl HackerNewsScraper {
             Err("Unknown node type".to_string())
         };
     }
+
+    fn tags_from_title(
+        &self,
+        args: &<HackerNews as ScrapeSourceDef>::Config,
+        title: &str,
+    ) -> Vec<&'static str> {
+        let mut tags = vec![];
+        // TODO: Strip years [ie: (2005)] from end of title
+        if title.starts_with("Show HN") {
+            tags.push("show");
+        }
+        if title.starts_with("Ask HN") {
+            tags.push("ask");
+        }
+        if title.ends_with("[pdf]") {
+            tags.push("pdf");
+        }
+        if title.ends_with("[video]") {
+            tags.push("video");
+        }
+        tags
+    }
 }
 
 impl Scraper for HackerNewsScraper {
@@ -160,9 +186,9 @@ impl Scraper for HackerNewsScraper {
 
     fn scrape(
         &self,
-        _args: &HackerNewsConfig,
+        args: &HackerNewsConfig,
         input: &str,
-    ) -> Result<(Vec<Scrape<HackerNewsStory>>, Vec<String>), ScrapeError> {
+    ) -> Result<(Vec<HackerNewsStory>, Vec<String>), ScrapeError> {
         let dom = tl::parse(&input, ParserOptions::default())?;
         let p = dom.parser();
         let mut errors = vec![];
@@ -185,45 +211,32 @@ impl Scraper for HackerNewsScraper {
         for (k, v) in story_lines {
             let info = info_lines.remove(&k);
             if let Some(info) = info {
-                stories.push(Scrape::new(
-                    k,
-                    v.title,
-                    v.url,
-                    info.date,
-                    HackerNewsStory {
-                        points: info.points,
-                        comments: info.comments,
-                        position: v.position,
-                    },
-                ));
+                stories.push(HackerNewsStory {
+                    id: k,
+                    title: v.title,
+                    url: v.url,
+                    date: info.date,
+                    points: info.points,
+                    comments: info.comments,
+                    position: v.position,
+                });
             } else {
                 errors.push(format!("Unmatched story/info for id {}", k));
             }
         }
-        stories.sort_by_key(|x| x.data.position);
+        stories.sort_by_key(|x| x.position);
         Ok((stories, errors))
     }
 
-    fn provide_tags<T: TagAcceptor>(
-            &self,
-            args: &Self::Config,
-            scrape: &Scrape<Self::Output>,
-            tags: &mut T,
-        ) -> Result<(), ScrapeError> {
-        let title = &scrape.title;
-        // TODO: Strip years [ie: (2005)] from end of title
-        if title.starts_with("Show HN") {
-            tags.tag("show");
+    fn extract_core<'a>(&self, args: &Self::Config, input: &'a Self::Output) -> ScrapeCore<'a> {
+        let tags = self.tags_from_title(args, &input.title).into_iter().map(|s| Cow::Borrowed(s)).collect();
+        ScrapeCore {
+            source: ScrapeId::new(ScrapeSource::HackerNews, None, input.id.clone()),
+            title: Cow::Borrowed(&input.title),
+            url: &input.url,
+            date: input.date,
+            rank: (input.position as usize).checked_sub(1),
+            tags,
         }
-        if scrape.title.starts_with("Ask HN") {
-            tags.tag("ask");
-        }
-        if scrape.title.ends_with("[pdf]") {
-            tags.tag("pdf");
-        }
-        if scrape.title.ends_with("[video]") {
-            tags.tag("video");
-        }
-        Ok(())
     }
 }

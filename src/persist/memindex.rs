@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use itertools::Itertools;
 
-use crate::story::{StoryDate, StoryUrlNorm};
+use crate::story::{StoryDate, StoryUrlNorm, StoryEvaluator};
 
 use super::*;
 
@@ -59,7 +59,7 @@ impl MemIndex {
         for (shard, stories) in self.stories.iter().sorted_by_cached_key(|f| f.0) {
             for (_, story) in stories {
                 out.push(story.clone());
-                assert_eq!(*shard, YearMonth::from_date_time(story.date()));
+                assert_eq!(*shard, YearMonth::from_date_time(story.date));
             }
         }
         out.sort_by(|a, b| a.compare_date(b));
@@ -78,8 +78,8 @@ impl MemIndex {
     fn ensure_consistency(&self) {
         for (shard, stories) in &self.stories {
             for (norm, story) in stories {
-                assert_eq!(YearMonth::from_date_time(story.date()), *shard);
-                assert!(story.id.matches_date(story.date()));
+                assert_eq!(YearMonth::from_date_time(story.date), *shard);
+                assert!(story.id.matches_date(story.date));
                 self.get_story(&story.id).unwrap_or_else(|| {
                     panic!(
                         "Expected to find a story by its ID ({:?}), shard {}, norm '{:?}'",
@@ -96,30 +96,31 @@ impl MemIndex {
 impl StorageWriter for MemIndex {
     fn insert_scrapes<I: Iterator<Item = TypedScrape>>(
         &mut self,
-        config: &StoryScoreConfig,
+        eval: &StoryEvaluator,
         scrapes: I,
     ) -> Result<(), PersistError> {
         'outer: for scrape in scrapes {
-            let date = YearMonth::from_date_time(scrape.date);
-            let normalized_url = scrape.url.normalization();
+            let scrape_core = eval.extractor.extract(&scrape);
+            let date = YearMonth::from_date_time(scrape_core.date);
+            let normalized_url = scrape_core.url.normalization();
             // Try to pin it to an existing item
             for n in -2..=2 {
                 let map0 = self.map_mut(date.plus_months(n));
                 if let Some((key, mut story)) = map0.remove_entry(normalized_url) {
                     // Merge and then re-insert the story in the correct shard
-                    story.merge(config, scrape);
-                    self.most_recent_story = self.most_recent_story.max(story.date());
-                    self.map_mut(YearMonth::from_date_time(story.date()))
+                    story.merge(eval, scrape);
+                    self.most_recent_story = self.most_recent_story.max(story.date);
+                    self.map_mut(YearMonth::from_date_time(story.date))
                         .insert(key, story);
                     continue 'outer;
                 }
             }
 
-            self.most_recent_story = self.most_recent_story.max(scrape.date);
+            self.most_recent_story = self.most_recent_story.max(scrape_core.date);
             // Not found!
             if let Some(_old) = self
                 .map_mut(date)
-                .insert(normalized_url.clone(), Story::new(config, scrape))
+                .insert(normalized_url.clone(), Story::new(eval, scrape))
             {
                 // TODO: We need to merge duplicate scrapes
                 println!("Unexpected");
@@ -203,9 +204,10 @@ mod test {
         let stories =
             crate::scrapers::legacy_import::import_legacy().expect("Failed to read scrapes");
         let mut index = MemIndex::default();
-        let config = StoryScoreConfig::default();
+
+        let eval = StoryEvaluator::new_for_test();
         index
-            .insert_scrapes(&config, stories.into_iter())
+            .insert_scrapes(&eval, stories.into_iter())
             .expect("Failed to insert scrapes");
         index.ensure_consistency();
     }

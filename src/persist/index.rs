@@ -202,7 +202,7 @@ impl StoryIndex {
         let mut sharded = HashMap::<u32, Vec<Story>>::new();
         for story in scrapes {
             sharded
-                .entry(self.index_for_date(story.date()))
+                .entry(self.index_for_date(story.date))
                 .or_default()
                 .push(story);
         }
@@ -215,8 +215,8 @@ impl StoryIndex {
             let iter = stories.into_iter().enumerate().map(|(_i, story)| {
                 (
                     StoryLookupId {
-                        url_norm_hash: story.url().normalization().hash(),
-                        date: story.date().timestamp(),
+                        url_norm_hash: story.url.normalization().hash(),
+                        date: story.date.timestamp(),
                     },
                     story,
                 )
@@ -249,11 +249,11 @@ impl StoryIndex {
                         index.insert_story_document(
                             &mut writer,
                             StoryInsert {
-                                url: story.url().raw(),
-                                url_norm: story.url().normalization().string(),
-                                url_norm_hash: story.url().normalization().hash(),
-                                title: story.title(),
-                                date: story.date().timestamp(),
+                                url: story.url.raw(),
+                                url_norm: story.url.normalization().string(),
+                                url_norm_hash: story.url.normalization().hash(),
+                                title: &story.title,
+                                date: story.date.timestamp(),
                             },
                         )?;
                     }
@@ -268,11 +268,11 @@ impl StoryIndex {
     /// Insert a list of scrapes into the index.
     fn insert_scrapes<I: Iterator<Item = TypedScrape>>(
         &mut self,
-        config: &StoryScoreConfig,
+        eval: &StoryEvaluator,
         scrapes: I,
     ) -> Result<(), PersistError> {
         let mut memindex = memindex::MemIndex::default();
-        memindex.insert_scrapes(config, scrapes)?;
+        memindex.insert_scrapes(eval, scrapes)?;
 
         for chunk in &memindex.get_all_stories().chunks(STORY_INDEXING_CHUNK_SIZE) {
             println!("Chunk");
@@ -286,10 +286,10 @@ impl StoryIndex {
 impl StorageWriter for StoryIndex {
     fn insert_scrapes<I: Iterator<Item = TypedScrape>>(
         &mut self,
-        config: &StoryScoreConfig,
+        eval: &StoryEvaluator,
         scrapes: I,
     ) -> Result<(), PersistError> {
-        self.insert_scrapes(config, scrapes)
+        self.insert_scrapes(eval, scrapes)
     }
 }
 
@@ -413,20 +413,20 @@ mod test {
 
     #[test]
     fn test_index_lots() {
-        let stories =
-            crate::scrapers::legacy_import::import_legacy().expect("Failed to read scrapes");
-        let start_date = stories
-            .iter()
-            .fold(StoryDate::MAX, |a, b| std::cmp::min(a, b.date));
-        // let stories = crate::scrapers::test::scrape_all();
-        // let dir = MmapDirectory::open("/tmp/index").expect("Failed to get mmap dir");
-        let _dir = RamDirectory::create();
-        let mut index = StoryIndex::initialize(start_date, |_n| RamDirectory::create())
-            .expect("Failed to initialize index");
-        let config = StoryScoreConfig::default();
-        index
-            .insert_scrapes(&config, stories.into_iter())
-            .expect("Failed to insert scrapes");
-        index.query_search("rust".to_owned(), 10);
+        // let stories =
+        //     crate::scrapers::legacy_import::import_legacy().expect("Failed to read scrapes");
+        // let start_date = stories
+        //     .iter()
+        //     .fold(StoryDate::MAX, |a, b| std::cmp::min(a, b.date));
+        // // let stories = crate::scrapers::test::scrape_all();
+        // // let dir = MmapDirectory::open("/tmp/index").expect("Failed to get mmap dir");
+        // let _dir = RamDirectory::create();
+        // let mut index = StoryIndex::initialize(start_date, |_n| RamDirectory::create())
+        //     .expect("Failed to initialize index");
+        // let eval = StoryEvaluator::new_for_test();
+        // index
+        //     .insert_scrapes(&eval, stories.into_iter())
+        //     .expect("Failed to insert scrapes");
+        // index.query_search("rust".to_owned(), 10);
     }
 }

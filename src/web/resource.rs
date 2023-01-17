@@ -10,7 +10,7 @@ use tera::Tera;
 use tokio::sync::watch;
 
 use crate::config::Config;
-use crate::story::tagger::Tagger;
+use crate::story::StoryEvaluator;
 use crate::web::filters::*;
 use crate::web::static_files::StaticFileRegistry;
 use crate::web::WebError;
@@ -21,7 +21,7 @@ struct ResourceHolder {
     static_files: Arc<StaticFileRegistry>,
     static_files_root: Arc<StaticFileRegistry>,
     config: Arc<Config>,
-    tagger: Arc<Tagger>,
+    story_evaluator: Arc<StoryEvaluator>,
 }
 
 #[derive(Clone)]
@@ -42,8 +42,8 @@ impl Resources {
     pub fn config(&self) -> Arc<Config> {
         self.rx.borrow().config.clone()
     }
-    pub fn tagger(&self) -> Arc<Tagger> {
-        self.rx.borrow().tagger.clone()
+    pub fn story_evaluator(&self) -> Arc<StoryEvaluator> {
+        self.rx.borrow().story_evaluator.clone()
     }
 }
 
@@ -104,13 +104,13 @@ fn generate() -> Result<ResourceHolder, WebError> {
     let static_files_root = Arc::new(create_static_files_root()?);
     let templates = Arc::new(create_templates(static_files.clone())?);
     let config = Arc::new(create_config()?);
-    let tagger = Arc::new(Tagger::new(&config.tagger));
+    let story_evaluator = Arc::new(StoryEvaluator::new(&config.tagger, &config.score, &config.scrape));
     Ok(ResourceHolder {
         templates,
         static_files,
         static_files_root,
         config,
-        tagger,
+        story_evaluator,
     })
 }
 

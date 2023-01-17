@@ -12,7 +12,7 @@ impl ScrapeSourceDef for Lobsters {
     type Scraper = LobstersScraper;
 }
 
-#[derive(Default, Serialize, Deserialize)]
+#[derive(Clone, Default, Serialize, Deserialize)]
 pub struct LobstersConfig {
     feed: String,
     tag_denylist: HashSet<String>,
@@ -28,8 +28,12 @@ impl ScrapeConfigSource for LobstersConfig {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct LobstersStory {
+    pub id: String,
+    pub title: String,
+    pub url: StoryUrl,
+    pub date: StoryDate,
     pub num_comments: u32,
     pub position: u32,
     pub score: u32,
@@ -57,10 +61,10 @@ impl Scraper for LobstersScraper {
     type Output = <Lobsters as ScrapeSourceDef>::Scrape; 
 
     fn scrape(
-        &self,
-        _args: &LobstersConfig,
-        input: &str,
-    ) -> Result<(Vec<Scrape<LobstersStory>>, Vec<String>), ScrapeError> {
+            &self,
+            args: &Self::Config,
+            input: &str,
+        ) -> Result<(Vec<Self::Output>, Vec<String>), ScrapeError> {
         let doc = Document::parse(&input)?;
         let rss = doc.root_element();
         let mut warnings = vec![];
@@ -100,18 +104,16 @@ impl Scraper for LobstersScraper {
                         }
                     }
                     if let (Some(title), Some(id), Some(url), Some(date)) = (title, id, url, date) {
-                        stories.push(Scrape::new(
+                        stories.push(LobstersStory {
                             id,
                             title,
                             url,
                             date,
-                            LobstersStory {
-                                num_comments: 0,
-                                position: position as u32 + 1,
-                                score: 0,
-                                tags,
-                            },
-                        ));
+                            num_comments: 0,
+                            position: position as u32 + 1,
+                            score: 0,
+                            tags,
+                        });
                     } else {
                         warnings.push("Story did not contain all required fields".to_string());
                     }
@@ -121,18 +123,22 @@ impl Scraper for LobstersScraper {
         Ok((stories, warnings))
     }
 
-    fn provide_tags<T: TagAcceptor>(
-        &self,
-        args: &Self::Config,
-        scrape: &Scrape<Self::Output>,
-        tags: &mut T,
-    ) -> Result<(), ScrapeError> {
-        for tag in &scrape.data.tags {
+    fn extract_core<'a>(&self, args: &Self::Config, input: &'a Self::Output) -> ScrapeCore<'a> {
+        let mut tags = Vec::new();
+        for tag in &input.tags {
             if args.tag_denylist.contains(tag) {
                 continue;
             }
-            tags.tag(tag);
+            tags.push(Cow::Borrowed(tag.as_str()));
         }
-        Ok(())
+
+        ScrapeCore { 
+            source: ScrapeId::new(ScrapeSource::Lobsters, None, input.id.clone()), 
+            title: Cow::Borrowed(input.title.as_str()), 
+            url: &input.url, 
+            date: input.date, 
+            tags, 
+            rank: (input.position as usize).checked_sub(1) 
+        }
     }
 }

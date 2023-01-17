@@ -1,4 +1,4 @@
-use std::{marker::PhantomData, fmt::{Display, Debug}};
+use std::{fmt::Debug, borrow::Cow};
 
 use crate::story::{StoryDate, StoryUrl, TagSet, TagAcceptor};
 use enumset::{EnumSetType, EnumSet};
@@ -12,12 +12,43 @@ pub mod lobsters;
 pub mod reddit;
 pub mod slashdot;
 pub mod web_scraper;
+mod id;
+
+pub use id::ScrapeId;
 
 /// Our scrape sources, and the associated data types for each.
 pub trait ScrapeSourceDef {
     type Config: ScrapeConfigSource;
     type Scrape: ScrapeStory;
     type Scraper: Scraper<Config = Self::Config, Output = Self::Scrape>;
+}
+
+pub trait ScrapeStory {
+    const TYPE: ScrapeSource;
+
+    fn comments_url(&self) -> String;
+
+    fn merge(&mut self, other: Self);
+}
+
+pub trait Scraper: Default {
+    type Config: ScrapeConfigSource;
+    type Output: ScrapeStory;
+
+    /// Given input in the correct format, scrapes raw stories.
+    fn scrape(
+        &self,
+        args: &Self::Config,
+        input: &str,
+    ) -> Result<(Vec<Self::Output>, Vec<String>), ScrapeError>;
+
+    /// Extract the core scrape elements from the raw scrape.
+    fn extract_core<'a>(&self, args: &Self::Config, input: &'a Self::Output) -> ScrapeCore<'a>;
+}
+
+pub trait ScrapeConfigSource {
+    fn subsources(&self) -> Vec<String>;
+    fn provide_urls(&self, subsources: Vec<String>) -> Vec<String>;
 }
 
 macro_rules! scrapers {
@@ -40,7 +71,7 @@ macro_rules! scrapers {
         }
 
         /// Configuration for all scrapers.
-        #[derive(Default, Serialize, Deserialize)]
+        #[derive(Clone, Default, Serialize, Deserialize)]
         pub struct ScrapeConfig {
             $($package : <$package :: $name as ScrapeSourceDef>::Config),*
         }
@@ -83,52 +114,36 @@ macro_rules! scrapers {
 
         #[derive(Clone, Debug, Deserialize, Serialize)]
         pub enum TypedScrape {
-            $( $name (Scrape<<$package::$name as ScrapeSourceDef>::Scrape>), )*
+            $( $name (<$package::$name as ScrapeSourceDef>::Scrape), )*
         }
 
         impl TypedScrape {
-            pub fn merge(&mut self, b: Self) -> EnumSet<ScrapeMergeResult> {
+            pub fn merge(&mut self, b: Self) {
                 match (self, b) {
                     $( (Self::$name(a), Self::$name(b)) => a.merge(b), )*
                     (a, b) => {
                         tracing::warn!(
-                            "Unable to merge incompatible scrapes {:?} and {:?}, ignoring",
-                            &a.source,
-                            &b.source
+                            "Unable to merge incompatible scrapes, ignoring",
                         );
-                        EnumSet::empty()
                     }
                 }
             }
 
-            // TODO: This method shouldn't really be here
-            pub fn tag<T: TagAcceptor>(&self, config: &ScrapeConfig, t: &mut T) -> Result<(), ScrapeError> {
+            fn extract(&self, config: &ScrapeConfig) -> ScrapeCore {
                 match self {
-                    $( Self::$name(a)  => <$package::$name as ScrapeSourceDef>::Scraper::default().provide_tags(&config.$package, a, t), )*
-                }
-            }
-        }
-
-        impl core::ops::Deref for TypedScrape {
-            type Target = ScrapeCore;
-            fn deref(&self) -> &Self::Target {
-                match self {
-                    $( TypedScrape::$name(x) => &x.core, )*
-                }
-            }
-        }
-
-        impl core::ops::DerefMut for TypedScrape {
-            fn deref_mut(&mut self) -> &mut Self::Target {
-                match self {
-                    $( TypedScrape::$name(x) => &mut x.core, )*
+                    $( 
+                        Self::$name(a) => {
+                            let scraper = <$package::$name as ScrapeSourceDef>::Scraper::default();
+                            scraper.extract_core(&config.$package, a)
+                        }
+                    )*
                 }
             }
         }
 
         $(
-            impl From<Scrape<<$package::$name as ScrapeSourceDef>::Scrape>> for TypedScrape {
-                fn from(x: Scrape<<$package::$name as ScrapeSourceDef>::Scrape>) -> Self {
+            impl From<<$package::$name as ScrapeSourceDef>::Scrape> for TypedScrape {
+                fn from(x: <$package::$name as ScrapeSourceDef>::Scrape) -> Self {
                     TypedScrape::$name(x)
                 }
             }
@@ -141,11 +156,6 @@ scrapers! {
     slashdot::Slashdot,
     lobsters::Lobsters,
     reddit::Reddit,
-}
-
-pub trait ScrapeConfigSource {
-    fn subsources(&self) -> Vec<String>;
-    fn provide_urls(&self, subsources: Vec<String>) -> Vec<String>;
 }
 
 #[derive(Error, Debug)]
@@ -162,117 +172,41 @@ pub enum ScrapeError {
     StructureError(String),
 }
 
-/// Identify a scrape by source an ID.
-#[derive(Clone, Eq, PartialEq, Hash, PartialOrd, Ord)]
-pub struct ScrapeId {
-    pub source: ScrapeSource,
-    pub subsource: Option<String>,
-    pub id: String,
-    _noinit: PhantomData<()>,
+pub struct ScrapeExtractor {
+    config: ScrapeConfig,
 }
 
-impl ScrapeId {
-    pub fn new(source: ScrapeSource, subsource: Option<String>, id: String) -> Self {
+impl ScrapeExtractor {
+    pub fn new(config: &ScrapeConfig) -> Self {
         Self {
-            source,
-            subsource,
-            id,
-            _noinit: Default::default(),
+            config: config.clone()
         }
     }
-}
 
-impl Display for ScrapeId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if let Some(subsource) = &self.subsource {
-            f.write_fmt(format_args!("{}-{}-{}", self.source.into_str(), subsource, self.id))
-        } else {
-            f.write_fmt(format_args!("{}-{}", self.source.into_str(), self.id))
-        }
+    pub fn extract<'a>(&self, scrape: &'a TypedScrape) -> ScrapeCore<'a> {
+        scrape.extract(&self.config)
     }
 }
 
-impl Debug for ScrapeId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        <Self as Display>::fmt(self, f)
-    }
-}
-
-impl Serialize for ScrapeId {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        if let Some(subsource) = &self.subsource {
-            format!("{}-{}-{}", self.source.into_str(), subsource, self.id)
-        } else {
-            format!("{}-{}", self.source.into_str(), self.id)
-        }
-        .serialize(serializer)
-    }
-}
-
-impl<'de> Deserialize<'de> for ScrapeId {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let s = String::deserialize(deserializer)?;
-        if let Some((head, rest)) = s.split_once('-') {
-            let source = ScrapeSource::try_from_str(head)
-                .ok_or(serde::de::Error::custom("Invalid source"))?;
-            if let Some((subsource, id)) = rest.split_once('-') {
-                Ok(ScrapeId::new(
-                    source,
-                    Some(subsource.to_owned()),
-                    id.to_owned(),
-                ))
-            } else {
-                Ok(ScrapeId::new(source, None, rest.to_owned()))
-            }
-        } else {
-            Err(serde::de::Error::custom("Invalid format"))
-        }
-    }
-}
-
-pub trait ScrapeStory: Default {
-    const TYPE: ScrapeSource;
-
-    fn comments_url(&self) -> String;
-
-    fn merge(&mut self, other: Self);
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct ScrapeCore {
-    pub title: String,
-    pub url: StoryUrl,
+#[derive(Clone, Debug)]
+pub struct ScrapeCore<'a> {
+    /// The scrape source ID.
     pub source: ScrapeId,
+
+    /// Story title from this scrape source, potentially edited based on source (stripping suffixes, etc).
+    pub title: Cow<'a, str>,
+
+    /// Story URL.
+    pub url: &'a StoryUrl,
+
+    /// Story date/time.
     pub date: StoryDate,
-}
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct Scrape<T: ScrapeStory> {
-    #[serde(flatten)]
-    core: ScrapeCore,
+    /// Story tags from scrape source.
+    pub tags: Vec<Cow<'a, str>>,
 
-    /// The additional underlying data from the scrape.
-    #[serde(flatten)]
-    pub data: T,
-}
-
-impl<T: ScrapeStory> core::ops::Deref for Scrape<T> {
-    type Target = ScrapeCore;
-    fn deref(&self) -> &Self::Target {
-        &self.core
-    }
-}
-
-impl<T: ScrapeStory> core::ops::DerefMut for Scrape<T> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.core
-    }
+    /// If this story has a rank, lower is better.
+    pub rank: Option<usize>,
 }
 
 #[derive(EnumSetType, Debug)]
@@ -282,76 +216,25 @@ pub enum ScrapeMergeResult {
     URL,
 }
 
-impl<T: ScrapeStory> Scrape<T> {
-    pub fn new(id: String, title: String, url: StoryUrl, date: StoryDate, data: T) -> Self {
-        Self {
-            core: ScrapeCore {
-                source: ScrapeId::new(T::TYPE, None, id),
-                title,
-                url,
-                date,
-            },
-            data,
-        }
-    }
-
-    pub fn new_subsource(
-        id: String,
-        subsource: String,
-        title: String,
-        url: StoryUrl,
-        date: StoryDate,
-        data: T,
-    ) -> Self {
-        Self {
-            core: ScrapeCore {
-                source: ScrapeId::new(T::TYPE, Some(subsource), id),
-                title,
-                url,
-                date,
-            },
-            data,
-        }
-    }
-
-    pub fn merge(&mut self, other: Self) -> EnumSet<ScrapeMergeResult> {
-        let mut changes = EnumSet::empty();
-        if self.date != other.date {
-            self.date = std::cmp::min(self.date, other.date);
-            changes |= ScrapeMergeResult::Date;
-        }
-        let (other, other_data) = (other.core, other.data);
-        if self.title != other.title {
-            self.title = other.title;
-            changes |= ScrapeMergeResult::Title;
-        }
-        if self.url != other.url {
-            self.url = other.url;
-            changes |= ScrapeMergeResult::URL;
-        }
-        self.data.merge(other_data);
-        changes
-    }
-}
-
-pub trait Scraper: Default {
-    type Config: ScrapeConfigSource;
-    type Output: ScrapeStory;
-
-    /// Given input in the correct format, scrapes raw stories.
-    fn scrape(
-        &self,
-        args: &Self::Config,
-        input: &str,
-    ) -> Result<(Vec<Scrape<Self::Output>>, Vec<String>), ScrapeError>;
-
-    /// Given a scrape, processes the tags from it and adds them to the `TagSet`.
-    fn provide_tags<T: TagAcceptor>(
-        &self,
-        args: &Self::Config,
-        scrape: &Scrape<Self::Output>,
-        tags: &mut T,
-    ) -> Result<(), ScrapeError>;
+impl <'a> ScrapeCore<'a> {
+    // pub fn merge(&mut self, other: Self) -> EnumSet<ScrapeMergeResult> {
+    //     let mut changes = EnumSet::empty();
+    //     if self.date != other.date {
+    //         self.date = std::cmp::min(self.date, other.date);
+    //         changes |= ScrapeMergeResult::Date;
+    //     }
+    //     let (other, other_data) = (other.core, other.data);
+    //     if self.title != other.title {
+    //         self.title = other.title;
+    //         changes |= ScrapeMergeResult::Title;
+    //     }
+    //     if self.url != other.url {
+    //         self.url = other.url;
+    //         changes |= ScrapeMergeResult::URL;
+    //     }
+    //     self.data.merge(other_data);
+    //     changes
+    // }
 }
 
 #[cfg(test)]
@@ -419,7 +302,9 @@ pub mod test {
 
     #[test]
     fn test_scrape_all() {
+        let extractor = ScrapeExtractor::new(&ScrapeConfig::default());
         for scrape in scrape_all() {
+            let scrape = extractor.extract(&scrape);
             // Sanity check the scrapes
             assert!(
                 !scrape.title.contains("&amp")

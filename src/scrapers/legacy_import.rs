@@ -10,7 +10,7 @@ use super::{
     hacker_news::{self},
     lobsters::{self},
     reddit::{self},
-    Scrape, TypedScrape,
+    TypedScrape,
 };
 use crate::scrapers::html::unescape_entities;
 use crate::story::StoryDate;
@@ -38,8 +38,16 @@ fn make_hacker_news(
     title: String,
     url: StoryUrl,
     date: StoryDate,
-) -> Scrape<hacker_news::HackerNewsStory> {
-    Scrape::new(id, title, url, date, Default::default())
+) -> hacker_news::HackerNewsStory {
+    hacker_news::HackerNewsStory { 
+        id,
+        title,
+        url,
+        date,
+        comments: Default::default(),
+        points: Default::default(),
+        position: Default::default(),
+    }
 }
 
 fn make_reddit(
@@ -47,8 +55,18 @@ fn make_reddit(
     title: String,
     url: StoryUrl,
     date: StoryDate,
-) -> Scrape<reddit::RedditStory> {
-    Scrape::new(id, title, url, date, Default::default())
+) -> reddit::RedditStory {
+    reddit::RedditStory {
+        id, title, url, date,
+        downvotes: Default::default(),
+        flair: Default::default(),
+        num_comments: Default::default(),
+        position: Default::default(),
+        score: Default::default(),
+        subreddit: Default::default(),
+        upvote_ratio: Default::default(),
+        upvotes: Default::default(),
+    }
 }
 
 fn make_lobsters(
@@ -56,8 +74,14 @@ fn make_lobsters(
     title: String,
     url: StoryUrl,
     date: StoryDate,
-) -> Scrape<lobsters::LobstersStory> {
-    Scrape::new(id, title, url, date, Default::default())
+) -> lobsters::LobstersStory {
+    lobsters::LobstersStory {
+        id, title, url, date,
+        num_comments: Default::default(),
+        position: Default::default(),
+        score: Default::default(),
+        tags: Default::default(),
+    }
 }
 
 fn import_legacy_1() -> Result<impl Iterator<Item = TypedScrape>, LegacyError> {
@@ -171,7 +195,6 @@ pub fn import_legacy() -> Result<Vec<TypedScrape>, LegacyError> {
     let mut v: Vec<_> = import_legacy_1()?
         .chain(import_legacy_2()?)
         .collect::<Vec<_>>();
-    v.sort_by_cached_key(|story| story.date);
     let f = File::create(cache_file)?;
     serde_cbor::to_writer(BufWriter::new(f), &v)?;
     Ok(v)

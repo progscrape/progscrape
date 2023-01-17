@@ -1,13 +1,13 @@
-use std::{borrow::Borrow, collections::HashSet};
+use std::{borrow::{Borrow, Cow}, collections::HashSet};
 
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use tl::{HTMLTag, Parser, ParserOptions};
 
-use crate::story::{StoryDate, StoryUrl, TagAcceptor};
+use crate::story::{StoryDate, StoryUrl, TagAcceptor, TagSet};
 
 use super::{
-    html::*, Scrape, ScrapeConfigSource, ScrapeSource, ScrapeSourceDef, ScrapeStory, Scraper, ScrapeError,
+    html::*, ScrapeConfigSource, ScrapeSource, ScrapeSourceDef, ScrapeStory, Scraper, ScrapeError, ScrapeCore, ScrapeId,
 };
 
 pub struct Slashdot {}
@@ -18,7 +18,7 @@ impl ScrapeSourceDef for Slashdot {
     type Scraper = SlashdotScraper;
 }
 
-#[derive(Default, Serialize, Deserialize)]
+#[derive(Clone, Default, Serialize, Deserialize)]
 pub struct SlashdotConfig {
     homepage: String,
     tag_allowlist: HashSet<String>,
@@ -34,8 +34,12 @@ impl ScrapeConfigSource for SlashdotConfig {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct SlashdotStory {
+    pub id: String,
+    pub title: String,
+    pub url: StoryUrl,
+    pub date: StoryDate,
     pub num_comments: u32,
     pub tags: Vec<String>,
 }
@@ -47,7 +51,7 @@ impl ScrapeStory for SlashdotStory {
         unimplemented!()
     }
 
-    fn merge(&mut self, other: SlashdotStory) {
+    fn merge(&mut self, other: Self) {
         self.num_comments = std::cmp::max(self.num_comments, other.num_comments);
     }
 }
@@ -84,7 +88,7 @@ impl SlashdotScraper {
         Err(format!("Failed to parse date: {}", date))
     }
 
-    fn map_story(p: &Parser, article: &HTMLTag) -> Result<Scrape<SlashdotStory>, String> {
+    fn map_story(p: &Parser, article: &HTMLTag) -> Result<SlashdotStory, String> {
         let title = find_first(p, article, ".story-title").ok_or("Missing .story-title")?;
         let mut links = html_tag_iterator(p, title.query_selector(p, "a"));
         let story_link = links.next().ok_or("Missing story link")?;
@@ -133,13 +137,14 @@ impl SlashdotScraper {
             find_first(p, article, "time").ok_or_else(|| "Could not locate time".to_string())?;
         let date = Self::parse_time(&date.inner_text(p))?;
 
-        Ok(Scrape::new(
+        Ok(SlashdotStory {
             id,
             title,
             url,
             date,
-            SlashdotStory { tags, num_comments },
-        ))
+            tags, 
+            num_comments,
+        })
     }
 }
 
@@ -148,10 +153,10 @@ impl Scraper for SlashdotScraper {
     type Output = <Slashdot as ScrapeSourceDef>::Scrape;
 
     fn scrape(
-        &self,
-        _args: &SlashdotConfig,
-        input: &str,
-    ) -> Result<(Vec<Scrape<SlashdotStory>>, Vec<String>), super::ScrapeError> {
+            &self,
+            args: &Self::Config,
+            input: &str,
+        ) -> Result<(Vec<Self::Output>, Vec<String>), ScrapeError> {
         let dom = tl::parse(&input, ParserOptions::default())?;
         let p = dom.parser();
         let mut errors = vec![];
@@ -167,18 +172,22 @@ impl Scraper for SlashdotScraper {
         Ok((v, errors))
     }
 
-    fn provide_tags<T: TagAcceptor>(
-        &self,
-        args: &Self::Config,
-        scrape: &Scrape<Self::Output>,
-        tags: &mut T,
-    ) -> Result<(), ScrapeError> {
-        for tag in &scrape.data.tags {
+    fn extract_core<'a>(&self, args: &Self::Config, input: &'a Self::Output) -> ScrapeCore<'a> {
+        let mut tags = vec![];
+        for tag in &input.tags {
             if args.tag_allowlist.contains(tag) {
-                tags.tag(tag);
+                tags.push(Cow::Borrowed(tag.as_str()));
             }
         }
-        Ok(())
+
+        ScrapeCore {
+            source: ScrapeId::new(ScrapeSource::Slashdot, None, input.id.clone()),
+            date: input.date,
+            title: Cow::Borrowed(input.title.as_str()),
+            url: &input.url,
+            rank: None,
+            tags
+        }        
     }
 }
 

@@ -5,7 +5,7 @@ use std::{
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
-use super::TagAcceptor;
+use super::{TagAcceptor, TagSet};
 
 #[derive(Default, Serialize, Deserialize)]
 pub struct TagConfig {
@@ -67,8 +67,8 @@ impl MultiTokenTag {
 }
 
 #[derive(Debug)]
-/// The `Tagger` creates a list of tag symbols from a story.
-pub struct Tagger {
+/// The `StoryTagger` creates a list of tag symbols from a story.
+pub struct StoryTagger {
     records: Vec<TagRecord>,
     /// Maps tags to internal symbols
     forward: HashMap<String, usize>,
@@ -82,7 +82,7 @@ pub struct Tagger {
     symbols: HashMap<String, usize>,
 }
 
-impl Tagger {
+impl StoryTagger {
     // TODO: These methods allocate a lot of temporaries that probably don't need to be allocated
     fn compute_tag(tag: &str) -> Vec<String> {
         // Optional hyphen/space
@@ -235,6 +235,19 @@ impl Tagger {
             tokens = &tokens[1..];
         }
     }
+
+    pub fn tag_details() -> Vec<(String, TagSet)> {
+        // let mut tags = HashMap::new();
+        // let mut tag_set = TagSet::new();
+        // resources.tagger().tag(story.title(), &mut tag_set);
+        // tags.insert("title".to_owned(), tag_set.collect());
+        // for (id, scrape) in &story.scrapes {
+        //     let mut tag_set = TagSet::new();
+        //     scrape.tag(&resources.config().scrape, &mut tag_set)?;
+        //     tags.insert(format!("scrape {:?}", id), tag_set.collect());
+        // }
+        Default::default()
+    }
 }
 
 #[cfg(test)]
@@ -244,7 +257,7 @@ mod test {
 
     use crate::story::TagSet;
 
-    use super::{Tagger, TaggerConfig};
+    use super::{StoryTagger, TaggerConfig};
 
     #[fixture]
     fn tagger_config() -> TaggerConfig {
@@ -272,8 +285,8 @@ mod test {
     }
 
     #[fixture]
-    fn tagger(tagger_config: TaggerConfig) -> Tagger {
-        let tagger = Tagger::new(&tagger_config);
+    fn tagger(tagger_config: TaggerConfig) -> StoryTagger {
+        let tagger = StoryTagger::new(&tagger_config);
         println!("{:?}", tagger);
         tagger
     }
@@ -292,7 +305,7 @@ mod test {
     #[case("C# is hard", &["csharp"])]
     #[case("C++ is hard", &["cplusplus"])]
     #[case("AT&T has an ampersand", &["atandt"])]
-    fn test_tag_extraction(tagger: Tagger, #[case] s: &str, #[case] tags: &[&str]) {
+    fn test_tag_extraction(tagger: StoryTagger, #[case] s: &str, #[case] tags: &[&str]) {
         let mut tag_set = TagSet::new();
         tagger.tag(s, &mut tag_set);
         assert_eq!(
@@ -316,7 +329,7 @@ mod test {
     #[case("Vitamin-D Supplementation Does Not Influence Growth in Children", &[])]
     #[case("They'd rather not", &[])]
     #[case("Apple Music deletes your original songs and replaces them with DRM'd versions", &[])]
-    fn test_c_and_d_cases(tagger: Tagger, #[case] s: &str, #[case] tags: &[&str]) {
+    fn test_c_and_d_cases(tagger: StoryTagger, #[case] s: &str, #[case] tags: &[&str]) {
         let mut tag_set = TagSet::new();
         tagger.tag(s, &mut tag_set);
         assert_eq!(
@@ -337,7 +350,7 @@ mod test {
     #[case("three dimensional printing is hard", &["3d"])]
     #[case("3 dimensional printing is hard", &["3d"])]
     #[case("3-dimensional printing is hard", &["3d"])]
-    fn test_3d_cases(tagger: Tagger, #[case] s: &str, #[case] tags: &[&str]) {
+    fn test_3d_cases(tagger: StoryTagger, #[case] s: &str, #[case] tags: &[&str]) {
         let mut tag_set = TagSet::new();
         tagger.tag(s, &mut tag_set);
         assert_eq!(

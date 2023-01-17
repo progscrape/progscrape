@@ -1,20 +1,23 @@
-use chrono::Duration;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
-use crate::scrapers::{ScrapeId, ScrapeSource, TypedScrape};
+use crate::scrapers::{ScrapeId, ScrapeSource, TypedScrape, ScrapeConfig, ScrapeExtractor};
 use std::{
-    collections::{hash_map::Entry, HashMap, HashSet},
-    fmt::Display,
+    collections::{hash_map::Entry, HashMap, HashSet}, borrow::Cow,
 };
 
 mod date;
-pub mod tagger;
+mod tagger;
+mod scorer;
 mod url;
+mod id;
 
+use self::scorer::StoryScoreType;
 pub use self::{
     date::StoryDate,
     url::{StoryUrl, StoryUrlNorm},
+    id::StoryIdentifier,
+    tagger::{StoryTagger, TaggerConfig}, scorer::{StoryScorer, StoryScoreConfig}
 };
 
 /// Rendered story with all properties hydrated from the underlying scrapes. Extraneous data is removed at this point.
@@ -35,82 +38,25 @@ pub struct StoryRender {
     pub scrapes: HashMap<ScrapeId, TypedScrape>,
 }
 
-/// Uniquely identifies a story within the index.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize, Serialize)]
-pub struct StoryIdentifier {
-    pub norm: StoryUrlNorm,
-    date: (u16, u8, u8),
+/// Required services to evaulate a story.
+pub struct StoryEvaluator {
+    pub tagger: StoryTagger,
+    pub scorer: StoryScorer,
+    pub extractor: ScrapeExtractor,
 }
 
-impl Display for StoryIdentifier {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!(
-            "{}:{}:{}:{}",
-            self.date.0,
-            self.date.1,
-            self.date.2,
-            self.norm.string()
-        ))
-    }
-}
-
-impl StoryIdentifier {
-    const BASE64_CONFIG: base64::engine::GeneralPurpose =
-        base64::engine::general_purpose::URL_SAFE_NO_PAD;
-
-    pub fn new(date: StoryDate, norm: &StoryUrlNorm) -> Self {
+impl StoryEvaluator {
+    pub fn new(tagger: &TaggerConfig, scorer: &StoryScoreConfig, scrape: &ScrapeConfig) -> Self {
         Self {
-            norm: norm.clone(),
-            date: (date.year() as u16, date.month() as u8, date.day() as u8),
+            tagger: StoryTagger::new(tagger),
+            scorer: StoryScorer::new(scorer),
+            extractor: ScrapeExtractor::new(scrape),
         }
     }
 
-    pub fn update_date(&mut self, date: StoryDate) {
-        self.date = (date.year() as u16, date.month() as u8, date.day() as u8);
-    }
-
-    pub fn matches_date(&self, date: StoryDate) -> bool {
-        (self.date.0, self.date.1, self.date.2)
-            == (date.year() as u16, date.month() as u8, date.day() as u8)
-    }
-
-    pub fn to_base64(&self) -> String {
-        use base64::Engine;
-        Self::BASE64_CONFIG.encode(self.to_string().as_bytes())
-    }
-
-    pub fn from_base64<T: AsRef<[u8]>>(s: T) -> Option<Self> {
-        // Use an inner function so we can make use of ? (is there an easier way?)
-        fn from_base64_res<T: AsRef<[u8]>>(s: T) -> Result<StoryIdentifier, ()> {
-            use base64::Engine;
-            let s = StoryIdentifier::BASE64_CONFIG.decode(s).map_err(drop)?;
-            let s = String::from_utf8(s).map_err(drop)?;
-            let mut bits = s.splitn(4, ':');
-            let year = bits.next().ok_or(())?;
-            let month = bits.next().ok_or(())?;
-            let day = bits.next().ok_or(())?;
-            let norm = bits.next().ok_or(())?.to_owned();
-            Ok(StoryIdentifier {
-                norm: StoryUrlNorm::from_string(norm),
-                date: (
-                    year.parse().map_err(drop)?,
-                    month.parse().map_err(drop)?,
-                    day.parse().map_err(drop)?,
-                ),
-            })
-        }
-
-        from_base64_res(s).ok()
-    }
-
-    pub fn year(&self) -> u16 {
-        self.date.0
-    }
-    pub fn month(&self) -> u8 {
-        self.date.1
-    }
-    pub fn day(&self) -> u8 {
-        self.date.2
+    #[cfg(test)]
+    pub fn new_for_test() -> Self {
+        Self::new(&TaggerConfig::default(), &StoryScoreConfig::default(), &ScrapeConfig::default())
     }
 }
 
@@ -119,27 +65,37 @@ impl StoryIdentifier {
 pub struct Story {
     pub id: StoryIdentifier,
     pub score: f32,
-    pub tags: HashSet<String>,
+    pub date: StoryDate,
+    pub url: StoryUrl,
+    pub title: String,
+    pub tags: TagSet,
     pub scrapes: HashMap<ScrapeId, TypedScrape>,
 }
 
 impl Story {
-    pub fn new(score_config: &StoryScoreConfig, scrape: TypedScrape) -> Self {
-        let id = StoryIdentifier::new(scrape.date, scrape.url.normalization());
-        let scrape_id = scrape.source.clone();
+    pub fn new(eval: &StoryEvaluator, scrape: TypedScrape) -> Self {
+        let scrape_core = eval.extractor.extract(&scrape);
+        let id = StoryIdentifier::new(scrape_core.date, scrape_core.url.normalization());
+        let scrape_id = scrape_core.source.clone();
         // This is a bit awkward as we should probably be scoring from the raw scrapes rather than the story itself
         let mut story = Self {
             id,
-            tags: HashSet::new(),
+            tags: TagSet::new(),
+            title: scrape_core.title.to_string(),
+            url: scrape_core.url.clone(),
+            date: scrape_core.date,
             score: 0.0,
             scrapes: HashMap::from_iter([(scrape_id, scrape)]),
         };
-        story.score = StoryScorer::score(score_config, &story, StoryScoreType::Base);
+        story.score = eval.scorer.score(&story, StoryScoreType::Base);
         story
     }
 
-    pub fn merge(&mut self, score_config: &StoryScoreConfig, scrape: TypedScrape) {
-        let scrape_id = scrape.source.clone();
+    pub fn merge(&mut self, eval: &StoryEvaluator, scrape: TypedScrape) {
+        let scrape_core = eval.extractor.extract(&scrape);
+        let scrape_id = scrape_core.source.clone();
+        self.date = std::cmp::min(self.date, scrape_core.date);
+
         match self.scrapes.entry(scrape_id) {
             Entry::Occupied(mut x) => {
                 x.get_mut().merge(scrape);
@@ -148,42 +104,29 @@ impl Story {
                 x.insert(scrape);
             }
         }
+
+        self.title = self.title_choice(&eval.extractor).1.to_string();
+
         // Re-score this story
-        self.score = StoryScorer::score(score_config, self, StoryScoreType::Base);
+        self.score = eval.scorer.score(self, StoryScoreType::Base);
         // The ID may change if the date changes
-        self.id.update_date(self.date());
+        self.id.update_date(self.date);
     }
 
     /// Compares two stories, ordering by score.
     pub fn compare_score(&self, other: &Story) -> std::cmp::Ordering {
         // Sort by score, but fall back to date if score is somehow a NaN (it shouldn't be, but we'll just be robust here)
         f32::partial_cmp(&self.score, &other.score)
-            .unwrap_or_else(|| self.date().cmp(&other.date()))
+            .unwrap_or_else(|| self.date.cmp(&other.date))
     }
 
     /// Compares two stories, ordering by date.
     pub fn compare_date(&self, other: &Story) -> std::cmp::Ordering {
-        self.date().cmp(&other.date())
-    }
-
-    pub fn title(&self) -> &str {
-        self.title_choice().1
-    }
-
-    pub fn score(&self, config: &StoryScoreConfig, score_type: StoryScoreType) -> f32 {
-        StoryScorer::score(config, self, score_type)
-    }
-
-    pub fn score_detail(
-        &self,
-        config: &StoryScoreConfig,
-        score_type: StoryScoreType,
-    ) -> Vec<(String, f32)> {
-        StoryScorer::score_detail(config, self, score_type)
+        self.date.cmp(&other.date)
     }
 
     /// Choose a title based on source priority, with preference for shorter titles if the priority is the same.
-    fn title_choice(&self) -> (ScrapeSource, &str) {
+    fn title_choice(&self, extractor: &ScrapeExtractor) -> (ScrapeSource, Cow<str>) {
         let title_score = |source: &ScrapeSource| {
             match source {
                 // HN is moderated and titles are high quality
@@ -195,38 +138,21 @@ impl Story {
                 ScrapeSource::Other => 99,
             }
         };
-        let mut best_title = (99, &ScrapeSource::Other, "Unknown title");
+        let mut best_title = (99, &ScrapeSource::Other, Cow::Borrowed("Unknown title"));
         for (id, scrape) in &self.scrapes {
+            let scrape = extractor.extract(scrape);
             let score = title_score(&id.source);
             if score < best_title.0 {
-                best_title = (score, &id.source, &scrape.title);
+                best_title = (score, &id.source, scrape.title);
                 continue;
             }
             let title = &scrape.title;
             if score == best_title.0 && title.len() < best_title.2.len() {
-                best_title = (score, &id.source, &scrape.title);
+                best_title = (score, &id.source, scrape.title);
                 continue;
             }
         }
         (*best_title.1, best_title.2)
-    }
-
-    pub fn url(&self) -> &StoryUrl {
-        &self
-            .scrapes
-            .values()
-            .next()
-            .expect("Expected at least one")
-            .url
-    }
-
-    /// Returns the date of this story, which is always the earliest scrape date.
-    pub fn date(&self) -> StoryDate {
-        self.scrapes
-            .values()
-            .map(|s| s.date)
-            .min()
-            .unwrap_or_default()
     }
 
     pub fn render(&self, order: usize) -> StoryRender {
@@ -235,12 +161,12 @@ impl Story {
             order,
             id: self.id.to_base64(),
             score: self.score,
-            url: self.url().to_string(),
-            url_norm: self.url().normalization().string().to_owned(),
-            url_norm_hash: self.url().normalization().hash(),
-            domain: self.url().host().to_owned(),
-            title: self.title().to_owned(),
-            date: self.date(),
+            url: self.url.to_string(),
+            url_norm: self.url.normalization().string().to_owned(),
+            url_norm_hash: self.url.normalization().hash(),
+            domain: self.url.host().to_owned(),
+            title: self.title.to_owned(),
+            date: self.date,
             tags: vec![],
             comment_links: HashMap::new(),
             scrapes,
@@ -248,161 +174,7 @@ impl Story {
     }
 }
 
-#[derive(Default, Serialize, Deserialize)]
-pub struct StoryScoreConfig {
-    age_breakpoint_days: [u32; 2],
-    hour_scores: [f32; 3],
-}
-
-pub enum StoryScoreType {
-    Base,
-    AgedFrom(StoryDate),
-}
-
-#[derive(Debug)]
-enum StoryScore {
-    Age,
-    Random,
-    SourceCount,
-    LongRedditTitle,
-    LongTitle,
-    ImageLink,
-    HNPosition,
-    RedditPosition,
-    LobstersPosition,
-}
-
-/// Re-scores stories w/age score.
-pub fn rescore_stories(config: &StoryScoreConfig, relative_to: StoryDate, stories: &mut [Story]) {
-    for story in stories.iter_mut() {
-        story.score += StoryScorer::score_age(config, relative_to - story.date());
-    }
-}
-
-struct StoryScorer {}
-
-impl StoryScorer {
-    #[inline(always)]
-    fn score_age(config: &StoryScoreConfig, age: chrono::Duration) -> f32 {
-        let breakpoint1 = Duration::days(config.age_breakpoint_days[0] as i64);
-        let breakpoint2 = Duration::days(config.age_breakpoint_days[1] as i64);
-        let hour_score0 = config.hour_scores[0];
-        let hour_score1 = config.hour_scores[1];
-        let hour_score2 = config.hour_scores[2];
-
-        // Equivalent to Duration::hours(1).num_milliseconds() as f32;
-        const MILLIS_TO_HOURS: f32 = 60.0 * 60.0 * 1000.0;
-
-        // Fractional hours, clamped to zero
-        let fractional_hours = f32::max(0.0, age.num_milliseconds() as f32 / MILLIS_TO_HOURS);
-
-        if age < breakpoint1 {
-            fractional_hours * hour_score0
-        } else if age < breakpoint2 {
-            breakpoint1.num_hours() as f32 * hour_score0
-                + (fractional_hours - breakpoint1.num_hours() as f32) * hour_score1
-        } else {
-            breakpoint1.num_hours() as f32 * hour_score0
-                + (breakpoint2 - breakpoint1).num_hours() as f32 * hour_score1
-                + (fractional_hours - breakpoint2.num_hours() as f32) * hour_score2
-        }
-    }
-
-    #[inline(always)]
-    fn score_impl<T: FnMut(StoryScore, f32)>(
-        config: &StoryScoreConfig,
-        story: &Story,
-        score_type: StoryScoreType,
-        mut accum: T,
-    ) {
-        use StoryScore::*;
-
-        let title = story.title();
-        let url = story.url();
-
-        // Small random shuffle for stories to mix up the front page a bit
-        accum(
-            Random,
-            (url.normalization().hash() % 6000000) as f32 / 1000000.0,
-        );
-
-        // Story age decay
-        if let StoryScoreType::AgedFrom(relative_date) = score_type {
-            let age = relative_date - story.date();
-            accum(StoryScore::Age, Self::score_age(config, age));
-        }
-
-        let mut reddit = None;
-        let mut hn = None;
-        let mut lobsters = None;
-        let mut slashdot = None;
-
-        use TypedScrape::*;
-        // Pick out the first source we find for each source
-        for (_, scrape) in &story.scrapes {
-            match scrape {
-                HackerNews(x) => {
-                    if x.data.position != 0 {
-                        accum(HNPosition, (30.0 - x.data.position as f32) * 1.2)
-                    };
-                    hn = Some(x)
-                }
-                Reddit(x) => reddit = Some(x),
-                Lobsters(x) => lobsters = Some(x),
-                Slashdot(x) => slashdot = Some(x),
-            }
-        }
-
-        accum(
-            SourceCount,
-            (hn.is_some() as u8
-                + reddit.is_some() as u8
-                + lobsters.is_some() as u8
-                + slashdot.is_some() as u8) as f32
-                * 5.0,
-        );
-
-        // Penalize a long title if reddit is a source
-        if title.len() > 130 && reddit.is_some() {
-            accum(LongRedditTitle, -5.0);
-        }
-
-        // Penalize a really long title regardless of source
-        if title.len() > 250 {
-            accum(LongTitle, -15.0);
-        }
-
-        if url.host().contains("gfycat")
-            || url.host().contains("imgur")
-            || url.host().contains("i.reddit.com")
-        {
-            if hn.is_some() {
-                accum(ImageLink, -5.0);
-            } else {
-                accum(ImageLink, -10.0);
-            }
-        }
-    }
-
-    pub fn score(config: &StoryScoreConfig, story: &Story, score_type: StoryScoreType) -> f32 {
-        let mut score_total = 0_f32;
-        let accum = |_, score| score_total += score;
-        Self::score_impl(config, story, score_type, accum);
-        score_total
-    }
-
-    pub fn score_detail(
-        config: &StoryScoreConfig,
-        story: &Story,
-        score_type: StoryScoreType,
-    ) -> Vec<(String, f32)> {
-        let mut score_bits = vec![];
-        let accum = |score_type, score| score_bits.push((format!("{:?}", score_type), score));
-        Self::score_impl(config, story, score_type, accum);
-        score_bits
-    }
-}
-
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TagSet {
     set: HashSet<String>,
 }
@@ -431,36 +203,4 @@ impl TagAcceptor for TagSet {
 
 pub trait TagAcceptor {
     fn tag(&mut self, s: &str);
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-    use chrono::Duration;
-
-    /// Make sure that the scores are decreasing.
-    #[test]
-    fn test_age_score() {
-        let config = StoryScoreConfig {
-            age_breakpoint_days: [1, 30],
-            hour_scores: [-5.0, -3.0, -0.1],
-        };
-        let mut last_score = f32::MAX;
-        for i in 0..Duration::days(60).num_hours() {
-            let score = StoryScorer::score_age(&config, Duration::hours(i));
-            assert!(score < last_score, "{} < {}", score, last_score);
-            last_score = score;
-        }
-    }
-
-    #[test]
-    fn test_story_identifier() {
-        let url = StoryUrl::parse("https://google.com/?q=foo").expect("Failed to parse URL");
-        let id = StoryIdentifier::new(StoryDate::now(), url.normalization());
-        let base64 = id.to_base64();
-        assert_eq!(
-            id,
-            StoryIdentifier::from_base64(base64).expect("Failed to decode ID")
-        );
-    }
 }

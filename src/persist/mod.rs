@@ -1,6 +1,5 @@
 use crate::scrapers::TypedScrape;
-use crate::story::StoryIdentifier;
-use crate::story::{Story, StoryDate, StoryScoreConfig};
+use crate::story::{StoryIdentifier, StoryEvaluator, Story, StoryDate};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -55,7 +54,7 @@ pub trait StorageWriter: Storage {
     /// Insert a set of scrapes, merging with existing stories if necessary.
     fn insert_scrapes<I: Iterator<Item = TypedScrape>>(
         &mut self,
-        config: &StoryScoreConfig,
+        eval: &StoryEvaluator,
         scrapes: I,
     ) -> Result<(), PersistError>;
 }
