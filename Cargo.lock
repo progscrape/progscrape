@@ -897,11 +897,16 @@ name = "progscrape-application"
 version = "0.1.0"
 dependencies = [
  "base64 0.21.0",
+ "itertools",
  "progscrape-scrapers",
  "rstest",
  "rusqlite",
+ "serde",
+ "serde_json",
  "serde_rusqlite",
  "tantivy",
+ "thiserror",
+ "tracing",
 ]
 
 [[package]]

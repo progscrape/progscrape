@@ -67,9 +67,9 @@ impl StoryDate {
 }
 
 impl Sub for StoryDate {
-    type Output = Duration;
+    type Output = StoryDuration;
     fn sub(self, rhs: Self) -> Self::Output {
-        self.internal_date - rhs.internal_date
+        StoryDuration { duration: self.internal_date - rhs.internal_date }
     }
 }
 
@@ -94,5 +94,36 @@ impl<'de> Deserialize<'de> for StoryDate {
 impl Display for StoryDate {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.internal_date.fmt(f)
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct StoryDuration {
+    duration: chrono::Duration
+}
+
+impl StoryDuration {
+    pub fn days(days: i64) -> Self {
+        Self { duration: chrono::Duration::days(days) }
+    }
+
+    pub fn hours(hours: i64) -> Self {
+        Self { duration: chrono::Duration::hours(hours) }
+    }
+
+    pub fn num_milliseconds(&self) -> i64 {
+        self.duration.num_milliseconds()
+    }
+
+    pub fn num_hours(&self) -> i64 {
+        self.duration.num_hours()
+    }
+}
+
+impl Sub for StoryDuration {
+    type Output = <chrono::Duration as Sub>::Output;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        self.duration - rhs.duration
     }
 }

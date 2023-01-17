@@ -8,7 +8,7 @@ pub mod hacker_news;
 pub mod lobsters;
 pub mod reddit;
 pub mod slashdot;
-mod legacy;
+pub mod legacy;
 mod utils;
 mod def;
 
@@ -38,7 +38,12 @@ macro_rules! scrapers {
         /// Configuration for all scrapers.
         #[derive(Clone, Default, Serialize, Deserialize)]
         pub struct ScrapeConfig {
-            $($package : <$package :: $name as ScrapeSourceDef>::Config),*
+            $(
+                #[doc="Configuration for the "]
+                #[doc=stringify!($name)]
+                #[doc=" backend."]
+                pub $package : <$package :: $name as ScrapeSourceDef>::Config
+            ),*
         }
 
         impl ScrapeConfig {

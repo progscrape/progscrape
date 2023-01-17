@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use itertools::Itertools;
 
-use crate::story::{StoryDate, StoryEvaluator, StoryUrlNorm};
+use progscrape_scrapers::{StoryDate, StoryUrlNorm};
 
 use super::*;
 
@@ -202,7 +202,7 @@ mod test {
     #[test]
     fn test_index_lots() {
         let stories =
-            crate::scrapers::legacy_import::import_legacy().expect("Failed to read scrapes");
+            progscrape_scrapers::import_legacy().expect("Failed to read scrapes");
         let mut index = MemIndex::default();
 
         let eval = StoryEvaluator::new_for_test();

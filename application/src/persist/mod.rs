@@ -1,5 +1,5 @@
-use crate::scrapers::TypedScrape;
-use crate::story::{Story, StoryDate, StoryEvaluator, StoryIdentifier};
+use progscrape_scrapers::{TypedScrape, StoryDate};
+use crate::story::{Story, StoryEvaluator, StoryIdentifier};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 

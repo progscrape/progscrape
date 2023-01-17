@@ -1,9 +1,8 @@
-use chrono::Duration;
 use serde::{Deserialize, Serialize};
 
-use crate::scrapers::TypedScrape;
+use progscrape_scrapers::{TypedScrape, StoryDate, StoryDuration};
 
-use super::{Story, StoryDate};
+use super::{Story};
 
 #[derive(Clone, Default, Serialize, Deserialize)]
 pub struct StoryScoreConfig {
@@ -48,9 +47,9 @@ impl StoryScorer {
     }
 
     #[inline(always)]
-    fn score_age(&self, age: chrono::Duration) -> f32 {
-        let breakpoint1 = Duration::days(self.config.age_breakpoint_days[0] as i64);
-        let breakpoint2 = Duration::days(self.config.age_breakpoint_days[1] as i64);
+    fn score_age(&self, age: StoryDuration) -> f32 {
+        let breakpoint1 = StoryDuration::days(self.config.age_breakpoint_days[0] as i64);
+        let breakpoint2 = StoryDuration::days(self.config.age_breakpoint_days[1] as i64);
         let hour_score0 = self.config.hour_scores[0];
         let hour_score1 = self.config.hour_scores[1];
         let hour_score2 = self.config.hour_scores[2];
@@ -178,8 +177,8 @@ mod test {
         };
         let mut last_score = f32::MAX;
         let scorer = StoryScorer::new(&config);
-        for i in 0..Duration::days(60).num_hours() {
-            let score = scorer.score_age(Duration::hours(i));
+        for i in 0..StoryDuration::days(60).num_hours() {
+            let score = scorer.score_age(StoryDuration::hours(i));
             assert!(score < last_score, "{} < {}", score, last_score);
             last_score = score;
         }

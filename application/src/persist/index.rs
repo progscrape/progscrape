@@ -7,8 +7,7 @@ use tantivy::{
     schema::*, Directory, DocAddress, IndexSettings, IndexSortByField, IndexWriter, Searcher,
 };
 
-use crate::scrapers::TypedScrape;
-use crate::story::StoryDate;
+use progscrape_scrapers::{TypedScrape, StoryDate};
 
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;

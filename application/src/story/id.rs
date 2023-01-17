@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use std::fmt::Display;
 
-use super::{StoryDate, StoryUrlNorm};
+use progscrape_scrapers::{StoryDate, StoryUrlNorm};
 
 /// Uniquely identifies a story within the index.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize, Serialize)]

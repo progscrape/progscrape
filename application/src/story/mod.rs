@@ -1,25 +1,21 @@
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
-use crate::scrapers::{ScrapeConfig, ScrapeExtractor, ScrapeId, ScrapeSource, TypedScrape};
+use progscrape_scrapers::{ScrapeConfig, ScrapeExtractor, ScrapeId, ScrapeSource, TypedScrape, StoryDate, StoryUrl};
 use std::{
     borrow::Cow,
     collections::{hash_map::Entry, HashMap, HashSet},
 };
 
-mod date;
 mod id;
 mod scorer;
 mod tagger;
-mod url;
 
 use self::scorer::StoryScoreType;
 pub use self::{
-    date::StoryDate,
     id::StoryIdentifier,
     scorer::{StoryScoreConfig, StoryScorer},
     tagger::{StoryTagger, TaggerConfig},
-    url::{StoryUrl, StoryUrlNorm},
 };
 
 /// Rendered story with all properties hydrated from the underlying scrapes. Extraneous data is removed at this point.
