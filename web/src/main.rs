@@ -1,8 +1,4 @@
 mod config;
-mod datasci;
-mod persist;
-mod scrapers;
-mod story;
 mod web;
 
 #[tokio::main]

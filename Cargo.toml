@@ -2,4 +2,5 @@
 members = [
     "scrapers",
     "application",
+    "web",
 ]
