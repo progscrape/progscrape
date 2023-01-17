@@ -6,10 +6,10 @@ use std::{
 use tl::{HTMLTag, Parser, ParserOptions};
 
 use super::{
-    html::*, ScrapeConfigSource, ScrapeCore, ScrapeError, ScrapeId, ScrapeSource, ScrapeSourceDef,
+    utils::html::*, ScrapeConfigSource, ScrapeCore, ScrapeSource, ScrapeSourceDef,
     ScrapeStory, Scraper,
 };
-use crate::story::{StoryDate, StoryUrl};
+use crate::types::*;
 
 pub struct HackerNews {}
 

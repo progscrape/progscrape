@@ -3,6 +3,7 @@ use std::collections::HashSet;
 use super::*;
 use roxmltree::Document;
 use serde::{Deserialize, Serialize};
+use crate::types::*;
 
 pub struct Lobsters {}
 

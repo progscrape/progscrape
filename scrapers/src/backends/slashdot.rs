@@ -7,10 +7,10 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use tl::{HTMLTag, Parser, ParserOptions};
 
-use crate::story::{StoryDate, StoryUrl};
+use crate::types::*;
 
 use super::{
-    html::*, ScrapeConfigSource, ScrapeCore, ScrapeError, ScrapeId, ScrapeSource, ScrapeSourceDef,
+    utils::html::*, ScrapeConfigSource, ScrapeCore, ScrapeSource, ScrapeSourceDef,
     ScrapeStory, Scraper,
 };
 

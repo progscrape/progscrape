@@ -4,10 +4,10 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::{
-    html::unescape_entities, ScrapeConfigSource, ScrapeCore, ScrapeError, ScrapeId, ScrapeSource,
+    utils::html::unescape_entities, ScrapeConfigSource, ScrapeCore, ScrapeSource,
     ScrapeSourceDef, ScrapeStory, Scraper,
 };
-use crate::story::{StoryDate, StoryUrl};
+use crate::types::*;
 
 pub struct Reddit {}
 

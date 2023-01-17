@@ -1,43 +1,4 @@
-[package]
-name = "progscrape"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-tl = "0.7.7"
-chrono = { version = "0.4", features = ["serde"] }
-serde = { version = "1.0", features = ["derive", "rc"] }
-serde_json = "1.0"
-serde_cbor = "0.11"
-roxmltree = "0.17.0"
-thiserror = "1.0.38"
-rusqlite = "0.28.0"
-serde_rusqlite = "0.31.0"
-url = "2.3.1"
-itertools = "0.10.5"
-regex = "1.7.0"
-flate2 = "1.0"
-lazy_static = "1.4"
-base64 = "0.21.0"
-reqwest = "0.11"
-enumset = "1.0"
-
-# For storage/search
-tantivy = "0.19.0"
-
-# Web
-tera = "1.17.1"
-axum = { version = "0.6.1", features = ["ws"] }
-hyper = "0.14"
-tokio = { version = "1.23.0", features = ["full"] }
-tracing = "0.1.37"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-num-format = "0.4.4"
-sha2 = "0.10"
-infer = "0.12"
-grass = "0.12"
-notify = "5.0.0"
-rand = "0.8.5"
-
-[dev-dependencies]
-rstest = "0.16.0"
+[workspace]
+members = [
+    "scrapers",
+]
