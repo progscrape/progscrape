@@ -1,12 +1,11 @@
 use std::{
     collections::{HashMap, HashSet},
-    iter::Peekable,
 };
 
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
-use super::TagSet;
+use super::TagAcceptor;
 
 #[derive(Default, Serialize, Deserialize)]
 pub struct TagConfig {
@@ -170,7 +169,7 @@ impl Tagger {
         new
     }
 
-    pub fn tag(&self, s: &str, tag_set: &mut TagSet) {
+    pub fn tag<T: TagAcceptor>(&self, s: &str, tags: &mut T) {
         let s = s.to_lowercase();
 
         // Clean up single quotes to a standard type
@@ -183,9 +182,9 @@ impl Tagger {
         for (symbol, rec) in &self.symbols {
             if s.contains(symbol) {
                 s = s.replace(symbol, " ");
-                tag_set.add(self.records[*rec].output.clone());
+                tags.tag(&self.records[*rec].output);
                 for implies in &self.records[*rec].implies {
-                    tag_set.add(implies.clone());
+                    tags.tag(&implies);
                 }
             }
         }
@@ -217,9 +216,9 @@ impl Tagger {
             for (multi, rec) in &self.forward_multi {
                 if multi.chomp(&mut tokens) {
                     let rec = &self.records[*rec];
-                    tag_set.add(rec.output.clone());
+                    tags.tag(&rec.output);
                     for implies in &rec.implies {
-                        tag_set.add(implies.clone());
+                        tags.tag(&implies);
                     }
                     continue;
                 }
@@ -227,9 +226,9 @@ impl Tagger {
             if let Some(rec) = self.forward.get(&tokens[0]) {
                 if !mutes.contains_key(&tokens[0]) {
                     let rec = &self.records[*rec];
-                    tag_set.add(rec.output.clone());
+                    tags.tag(&rec.output);
                     for implies in &rec.implies {
-                        tag_set.add(implies.clone());
+                        tags.tag(&implies);
                     }
                 }
             }

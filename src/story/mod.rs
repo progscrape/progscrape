@@ -423,6 +423,16 @@ impl TagSet {
     }
 }
 
+impl TagAcceptor for TagSet {
+    fn tag(&mut self, s: &str) {
+        self.add(s);
+    }
+}
+
+pub trait TagAcceptor {
+    fn tag(&mut self, s: &str);
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

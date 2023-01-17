@@ -1,6 +1,6 @@
 {% macro comment_links(story) %}
 {% for source, scrape in story.scrapes %}
-    {% if source is matching("hackernews-") %}
+    {% if source is matching("hacker_news-") %}
     <a href="" class="hnews"><img src="{{ 'hnews.png' | static }}" width="16" height="16"></a>
     {% elif source is matching("reddit-") %}
     <a href="" class="reddit"><img src="{{ 'reddit.png' | static }}" width="16" height="16"></a>

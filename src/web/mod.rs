@@ -376,6 +376,11 @@ async fn admin_status_story(
     let mut tag_set = TagSet::new();
     resources.tagger().tag(story.title(), &mut tag_set);
     tags.insert("title".to_owned(), tag_set.collect());
+    for (id, scrape) in &story.scrapes {
+        let mut tag_set = TagSet::new();
+        scrape.tag(&resources.config().scrape, &mut tag_set)?;
+        tags.insert(format!("scrape {:?}", id), tag_set.collect());
+    }
     render(
         &resources,
         "admin/story.html",

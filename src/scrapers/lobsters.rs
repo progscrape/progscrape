@@ -52,7 +52,10 @@ impl ScrapeStory for LobstersStory {
 #[derive(Default)]
 pub struct LobstersScraper {}
 
-impl Scraper<LobstersConfig, LobstersStory> for LobstersScraper {
+impl Scraper for LobstersScraper {
+    type Config = <Lobsters as ScrapeSourceDef>::Config;
+    type Output = <Lobsters as ScrapeSourceDef>::Scrape; 
+
     fn scrape(
         &self,
         _args: &LobstersConfig,
@@ -118,17 +121,17 @@ impl Scraper<LobstersConfig, LobstersStory> for LobstersScraper {
         Ok((stories, warnings))
     }
 
-    fn provide_tags(
+    fn provide_tags<T: TagAcceptor>(
         &self,
-        args: &LobstersConfig,
-        scrape: &Scrape<LobstersStory>,
-        tags: &mut crate::story::TagSet,
-    ) -> Result<(), super::ScrapeError> {
+        args: &Self::Config,
+        scrape: &Scrape<Self::Output>,
+        tags: &mut T,
+    ) -> Result<(), ScrapeError> {
         for tag in &scrape.data.tags {
             if args.tag_denylist.contains(tag) {
                 continue;
             }
-            tags.add(tag);
+            tags.tag(tag);
         }
         Ok(())
     }

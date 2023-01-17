@@ -6,7 +6,7 @@ use super::{
     html::*, Scrape, ScrapeConfigSource, ScrapeError, ScrapeSource, ScrapeSourceDef, ScrapeStory,
     Scraper,
 };
-use crate::story::{StoryDate, StoryUrl};
+use crate::story::{StoryDate, StoryUrl, TagAcceptor};
 
 pub struct HackerNews {}
 
@@ -154,7 +154,10 @@ impl HackerNewsScraper {
     }
 }
 
-impl Scraper<HackerNewsConfig, HackerNewsStory> for HackerNewsScraper {
+impl Scraper for HackerNewsScraper {
+    type Config = <HackerNews as ScrapeSourceDef>::Config;
+    type Output = <HackerNews as ScrapeSourceDef>::Scrape;
+
     fn scrape(
         &self,
         _args: &HackerNewsConfig,
@@ -201,25 +204,25 @@ impl Scraper<HackerNewsConfig, HackerNewsStory> for HackerNewsScraper {
         Ok((stories, errors))
     }
 
-    fn provide_tags(
-        &self,
-        _args: &HackerNewsConfig,
-        scrape: &Scrape<HackerNewsStory>,
-        tags: &mut crate::story::TagSet,
-    ) -> Result<(), ScrapeError> {
+    fn provide_tags<T: TagAcceptor>(
+            &self,
+            args: &Self::Config,
+            scrape: &Scrape<Self::Output>,
+            tags: &mut T,
+        ) -> Result<(), ScrapeError> {
         let title = &scrape.title;
         // TODO: Strip years [ie: (2005)] from end of title
         if title.starts_with("Show HN") {
-            tags.add("show");
+            tags.tag("show");
         }
         if scrape.title.starts_with("Ask HN") {
-            tags.add("ask");
+            tags.tag("ask");
         }
         if scrape.title.ends_with("[pdf]") {
-            tags.add("pdf");
+            tags.tag("pdf");
         }
         if scrape.title.ends_with("[video]") {
-            tags.add("video");
+            tags.tag("video");
         }
         Ok(())
     }

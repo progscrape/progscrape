@@ -7,7 +7,7 @@ use super::{
     html::unescape_entities, Scrape, ScrapeConfigSource, ScrapeError, ScrapeSource,
     ScrapeSourceDef, ScrapeStory, Scraper,
 };
-use crate::story::{StoryDate, StoryUrl};
+use crate::story::{StoryDate, StoryUrl, TagAcceptor};
 
 pub struct Reddit {}
 
@@ -198,7 +198,10 @@ impl RedditScraper {
     }
 }
 
-impl Scraper<RedditConfig, RedditStory> for RedditScraper {
+impl Scraper for RedditScraper {
+    type Config = <Reddit as ScrapeSourceDef>::Config;
+    type Output = <Reddit as ScrapeSourceDef>::Scrape;
+    
     fn scrape(
         &self,
         _args: &RedditConfig,
@@ -236,19 +239,19 @@ impl Scraper<RedditConfig, RedditStory> for RedditScraper {
         }
     }
 
-    fn provide_tags(
+    fn provide_tags<T: TagAcceptor>(
         &self,
-        args: &RedditConfig,
-        scrape: &Scrape<RedditStory>,
-        tags: &mut crate::story::TagSet,
-    ) -> Result<(), super::ScrapeError> {
-        if let Some(ref subreddit) = scrape.source.subsource {
+        args: &Self::Config,
+        scrape: &Scrape<Self::Output>,
+        tags: &mut T,
+    ) -> Result<(), ScrapeError> {
+       if let Some(ref subreddit) = scrape.source.subsource {
             if let Some(config) = args.subreddits.get(subreddit) {
                 if config.flair_is_tag {
-                    tags.add(&scrape.data.flair);
+                    tags.tag(&scrape.data.flair);
                 }
                 if config.is_tag {
-                    tags.add(&subreddit);
+                    tags.tag(&subreddit);
                 }
             }
         }

@@ -1,6 +1,6 @@
-use std::marker::PhantomData;
+use std::{marker::PhantomData, fmt::{Display, Debug}};
 
-use crate::story::{StoryDate, StoryUrl, TagSet};
+use crate::story::{StoryDate, StoryUrl, TagSet, TagAcceptor};
 use enumset::{EnumSetType, EnumSet};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -17,7 +17,7 @@ pub mod web_scraper;
 pub trait ScrapeSourceDef {
     type Config: ScrapeConfigSource;
     type Scrape: ScrapeStory;
-    type Scraper: Scraper<Self::Config, Self::Scrape>;
+    type Scraper: Scraper<Config = Self::Config, Output = Self::Scrape>;
 }
 
 macro_rules! scrapers {
@@ -100,6 +100,13 @@ macro_rules! scrapers {
                     }
                 }
             }
+
+            // TODO: This method shouldn't really be here
+            pub fn tag<T: TagAcceptor>(&self, config: &ScrapeConfig, t: &mut T) -> Result<(), ScrapeError> {
+                match self {
+                    $( Self::$name(a)  => <$package::$name as ScrapeSourceDef>::Scraper::default().provide_tags(&config.$package, a, t), )*
+                }
+            }
         }
 
         impl core::ops::Deref for TypedScrape {
@@ -156,7 +163,7 @@ pub enum ScrapeError {
 }
 
 /// Identify a scrape by source an ID.
-#[derive(Clone, Debug, Eq, PartialEq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Eq, PartialEq, Hash, PartialOrd, Ord)]
 pub struct ScrapeId {
     pub source: ScrapeSource,
     pub subsource: Option<String>,
@@ -172,6 +179,22 @@ impl ScrapeId {
             id,
             _noinit: Default::default(),
         }
+    }
+}
+
+impl Display for ScrapeId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Some(subsource) = &self.subsource {
+            f.write_fmt(format_args!("{}-{}-{}", self.source.into_str(), subsource, self.id))
+        } else {
+            f.write_fmt(format_args!("{}-{}", self.source.into_str(), self.id))
+        }
+    }
+}
+
+impl Debug for ScrapeId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        <Self as Display>::fmt(self, f)
     }
 }
 
@@ -311,20 +334,23 @@ impl<T: ScrapeStory> Scrape<T> {
     }
 }
 
-pub trait Scraper<Config: ScrapeConfigSource, Output: ScrapeStory>: Default {
+pub trait Scraper: Default {
+    type Config: ScrapeConfigSource;
+    type Output: ScrapeStory;
+
     /// Given input in the correct format, scrapes raw stories.
     fn scrape(
         &self,
-        args: &Config,
+        args: &Self::Config,
         input: &str,
-    ) -> Result<(Vec<Scrape<Output>>, Vec<String>), ScrapeError>;
+    ) -> Result<(Vec<Scrape<Self::Output>>, Vec<String>), ScrapeError>;
 
     /// Given a scrape, processes the tags from it and adds them to the `TagSet`.
-    fn provide_tags(
+    fn provide_tags<T: TagAcceptor>(
         &self,
-        args: &Config,
-        scrape: &Scrape<Output>,
-        tags: &mut TagSet,
+        args: &Self::Config,
+        scrape: &Scrape<Self::Output>,
+        tags: &mut T,
     ) -> Result<(), ScrapeError>;
 }
 

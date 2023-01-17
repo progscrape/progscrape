@@ -4,10 +4,10 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use tl::{HTMLTag, Parser, ParserOptions};
 
-use crate::story::{StoryDate, StoryUrl};
+use crate::story::{StoryDate, StoryUrl, TagAcceptor};
 
 use super::{
-    html::*, Scrape, ScrapeConfigSource, ScrapeSource, ScrapeSourceDef, ScrapeStory, Scraper,
+    html::*, Scrape, ScrapeConfigSource, ScrapeSource, ScrapeSourceDef, ScrapeStory, Scraper, ScrapeError,
 };
 
 pub struct Slashdot {}
@@ -143,7 +143,10 @@ impl SlashdotScraper {
     }
 }
 
-impl Scraper<SlashdotConfig, SlashdotStory> for SlashdotScraper {
+impl Scraper for SlashdotScraper {
+    type Config = <Slashdot as ScrapeSourceDef>::Config;
+    type Output = <Slashdot as ScrapeSourceDef>::Scrape;
+
     fn scrape(
         &self,
         _args: &SlashdotConfig,
@@ -164,15 +167,15 @@ impl Scraper<SlashdotConfig, SlashdotStory> for SlashdotScraper {
         Ok((v, errors))
     }
 
-    fn provide_tags(
+    fn provide_tags<T: TagAcceptor>(
         &self,
-        args: &SlashdotConfig,
-        scrape: &Scrape<SlashdotStory>,
-        tags: &mut crate::story::TagSet,
-    ) -> Result<(), super::ScrapeError> {
+        args: &Self::Config,
+        scrape: &Scrape<Self::Output>,
+        tags: &mut T,
+    ) -> Result<(), ScrapeError> {
         for tag in &scrape.data.tags {
             if args.tag_allowlist.contains(tag) {
-                tags.add(tag);
+                tags.tag(tag);
             }
         }
         Ok(())
