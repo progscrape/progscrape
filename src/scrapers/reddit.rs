@@ -1,11 +1,11 @@
-use std::{collections::HashMap, borrow::Cow};
+use std::{borrow::Cow, collections::HashMap};
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::{
-    html::unescape_entities, ScrapeConfigSource, ScrapeError, ScrapeSource,
-    ScrapeSourceDef, ScrapeStory, Scraper, ScrapeCore, ScrapeId,
+    html::unescape_entities, ScrapeConfigSource, ScrapeCore, ScrapeError, ScrapeId, ScrapeSource,
+    ScrapeSourceDef, ScrapeStory, Scraper,
 };
 use crate::story::{StoryDate, StoryUrl};
 
@@ -203,13 +203,13 @@ impl RedditScraper {
 impl Scraper for RedditScraper {
     type Config = <Reddit as ScrapeSourceDef>::Config;
     type Output = <Reddit as ScrapeSourceDef>::Scrape;
-    
+
     fn scrape(
         &self,
         _args: &RedditConfig,
         input: &str,
     ) -> Result<(Vec<RedditStory>, Vec<String>), ScrapeError> {
-        let root: Value = serde_json::from_str(&input)?;
+        let root: Value = serde_json::from_str(input)?;
         let mut value = &root;
         for path in ["data", "children"] {
             if let Some(object) = value.as_object() {
@@ -255,12 +255,16 @@ impl Scraper for RedditScraper {
         }
 
         ScrapeCore {
-            source: ScrapeId::new(ScrapeSource::Reddit, input.subreddit.clone(), input.id.clone()),
+            source: ScrapeId::new(
+                ScrapeSource::Reddit,
+                input.subreddit.clone(),
+                input.id.clone(),
+            ),
             title: Cow::Borrowed(&input.title),
             url: &input.url,
             date: input.date,
             rank: (input.position as usize).checked_sub(1),
-            tags
+            tags,
         }
     }
 }

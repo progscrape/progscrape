@@ -6,7 +6,8 @@ use std::{
 
 use crate::{
     config::Config,
-    persist::{MemIndex, Storage, StorageWriter}, story::StoryEvaluator,
+    persist::{MemIndex, Storage, StorageWriter},
+    story::StoryEvaluator,
 };
 
 use super::WebError;
@@ -31,7 +32,7 @@ pub fn initialize_with_testing_data(config: &Config) -> Result<Global, WebError>
     let _ = std::fs::remove_file(cache_file);
 
     // Filter to just 2017 for performance
-    let mut scrapes = crate::scrapers::legacy_import::import_legacy().expect("Failed import");
+    let scrapes = crate::scrapers::legacy_import::import_legacy().expect("Failed import");
     // scrapes.retain(|x| x.date.year() == 2017);
 
     let mut index = MemIndex::default();

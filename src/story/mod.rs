@@ -1,23 +1,25 @@
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
-use crate::scrapers::{ScrapeId, ScrapeSource, TypedScrape, ScrapeConfig, ScrapeExtractor};
+use crate::scrapers::{ScrapeConfig, ScrapeExtractor, ScrapeId, ScrapeSource, TypedScrape};
 use std::{
-    collections::{hash_map::Entry, HashMap, HashSet}, borrow::Cow,
+    borrow::Cow,
+    collections::{hash_map::Entry, HashMap, HashSet},
 };
 
 mod date;
-mod tagger;
-mod scorer;
-mod url;
 mod id;
+mod scorer;
+mod tagger;
+mod url;
 
 use self::scorer::StoryScoreType;
 pub use self::{
     date::StoryDate,
-    url::{StoryUrl, StoryUrlNorm},
     id::StoryIdentifier,
-    tagger::{StoryTagger, TaggerConfig}, scorer::{StoryScorer, StoryScoreConfig}
+    scorer::{StoryScoreConfig, StoryScorer},
+    tagger::{StoryTagger, TaggerConfig},
+    url::{StoryUrl, StoryUrlNorm},
 };
 
 /// Rendered story with all properties hydrated from the underlying scrapes. Extraneous data is removed at this point.
@@ -56,7 +58,11 @@ impl StoryEvaluator {
 
     #[cfg(test)]
     pub fn new_for_test() -> Self {
-        Self::new(&TaggerConfig::default(), &StoryScoreConfig::default(), &ScrapeConfig::default())
+        Self::new(
+            &TaggerConfig::default(),
+            &StoryScoreConfig::default(),
+            &ScrapeConfig::default(),
+        )
     }
 }
 
@@ -116,8 +122,7 @@ impl Story {
     /// Compares two stories, ordering by score.
     pub fn compare_score(&self, other: &Story) -> std::cmp::Ordering {
         // Sort by score, but fall back to date if score is somehow a NaN (it shouldn't be, but we'll just be robust here)
-        f32::partial_cmp(&self.score, &other.score)
-            .unwrap_or_else(|| self.date.cmp(&other.date))
+        f32::partial_cmp(&self.score, &other.score).unwrap_or_else(|| self.date.cmp(&other.date))
     }
 
     /// Compares two stories, ordering by date.

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use serde::Serialize;
 
-use super::{scrape, ScrapeConfig, ScrapeError, ScrapeSource, TypedScrape};
+use super::{scrape, ScrapeConfig, ScrapeSource, TypedScrape};
 
 /// Accumulates the URLs required to scrape for all the services.
 #[derive(Serialize)]
@@ -69,7 +69,7 @@ impl WebScraper {
     ) -> WebScrapeURLResult {
         match input {
             WebScrapeHttpResult::Ok(s) => match scrape(config, source, &s) {
-                Ok((scrapes, warnings)) => WebScrapeURLResult::Ok(s, scrapes),
+                Ok((scrapes, _warnings)) => WebScrapeURLResult::Ok(s, scrapes),
                 Err(e) => WebScrapeURLResult::Err(WebScrapeHttpResult::Ok(s), format!("{:?}", e)),
             },
             error @ WebScrapeHttpResult::HTTPError(..) => {

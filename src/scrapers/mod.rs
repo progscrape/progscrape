@@ -1,18 +1,18 @@
-use std::{fmt::Debug, borrow::Cow};
+use std::{borrow::Cow, fmt::Debug};
 
-use crate::story::{StoryDate, StoryUrl, TagSet, TagAcceptor};
-use enumset::{EnumSetType, EnumSet};
+use crate::story::{StoryDate, StoryUrl};
+use enumset::{EnumSetType};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 pub mod hacker_news;
 mod html;
+mod id;
 pub mod legacy_import;
 pub mod lobsters;
 pub mod reddit;
 pub mod slashdot;
 pub mod web_scraper;
-mod id;
 
 pub use id::ScrapeId;
 
@@ -121,7 +121,7 @@ macro_rules! scrapers {
             pub fn merge(&mut self, b: Self) {
                 match (self, b) {
                     $( (Self::$name(a), Self::$name(b)) => a.merge(b), )*
-                    (a, b) => {
+                    (_a, _b) => {
                         tracing::warn!(
                             "Unable to merge incompatible scrapes, ignoring",
                         );
@@ -131,7 +131,7 @@ macro_rules! scrapers {
 
             fn extract(&self, config: &ScrapeConfig) -> ScrapeCore {
                 match self {
-                    $( 
+                    $(
                         Self::$name(a) => {
                             let scraper = <$package::$name as ScrapeSourceDef>::Scraper::default();
                             scraper.extract_core(&config.$package, a)
@@ -179,7 +179,7 @@ pub struct ScrapeExtractor {
 impl ScrapeExtractor {
     pub fn new(config: &ScrapeConfig) -> Self {
         Self {
-            config: config.clone()
+            config: config.clone(),
         }
     }
 
@@ -216,7 +216,7 @@ pub enum ScrapeMergeResult {
     URL,
 }
 
-impl <'a> ScrapeCore<'a> {
+impl<'a> ScrapeCore<'a> {
     // pub fn merge(&mut self, other: Self) -> EnumSet<ScrapeMergeResult> {
     //     let mut changes = EnumSet::empty();
     //     if self.date != other.date {
@@ -287,7 +287,7 @@ pub mod test {
         ] {
             for file in files_by_source(source) {
                 let mut res = scrape(&config, source, &load_file(file))
-                    .expect(&format!("Scrape of {:?} failed", source));
+                    .unwrap_or_else(|_| panic!("Scrape of {:?} failed", source));
                 v.append(&mut res.0);
             }
         }

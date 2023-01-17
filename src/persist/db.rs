@@ -55,7 +55,7 @@ impl DB {
     }
 
     pub fn store<T: Serialize>(&mut self, t: &T) -> Result<(), PersistError> {
-        let params = serde_rusqlite::to_params_named(&t)?;
+        let params = serde_rusqlite::to_params_named(t)?;
         let params_slice = params.to_slice();
         let columns = params_slice
             .iter()

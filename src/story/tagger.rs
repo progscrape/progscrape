@@ -1,6 +1,4 @@
-use std::{
-    collections::{HashMap, HashSet},
-};
+use std::collections::{HashMap, HashSet};
 
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
@@ -58,7 +56,7 @@ impl MultiTokenTag {
 
     pub fn chomp<T: AsRef<str> + std::cmp::PartialEq<String>>(&self, slice: &mut &[T]) -> bool {
         if self.matches(slice) {
-            *slice = &mut &slice[self.tag.len()..];
+            *slice = &slice[self.tag.len()..];
             true
         } else {
             false
@@ -109,7 +107,7 @@ impl StoryTagger {
         let primary = v[0].clone();
         tags.extend(v);
         if let Some(alt) = alt {
-            tags.extend(Self::compute_tag(&alt));
+            tags.extend(Self::compute_tag(alt));
         }
         for alt in alts {
             tags.extend(Self::compute_tag(alt));
@@ -126,13 +124,13 @@ impl StoryTagger {
             symbols: HashMap::new(),
             exclusions: HashMap::new(),
         };
-        for (category, tags) in &config.tags {
+        for (_category, tags) in &config.tags {
             for (tag, tags) in tags {
                 let (primary, all_tags) = Self::compute_all_tags(tag, &tags.alt, &tags.alts);
                 let excludes = tags
                     .excludes
                     .iter()
-                    .flat_map(|s| Self::compute_tag(&s))
+                    .flat_map(|s| Self::compute_tag(s))
                     .map(|s| MultiTokenTag {
                         tag: s.split_ascii_whitespace().map(str::to_owned).collect(),
                     });
@@ -150,15 +148,13 @@ impl StoryTagger {
                 for tag in all_tags {
                     if tags.symbol {
                         new.symbols.insert(tag, new.records.len());
+                    } else if tag.contains(' ') {
+                        let tag = MultiTokenTag {
+                            tag: tag.split_ascii_whitespace().map(str::to_owned).collect(),
+                        };
+                        new.forward_multi.insert(tag, new.records.len());
                     } else {
-                        if tag.contains(' ') {
-                            let tag = MultiTokenTag {
-                                tag: tag.split_ascii_whitespace().map(str::to_owned).collect(),
-                            };
-                            new.forward_multi.insert(tag, new.records.len());
-                        } else {
-                            new.forward.insert(tag, new.records.len());
-                        }
+                        new.forward.insert(tag, new.records.len());
                     }
                 }
 
@@ -173,8 +169,13 @@ impl StoryTagger {
         let s = s.to_lowercase();
 
         // Clean up single quotes to a standard type
-        let s = s.replace(|c| c == '`' || c == '\u{2018}' || c == '\u{2019}' || c == '\u{201a}' || c == '\u{201b}', "'");
-        
+        let s = s.replace(
+            |c| {
+                c == '`' || c == '\u{2018}' || c == '\u{2019}' || c == '\u{201a}' || c == '\u{201b}'
+            },
+            "'",
+        );
+
         // Replace possessive with non-possessive
         let mut s = s.replace("'s", "");
 
@@ -184,7 +185,7 @@ impl StoryTagger {
                 s = s.replace(symbol, " ");
                 tags.tag(&self.records[*rec].output);
                 for implies in &self.records[*rec].implies {
-                    tags.tag(&implies);
+                    tags.tag(implies);
                 }
             }
         }
@@ -200,7 +201,7 @@ impl StoryTagger {
         let mut mutes = HashMap::new();
 
         while !tokens.is_empty() {
-            mutes.retain(|k, v| {
+            mutes.retain(|_k, v| {
                 if *v == 0 {
                     false
                 } else {
@@ -218,7 +219,7 @@ impl StoryTagger {
                     let rec = &self.records[*rec];
                     tags.tag(&rec.output);
                     for implies in &rec.implies {
-                        tags.tag(&implies);
+                        tags.tag(implies);
                     }
                     continue;
                 }
@@ -228,7 +229,7 @@ impl StoryTagger {
                     let rec = &self.records[*rec];
                     tags.tag(&rec.output);
                     for implies in &rec.implies {
-                        tags.tag(&implies);
+                        tags.tag(implies);
                     }
                 }
             }

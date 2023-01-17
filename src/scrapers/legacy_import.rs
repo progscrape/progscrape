@@ -39,7 +39,7 @@ fn make_hacker_news(
     url: StoryUrl,
     date: StoryDate,
 ) -> hacker_news::HackerNewsStory {
-    hacker_news::HackerNewsStory { 
+    hacker_news::HackerNewsStory {
         id,
         title,
         url,
@@ -50,14 +50,12 @@ fn make_hacker_news(
     }
 }
 
-fn make_reddit(
-    id: String,
-    title: String,
-    url: StoryUrl,
-    date: StoryDate,
-) -> reddit::RedditStory {
+fn make_reddit(id: String, title: String, url: StoryUrl, date: StoryDate) -> reddit::RedditStory {
     reddit::RedditStory {
-        id, title, url, date,
+        id,
+        title,
+        url,
+        date,
         downvotes: Default::default(),
         flair: Default::default(),
         num_comments: Default::default(),
@@ -76,7 +74,10 @@ fn make_lobsters(
     date: StoryDate,
 ) -> lobsters::LobstersStory {
     lobsters::LobstersStory {
-        id, title, url, date,
+        id,
+        title,
+        url,
+        date,
         num_comments: Default::default(),
         position: Default::default(),
         score: Default::default(),
@@ -192,7 +193,7 @@ pub fn import_legacy() -> Result<Vec<TypedScrape>, LegacyError> {
         tracing::info!("Cache not OK");
     }
     let _ = std::fs::remove_file(cache_file);
-    let mut v: Vec<_> = import_legacy_1()?
+    let v: Vec<_> = import_legacy_1()?
         .chain(import_legacy_2()?)
         .collect::<Vec<_>>();
     let f = File::create(cache_file)?;
@@ -218,7 +219,7 @@ mod test {
 
     #[test]
     fn test_read_legacy_all() -> Result<(), Box<dyn std::error::Error>> {
-        assert!(import_legacy()?.len() > 0);
+        assert!(!import_legacy()?.is_empty());
         Ok(())
     }
 }

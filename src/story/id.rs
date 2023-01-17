@@ -1,10 +1,8 @@
 use serde::{Deserialize, Serialize};
 
-use std::{
-    fmt::Display,
-};
+use std::fmt::Display;
 
-use super::{StoryUrlNorm, StoryDate};
+use super::{StoryDate, StoryUrlNorm};
 
 /// Uniquely identifies a story within the index.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize, Serialize)]
@@ -87,7 +85,7 @@ impl StoryIdentifier {
 
 #[cfg(test)]
 mod test {
-    use crate::story::{StoryUrl, StoryDate};
+    use crate::story::{StoryDate, StoryUrl};
 
     use super::*;
 

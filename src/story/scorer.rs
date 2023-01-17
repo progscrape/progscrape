@@ -1,7 +1,7 @@
 use chrono::Duration;
 use serde::{Deserialize, Serialize};
 
-use crate::scrapers::{TypedScrape};
+use crate::scrapers::TypedScrape;
 
 use super::{Story, StoryDate};
 
@@ -36,13 +36,15 @@ pub struct StoryScorer {
 impl StoryScorer {
     pub fn new(config: &StoryScoreConfig) -> Self {
         Self {
-            config: config.clone()
+            config: config.clone(),
         }
     }
 
     /// Re-scores stories w/age score.
     pub fn resort_stories(&self, relative_to: StoryDate, stories: &mut [Story]) {
-        stories.sort_by_cached_key(|story| ((story.score + self.score_age(relative_to - story.date)) * 100000.0) as i64);
+        stories.sort_by_cached_key(|story| {
+            ((story.score + self.score_age(relative_to - story.date)) * 100000.0) as i64
+        });
     }
 
     #[inline(always)]
@@ -155,11 +157,7 @@ impl StoryScorer {
         score_total
     }
 
-    pub fn score_detail(
-        &self, 
-        story: &Story,
-        now: StoryDate,
-    ) -> Vec<(String, f32)> {
+    pub fn score_detail(&self, story: &Story, now: StoryDate) -> Vec<(String, f32)> {
         let mut score_bits = vec![];
         let accum = |score_type, score| score_bits.push((format!("{:?}", score_type), score));
         self.score_impl(story, StoryScoreType::AgedFrom(now), accum);
@@ -186,5 +184,4 @@ mod test {
             last_score = score;
         }
     }
-
 }

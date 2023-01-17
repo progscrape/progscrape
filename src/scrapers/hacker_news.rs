@@ -1,12 +1,15 @@
 use serde::{Deserialize, Serialize};
-use std::{borrow::{Borrow, Cow}, collections::HashMap};
+use std::{
+    borrow::{Borrow, Cow},
+    collections::HashMap,
+};
 use tl::{HTMLTag, Parser, ParserOptions};
 
 use super::{
-    html::*, ScrapeConfigSource, ScrapeError, ScrapeSource, ScrapeSourceDef, ScrapeStory,
-    Scraper, ScrapeCore, ScrapeId,
+    html::*, ScrapeConfigSource, ScrapeCore, ScrapeError, ScrapeId, ScrapeSource, ScrapeSourceDef,
+    ScrapeStory, Scraper,
 };
-use crate::story::{StoryDate, StoryUrl, TagAcceptor, TagSet};
+use crate::story::{StoryDate, StoryUrl};
 
 pub struct HackerNews {}
 
@@ -159,7 +162,7 @@ impl HackerNewsScraper {
 
     fn tags_from_title(
         &self,
-        args: &<HackerNews as ScrapeSourceDef>::Config,
+        _args: &<HackerNews as ScrapeSourceDef>::Config,
         title: &str,
     ) -> Vec<&'static str> {
         let mut tags = vec![];
@@ -186,10 +189,10 @@ impl Scraper for HackerNewsScraper {
 
     fn scrape(
         &self,
-        args: &HackerNewsConfig,
+        _args: &HackerNewsConfig,
         input: &str,
     ) -> Result<(Vec<HackerNewsStory>, Vec<String>), ScrapeError> {
-        let dom = tl::parse(&input, ParserOptions::default())?;
+        let dom = tl::parse(input, ParserOptions::default())?;
         let p = dom.parser();
         let mut errors = vec![];
         let mut story_lines = HashMap::new();
@@ -229,7 +232,11 @@ impl Scraper for HackerNewsScraper {
     }
 
     fn extract_core<'a>(&self, args: &Self::Config, input: &'a Self::Output) -> ScrapeCore<'a> {
-        let tags = self.tags_from_title(args, &input.title).into_iter().map(|s| Cow::Borrowed(s)).collect();
+        let tags = self
+            .tags_from_title(args, &input.title)
+            .into_iter()
+            .map(Cow::Borrowed)
+            .collect();
         ScrapeCore {
             source: ScrapeId::new(ScrapeSource::HackerNews, None, input.id.clone()),
             title: Cow::Borrowed(&input.title),

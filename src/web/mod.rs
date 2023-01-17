@@ -18,7 +18,7 @@ use crate::{
         web_scraper::{WebScrapeHttpResult, WebScrapeInput, WebScrapeURLResult, WebScraper},
         ScrapeSource,
     },
-    story::{Story, StoryDate, StoryIdentifier, StoryRender, TagSet, StoryEvaluator},
+    story::{Story, StoryDate, StoryEvaluator, StoryIdentifier, StoryRender},
     web::cron::Cron,
 };
 
@@ -371,7 +371,7 @@ async fn admin_status_story(
     tracing::info!("Loading story = {:?}", id);
     let story = index.storage.get_story(&id).ok_or(WebError::NotFound)?;
     let score_details = resources.story_evaluator().scorer.score_detail(&story, now);
-    let tags = Default::default();// _details = resources.story_evaluator().tagger.tag_detail(&story);
+    let tags = Default::default(); // _details = resources.story_evaluator().tagger.tag_detail(&story);
 
     render(
         &resources,

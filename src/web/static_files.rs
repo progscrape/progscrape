@@ -54,7 +54,7 @@ impl StaticFileRegistry {
             .unwrap_or_else(|| panic!("File type was not known for {}", key));
 
         let mut hash = sha2::Sha256::new();
-        hash.update(&buf);
+        hash.update(buf);
         let hash: &[u8] = &hash.finalize();
 
         self.files.insert(

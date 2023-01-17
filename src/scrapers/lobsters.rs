@@ -58,14 +58,14 @@ pub struct LobstersScraper {}
 
 impl Scraper for LobstersScraper {
     type Config = <Lobsters as ScrapeSourceDef>::Config;
-    type Output = <Lobsters as ScrapeSourceDef>::Scrape; 
+    type Output = <Lobsters as ScrapeSourceDef>::Scrape;
 
     fn scrape(
-            &self,
-            args: &Self::Config,
-            input: &str,
-        ) -> Result<(Vec<Self::Output>, Vec<String>), ScrapeError> {
-        let doc = Document::parse(&input)?;
+        &self,
+        _args: &Self::Config,
+        input: &str,
+    ) -> Result<(Vec<Self::Output>, Vec<String>), ScrapeError> {
+        let doc = Document::parse(input)?;
         let rss = doc.root_element();
         let mut warnings = vec![];
         let mut stories = vec![];
@@ -132,13 +132,13 @@ impl Scraper for LobstersScraper {
             tags.push(Cow::Borrowed(tag.as_str()));
         }
 
-        ScrapeCore { 
-            source: ScrapeId::new(ScrapeSource::Lobsters, None, input.id.clone()), 
-            title: Cow::Borrowed(input.title.as_str()), 
-            url: &input.url, 
-            date: input.date, 
-            tags, 
-            rank: (input.position as usize).checked_sub(1) 
+        ScrapeCore {
+            source: ScrapeId::new(ScrapeSource::Lobsters, None, input.id.clone()),
+            title: Cow::Borrowed(input.title.as_str()),
+            url: &input.url,
+            date: input.date,
+            tags,
+            rank: (input.position as usize).checked_sub(1),
         }
     }
 }

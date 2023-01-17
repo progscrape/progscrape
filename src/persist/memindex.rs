@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use itertools::Itertools;
 
-use crate::story::{StoryDate, StoryUrlNorm, StoryEvaluator};
+use crate::story::{StoryDate, StoryEvaluator, StoryUrlNorm};
 
 use super::*;
 

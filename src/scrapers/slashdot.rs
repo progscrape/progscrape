@@ -1,13 +1,17 @@
-use std::{borrow::{Borrow, Cow}, collections::HashSet};
+use std::{
+    borrow::{Borrow, Cow},
+    collections::HashSet,
+};
 
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use tl::{HTMLTag, Parser, ParserOptions};
 
-use crate::story::{StoryDate, StoryUrl, TagAcceptor, TagSet};
+use crate::story::{StoryDate, StoryUrl};
 
 use super::{
-    html::*, ScrapeConfigSource, ScrapeSource, ScrapeSourceDef, ScrapeStory, Scraper, ScrapeError, ScrapeCore, ScrapeId,
+    html::*, ScrapeConfigSource, ScrapeCore, ScrapeError, ScrapeId, ScrapeSource, ScrapeSourceDef,
+    ScrapeStory, Scraper,
 };
 
 pub struct Slashdot {}
@@ -142,7 +146,7 @@ impl SlashdotScraper {
             title,
             url,
             date,
-            tags, 
+            tags,
             num_comments,
         })
     }
@@ -153,11 +157,11 @@ impl Scraper for SlashdotScraper {
     type Output = <Slashdot as ScrapeSourceDef>::Scrape;
 
     fn scrape(
-            &self,
-            args: &Self::Config,
-            input: &str,
-        ) -> Result<(Vec<Self::Output>, Vec<String>), ScrapeError> {
-        let dom = tl::parse(&input, ParserOptions::default())?;
+        &self,
+        _args: &Self::Config,
+        input: &str,
+    ) -> Result<(Vec<Self::Output>, Vec<String>), ScrapeError> {
+        let dom = tl::parse(input, ParserOptions::default())?;
         let p = dom.parser();
         let mut errors = vec![];
         let mut v = vec![];
@@ -186,8 +190,8 @@ impl Scraper for SlashdotScraper {
             title: Cow::Borrowed(input.title.as_str()),
             url: &input.url,
             rank: None,
-            tags
-        }        
+            tags,
+        }
     }
 }
 

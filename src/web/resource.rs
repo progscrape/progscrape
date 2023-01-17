@@ -104,7 +104,11 @@ fn generate() -> Result<ResourceHolder, WebError> {
     let static_files_root = Arc::new(create_static_files_root()?);
     let templates = Arc::new(create_templates(static_files.clone())?);
     let config = Arc::new(create_config()?);
-    let story_evaluator = Arc::new(StoryEvaluator::new(&config.tagger, &config.score, &config.scrape));
+    let story_evaluator = Arc::new(StoryEvaluator::new(
+        &config.tagger,
+        &config.score,
+        &config.scrape,
+    ));
     Ok(ResourceHolder {
         templates,
         static_files,
