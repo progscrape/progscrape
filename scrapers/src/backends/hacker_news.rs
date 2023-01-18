@@ -231,7 +231,7 @@ impl Scraper for HackerNewsScraper {
                 errors.push(format!("Unmatched story/info for id {}", k));
             }
         }
-        stories.sort_by_key(|x| x.position);
+        stories.sort_by_key(|x| x.data.position);
         Ok((stories, errors))
     }
 
@@ -250,7 +250,7 @@ impl Scraper for HackerNewsScraper {
             title: Cow::Borrowed(&input.shared.raw_title),
             url: &input.shared.url,
             date: input.shared.date,
-            rank: (input.position as usize).checked_sub(1),
+            rank: (input.data.position as usize).checked_sub(1),
             tags,
         }
     }

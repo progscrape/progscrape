@@ -183,7 +183,7 @@ impl Scraper for SlashdotScraper {
         input: &'a GenericScrape<Self::Output>,
     ) -> ScrapeCore<'a> {
         let mut tags = vec![];
-        for tag in &input.tags {
+        for tag in &input.data.tags {
             if args.tag_allowlist.contains(tag) {
                 tags.push(Cow::Borrowed(tag.as_str()));
             }

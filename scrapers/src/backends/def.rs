@@ -78,29 +78,16 @@ pub struct GenericScrape<T: ScrapeStory> {
     pub data: T,
 }
 
-// impl <T: ScrapeStory> std::ops::Deref for GenericScrape<T> {
-//     type Target = ScrapeShared;
-//     fn deref(&self) -> &Self::Target {
-//         &self.shared
-//     }
-// }
-
-// impl <T: ScrapeStory> std::ops::DerefMut for GenericScrape<T> {
-//     fn deref_mut(&mut self) -> &mut Self::Target {
-//         &mut self.shared
-//     }
-// }
-
-impl<T: ScrapeStory> std::ops::Deref for GenericScrape<T> {
-    type Target = T;
+impl <T: ScrapeStory> std::ops::Deref for GenericScrape<T> {
+    type Target = ScrapeShared;
     fn deref(&self) -> &Self::Target {
-        &self.data
+        &self.shared
     }
 }
 
-impl<T: ScrapeStory> std::ops::DerefMut for GenericScrape<T> {
+impl <T: ScrapeStory> std::ops::DerefMut for GenericScrape<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.data
+        &mut self.shared
     }
 }
 

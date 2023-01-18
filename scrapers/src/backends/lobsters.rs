@@ -133,7 +133,7 @@ impl Scraper for LobstersScraper {
         input: &'a GenericScrape<Self::Output>,
     ) -> ScrapeCore<'a> {
         let mut tags = Vec::new();
-        for tag in &input.tags {
+        for tag in &input.data.tags {
             if args.tag_denylist.contains(tag) {
                 continue;
             }
@@ -146,7 +146,7 @@ impl Scraper for LobstersScraper {
             url: &input.shared.url,
             date: input.shared.date,
             tags,
-            rank: (input.position as usize).checked_sub(1),
+            rank: (input.data.position as usize).checked_sub(1),
         }
     }
 }

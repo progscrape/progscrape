@@ -254,7 +254,7 @@ impl Scraper for RedditScraper {
         if let Some(ref subreddit) = input.shared.id.subsource {
             if let Some(config) = args.subreddits.get(subreddit) {
                 if config.flair_is_tag {
-                    tags.push(Cow::Owned(input.flair.to_lowercase()));
+                    tags.push(Cow::Owned(input.data.flair.to_lowercase()));
                 }
                 if config.is_tag {
                     tags.push(Cow::Borrowed(subreddit.as_str()));
@@ -267,7 +267,7 @@ impl Scraper for RedditScraper {
             title: Cow::Borrowed(&input.shared.raw_title),
             url: &input.shared.url,
             date: input.shared.date,
-            rank: (input.position as usize).checked_sub(1),
+            rank: (input.data.position as usize).checked_sub(1),
             tags,
         }
     }
