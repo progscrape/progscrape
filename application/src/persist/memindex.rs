@@ -183,6 +183,8 @@ impl Storage for MemIndex {
 
 #[cfg(test)]
 mod test {
+    use std::path::Path;
+
     use super::*;
 
     #[test]
@@ -202,7 +204,7 @@ mod test {
     #[test]
     fn test_index_lots() {
         let stories =
-            progscrape_scrapers::import_legacy().expect("Failed to read scrapes");
+            progscrape_scrapers::import_legacy(&Path::new("..")).expect("Failed to read scrapes");
         let mut index = MemIndex::default();
 
         let eval = StoryEvaluator::new_for_test();

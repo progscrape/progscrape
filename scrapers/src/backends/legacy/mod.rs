@@ -202,19 +202,19 @@ mod test {
 
     #[test]
     fn test_read_legacy_1() -> Result<(), Box<dyn std::error::Error>> {
-        assert!(import_legacy_1(Path::new("."))?.count() > 0);
+        assert!(import_legacy_1(Path::new(".."))?.count() > 0);
         Ok(())
     }
 
     #[test]
     fn test_read_legacy_2() -> Result<(), Box<dyn std::error::Error>> {
-        assert!(import_legacy_2(Path::new("."))?.count() > 0);
+        assert!(import_legacy_2(Path::new(".."))?.count() > 0);
         Ok(())
     }
 
     #[test]
     fn test_read_legacy_all() -> Result<(), Box<dyn std::error::Error>> {
-        assert!(!import_legacy(Path::new("."))?.is_empty());
+        assert!(!import_legacy(Path::new(".."))?.is_empty());
         Ok(())
     }
 }
