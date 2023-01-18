@@ -339,8 +339,8 @@ impl Storage for StoryIndex {
                 );
                 let docs = searcher.search(&query, &TopDocs::with_limit(max_count))?;
                 for doc in docs {
-                    let _doc = searcher.doc(doc.1)?;
-                    // println!("{}", doc.get_first(index.title_field).and_then(|x| x.as_text()).unwrap_or_default());
+                    let doc = searcher.doc(doc.1)?;
+                    println!("{}", doc.get_first(index.title_field).and_then(|x| x.as_text()).unwrap_or_default());
                 }
             }
         }
@@ -351,6 +351,8 @@ impl Storage for StoryIndex {
 
 #[cfg(test)]
 mod test {
+    use std::path::Path;
+
     use tantivy::directory::RamDirectory;
 
     use super::*;
@@ -411,21 +413,22 @@ mod test {
     }
 
     #[test]
-    fn test_index_lots() {
-        // let stories =
-        //     crate::scrapers::legacy_import::import_legacy().expect("Failed to read scrapes");
-        // let start_date = stories
-        //     .iter()
-        //     .fold(StoryDate::MAX, |a, b| std::cmp::min(a, b.date));
-        // // let stories = crate::scrapers::test::scrape_all();
-        // // let dir = MmapDirectory::open("/tmp/index").expect("Failed to get mmap dir");
-        // let _dir = RamDirectory::create();
-        // let mut index = StoryIndex::initialize(start_date, |_n| RamDirectory::create())
-        //     .expect("Failed to initialize index");
-        // let eval = StoryEvaluator::new_for_test();
-        // index
-        //     .insert_scrapes(&eval, stories.into_iter())
-        //     .expect("Failed to insert scrapes");
-        // index.query_search("rust".to_owned(), 10);
+    fn test_index_lots() -> Result<(), Box<dyn std::error::Error>> {
+        let stories =
+            progscrape_scrapers::import_legacy(Path::new(".."))?;
+        let start_date = stories
+            .iter()
+            .fold(StoryDate::MAX, |a, b| std::cmp::min(a, b.date));
+        // let stories = crate::scrapers::test::scrape_all();
+        // let dir = MmapDirectory::open("/tmp/index").expect("Failed to get mmap dir");
+        let _dir = RamDirectory::create();
+        let mut index = StoryIndex::initialize(start_date, |_n| RamDirectory::create())?;
+        let eval = StoryEvaluator::new_for_test();
+        index
+            .insert_scrapes(&eval, stories.into_iter())?;
+        for story in index.query_search("rust", 10)? {
+            println!("{:?}", story);
+        }
+        Ok(())
     }
 }

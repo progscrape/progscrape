@@ -1,7 +1,7 @@
 use super::*;
 use serde::{de::DeserializeOwned, Serialize};
 
-struct DB {
+pub struct DB {
     connection: rusqlite::Connection,
 }
 
@@ -46,10 +46,19 @@ impl DB {
             ));
         }
         let sql = format!(
-            "create table {}({})",
+            "create table if not exists {}({})",
             Self::table_for::<T>(),
             types.join(",")
         );
+        self.connection.execute(&sql, ())?;
+        Ok(())
+    }
+
+    pub fn create_unique_index<T: Serialize + Default>(&self, name: &str, keys: &[&str]) -> Result<(), PersistError> {
+        let t = T::default();
+        let params = serde_rusqlite::to_params_named(&t)?;
+        // TODO: check keys
+        let sql = format!("create unique index if not exists {} on {}({})", name, Self::table_for::<T>(), keys.join(","));
         self.connection.execute(&sql, ())?;
         Ok(())
     }
@@ -68,7 +77,7 @@ impl DB {
             .collect::<Vec<_>>()
             .join(",");
         let sql = format!(
-            "insert into {}({}) values ({})",
+            "insert or replace into {}({}) values ({})",
             Self::table_for::<T>(),
             columns,
             values
@@ -78,7 +87,7 @@ impl DB {
     }
 
     pub fn load<T: Serialize + DeserializeOwned>(
-        &mut self,
+        &self,
         id: String,
     ) -> Result<Option<T>, PersistError> {
         let sql = format!("select * from {} where id = ?", Self::table_for::<T>());

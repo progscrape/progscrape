@@ -6,6 +6,7 @@ use thiserror::Error;
 mod db;
 mod index;
 mod memindex;
+mod scrapestore;
 
 pub use index::StoryIndex;
 pub use memindex::MemIndex;
@@ -18,6 +19,8 @@ pub enum PersistError {
     TantivyError(#[from] tantivy::TantivyError),
     #[error("Tantivy query parser error")]
     TantivyQueryError(#[from] tantivy::query::QueryParserError),
+    #[error("JSON error")]
+    JsonError(#[from] serde_json::Error),
     #[error("Serialize/deserialize error")]
     SerdeError(#[from] serde_rusqlite::Error),
     #[error("Unmappable column")]
