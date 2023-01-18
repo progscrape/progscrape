@@ -10,8 +10,8 @@ use tl::{HTMLTag, Parser, ParserOptions};
 use crate::types::*;
 
 use super::{
-    utils::html::*, GenericScrape, ScrapeConfigSource, ScrapeCore, ScrapeShared, ScrapeSource,
-    ScrapeSourceDef, ScrapeStory, Scraper,
+    scrape_story, utils::html::*, GenericScrape, ScrapeConfigSource, ScrapeCore, ScrapeShared,
+    ScrapeSource, ScrapeSourceDef, ScrapeStory, Scraper,
 };
 
 pub struct Slashdot {}
@@ -38,11 +38,12 @@ impl ScrapeConfigSource for SlashdotConfig {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct SlashdotStory {
-    pub id: String,
-    pub num_comments: u32,
-    pub tags: Vec<String>,
+scrape_story! {
+    SlashdotStory {
+        id: String,
+        num_comments: u32,
+        tags: Vec<String>,
+    }
 }
 
 impl ScrapeStory for SlashdotStory {
@@ -141,18 +142,14 @@ impl SlashdotScraper {
             find_first(p, article, "time").ok_or_else(|| "Could not locate time".to_string())?;
         let date = Self::parse_time(&date.inner_text(p))?;
 
-        Ok(GenericScrape {
-            shared: ScrapeShared {
-                url,
-                raw_title,
-                date,
-            },
-            data: SlashdotStory {
-                id,
-                tags,
-                num_comments,
-            },
-        })
+        Ok(SlashdotStory::new(
+            date,
+            raw_title,
+            url,
+            id,
+            num_comments,
+            tags,
+        ))
     }
 }
 

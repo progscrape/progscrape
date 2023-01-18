@@ -4,8 +4,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::{
-    utils::html::unescape_entities, GenericScrape, ScrapeConfigSource, ScrapeCore, ScrapeShared,
-    ScrapeSource, ScrapeSourceDef, ScrapeStory, Scraper,
+    scrape_story, utils::html::unescape_entities, GenericScrape, ScrapeConfigSource, ScrapeCore,
+    ScrapeShared, ScrapeSource, ScrapeSourceDef, ScrapeStory, Scraper,
 };
 use crate::types::*;
 
@@ -53,17 +53,18 @@ pub struct SubredditConfig {
 #[derive(Default)]
 pub struct RedditScraper {}
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct RedditStory {
-    pub id: String,
-    pub subreddit: Option<String>,
-    pub flair: String,
-    pub position: u32,
-    pub upvotes: u32,
-    pub downvotes: u32,
-    pub num_comments: u32,
-    pub score: u32,
-    pub upvote_ratio: f32,
+scrape_story! {
+    RedditStory {
+        id: String,
+        subreddit: Option<String>,
+        flair: String,
+        position: u32,
+        upvotes: u32,
+        downvotes: u32,
+        num_comments: u32,
+        score: u32,
+        upvote_ratio: f32,
+    }
 }
 
 impl ScrapeStory for RedditStory {
@@ -174,30 +175,33 @@ impl RedditScraper {
             .and_modify(|n| *n += 1)
             .or_default()
             + 1;
+        let subreddit = Some(subreddit);
         let seconds: i64 = self.require_integer(data, "created_utc")?;
         let millis = seconds * 1000;
         let date = StoryDate::from_millis(millis).ok_or_else(|| "Unmappable date".to_string())?;
         let url = StoryUrl::parse(unescape_entities(&self.require_string(data, "url")?))
             .ok_or_else(|| "Unmappable URL".to_string())?;
         let raw_title = unescape_entities(&self.require_string(data, "title")?);
-        let story = GenericScrape {
-            shared: ScrapeShared {
-                url,
-                raw_title,
-                date,
-            },
-            data: RedditStory {
-                id,
-                subreddit: Some(subreddit),
-                num_comments: self.require_integer(data, "num_comments")?,
-                score: self.require_integer(data, "score")?,
-                downvotes: self.require_integer(data, "downs")?,
-                upvotes: self.require_integer(data, "ups")?,
-                upvote_ratio: self.require_float(data, "upvote_ratio")? as f32,
-                flair: unescape_entities(&self.optional_string(data, "link_flair_text")?),
-                position,
-            },
-        };
+        let num_comments = self.require_integer(data, "num_comments")?;
+        let score = self.require_integer(data, "score")?;
+        let downvotes = self.require_integer(data, "downs")?;
+        let upvotes = self.require_integer(data, "ups")?;
+        let upvote_ratio = self.require_float(data, "upvote_ratio")? as f32;
+        let flair = unescape_entities(&self.optional_string(data, "link_flair_text")?);
+        let story = RedditStory::new(
+            date,
+            raw_title,
+            url,
+            id,
+            subreddit,
+            flair,
+            position,
+            upvotes,
+            downvotes,
+            num_comments,
+            score,
+            upvote_ratio,
+        );
         Ok(story)
     }
 }

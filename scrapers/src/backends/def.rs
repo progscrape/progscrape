@@ -1,5 +1,3 @@
-use lazy_static::__Deref;
-
 use crate::ScrapeId;
 
 use super::*;
@@ -108,3 +106,27 @@ impl<T: ScrapeStory> std::ops::DerefMut for GenericScrape<T> {
 impl<T: ScrapeStory> GenericScrape<T> {
     pub fn merge_generic(&mut self, other: Self) {}
 }
+
+macro_rules! scrape_story {
+    ( $name:ident { $( $id:ident : $type:ty ),* $(,)? } ) => {
+        #[derive(Serialize, Deserialize, Clone, Debug)]
+        pub struct $name {
+            $( pub $id : $type ),*
+        }
+
+        impl $name {
+            pub fn new(date: StoryDate, raw_title: String, url: StoryUrl, $( $id: $type ),*) -> GenericScrape<$name> {
+                GenericScrape {
+                    shared: ScrapeShared {
+                        date, raw_title, url
+                    },
+                    data: $name {
+                        $($id),*
+                    }
+                }
+            }
+        }
+    };
+}
+
+pub(crate) use scrape_story;

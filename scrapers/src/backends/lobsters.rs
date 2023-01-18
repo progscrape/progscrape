@@ -29,13 +29,14 @@ impl ScrapeConfigSource for LobstersConfig {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct LobstersStory {
-    pub id: String,
-    pub num_comments: u32,
-    pub position: u32,
-    pub score: u32,
-    pub tags: Vec<String>,
+scrape_story! {
+    LobstersStory {
+        id: String,
+        num_comments: u32,
+        position: u32,
+        score: u32,
+        tags: Vec<String>,
+    }
 }
 
 impl ScrapeStory for LobstersStory {
@@ -104,20 +105,19 @@ impl Scraper for LobstersScraper {
                     if let (Some(raw_title), Some(id), Some(url), Some(date)) =
                         (raw_title, id, url, date)
                     {
-                        stories.push(GenericScrape {
-                            shared: ScrapeShared {
-                                url,
-                                raw_title,
-                                date,
-                            },
-                            data: LobstersStory {
-                                id,
-                                num_comments: 0,
-                                position: position as u32 + 1,
-                                score: 0,
-                                tags,
-                            },
-                        });
+                        let position = position as u32 + 1;
+                        let num_comments = 0;
+                        let score = 0;
+                        stories.push(LobstersStory::new(
+                            date,
+                            raw_title,
+                            url,
+                            id,
+                            num_comments,
+                            position,
+                            score,
+                            tags,
+                        ));
                     } else {
                         warnings.push("Story did not contain all required fields".to_string());
                     }

@@ -6,8 +6,8 @@ use std::{
 use tl::{HTMLTag, Parser, ParserOptions};
 
 use super::{
-    utils::html::*, GenericScrape, ScrapeConfigSource, ScrapeCore, ScrapeShared, ScrapeSource,
-    ScrapeSourceDef, ScrapeStory, Scraper,
+    scrape_story, utils::html::*, GenericScrape, ScrapeConfigSource, ScrapeCore, ScrapeShared,
+    ScrapeSource, ScrapeSourceDef, ScrapeStory, Scraper,
 };
 use crate::types::*;
 
@@ -34,12 +34,13 @@ impl ScrapeConfigSource for HackerNewsConfig {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct HackerNewsStory {
-    pub id: String,
-    pub points: u32,
-    pub comments: u32,
-    pub position: u32,
+scrape_story! {
+    HackerNewsStory {
+        id: String,
+        points: u32,
+        comments: u32,
+        position: u32,
+    }
 }
 
 impl ScrapeStory for HackerNewsStory {
@@ -211,19 +212,16 @@ impl Scraper for HackerNewsScraper {
         for (k, v) in story_lines {
             let info = info_lines.remove(&k);
             if let Some(info) = info {
-                stories.push(GenericScrape {
-                    shared: ScrapeShared {
-                        url: v.url,
-                        raw_title: v.title,
-                        date: info.date,
-                    },
-                    data: HackerNewsStory {
-                        id: k,
-                        points: info.points,
-                        comments: info.comments,
-                        position: v.position,
-                    },
-                });
+                let url = v.url;
+                let raw_title = v.title;
+                let date = info.date;
+                let id = k;
+                let points = info.points;
+                let comments = info.comments;
+                let position = v.position;
+                stories.push(HackerNewsStory::new(
+                    date, raw_title, url, id, points, comments, position,
+                ));
             } else {
                 errors.push(format!("Unmatched story/info for id {}", k));
             }
