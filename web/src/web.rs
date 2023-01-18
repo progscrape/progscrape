@@ -99,9 +99,10 @@ fn start_cron(cron: Arc<Mutex<Cron>>, resources: Resources) {
 }
 
 pub async fn start_server(root_path: &std::path::Path) -> Result<(), WebError> {
-    tracing_subscriber::fmt::init();
     tracing::info!("Root path: {:?}", root_path);
-    let resources = resource::start_watcher().await?;
+    let resource_path = root_path.join("resource");
+
+    let resources = resource::start_watcher(resource_path).await?;
 
     let global = index::initialize_with_testing_data(root_path, &resources.config())?;
 
@@ -188,9 +189,14 @@ fn render(
 // basic handler that responds with a static string
 async fn root(
     State((index, resources)): State<(index::Global, Resources)>,
+    query: Query<HashMap<String, String>>
 ) -> Result<Html<String>, WebError> {
     let now = now(&index);
-    let stories = render_stories(hot_set(now, &index, &resources.story_evaluator())?[0..30].iter());
+    let stories = if let Some(search) = query.get("search") {
+        render_stories(index.storage.query_search(search, 30)?.iter())
+    } else {
+        render_stories(hot_set(now, &index, &resources.story_evaluator())?[0..30].iter())
+    };
     let top_tags = vec![
         "github.com",
         "rust",

@@ -4,7 +4,8 @@ TODO:
  - [ ] Hook up search
  - [ ] Restore warnings to scrape test page
  - [ ] Slashdot tags should use URL not title
- 
+ - [ ] Remove www. prefix on host
+ - [ ] Inverse lookup for tags 
 Maybe:
  - [ ] Metrics?
 

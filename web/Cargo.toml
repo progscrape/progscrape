@@ -25,6 +25,8 @@ notify = "5.0.0"
 rand = "0.8.5"
 reqwest = "0.11"
 
+clap = { version = "4.1", features = ["derive"] }
+
 # For cron
 chrono = { version = "0.4", features = ["serde"] }
 
