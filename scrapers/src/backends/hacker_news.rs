@@ -212,13 +212,19 @@ impl Scraper for HackerNewsScraper {
         for (k, v) in story_lines {
             let info = info_lines.remove(&k);
             if let Some(info) = info {
-                let url = v.url;
-                let raw_title = v.title;
-                let date = info.date;
+                let HackerNewsStoryLine {
+                    url,
+                    title: raw_title,
+                    position,
+                    ..
+                } = v;
+                let HackerNewsInfoLine {
+                    date,
+                    points,
+                    comments,
+                    ..
+                } = info;
                 let id = k;
-                let points = info.points;
-                let comments = info.comments;
-                let position = v.position;
                 stories.push(HackerNewsStory::new(
                     date, raw_title, url, id, points, comments, position,
                 ));
