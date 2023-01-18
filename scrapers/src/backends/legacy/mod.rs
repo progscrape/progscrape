@@ -31,15 +31,14 @@ pub enum LegacyError {
 
 fn make_hacker_news(
     id: String,
-    title: String,
+    raw_title: String,
     url: StoryUrl,
     date: StoryDate,
 ) -> GenericScrape<hacker_news::HackerNewsStory> {
     GenericScrape {
-        shared: ScrapeShared {},
+        shared: ScrapeShared { raw_title },
         data: hacker_news::HackerNewsStory {
             id,
-            title,
             url,
             date,
             comments: Default::default(),
@@ -51,15 +50,14 @@ fn make_hacker_news(
 
 fn make_reddit(
     id: String,
-    title: String,
+    raw_title: String,
     url: StoryUrl,
     date: StoryDate,
 ) -> GenericScrape<reddit::RedditStory> {
     GenericScrape {
-        shared: ScrapeShared {},
+        shared: ScrapeShared { raw_title },
         data: reddit::RedditStory {
             id,
-            title,
             url,
             date,
             downvotes: Default::default(),
@@ -76,15 +74,14 @@ fn make_reddit(
 
 fn make_lobsters(
     id: String,
-    title: String,
+    raw_title: String,
     url: StoryUrl,
     date: StoryDate,
 ) -> GenericScrape<lobsters::LobstersStory> {
     GenericScrape {
-        shared: ScrapeShared {},
+        shared: ScrapeShared { raw_title },
         data: lobsters::LobstersStory {
             id,
-            title,
             url,
             date,
             num_comments: Default::default(),

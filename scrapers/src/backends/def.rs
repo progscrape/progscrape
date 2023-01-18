@@ -65,7 +65,9 @@ pub struct ScrapeCore<'a> {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct ScrapeShared {}
+pub struct ScrapeShared {
+    pub raw_title: String,
+}
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct GenericScrape<T: ScrapeStory> {

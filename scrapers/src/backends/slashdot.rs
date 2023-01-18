@@ -41,7 +41,6 @@ impl ScrapeConfigSource for SlashdotConfig {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct SlashdotStory {
     pub id: String,
-    pub title: String,
     pub url: StoryUrl,
     pub date: StoryDate,
     pub num_comments: u32,
@@ -99,9 +98,9 @@ impl SlashdotScraper {
         let title = find_first(p, article, ".story-title").ok_or("Missing .story-title")?;
         let mut links = html_tag_iterator(p, title.query_selector(p, "a"));
         let story_link = links.next().ok_or("Missing story link")?;
-        let title = unescape_entities(story_link.inner_text(p).borrow());
-        if title.len() < 5 {
-            return Err(format!("Title was too short: {}", title));
+        let raw_title = unescape_entities(story_link.inner_text(p).borrow());
+        if raw_title.len() < 5 {
+            return Err(format!("Title was too short: {}", raw_title));
         }
         let story_url =
             get_attribute(p, story_link, "href").ok_or_else(|| "Missing story href".to_string())?;
@@ -145,10 +144,9 @@ impl SlashdotScraper {
         let date = Self::parse_time(&date.inner_text(p))?;
 
         Ok(GenericScrape {
-            shared: ScrapeShared {},
+            shared: ScrapeShared { raw_title },
             data: SlashdotStory {
                 id,
-                title,
                 url,
                 date,
                 tags,
@@ -197,7 +195,7 @@ impl Scraper for SlashdotScraper {
         ScrapeCore {
             source: ScrapeId::new(ScrapeSource::Slashdot, None, input.id.clone()),
             date: input.date,
-            title: Cow::Borrowed(input.title.as_str()),
+            title: Cow::Borrowed(input.shared.raw_title.as_str()),
             url: &input.url,
             rank: None,
             tags,

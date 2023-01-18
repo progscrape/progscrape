@@ -37,7 +37,6 @@ impl ScrapeConfigSource for HackerNewsConfig {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct HackerNewsStory {
     pub id: String,
-    pub title: String,
     pub url: StoryUrl,
     pub date: StoryDate,
     pub points: u32,
@@ -215,10 +214,9 @@ impl Scraper for HackerNewsScraper {
             let info = info_lines.remove(&k);
             if let Some(info) = info {
                 stories.push(GenericScrape {
-                    shared: ScrapeShared {},
+                    shared: ScrapeShared { raw_title: v.title },
                     data: HackerNewsStory {
                         id: k,
-                        title: v.title,
                         url: v.url,
                         date: info.date,
                         points: info.points,
@@ -240,13 +238,13 @@ impl Scraper for HackerNewsScraper {
         input: &'a GenericScrape<Self::Output>,
     ) -> ScrapeCore<'a> {
         let tags = self
-            .tags_from_title(args, &input.title)
+            .tags_from_title(args, &input.shared.raw_title)
             .into_iter()
             .map(Cow::Borrowed)
             .collect();
         ScrapeCore {
             source: ScrapeId::new(ScrapeSource::HackerNews, None, input.id.clone()),
-            title: Cow::Borrowed(&input.title),
+            title: Cow::Borrowed(&input.shared.raw_title),
             url: &input.url,
             date: input.date,
             rank: (input.position as usize).checked_sub(1),

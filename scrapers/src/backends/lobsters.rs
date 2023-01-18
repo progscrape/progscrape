@@ -32,7 +32,6 @@ impl ScrapeConfigSource for LobstersConfig {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct LobstersStory {
     pub id: String,
-    pub title: String,
     pub url: StoryUrl,
     pub date: StoryDate,
     pub num_comments: u32,
@@ -77,7 +76,7 @@ impl Scraper for LobstersScraper {
                     .filter(|item| item.tag_name().name() == "item")
                     .enumerate()
                 {
-                    let mut title = None;
+                    let mut raw_title = None;
                     let mut id = None;
                     let mut url = None;
                     let mut date = None;
@@ -87,7 +86,7 @@ impl Scraper for LobstersScraper {
                             continue;
                         }
                         match subitem.tag_name().name() {
-                            "title" => title = subitem.text().map(|s| s.to_owned()),
+                            "title" => raw_title = subitem.text().map(|s| s.to_owned()),
                             "guid" => {
                                 id = subitem.text().map(|s| {
                                     s.trim_start_matches("https://lobste.rs/s/").to_owned()
@@ -104,12 +103,13 @@ impl Scraper for LobstersScraper {
                             x => warnings.push(format!("Unknown sub-node '{}'", x)),
                         }
                     }
-                    if let (Some(title), Some(id), Some(url), Some(date)) = (title, id, url, date) {
+                    if let (Some(raw_title), Some(id), Some(url), Some(date)) =
+                        (raw_title, id, url, date)
+                    {
                         stories.push(GenericScrape {
-                            shared: ScrapeShared {},
+                            shared: ScrapeShared { raw_title },
                             data: LobstersStory {
                                 id,
-                                title,
                                 url,
                                 date,
                                 num_comments: 0,
@@ -142,7 +142,7 @@ impl Scraper for LobstersScraper {
 
         ScrapeCore {
             source: ScrapeId::new(ScrapeSource::Lobsters, None, input.id.clone()),
-            title: Cow::Borrowed(input.title.as_str()),
+            title: Cow::Borrowed(input.shared.raw_title.as_str()),
             url: &input.url,
             date: input.date,
             tags,
