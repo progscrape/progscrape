@@ -6,8 +6,8 @@ use std::{
 use tl::{HTMLTag, Parser, ParserOptions};
 
 use super::{
-    utils::html::*, ScrapeConfigSource, ScrapeCore, ScrapeSource, ScrapeSourceDef,
-    ScrapeStory, Scraper,
+    utils::html::*, GenericScrape, ScrapeConfigSource, ScrapeCore, ScrapeShared, ScrapeSource,
+    ScrapeSourceDef, ScrapeStory, Scraper,
 };
 use crate::types::*;
 
@@ -191,7 +191,7 @@ impl Scraper for HackerNewsScraper {
         &self,
         _args: &HackerNewsConfig,
         input: &str,
-    ) -> Result<(Vec<HackerNewsStory>, Vec<String>), ScrapeError> {
+    ) -> Result<(Vec<GenericScrape<Self::Output>>, Vec<String>), ScrapeError> {
         let dom = tl::parse(input, ParserOptions::default())?;
         let p = dom.parser();
         let mut errors = vec![];
@@ -214,14 +214,17 @@ impl Scraper for HackerNewsScraper {
         for (k, v) in story_lines {
             let info = info_lines.remove(&k);
             if let Some(info) = info {
-                stories.push(HackerNewsStory {
-                    id: k,
-                    title: v.title,
-                    url: v.url,
-                    date: info.date,
-                    points: info.points,
-                    comments: info.comments,
-                    position: v.position,
+                stories.push(GenericScrape {
+                    shared: ScrapeShared {},
+                    data: HackerNewsStory {
+                        id: k,
+                        title: v.title,
+                        url: v.url,
+                        date: info.date,
+                        points: info.points,
+                        comments: info.comments,
+                        position: v.position,
+                    },
                 });
             } else {
                 errors.push(format!("Unmatched story/info for id {}", k));
@@ -231,7 +234,11 @@ impl Scraper for HackerNewsScraper {
         Ok((stories, errors))
     }
 
-    fn extract_core<'a>(&self, args: &Self::Config, input: &'a Self::Output) -> ScrapeCore<'a> {
+    fn extract_core<'a>(
+        &self,
+        args: &Self::Config,
+        input: &'a GenericScrape<Self::Output>,
+    ) -> ScrapeCore<'a> {
         let tags = self
             .tags_from_title(args, &input.title)
             .into_iter()

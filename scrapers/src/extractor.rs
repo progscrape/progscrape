@@ -1,4 +1,4 @@
-use crate::backends::{ScrapeConfig, TypedScrape, ScrapeCore};
+use crate::backends::{ScrapeConfig, ScrapeCore, TypedScrape};
 
 pub struct ScrapeExtractor {
     config: ScrapeConfig,

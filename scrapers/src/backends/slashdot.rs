@@ -10,8 +10,8 @@ use tl::{HTMLTag, Parser, ParserOptions};
 use crate::types::*;
 
 use super::{
-    utils::html::*, ScrapeConfigSource, ScrapeCore, ScrapeSource, ScrapeSourceDef,
-    ScrapeStory, Scraper,
+    utils::html::*, GenericScrape, ScrapeConfigSource, ScrapeCore, ScrapeShared, ScrapeSource,
+    ScrapeSourceDef, ScrapeStory, Scraper,
 };
 
 pub struct Slashdot {}
@@ -92,7 +92,10 @@ impl SlashdotScraper {
         Err(format!("Failed to parse date: {}", date))
     }
 
-    fn map_story(p: &Parser, article: &HTMLTag) -> Result<SlashdotStory, String> {
+    fn map_story(
+        p: &Parser,
+        article: &HTMLTag,
+    ) -> Result<GenericScrape<<Self as Scraper>::Output>, String> {
         let title = find_first(p, article, ".story-title").ok_or("Missing .story-title")?;
         let mut links = html_tag_iterator(p, title.query_selector(p, "a"));
         let story_link = links.next().ok_or("Missing story link")?;
@@ -141,13 +144,16 @@ impl SlashdotScraper {
             find_first(p, article, "time").ok_or_else(|| "Could not locate time".to_string())?;
         let date = Self::parse_time(&date.inner_text(p))?;
 
-        Ok(SlashdotStory {
-            id,
-            title,
-            url,
-            date,
-            tags,
-            num_comments,
+        Ok(GenericScrape {
+            shared: ScrapeShared {},
+            data: SlashdotStory {
+                id,
+                title,
+                url,
+                date,
+                tags,
+                num_comments,
+            },
         })
     }
 }
@@ -160,7 +166,7 @@ impl Scraper for SlashdotScraper {
         &self,
         _args: &Self::Config,
         input: &str,
-    ) -> Result<(Vec<Self::Output>, Vec<String>), ScrapeError> {
+    ) -> Result<(Vec<GenericScrape<Self::Output>>, Vec<String>), ScrapeError> {
         let dom = tl::parse(input, ParserOptions::default())?;
         let p = dom.parser();
         let mut errors = vec![];
@@ -176,7 +182,11 @@ impl Scraper for SlashdotScraper {
         Ok((v, errors))
     }
 
-    fn extract_core<'a>(&self, args: &Self::Config, input: &'a Self::Output) -> ScrapeCore<'a> {
+    fn extract_core<'a>(
+        &self,
+        args: &Self::Config,
+        input: &'a GenericScrape<Self::Output>,
+    ) -> ScrapeCore<'a> {
         let mut tags = vec![];
         for tag in &input.tags {
             if args.tag_allowlist.contains(tag) {

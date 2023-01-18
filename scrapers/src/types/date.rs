@@ -69,7 +69,9 @@ impl StoryDate {
 impl Sub for StoryDate {
     type Output = StoryDuration;
     fn sub(self, rhs: Self) -> Self::Output {
-        StoryDuration { duration: self.internal_date - rhs.internal_date }
+        StoryDuration {
+            duration: self.internal_date - rhs.internal_date,
+        }
     }
 }
 
@@ -99,16 +101,20 @@ impl Display for StoryDate {
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct StoryDuration {
-    duration: chrono::Duration
+    duration: chrono::Duration,
 }
 
 impl StoryDuration {
     pub fn days(days: i64) -> Self {
-        Self { duration: chrono::Duration::days(days) }
+        Self {
+            duration: chrono::Duration::days(days),
+        }
     }
 
     pub fn hours(hours: i64) -> Self {
-        Self { duration: chrono::Duration::hours(hours) }
+        Self {
+            duration: chrono::Duration::hours(hours),
+        }
     }
 
     pub fn num_milliseconds(&self) -> i64 {

@@ -1,23 +1,23 @@
-use std::{borrow::Cow, fmt::Debug};
 use serde::{Deserialize, Serialize};
+use std::{borrow::Cow, fmt::Debug};
 
-use crate::types::*;
 pub(crate) use self::def::*;
+use crate::types::*;
 
+mod def;
 pub mod hacker_news;
+pub mod legacy;
 pub mod lobsters;
 pub mod reddit;
 pub mod slashdot;
-pub mod legacy;
 mod utils;
-mod def;
 
 macro_rules! scrapers {
     ($($package:ident :: $name:ident ,)*) => {
         pub mod export {
             $( pub use super::$package; )*
         }
-    
+
         pub fn scrape(
             config: &ScrapeConfig,
             source: ScrapeSource,
@@ -84,13 +84,13 @@ macro_rules! scrapers {
 
         #[derive(Clone, Debug, Deserialize, Serialize)]
         pub enum TypedScrape {
-            $( $name (<$package::$name as ScrapeSourceDef>::Scrape), )*
+            $( $name (GenericScrape<<$package::$name as ScrapeSourceDef>::Scrape>), )*
         }
 
         impl TypedScrape {
             pub fn merge(&mut self, b: Self) {
                 match (self, b) {
-                    $( (Self::$name(a), Self::$name(b)) => a.merge(b), )*
+                    $( (Self::$name(a), Self::$name(b)) => a.merge_generic(b), )*
                     (_a, _b) => {
                         // tracing::warn!(
                         //     "Unable to merge incompatible scrapes, ignoring",
@@ -111,9 +111,26 @@ macro_rules! scrapers {
             }
         }
 
+        impl std::ops::Deref for TypedScrape {
+            type Target = ScrapeShared;
+            fn deref(&self) -> &Self::Target {
+                match self {
+                    $( Self::$name(a) => &a.shared, )*
+                }
+            }
+        }
+
+        impl std::ops::DerefMut for TypedScrape {
+            fn deref_mut(&mut self) -> &mut Self::Target {
+                match self {
+                    $( Self::$name(a) => &mut a.shared, )*
+                }
+            }
+        }
+
         $(
-            impl From<<$package::$name as ScrapeSourceDef>::Scrape> for TypedScrape {
-                fn from(x: <$package::$name as ScrapeSourceDef>::Scrape) -> Self {
+            impl From<GenericScrape<<$package::$name as ScrapeSourceDef>::Scrape>> for TypedScrape {
+                fn from(x: GenericScrape<<$package::$name as ScrapeSourceDef>::Scrape>) -> Self {
                     TypedScrape::$name(x)
                 }
             }

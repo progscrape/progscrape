@@ -1,3 +1,5 @@
+use lazy_static::__Deref;
+
 use crate::ScrapeId;
 
 use super::*;
@@ -26,10 +28,14 @@ pub trait Scraper: Default {
         &self,
         args: &Self::Config,
         input: &str,
-    ) -> Result<(Vec<Self::Output>, Vec<String>), ScrapeError>;
+    ) -> Result<(Vec<GenericScrape<Self::Output>>, Vec<String>), ScrapeError>;
 
     /// Extract the core scrape elements from the raw scrape.
-    fn extract_core<'a>(&self, args: &Self::Config, input: &'a Self::Output) -> ScrapeCore<'a>;
+    fn extract_core<'a>(
+        &self,
+        args: &Self::Config,
+        input: &'a GenericScrape<Self::Output>,
+    ) -> ScrapeCore<'a>;
 }
 
 pub trait ScrapeConfigSource {
@@ -58,4 +64,43 @@ pub struct ScrapeCore<'a> {
     pub rank: Option<usize>,
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ScrapeShared {}
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct GenericScrape<T: ScrapeStory> {
+    #[serde(flatten)]
+    pub shared: ScrapeShared,
+    #[serde(flatten)]
+    pub data: T,
+}
+
+// impl <T: ScrapeStory> std::ops::Deref for GenericScrape<T> {
+//     type Target = ScrapeShared;
+//     fn deref(&self) -> &Self::Target {
+//         &self.shared
+//     }
+// }
+
+// impl <T: ScrapeStory> std::ops::DerefMut for GenericScrape<T> {
+//     fn deref_mut(&mut self) -> &mut Self::Target {
+//         &mut self.shared
+//     }
+// }
+
+impl<T: ScrapeStory> std::ops::Deref for GenericScrape<T> {
+    type Target = T;
+    fn deref(&self) -> &Self::Target {
+        &self.data
+    }
+}
+
+impl<T: ScrapeStory> std::ops::DerefMut for GenericScrape<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.data
+    }
+}
+
+impl<T: ScrapeStory> GenericScrape<T> {
+    pub fn merge_generic(&mut self, other: Self) {}
+}

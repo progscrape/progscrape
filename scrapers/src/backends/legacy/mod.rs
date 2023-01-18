@@ -1,15 +1,16 @@
 use std::{
     fs::File,
-    io::{BufRead, BufReader, BufWriter}, path::Path,
+    io::{BufRead, BufReader, BufWriter},
+    path::Path,
 };
 
 use flate2::bufread::GzDecoder;
 use serde_json::Value;
 
-use super::TypedScrape;
 use super::export::*;
-use crate::types::*;
 use super::utils::html::unescape_entities;
+use super::{GenericScrape, ScrapeShared, TypedScrape};
+use crate::types::*;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -33,32 +34,43 @@ fn make_hacker_news(
     title: String,
     url: StoryUrl,
     date: StoryDate,
-) -> hacker_news::HackerNewsStory {
-    hacker_news::HackerNewsStory {
-        id,
-        title,
-        url,
-        date,
-        comments: Default::default(),
-        points: Default::default(),
-        position: Default::default(),
+) -> GenericScrape<hacker_news::HackerNewsStory> {
+    GenericScrape {
+        shared: ScrapeShared {},
+        data: hacker_news::HackerNewsStory {
+            id,
+            title,
+            url,
+            date,
+            comments: Default::default(),
+            points: Default::default(),
+            position: Default::default(),
+        },
     }
 }
 
-fn make_reddit(id: String, title: String, url: StoryUrl, date: StoryDate) -> reddit::RedditStory {
-    reddit::RedditStory {
-        id,
-        title,
-        url,
-        date,
-        downvotes: Default::default(),
-        flair: Default::default(),
-        num_comments: Default::default(),
-        position: Default::default(),
-        score: Default::default(),
-        subreddit: Default::default(),
-        upvote_ratio: Default::default(),
-        upvotes: Default::default(),
+fn make_reddit(
+    id: String,
+    title: String,
+    url: StoryUrl,
+    date: StoryDate,
+) -> GenericScrape<reddit::RedditStory> {
+    GenericScrape {
+        shared: ScrapeShared {},
+        data: reddit::RedditStory {
+            id,
+            title,
+            url,
+            date,
+            downvotes: Default::default(),
+            flair: Default::default(),
+            num_comments: Default::default(),
+            position: Default::default(),
+            score: Default::default(),
+            subreddit: Default::default(),
+            upvote_ratio: Default::default(),
+            upvotes: Default::default(),
+        },
     }
 }
 
@@ -67,16 +79,19 @@ fn make_lobsters(
     title: String,
     url: StoryUrl,
     date: StoryDate,
-) -> lobsters::LobstersStory {
-    lobsters::LobstersStory {
-        id,
-        title,
-        url,
-        date,
-        num_comments: Default::default(),
-        position: Default::default(),
-        score: Default::default(),
-        tags: Default::default(),
+) -> GenericScrape<lobsters::LobstersStory> {
+    GenericScrape {
+        shared: ScrapeShared {},
+        data: lobsters::LobstersStory {
+            id,
+            title,
+            url,
+            date,
+            num_comments: Default::default(),
+            position: Default::default(),
+            score: Default::default(),
+            tags: Default::default(),
+        },
     }
 }
 
@@ -129,7 +144,9 @@ fn import_legacy_1(root: &Path) -> Result<impl Iterator<Item = TypedScrape>, Leg
 }
 
 fn import_legacy_2(root: &Path) -> Result<impl Iterator<Item = TypedScrape>, LegacyError> {
-    let f = BufReader::new(File::open(root.join("scrapers/import/stories-progscrape-hr.gz"))?);
+    let f = BufReader::new(File::open(
+        root.join("scrapers/import/stories-progscrape-hr.gz"),
+    )?);
     let mut decoder = BufReader::new(GzDecoder::new(f));
     let mut out = vec![];
     'outer: loop {

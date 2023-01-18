@@ -1,9 +1,9 @@
 use std::collections::HashSet;
 
 use super::*;
+use crate::types::*;
 use roxmltree::Document;
 use serde::{Deserialize, Serialize};
-use crate::types::*;
 
 pub struct Lobsters {}
 
@@ -65,7 +65,7 @@ impl Scraper for LobstersScraper {
         &self,
         _args: &Self::Config,
         input: &str,
-    ) -> Result<(Vec<Self::Output>, Vec<String>), ScrapeError> {
+    ) -> Result<(Vec<GenericScrape<Self::Output>>, Vec<String>), ScrapeError> {
         let doc = Document::parse(input)?;
         let rss = doc.root_element();
         let mut warnings = vec![];
@@ -105,15 +105,18 @@ impl Scraper for LobstersScraper {
                         }
                     }
                     if let (Some(title), Some(id), Some(url), Some(date)) = (title, id, url, date) {
-                        stories.push(LobstersStory {
-                            id,
-                            title,
-                            url,
-                            date,
-                            num_comments: 0,
-                            position: position as u32 + 1,
-                            score: 0,
-                            tags,
+                        stories.push(GenericScrape {
+                            shared: ScrapeShared {},
+                            data: LobstersStory {
+                                id,
+                                title,
+                                url,
+                                date,
+                                num_comments: 0,
+                                position: position as u32 + 1,
+                                score: 0,
+                                tags,
+                            },
                         });
                     } else {
                         warnings.push("Story did not contain all required fields".to_string());
@@ -124,7 +127,11 @@ impl Scraper for LobstersScraper {
         Ok((stories, warnings))
     }
 
-    fn extract_core<'a>(&self, args: &Self::Config, input: &'a Self::Output) -> ScrapeCore<'a> {
+    fn extract_core<'a>(
+        &self,
+        args: &Self::Config,
+        input: &'a GenericScrape<Self::Output>,
+    ) -> ScrapeCore<'a> {
         let mut tags = Vec::new();
         for tag in &input.tags {
             if args.tag_denylist.contains(tag) {

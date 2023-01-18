@@ -24,7 +24,7 @@ pub enum ScraperHttpResult {
 }
 
 pub struct Scrapers {
-    config: ScrapeConfig
+    config: ScrapeConfig,
 }
 
 /// Interface to the collection of scrapers in this library.
@@ -69,7 +69,9 @@ impl Scrapers {
         match input {
             ScraperHttpResponseInput::Ok(s) => match scrape(&self.config, source, &s) {
                 Ok((scrapes, _warnings)) => ScraperHttpResult::Ok(s, scrapes),
-                Err(e) => ScraperHttpResult::Err(ScraperHttpResponseInput::Ok(s), format!("{:?}", e)),
+                Err(e) => {
+                    ScraperHttpResult::Err(ScraperHttpResponseInput::Ok(s), format!("{:?}", e))
+                }
             },
             error @ ScraperHttpResponseInput::HTTPError(..) => {
                 ScraperHttpResult::Err(error, "HTTP Error".to_string())
