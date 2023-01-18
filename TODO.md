@@ -2,7 +2,6 @@ TODO:
 
  - [ ] Announcements source
  - [ ] Hook up search
- - [ ] Tagging
  - [ ] Restore warnings to scrape test page
  - [ ] Slashdot tags should use URL not title
  
@@ -14,3 +13,4 @@ Done:
  - [ ] Cron
  - [ ] Refactor ScrapeData common stuff
  - [ ] Reddit position by subreddit 
+ - [ ] Tagging
