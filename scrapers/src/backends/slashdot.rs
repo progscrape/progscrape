@@ -41,7 +41,6 @@ impl ScrapeConfigSource for SlashdotConfig {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct SlashdotStory {
     pub id: String,
-    pub date: StoryDate,
     pub num_comments: u32,
     pub tags: Vec<String>,
 }
@@ -143,10 +142,13 @@ impl SlashdotScraper {
         let date = Self::parse_time(&date.inner_text(p))?;
 
         Ok(GenericScrape {
-            shared: ScrapeShared { url, raw_title },
+            shared: ScrapeShared {
+                url,
+                raw_title,
+                date,
+            },
             data: SlashdotStory {
                 id,
-                date,
                 tags,
                 num_comments,
             },
@@ -192,7 +194,7 @@ impl Scraper for SlashdotScraper {
 
         ScrapeCore {
             source: ScrapeId::new(ScrapeSource::Slashdot, None, input.id.clone()),
-            date: input.date,
+            date: input.shared.date,
             title: Cow::Borrowed(input.shared.raw_title.as_str()),
             url: &input.shared.url,
             rank: None,

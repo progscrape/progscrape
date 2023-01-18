@@ -32,7 +32,6 @@ impl ScrapeConfigSource for LobstersConfig {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct LobstersStory {
     pub id: String,
-    pub date: StoryDate,
     pub num_comments: u32,
     pub position: u32,
     pub score: u32,
@@ -106,10 +105,13 @@ impl Scraper for LobstersScraper {
                         (raw_title, id, url, date)
                     {
                         stories.push(GenericScrape {
-                            shared: ScrapeShared { url, raw_title },
+                            shared: ScrapeShared {
+                                url,
+                                raw_title,
+                                date,
+                            },
                             data: LobstersStory {
                                 id,
-                                date,
                                 num_comments: 0,
                                 position: position as u32 + 1,
                                 score: 0,
@@ -142,7 +144,7 @@ impl Scraper for LobstersScraper {
             source: ScrapeId::new(ScrapeSource::Lobsters, None, input.id.clone()),
             title: Cow::Borrowed(input.shared.raw_title.as_str()),
             url: &input.shared.url,
-            date: input.date,
+            date: input.shared.date,
             tags,
             rank: (input.position as usize).checked_sub(1),
         }

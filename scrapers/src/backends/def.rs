@@ -68,6 +68,7 @@ pub struct ScrapeCore<'a> {
 pub struct ScrapeShared {
     pub url: StoryUrl,
     pub raw_title: String,
+    pub date: StoryDate,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
