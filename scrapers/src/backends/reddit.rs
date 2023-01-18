@@ -57,7 +57,6 @@ pub struct RedditScraper {}
 pub struct RedditStory {
     pub id: String,
     pub subreddit: Option<String>,
-    pub url: StoryUrl,
     pub date: StoryDate,
     pub flair: String,
     pub position: u32,
@@ -183,11 +182,10 @@ impl RedditScraper {
             .ok_or_else(|| "Unmappable URL".to_string())?;
         let raw_title = unescape_entities(&self.require_string(data, "title")?);
         let story = GenericScrape {
-            shared: ScrapeShared { raw_title },
+            shared: ScrapeShared { url, raw_title },
             data: RedditStory {
                 id,
                 subreddit: Some(subreddit),
-                url,
                 date,
                 num_comments: self.require_integer(data, "num_comments")?,
                 score: self.require_integer(data, "score")?,
@@ -267,7 +265,7 @@ impl Scraper for RedditScraper {
                 input.id.clone(),
             ),
             title: Cow::Borrowed(&input.shared.raw_title),
-            url: &input.url,
+            url: &input.shared.url,
             date: input.date,
             rank: (input.position as usize).checked_sub(1),
             tags,

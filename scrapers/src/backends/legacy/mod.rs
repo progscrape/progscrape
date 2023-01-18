@@ -36,10 +36,9 @@ fn make_hacker_news(
     date: StoryDate,
 ) -> GenericScrape<hacker_news::HackerNewsStory> {
     GenericScrape {
-        shared: ScrapeShared { raw_title },
+        shared: ScrapeShared { url, raw_title },
         data: hacker_news::HackerNewsStory {
             id,
-            url,
             date,
             comments: Default::default(),
             points: Default::default(),
@@ -55,10 +54,9 @@ fn make_reddit(
     date: StoryDate,
 ) -> GenericScrape<reddit::RedditStory> {
     GenericScrape {
-        shared: ScrapeShared { raw_title },
+        shared: ScrapeShared { url, raw_title },
         data: reddit::RedditStory {
             id,
-            url,
             date,
             downvotes: Default::default(),
             flair: Default::default(),
@@ -79,10 +77,9 @@ fn make_lobsters(
     date: StoryDate,
 ) -> GenericScrape<lobsters::LobstersStory> {
     GenericScrape {
-        shared: ScrapeShared { raw_title },
+        shared: ScrapeShared { url, raw_title },
         data: lobsters::LobstersStory {
             id,
-            url,
             date,
             num_comments: Default::default(),
             position: Default::default(),
