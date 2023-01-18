@@ -36,7 +36,6 @@ impl ScrapeConfigSource for HackerNewsConfig {
 
 scrape_story! {
     HackerNewsStory {
-        id: String,
         points: u32,
         comments: u32,
         position: u32,
@@ -226,7 +225,7 @@ impl Scraper for HackerNewsScraper {
                 } = info;
                 let id = k;
                 stories.push(HackerNewsStory::new(
-                    date, raw_title, url, id, points, comments, position,
+                    id, None, date, raw_title, url, points, comments, position,
                 ));
             } else {
                 errors.push(format!("Unmatched story/info for id {}", k));
@@ -247,7 +246,7 @@ impl Scraper for HackerNewsScraper {
             .map(Cow::Borrowed)
             .collect();
         ScrapeCore {
-            source: ScrapeId::new(ScrapeSource::HackerNews, None, input.id.clone()),
+            source: &input.shared.id,
             title: Cow::Borrowed(&input.shared.raw_title),
             url: &input.shared.url,
             date: input.shared.date,

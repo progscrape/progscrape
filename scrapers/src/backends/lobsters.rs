@@ -31,7 +31,6 @@ impl ScrapeConfigSource for LobstersConfig {
 
 scrape_story! {
     LobstersStory {
-        id: String,
         num_comments: u32,
         position: u32,
         score: u32,
@@ -109,10 +108,11 @@ impl Scraper for LobstersScraper {
                         let num_comments = 0;
                         let score = 0;
                         stories.push(LobstersStory::new(
+                            id,
+                            None,
                             date,
                             raw_title,
                             url,
-                            id,
                             num_comments,
                             position,
                             score,
@@ -141,7 +141,7 @@ impl Scraper for LobstersScraper {
         }
 
         ScrapeCore {
-            source: ScrapeId::new(ScrapeSource::Lobsters, None, input.id.clone()),
+            source: &input.shared.id,
             title: Cow::Borrowed(input.shared.raw_title.as_str()),
             url: &input.shared.url,
             date: input.shared.date,

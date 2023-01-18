@@ -44,7 +44,7 @@ pub trait ScrapeConfigSource {
 #[derive(Clone, Debug)]
 pub struct ScrapeCore<'a> {
     /// The scrape source ID.
-    pub source: ScrapeId,
+    pub source: &'a ScrapeId,
 
     /// Story title from this scrape source, potentially edited based on source (stripping suffixes, etc).
     pub title: Cow<'a, str>,
@@ -64,6 +64,7 @@ pub struct ScrapeCore<'a> {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ScrapeShared {
+    pub id: ScrapeId,
     pub url: StoryUrl,
     pub raw_title: String,
     pub date: StoryDate,
@@ -109,19 +110,30 @@ impl<T: ScrapeStory> GenericScrape<T> {
 
 macro_rules! scrape_story {
     ( $name:ident { $( $id:ident : $type:ty ),* $(,)? } ) => {
-        #[derive(Serialize, Deserialize, Clone, Debug)]
+        #[derive(Serialize, Deserialize, Clone, Debug, Default)]
         pub struct $name {
             $( pub $id : $type ),*
         }
 
         impl $name {
-            pub fn new(date: StoryDate, raw_title: String, url: StoryUrl, $( $id: $type ),*) -> GenericScrape<$name> {
+            pub fn new(id: String, subsource: Option<String>, date: StoryDate, raw_title: String, url: StoryUrl, $( $id: $type ),*) -> GenericScrape<$name> {
                 GenericScrape {
                     shared: ScrapeShared {
-                        date, raw_title, url
+                        id: ScrapeId::new(<$name as ScrapeStory>::TYPE, subsource, id), date, raw_title, url
                     },
                     data: $name {
                         $($id),*
+                    }
+                }
+            }
+
+            pub fn new_with_defaults(id: String, subsource: Option<String>, date: StoryDate, raw_title: String, url: StoryUrl) -> GenericScrape<$name> {
+                GenericScrape {
+                    shared: ScrapeShared {
+                        id: ScrapeId::new(<$name as ScrapeStory>::TYPE, subsource, id), date, raw_title, url
+                    },
+                    data: $name {
+                        $($id : Default::default() ),*
                     }
                 }
             }

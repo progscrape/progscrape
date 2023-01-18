@@ -40,7 +40,6 @@ impl ScrapeConfigSource for SlashdotConfig {
 
 scrape_story! {
     SlashdotStory {
-        id: String,
         num_comments: u32,
         tags: Vec<String>,
     }
@@ -143,10 +142,11 @@ impl SlashdotScraper {
         let date = Self::parse_time(&date.inner_text(p))?;
 
         Ok(SlashdotStory::new(
+            id,
+            None,
             date,
             raw_title,
             url,
-            id,
             num_comments,
             tags,
         ))
@@ -190,7 +190,7 @@ impl Scraper for SlashdotScraper {
         }
 
         ScrapeCore {
-            source: ScrapeId::new(ScrapeSource::Slashdot, None, input.id.clone()),
+            source: &input.shared.id,
             date: input.shared.date,
             title: Cow::Borrowed(input.shared.raw_title.as_str()),
             url: &input.shared.url,

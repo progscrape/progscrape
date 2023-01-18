@@ -55,8 +55,6 @@ pub struct RedditScraper {}
 
 scrape_story! {
     RedditStory {
-        id: String,
-        subreddit: Option<String>,
         flair: String,
         position: u32,
         upvotes: u32,
@@ -189,11 +187,11 @@ impl RedditScraper {
         let upvote_ratio = self.require_float(data, "upvote_ratio")? as f32;
         let flair = unescape_entities(&self.optional_string(data, "link_flair_text")?);
         let story = RedditStory::new(
+            id,
+            subreddit,
             date,
             raw_title,
             url,
-            id,
-            subreddit,
             flair,
             position,
             upvotes,
@@ -253,7 +251,7 @@ impl Scraper for RedditScraper {
         input: &'a GenericScrape<Self::Output>,
     ) -> ScrapeCore<'a> {
         let mut tags = vec![];
-        if let Some(ref subreddit) = input.subreddit {
+        if let Some(ref subreddit) = input.shared.id.subsource {
             if let Some(config) = args.subreddits.get(subreddit) {
                 if config.flair_is_tag {
                     tags.push(Cow::Owned(input.flair.to_lowercase()));
@@ -265,11 +263,7 @@ impl Scraper for RedditScraper {
         }
 
         ScrapeCore {
-            source: ScrapeId::new(
-                ScrapeSource::Reddit,
-                input.subreddit.clone(),
-                input.id.clone(),
-            ),
+            source: &input.shared.id,
             title: Cow::Borrowed(&input.shared.raw_title),
             url: &input.shared.url,
             date: input.shared.date,

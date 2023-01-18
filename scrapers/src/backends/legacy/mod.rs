@@ -9,7 +9,7 @@ use serde_json::Value;
 
 use super::export::*;
 use super::utils::html::unescape_entities;
-use super::{GenericScrape, ScrapeShared, TypedScrape};
+use super::{GenericScrape, TypedScrape};
 use crate::types::*;
 use thiserror::Error;
 
@@ -35,19 +35,7 @@ fn make_hacker_news(
     url: StoryUrl,
     date: StoryDate,
 ) -> GenericScrape<hacker_news::HackerNewsStory> {
-    GenericScrape {
-        shared: ScrapeShared {
-            url,
-            raw_title,
-            date,
-        },
-        data: hacker_news::HackerNewsStory {
-            id,
-            comments: Default::default(),
-            points: Default::default(),
-            position: Default::default(),
-        },
-    }
+    hacker_news::HackerNewsStory::new_with_defaults(id, None, date, raw_title, url)
 }
 
 fn make_reddit(
@@ -56,24 +44,7 @@ fn make_reddit(
     url: StoryUrl,
     date: StoryDate,
 ) -> GenericScrape<reddit::RedditStory> {
-    GenericScrape {
-        shared: ScrapeShared {
-            url,
-            raw_title,
-            date,
-        },
-        data: reddit::RedditStory {
-            id,
-            downvotes: Default::default(),
-            flair: Default::default(),
-            num_comments: Default::default(),
-            position: Default::default(),
-            score: Default::default(),
-            subreddit: Default::default(),
-            upvote_ratio: Default::default(),
-            upvotes: Default::default(),
-        },
-    }
+    reddit::RedditStory::new_with_defaults(id, None, date, raw_title, url)
 }
 
 fn make_lobsters(
@@ -82,20 +53,7 @@ fn make_lobsters(
     url: StoryUrl,
     date: StoryDate,
 ) -> GenericScrape<lobsters::LobstersStory> {
-    GenericScrape {
-        shared: ScrapeShared {
-            url,
-            raw_title,
-            date,
-        },
-        data: lobsters::LobstersStory {
-            id,
-            num_comments: Default::default(),
-            position: Default::default(),
-            score: Default::default(),
-            tags: Default::default(),
-        },
-    }
+    lobsters::LobstersStory::new_with_defaults(id, None, date, raw_title, url)
 }
 
 fn import_legacy_1(root: &Path) -> Result<impl Iterator<Item = TypedScrape>, LegacyError> {
