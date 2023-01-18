@@ -92,6 +92,7 @@ impl Story {
             scrapes: HashMap::from_iter([(scrape_id, scrape)]),
         };
         story.score = eval.scorer.score(&story, StoryScoreType::Base);
+        eval.tagger.tag(&story.title, &mut story.tags);
         story
     }
 
@@ -160,6 +161,8 @@ impl Story {
 
     pub fn render(&self, order: usize) -> StoryRender {
         let scrapes = HashMap::from_iter(self.scrapes.iter().map(|(k, v)| (k.clone(), v.clone())));
+        let mut tags = vec![self.url.host().to_owned()];
+        tags.extend(self.tags.dump());
         StoryRender {
             order,
             id: self.id.to_base64(),
@@ -170,7 +173,7 @@ impl Story {
             domain: self.url.host().to_owned(),
             title: self.title.to_owned(),
             date: self.date,
-            tags: vec![],
+            tags,
             comment_links: HashMap::new(),
             scrapes,
         }
@@ -193,8 +196,12 @@ impl TagSet {
         self.set.insert(tag.as_ref().to_ascii_lowercase());
     }
 
-    pub fn collect(self) -> Vec<String> {
-        self.set.into_iter().sorted().collect()
+    pub fn collect(&self) -> Vec<String> {
+        self.dump().collect()
+    }
+
+    pub fn dump<'a>(&'a self) -> impl Iterator<Item = String> + 'a {
+        self.set.iter().sorted().cloned()
     }
 }
 

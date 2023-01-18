@@ -200,6 +200,7 @@ impl StoryTagger {
 
         let mut mutes = HashMap::new();
 
+        'outer:
         while !tokens.is_empty() {
             mutes.retain(|_k, v| {
                 if *v == 0 {
@@ -221,7 +222,7 @@ impl StoryTagger {
                     for implies in &rec.implies {
                         tags.tag(implies);
                     }
-                    continue;
+                    continue 'outer;
                 }
             }
             if let Some(rec) = self.forward.get(&tokens[0]) {
@@ -288,7 +289,7 @@ mod test {
     #[fixture]
     fn tagger(tagger_config: TaggerConfig) -> StoryTagger {
         let tagger = StoryTagger::new(&tagger_config);
-        println!("{:?}", tagger);
+        // println!("{:?}", tagger);
         tagger
     }
 
@@ -351,6 +352,8 @@ mod test {
     #[case("three dimensional printing is hard", &["3d"])]
     #[case("3 dimensional printing is hard", &["3d"])]
     #[case("3-dimensional printing is hard", &["3d"])]
+    // Multi-word token at the end
+    #[case("I love printing in three dimensions", &["3d"])]
     fn test_3d_cases(tagger: StoryTagger, #[case] s: &str, #[case] tags: &[&str]) {
         let mut tag_set = TagSet::new();
         tagger.tag(s, &mut tag_set);

@@ -24,8 +24,6 @@
                 now
             </span>
             <span class="tags">
-                <span class="tag"><a href="/?search=xxxxxx">rust</a></span>
-                <span class="tag"><a href="/?search=xxxxxx">python</a></span>
                 {% for tag in story.tags %}
                 <span class="tag"><a href="/?search={{ tag|urlencode }}">{{ tag }}</a></span>
                 {% endfor %}
