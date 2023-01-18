@@ -1,7 +1,9 @@
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
-use progscrape_scrapers::{ScrapeConfig, ScrapeExtractor, ScrapeId, ScrapeSource, TypedScrape, StoryDate, StoryUrl};
+use progscrape_scrapers::{
+    ScrapeConfig, ScrapeExtractor, ScrapeId, ScrapeSource, StoryDate, StoryUrl, TypedScrape,
+};
 use std::{
     borrow::Cow,
     collections::{hash_map::Entry, HashMap, HashSet},

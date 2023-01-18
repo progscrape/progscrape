@@ -1,5 +1,7 @@
 mod persist;
 mod story;
 
-pub use story::{Story, StoryScoreConfig, TaggerConfig, StoryEvaluator, StoryIdentifier, StoryRender};
-pub use persist::{Storage, StorageWriter, MemIndex, PersistError, StorageSummary};
+pub use persist::{MemIndex, PersistError, Storage, StorageSummary, StorageWriter};
+pub use story::{
+    Story, StoryEvaluator, StoryIdentifier, StoryRender, StoryScoreConfig, TaggerConfig,
+};

@@ -1,12 +1,11 @@
 use std::{
     fs::File,
     io::{BufReader, BufWriter},
-    sync::Arc, path::Path,
+    path::Path,
+    sync::Arc,
 };
 
-use crate::{
-    config::Config,
-};
+use crate::config::Config;
 
 use progscrape_application::{MemIndex, Storage, StorageWriter, StoryEvaluator};
 

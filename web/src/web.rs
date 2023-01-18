@@ -13,14 +13,18 @@ use thiserror::Error;
 use tokio::sync::Mutex;
 
 use crate::{
-    index::{self},
     cron::{Cron, CronTask},
+    index::{self},
     resource::{self, Resources},
-    serve_static_files
+    serve_static_files,
 };
 
-use progscrape_application::{Story, StoryIdentifier, StoryEvaluator, PersistError, StoryRender, StorageSummary};
-use progscrape_scrapers::{StoryDate, ScrapeSource, ScraperHttpResponseInput, ScraperHttpResult, ScraperPossibilities};
+use progscrape_application::{
+    PersistError, StorageSummary, Story, StoryEvaluator, StoryIdentifier, StoryRender,
+};
+use progscrape_scrapers::{
+    ScrapeSource, ScraperHttpResponseInput, ScraperHttpResult, ScraperPossibilities, StoryDate,
+};
 
 #[derive(Debug, Error)]
 pub enum WebError {
@@ -266,7 +270,9 @@ async fn admin_scrape_test(
     State(AdminState { resources, .. }): State<AdminState>,
     Json(params): Json<AdminScrapeTestParams>,
 ) -> Result<Html<String>, WebError> {
-    let urls = resources.scrapers().compute_scrape_url_demands(params.source, params.subsources);
+    let urls = resources
+        .scrapers()
+        .compute_scrape_url_demands(params.source, params.subsources);
     let mut map = HashMap::new();
     for url in urls {
         let resp = reqwest::Client::new()

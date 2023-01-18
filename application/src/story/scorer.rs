@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 
-use progscrape_scrapers::{TypedScrape, StoryDate, StoryDuration};
+use progscrape_scrapers::{StoryDate, StoryDuration, TypedScrape};
 
-use super::{Story};
+use super::Story;
 
 #[derive(Clone, Default, Serialize, Deserialize)]
 pub struct StoryScoreConfig {
