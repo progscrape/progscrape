@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use crate::story::{Story, StoryEvaluator, StoryIdentifier};
 use progscrape_scrapers::{StoryDate, TypedScrape};
 use serde::{Deserialize, Serialize};
@@ -17,12 +19,16 @@ pub enum PersistError {
     SQLiteError(#[from] rusqlite::Error),
     #[error("Tantivy error")]
     TantivyError(#[from] tantivy::TantivyError),
+    #[error("Tantivy error")]
+    TantivyPathError(#[from] tantivy::directory::error::OpenDirectoryError),
     #[error("Tantivy query parser error")]
     TantivyQueryError(#[from] tantivy::query::QueryParserError),
     #[error("JSON error")]
     JsonError(#[from] serde_json::Error),
     #[error("Serialize/deserialize error")]
     SerdeError(#[from] serde_rusqlite::Error),
+    #[error("I/O error")]
+    IOError(#[from] std::io::Error),
     #[error("Unmappable column")]
     Unmappable(),
 }
@@ -60,4 +66,13 @@ pub trait StorageWriter: Storage {
         eval: &StoryEvaluator,
         scrapes: I,
     ) -> Result<(), PersistError>;
+}
+
+#[derive(Clone, Debug)]
+/// Where is this persistence engine storing data?
+pub enum PersistLocation {
+    /// In-memory.
+    Memory,
+    /// At a given path.
+    Path(PathBuf)
 }

@@ -1,6 +1,7 @@
 use itertools::Itertools;
 use tantivy::collector::TopDocs;
 
+use tantivy::directory::{RamDirectory, MmapDirectory};
 use tantivy::query::{BooleanQuery, Occur, Query, RangeQuery, TermQuery};
 use tantivy::{doc, Index};
 use tantivy::{
@@ -52,7 +53,7 @@ struct StoryInsert<'a> {
 }
 
 impl StoryIndexShard {
-    pub fn initialize<DIR: Into<Box<dyn Directory>>>(directory: DIR) -> Result<Self, PersistError> {
+    pub fn initialize(location: PersistLocation, shard: u32) -> Result<Self, PersistError> {
         let mut schema_builder = Schema::builder();
         let date_field = schema_builder.add_i64_field("date", FAST | INDEXED);
         let url_field = schema_builder.add_text_field("url", STRING | STORED);
@@ -67,6 +68,10 @@ impl StoryIndexShard {
                 order: tantivy::Order::Asc,
             }),
             ..Default::default()
+        };
+        let directory: Box<dyn Directory> = match location {
+            PersistLocation::Memory => Box::new(RamDirectory::create()),
+            PersistLocation::Path(path) => Box::new(MmapDirectory::open(path.join(format!("{}", shard)))?)
         };
         let index = Index::create(directory, schema, settings)?;
         Ok(Self {
@@ -162,32 +167,42 @@ impl StoryIndexShard {
 
 pub struct StoryIndex {
     index_cache: HashMap<u32, StoryIndexShard>,
-    directory_fn: Box<dyn Fn(u32) -> Box<dyn Directory> + Send + Sync>,
+    location: PersistLocation,
     start_date: StoryDate,
 }
 
 impl StoryIndex {
-    pub fn initialize<DIR: Directory>(
-        start_date: StoryDate,
-        directory_fn: fn(u32) -> DIR,
-    ) -> Result<Self, PersistError> {
-        let directory_fn: Box<dyn Fn(u32) -> Box<dyn Directory> + Send + Sync> =
-            Box::new(move |date| Box::new(directory_fn(date)));
-        Ok(Self {
-            index_cache: HashMap::new(),
-            directory_fn,
-            start_date,
+    pub fn new(location: PersistLocation) -> Result<Self, PersistError> {
+        // TODO: This start date needs to be dynamic
+        let start_date = StoryDate::parse_from_rfc3339("2010-01-01T00:00:00-00:00").expect("Failed to part start date");
+
+        Ok(match location {
+            location @ PersistLocation::Memory => {
+                Self {
+                    index_cache: HashMap::new(),
+                    start_date,
+                    location
+                }
+            }
+            PersistLocation::Path(path) => {
+                std::fs::create_dir_all(path.as_path())?;
+                Self {
+                    index_cache: HashMap::new(),
+                    start_date,
+                    location: PersistLocation::Path(path)
+                }
+            }
         })
     }
-
+    
     fn index_for_date(&self, date: StoryDate) -> u32 {
         (date.year() as u32) * 12 + date.month0()
     }
 
     fn ensure_shard(&mut self, shard: u32) -> Result<(), PersistError> {
         if let std::collections::hash_map::Entry::Vacant(e) = self.index_cache.entry(shard) {
-            println!("Creating shard {}", shard);
-            let new_shard = StoryIndexShard::initialize((self.directory_fn)(shard))?;
+            tracing::info!("Creating shard {}", shard);
+            let new_shard = StoryIndexShard::initialize(self.location.clone(), shard)?;
             e.insert(new_shard);
         }
         Ok(())
@@ -361,7 +376,7 @@ mod test {
         ids: impl Iterator<Item = (i64, i64)>,
     ) -> Result<StoryIndexShard, PersistError> {
         let dir = RamDirectory::create();
-        let mut shard = StoryIndexShard::initialize(dir)?;
+        let mut shard = StoryIndexShard::initialize(PersistLocation::Memory, 0)?;
         let mut writer = shard.index.writer(MEMORY_ARENA_SIZE)?;
         for (url_norm_hash, date) in ids {
             shard.insert_story_document(
@@ -419,10 +434,7 @@ mod test {
         let start_date = stories
             .iter()
             .fold(StoryDate::MAX, |a, b| std::cmp::min(a, b.date));
-        // let stories = crate::scrapers::test::scrape_all();
-        // let dir = MmapDirectory::open("/tmp/index").expect("Failed to get mmap dir");
-        let _dir = RamDirectory::create();
-        let mut index = StoryIndex::initialize(start_date, |_n| RamDirectory::create())?;
+        let mut index = StoryIndex::new(PersistLocation::Memory)?;
         let eval = StoryEvaluator::new_for_test();
         index
             .insert_scrapes(&eval, stories.into_iter())?;
