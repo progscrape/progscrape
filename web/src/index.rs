@@ -1,7 +1,7 @@
 use std::{
     fs::File,
     io::{BufReader, BufWriter},
-    sync::Arc,
+    sync::Arc, path::Path,
 };
 
 use crate::{
@@ -17,7 +17,7 @@ pub struct Global {
     pub storage: Arc<dyn Storage>,
 }
 
-pub fn initialize_with_testing_data(config: &Config) -> Result<Global, WebError> {
+pub fn initialize_with_testing_data(root: &Path, config: &Config) -> Result<Global, WebError> {
     let cache_file = "target/testing_data.bin";
     if let Ok(f) = File::open(cache_file) {
         tracing::info!("Reading cache '{}'...", cache_file);
@@ -32,7 +32,7 @@ pub fn initialize_with_testing_data(config: &Config) -> Result<Global, WebError>
     let _ = std::fs::remove_file(cache_file);
 
     // Filter to just 2017 for performance
-    let scrapes = progscrape_scrapers::import_legacy().expect("Failed import");
+    let scrapes = progscrape_scrapers::import_legacy(root).expect("Failed import");
     // scrapes.retain(|x| x.date.year() == 2017);
 
     let mut index = MemIndex::default();

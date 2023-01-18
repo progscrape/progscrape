@@ -94,11 +94,12 @@ fn start_cron(cron: Arc<Mutex<Cron>>, resources: Resources) {
     });
 }
 
-pub async fn start_server() -> Result<(), WebError> {
+pub async fn start_server(root_path: &std::path::Path) -> Result<(), WebError> {
     tracing_subscriber::fmt::init();
+    tracing::info!("Root path: {:?}", root_path);
     let resources = resource::start_watcher().await?;
 
-    let global = index::initialize_with_testing_data(&resources.config())?;
+    let global = index::initialize_with_testing_data(root_path, &resources.config())?;
 
     let cron = Arc::new(Mutex::new(Cron::initialize(&resources.config().cron)));
     start_cron(cron.clone(), resources.clone());

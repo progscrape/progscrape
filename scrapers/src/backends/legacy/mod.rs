@@ -1,6 +1,6 @@
 use std::{
     fs::File,
-    io::{BufRead, BufReader, BufWriter},
+    io::{BufRead, BufReader, BufWriter}, path::Path,
 };
 
 use flate2::bufread::GzDecoder;
@@ -80,8 +80,8 @@ fn make_lobsters(
     }
 }
 
-fn import_legacy_1() -> Result<impl Iterator<Item = TypedScrape>, LegacyError> {
-    let f = BufReader::new(File::open("import/old.json.gz")?);
+fn import_legacy_1(root: &Path) -> Result<impl Iterator<Item = TypedScrape>, LegacyError> {
+    let f = BufReader::new(File::open(root.join("scrapers/import/old.json.gz"))?);
     let mut decoder = BufReader::new(GzDecoder::new(f));
     let mut out = vec![];
     loop {
@@ -128,8 +128,8 @@ fn import_legacy_1() -> Result<impl Iterator<Item = TypedScrape>, LegacyError> {
     Ok(out.into_iter())
 }
 
-fn import_legacy_2() -> Result<impl Iterator<Item = TypedScrape>, LegacyError> {
-    let f = BufReader::new(File::open("import/stories-progscrape-hr.gz")?);
+fn import_legacy_2(root: &Path) -> Result<impl Iterator<Item = TypedScrape>, LegacyError> {
+    let f = BufReader::new(File::open(root.join("scrapers/import/stories-progscrape-hr.gz"))?);
     let mut decoder = BufReader::new(GzDecoder::new(f));
     let mut out = vec![];
     'outer: loop {
@@ -177,21 +177,21 @@ fn import_legacy_2() -> Result<impl Iterator<Item = TypedScrape>, LegacyError> {
     Ok(out.into_iter())
 }
 
-pub fn import_legacy() -> Result<Vec<TypedScrape>, LegacyError> {
-    let cache_file = "../target/legacycache.bin";
-    if let Ok(f) = File::open(cache_file) {
-        tracing::info!("Reading cache '{}'...", cache_file);
+pub fn import_legacy(root: &Path) -> Result<Vec<TypedScrape>, LegacyError> {
+    let cache_file = root.to_owned().join("target/legacycache.bin");
+    tracing::info!("Reading cache '{:?}'...", cache_file);
+    if let Ok(f) = File::open(&cache_file) {
         if let Ok(value) = serde_cbor::from_reader::<Vec<_>, _>(BufReader::new(f)) {
             tracing::info!("Cache OK");
             return Ok(value);
         }
         tracing::info!("Cache not OK");
     }
-    let _ = std::fs::remove_file(cache_file);
-    let v: Vec<_> = import_legacy_1()?
-        .chain(import_legacy_2()?)
+    let _ = std::fs::remove_file(&cache_file);
+    let v: Vec<_> = import_legacy_1(root)?
+        .chain(import_legacy_2(root)?)
         .collect::<Vec<_>>();
-    let f = File::create(cache_file)?;
+    let f = File::create(&cache_file)?;
     serde_cbor::to_writer(BufWriter::new(f), &v)?;
     Ok(v)
 }
@@ -202,19 +202,19 @@ mod test {
 
     #[test]
     fn test_read_legacy_1() -> Result<(), Box<dyn std::error::Error>> {
-        assert!(import_legacy_1()?.count() > 0);
+        assert!(import_legacy_1(Path::new("."))?.count() > 0);
         Ok(())
     }
 
     #[test]
     fn test_read_legacy_2() -> Result<(), Box<dyn std::error::Error>> {
-        assert!(import_legacy_2()?.count() > 0);
+        assert!(import_legacy_2(Path::new("."))?.count() > 0);
         Ok(())
     }
 
     #[test]
     fn test_read_legacy_all() -> Result<(), Box<dyn std::error::Error>> {
-        assert!(!import_legacy()?.is_empty());
+        assert!(!import_legacy(Path::new("."))?.is_empty());
         Ok(())
     }
 }

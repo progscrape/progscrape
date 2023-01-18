@@ -1,3 +1,5 @@
+use std::path::Path;
+
 mod config;
 mod web;
 mod cron;
@@ -9,6 +11,7 @@ mod static_files;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    web::start_server().await?;
+    let root_path = Path::new(".").canonicalize()?;
+    web::start_server(&root_path).await?;
     Ok(())
 }
