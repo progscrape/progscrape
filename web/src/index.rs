@@ -6,11 +6,11 @@ use std::{
 
 use crate::{
     config::Config,
-    persist::{MemIndex, Storage, StorageWriter},
-    story::StoryEvaluator,
 };
 
-use super::WebError;
+use progscrape_application::{MemIndex, Storage, StorageWriter, StoryEvaluator};
+
+use crate::web::WebError;
 
 #[derive(Clone)]
 pub struct Global {
@@ -32,7 +32,7 @@ pub fn initialize_with_testing_data(config: &Config) -> Result<Global, WebError>
     let _ = std::fs::remove_file(cache_file);
 
     // Filter to just 2017 for performance
-    let scrapes = crate::scrapers::legacy_import::import_legacy().expect("Failed import");
+    let scrapes = progscrape_scrapers::import_legacy().expect("Failed import");
     // scrapes.retain(|x| x.date.year() == 2017);
 
     let mut index = MemIndex::default();

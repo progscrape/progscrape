@@ -9,10 +9,11 @@ use std::time::Duration;
 use tera::Tera;
 use tokio::sync::watch;
 
+use progscrape_application::StoryEvaluator;
+
 use crate::config::Config;
-use crate::story::StoryEvaluator;
-use crate::web::filters::*;
-use crate::web::static_files::StaticFileRegistry;
+use crate::filters::*;
+use crate::static_files::StaticFileRegistry;
 use crate::web::WebError;
 
 #[derive(Clone)]

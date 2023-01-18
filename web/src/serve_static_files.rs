@@ -10,7 +10,7 @@ use axum::{
 };
 use hyper::{header::*, HeaderMap, StatusCode};
 
-use super::{static_files::StaticFileRegistry, WebError};
+use crate::{web::WebError, static_files::StaticFileRegistry};
 
 lazy_static! {
     /// Immutable caching header, for files that never, ever, ever change.

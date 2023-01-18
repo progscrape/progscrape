@@ -13,23 +13,14 @@ use thiserror::Error;
 use tokio::sync::Mutex;
 
 use crate::{
-    persist::{PersistError, StorageSummary},
-    scrapers::{
-        web_scraper::{WebScrapeHttpResult, WebScrapeInput, WebScrapeURLResult, WebScraper},
-        ScrapeSource,
-    },
-    story::{Story, StoryDate, StoryEvaluator, StoryIdentifier, StoryRender},
-    web::cron::Cron,
+    index::{self},
+    cron::{Cron, CronTask},
+    resource::{self, Resources},
+    serve_static_files
 };
 
-use self::resource::Resources;
-
-pub mod cron;
-mod filters;
-mod index;
-mod resource;
-mod serve_static_files;
-mod static_files;
+use progscrape_application::{Story, StoryIdentifier, StoryEvaluator, PersistError, StoryRender, StorageSummary};
+use progscrape_scrapers::{StoryDate, ScrapeSource, WebScraper, WebScrapeHttpResult, WebScrapeURLResult, WebScrapeInput};
 
 #[derive(Debug, Error)]
 pub enum WebError {
@@ -38,9 +29,9 @@ pub enum WebError {
     #[error("Web error")]
     HyperError(#[from] hyper::Error),
     #[error("Persistence error")]
-    PersistError(#[from] crate::persist::PersistError),
+    PersistError(#[from] progscrape_application::PersistError),
     #[error("Scrape error")]
-    ScrapeError(#[from] crate::scrapers::ScrapeError),
+    ScrapeError(#[from] progscrape_scrapers::ScrapeError),
     #[error("I/O error")]
     IOError(#[from] std::io::Error),
     #[error("Invalid header")]
@@ -243,7 +234,7 @@ async fn admin_cron(
         "admin/cron.html",
         context!(
             config: std::sync::Arc<crate::config::Config> = resources.config(),
-            cron: Vec<cron::CronTask> = cron.lock().await.inspect()
+            cron: Vec<CronTask> = cron.lock().await.inspect()
         ),
     )
 }
