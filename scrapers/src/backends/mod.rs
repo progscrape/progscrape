@@ -131,7 +131,7 @@ scrapers! {
 #[cfg(test)]
 pub mod test {
     use super::*;
-    use crate::public::ScrapeExtractor;
+    use crate::extractor::ScrapeExtractor;
     use std::fs::read_to_string;
     use std::path::PathBuf;
     use std::str::FromStr;
