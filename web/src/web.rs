@@ -20,7 +20,7 @@ use crate::{
 };
 
 use progscrape_application::{Story, StoryIdentifier, StoryEvaluator, PersistError, StoryRender, StorageSummary};
-use progscrape_scrapers::{StoryDate, ScrapeSource, WebScraper, WebScrapeHttpResult, WebScrapeURLResult, WebScrapeInput};
+use progscrape_scrapers::{StoryDate, ScrapeSource, ScraperHttpResponseInput, ScraperHttpResult, ScraperPossibilities};
 
 #[derive(Debug, Error)]
 pub enum WebError {
@@ -249,7 +249,7 @@ async fn admin_scrape(
         "admin/scrape.html",
         context!(
             config: std::sync::Arc<crate::config::Config> = config.clone(),
-            scrapes: WebScrapeInput = WebScraper::compute_all_scrapes(&config.scrape),
+            scrapes: ScraperPossibilities = resources.scrapers().compute_scrape_possibilities(),
             endpoint: &'static str = "/admin/scrape/test"
         ),
     )
@@ -266,8 +266,7 @@ async fn admin_scrape_test(
     State(AdminState { resources, .. }): State<AdminState>,
     Json(params): Json<AdminScrapeTestParams>,
 ) -> Result<Html<String>, WebError> {
-    let config = resources.config();
-    let urls = WebScraper::compute_urls(&config.scrape, params.source, params.subsources);
+    let urls = resources.scrapers().compute_scrape_url_demands(params.source, params.subsources);
     let mut map = HashMap::new();
     for url in urls {
         let resp = reqwest::Client::new()
@@ -277,24 +276,24 @@ async fn admin_scrape_test(
             .await?;
         let status = resp.status();
         if status == StatusCode::OK {
-            map.insert(url, WebScrapeHttpResult::Ok(resp.text().await?));
+            map.insert(url, ScraperHttpResponseInput::Ok(resp.text().await?));
         } else {
             map.insert(
                 url,
-                WebScrapeHttpResult::HTTPError(status.as_u16(), status.as_str().to_owned()),
+                ScraperHttpResponseInput::HTTPError(status.as_u16(), status.as_str().to_owned()),
             );
         }
     }
 
     let scrapes = HashMap::from_iter(
         map.into_iter()
-            .map(|(k, v)| (k, WebScraper::scrape(&config.scrape, params.source, v))),
+            .map(|(k, v)| (k, resources.scrapers().scrape_http_result(params.source, v))),
     );
 
     render(
         &resources,
         "admin/scrape_test.html",
-        context!(scrapes: HashMap<String, WebScrapeURLResult> = scrapes),
+        context!(scrapes: HashMap<String, ScraperHttpResult> = scrapes),
     )
 }
 

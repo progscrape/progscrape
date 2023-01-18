@@ -1,5 +1,6 @@
 use notify::RecursiveMode;
 use notify::Watcher;
+use progscrape_scrapers::Scrapers;
 use std::fs::File;
 use std::io::BufReader;
 
@@ -23,6 +24,7 @@ struct ResourceHolder {
     static_files_root: Arc<StaticFileRegistry>,
     config: Arc<Config>,
     story_evaluator: Arc<StoryEvaluator>,
+    scrapers: Arc<Scrapers>,
 }
 
 #[derive(Clone)]
@@ -45,6 +47,9 @@ impl Resources {
     }
     pub fn story_evaluator(&self) -> Arc<StoryEvaluator> {
         self.rx.borrow().story_evaluator.clone()
+    }
+    pub fn scrapers(&self) -> Arc<Scrapers> {
+        self.rx.borrow().scrapers.clone()
     }
 }
 
@@ -110,12 +115,14 @@ fn generate() -> Result<ResourceHolder, WebError> {
         &config.score,
         &config.scrape,
     ));
+    let scrapers = Arc::new(Scrapers::new(&config.scrape));
     Ok(ResourceHolder {
         templates,
         static_files,
         static_files_root,
         config,
         story_evaluator,
+        scrapers,
     })
 }
 
