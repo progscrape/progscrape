@@ -47,7 +47,7 @@ pub trait Storage: Send + Sync {
     fn query_frontpage_hot_set(&self, max_count: usize) -> Result<Vec<Story>, PersistError>;
 
     /// Query a search, scored mostly by date but may include some "hotness".
-    fn query_search(&self, search: String, max_count: usize) -> Result<Vec<Story>, PersistError>;
+    fn query_search(&self, search: &str, max_count: usize) -> Result<Vec<Story>, PersistError>;
 }
 
 pub trait StorageWriter: Storage {

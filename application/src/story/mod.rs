@@ -192,6 +192,10 @@ impl TagSet {
         }
     }
 
+    pub fn contains(&self, tag: impl AsRef<str>) -> bool {
+        self.set.contains(tag.as_ref())
+    }
+
     pub fn add(&mut self, tag: impl AsRef<str>) {
         self.set.insert(tag.as_ref().to_ascii_lowercase());
     }

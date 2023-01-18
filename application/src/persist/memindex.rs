@@ -70,8 +70,8 @@ impl MemIndex {
         self.stories.entry(shard).or_default()
     }
 
-    fn map(&self, shard: YearMonth) -> Option<&HashMap<StoryUrlNorm, Story>> {
-        self.stories.get(&shard)
+    fn map(&self, shard: &YearMonth) -> Option<&HashMap<StoryUrlNorm, Story>> {
+        self.stories.get(shard)
     }
 
     #[cfg(test)]
@@ -150,7 +150,7 @@ impl Storage for MemIndex {
 
     fn get_story(&self, id: &StoryIdentifier) -> Option<Story> {
         let shard = YearMonth::from_year_month(id.year(), id.month());
-        if let Some(map) = self.map(shard) {
+        if let Some(map) = self.map(&shard) {
             map.get(&id.norm).map(Clone::clone)
         } else {
             tracing::warn!("Shard {:?} not found for story {:?}", shard, id);
@@ -160,7 +160,7 @@ impl Storage for MemIndex {
 
     fn stories_by_shard(&self, shard: &str) -> Result<Vec<Story>, PersistError> {
         if let Some(shard) = YearMonth::from_string(shard) {
-            if let Some(map) = self.map(shard) {
+            if let Some(map) = self.map(&shard) {
                 Ok(map.values().cloned().collect_vec())
             } else {
                 Ok(vec![])
@@ -171,13 +171,29 @@ impl Storage for MemIndex {
     }
 
     fn query_frontpage_hot_set(&self, max_count: usize) -> Result<Vec<Story>, PersistError> {
-        const LIMIT: usize = 500;
         let rev = self.get_all_stories().rev();
         Ok(rev.take(max_count).collect::<Vec<_>>())
     }
 
-    fn query_search(&self, _search: String, _max_count: usize) -> Result<Vec<Story>, PersistError> {
-        unimplemented!()
+    fn query_search(&self, search: &str, max_count: usize) -> Result<Vec<Story>, PersistError> {
+        let mut v = vec![];
+        let search = search.to_lowercase().trim().to_owned();
+        'outer:
+        for shard in self.stories.keys().sorted().rev() {
+            if let Some(map) = self.map(shard) {
+                for story in map.values().sorted_by_key(|s| s.date).rev() {
+                    if story.tags.contains(&search) {
+                        v.push(story.clone());
+                    } else if story.title.to_lowercase().contains(&search) {
+                        v.push(story.clone());
+                    }
+                    if v.len() > max_count {
+                        break 'outer;
+                    }
+                }
+            }
+        }
+        Ok(v)
     }
 }
 

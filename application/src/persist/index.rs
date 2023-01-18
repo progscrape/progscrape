@@ -325,7 +325,7 @@ impl Storage for StoryIndex {
         unimplemented!()
     }
 
-    fn query_search(&self, search: String, max_count: usize) -> Result<Vec<Story>, PersistError> {
+    fn query_search(&self, search: &str, max_count: usize) -> Result<Vec<Story>, PersistError> {
         let now = StoryDate::now();
         let vec = vec![];
         for shard in (self.index_for_date(self.start_date)..self.index_for_date(now)).rev() {
