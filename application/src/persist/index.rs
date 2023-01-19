@@ -16,6 +16,8 @@ use std::ops::RangeBounds;
 use std::time::Duration;
 
 use super::*;
+use super::scrapestore::ScrapeStore;
+use super::shard::{Shard, ShardRange};
 
 const MEMORY_ARENA_SIZE: usize = 50_000_000;
 const STORY_INDEXING_CHUNK_SIZE: usize = 10000;
@@ -53,7 +55,7 @@ struct StoryInsert<'a> {
 }
 
 impl StoryIndexShard {
-    pub fn initialize(location: PersistLocation, shard: u32) -> Result<Self, PersistError> {
+    pub fn initialize(location: PersistLocation, shard: Shard) -> Result<Self, PersistError> {
         let mut schema_builder = Schema::builder();
         let date_field = schema_builder.add_i64_field("date", FAST | INDEXED);
         let url_field = schema_builder.add_text_field("url", STRING | STORED);
@@ -71,7 +73,12 @@ impl StoryIndexShard {
         };
         let directory: Box<dyn Directory> = match location {
             PersistLocation::Memory => Box::new(RamDirectory::create()),
-            PersistLocation::Path(path) => Box::new(MmapDirectory::open(path.join(format!("{}", shard)))?)
+            PersistLocation::Path(path) => {
+                tracing::info!("Opening index at {}", path.to_string_lossy());
+                let path = path.join(format!("{}/index", shard.to_string()));
+                std::fs::create_dir_all(&path)?;
+                Box::new(MmapDirectory::open(path)?)
+            }
         };
         let index = Index::create(directory, schema, settings)?;
         Ok(Self {
@@ -166,42 +173,33 @@ impl StoryIndexShard {
 }
 
 pub struct StoryIndex {
-    index_cache: HashMap<u32, StoryIndexShard>,
+    index_cache: HashMap<Shard, StoryIndexShard>,
     location: PersistLocation,
     start_date: StoryDate,
+    scrape_db: ScrapeStore,
 }
 
 impl StoryIndex {
     pub fn new(location: PersistLocation) -> Result<Self, PersistError> {
         // TODO: This start date needs to be dynamic
         let start_date = StoryDate::parse_from_rfc3339("2010-01-01T00:00:00-00:00").expect("Failed to part start date");
-
-        Ok(match location {
-            location @ PersistLocation::Memory => {
-                Self {
-                    index_cache: HashMap::new(),
-                    start_date,
-                    location
-                }
-            }
-            PersistLocation::Path(path) => {
-                std::fs::create_dir_all(path.as_path())?;
-                Self {
-                    index_cache: HashMap::new(),
-                    start_date,
-                    location: PersistLocation::Path(path)
-                }
-            }
+        let scrape_db = ScrapeStore::new(location.clone())?;
+        tracing::info!("Initialized StoryIndex at {:?}", location);
+        Ok(Self {
+            index_cache: HashMap::new(),
+            start_date,
+            location,
+            scrape_db,
         })
     }
     
-    fn index_for_date(&self, date: StoryDate) -> u32 {
-        (date.year() as u32) * 12 + date.month0()
+    fn index_for_date(&self, date: StoryDate) -> Shard {
+        Shard::from_date_time(date)
     }
 
-    fn ensure_shard(&mut self, shard: u32) -> Result<(), PersistError> {
+    fn ensure_shard(&mut self, shard: Shard) -> Result<(), PersistError> {
         if let std::collections::hash_map::Entry::Vacant(e) = self.index_cache.entry(shard) {
-            tracing::info!("Creating shard {}", shard);
+            tracing::info!("Creating shard {}", shard.to_string());
             let new_shard = StoryIndexShard::initialize(self.location.clone(), shard)?;
             e.insert(new_shard);
         }
@@ -213,7 +211,7 @@ impl StoryIndex {
         scrapes: I,
     ) -> Result<(), PersistError> {
         // Split stories by index shard
-        let mut sharded = HashMap::<u32, Vec<Story>>::new();
+        let mut sharded = HashMap::<Shard, Vec<Story>>::new();
         for story in scrapes {
             sharded
                 .entry(self.index_for_date(story.date))
@@ -286,10 +284,11 @@ impl StoryIndex {
         scrapes: I,
     ) -> Result<(), PersistError> {
         let mut memindex = memindex::MemIndex::default();
+        let scrapes = scrapes.inspect(|scrape| { self.scrape_db.insert_scrape(scrape); () });
         memindex.insert_scrapes(eval, scrapes)?;
 
         for chunk in &memindex.get_all_stories().chunks(STORY_INDEXING_CHUNK_SIZE) {
-            println!("Chunk");
+            tracing::info!("Processing chunk...");
             self.insert_scrape_batch(chunk)?;
         }
 
@@ -368,15 +367,12 @@ impl Storage for StoryIndex {
 mod test {
     use std::path::Path;
 
-    use tantivy::directory::RamDirectory;
-
     use super::*;
 
     fn populate_shard(
         ids: impl Iterator<Item = (i64, i64)>,
     ) -> Result<StoryIndexShard, PersistError> {
-        let dir = RamDirectory::create();
-        let mut shard = StoryIndexShard::initialize(PersistLocation::Memory, 0)?;
+        let mut shard = StoryIndexShard::initialize(PersistLocation::Memory, Shard::default())?;
         let mut writer = shard.index.writer(MEMORY_ARENA_SIZE)?;
         for (url_norm_hash, date) in ids {
             shard.insert_story_document(
@@ -434,7 +430,7 @@ mod test {
         let start_date = stories
             .iter()
             .fold(StoryDate::MAX, |a, b| std::cmp::min(a, b.date));
-        let mut index = StoryIndex::new(PersistLocation::Memory)?;
+        let mut index = StoryIndex::new(PersistLocation::Path("/tmp/indextest".into()))?;
         let eval = StoryEvaluator::new_for_test();
         index
             .insert_scrapes(&eval, stories.into_iter())?;

@@ -1,13 +1,15 @@
+use std::{sync::Mutex, path::Path};
+
 use super::*;
 use serde::{de::DeserializeOwned, Serialize};
 
 pub struct DB {
-    connection: rusqlite::Connection,
+    connection: Mutex<rusqlite::Connection>,
 }
 
 impl DB {
-    pub fn open(location: &str) -> Result<Self, PersistError> {
-        let connection = rusqlite::Connection::open(location)?;
+    pub fn open<P: AsRef<Path>>(location: P) -> Result<Self, PersistError> {
+        let connection = Mutex::new(rusqlite::Connection::open(location)?);
         Ok(Self { connection })
     }
 
@@ -15,7 +17,15 @@ impl DB {
         std::any::type_name::<T>().rsplit_once(':').unwrap().1
     }
 
+    fn schema_for(schema: Option<&str>) -> &str {
+        schema.unwrap_or("main")
+    }
+
     pub fn create_table<T: Serialize + Default>(&self) -> Result<(), PersistError> {
+        self.create_table_schema::<T>(None)
+    }
+
+    pub fn create_table_schema<T: Serialize + Default>(&self, schema: Option<&str>) -> Result<(), PersistError> {
         use rusqlite::types::ToSqlOutput::*;
         use rusqlite::types::*;
         let t = T::default();
@@ -46,24 +56,34 @@ impl DB {
             ));
         }
         let sql = format!(
-            "create table if not exists {}({})",
+            "create table if not exists {}.{}({})",
+            Self::schema_for(schema),
             Self::table_for::<T>(),
             types.join(",")
         );
-        self.connection.execute(&sql, ())?;
+        self.connection.lock().expect("Poisoned").execute(&sql, ())?;
         Ok(())
     }
 
+
     pub fn create_unique_index<T: Serialize + Default>(&self, name: &str, keys: &[&str]) -> Result<(), PersistError> {
+        self.create_unique_index_schema::<T>(None, name, keys)
+    }
+
+    pub fn create_unique_index_schema<T: Serialize + Default>(&self, schema: Option<&str>, name: &str, keys: &[&str]) -> Result<(), PersistError> {
         let t = T::default();
         let params = serde_rusqlite::to_params_named(&t)?;
         // TODO: check keys
         let sql = format!("create unique index if not exists {} on {}({})", name, Self::table_for::<T>(), keys.join(","));
-        self.connection.execute(&sql, ())?;
+        self.connection.lock().expect("Poisoned").execute(&sql, ())?;
         Ok(())
     }
 
-    pub fn store<T: Serialize>(&mut self, t: &T) -> Result<(), PersistError> {
+    pub fn store<T: Serialize>(&self, t: &T) -> Result<(), PersistError> {
+        self.store_schema(None, t)
+    }
+
+    pub fn store_schema<T: Serialize>(&self, schema: Option<&str>, t: &T) -> Result<(), PersistError> {
         let params = serde_rusqlite::to_params_named(t)?;
         let params_slice = params.to_slice();
         let columns = params_slice
@@ -77,12 +97,13 @@ impl DB {
             .collect::<Vec<_>>()
             .join(",");
         let sql = format!(
-            "insert or replace into {}({}) values ({})",
+            "insert or replace into {}.{}({}) values ({})",
+            Self::schema_for(schema),
             Self::table_for::<T>(),
             columns,
             values
         );
-        self.connection.execute(&sql, params_slice.as_slice())?;
+        self.connection.lock().expect("Poisoned").execute(&sql, params_slice.as_slice())?;
         Ok(())
     }
 
@@ -90,15 +111,29 @@ impl DB {
         &self,
         id: String,
     ) -> Result<Option<T>, PersistError> {
-        let sql = format!("select * from {} where id = ?", Self::table_for::<T>());
+        self.load_schema(None, id)
+    }
+
+    pub fn load_schema<T: Serialize + DeserializeOwned>(
+        &self,
+        schema: Option<&str>,
+        id: String,
+    ) -> Result<Option<T>, PersistError> {
+        let sql = format!("select * from {}.{} where id = ?", Self::schema_for(schema), Self::table_for::<T>());
         match self
             .connection
+            .lock().expect("Poisoned")
             .query_row_and_then(&sql, [id], |row| serde_rusqlite::from_row::<T>(row))
         {
             Err(serde_rusqlite::Error::Rusqlite(rusqlite::Error::QueryReturnedNoRows)) => Ok(None),
             Err(x) => Err(PersistError::SerdeError(x)),
             Ok(x) => Ok(Some(x)),
         }
+    }
+
+    pub fn execute_raw(&mut self, sql: &str) -> Result<(), PersistError> {
+        self.connection.lock().expect("Poisoned").execute_batch(sql)?;
+        Ok(())
     }
 }
 

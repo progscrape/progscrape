@@ -4,45 +4,7 @@ use itertools::Itertools;
 
 use progscrape_scrapers::{StoryDate, StoryUrlNorm};
 
-use super::*;
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-struct YearMonth(u16);
-
-impl ToString for YearMonth {
-    fn to_string(&self) -> String {
-        format!("{:04}-{:02}", self.0 / 12, self.0 % 12 + 1)
-    }
-}
-
-impl YearMonth {
-    fn from_year_month(year: u16, month: u8) -> Self {
-        assert!(month > 0);
-        YearMonth(year * 12 + month as u16 - 1)
-    }
-
-    fn from_string(s: &str) -> Option<Self> {
-        if let Some((a, b)) = s.split_once('-') {
-            if let (Ok(a), Ok(b)) = (str::parse(a), str::parse(b)) {
-                return Some(Self::from_year_month(a, b));
-            }
-        }
-        None
-    }
-
-    fn from_date_time(date: StoryDate) -> Self {
-        Self::from_year_month(date.year() as u16, date.month() as u8)
-    }
-
-    fn plus_months(&self, months: i8) -> Self {
-        let ordinal = self.0 as i16 + months as i16;
-        Self(ordinal as u16)
-    }
-
-    fn sub_months(&self, months: i8) -> Self {
-        self.plus_months(-months)
-    }
-}
+use super::{*, shard::Shard};
 
 /// Builds an index of stories in memory, useful for pre-aggregation of scrapes into normalized URL collections.
 #[derive(Default, Serialize, Deserialize)]
@@ -50,7 +12,7 @@ pub struct MemIndex {
     most_recent_story: StoryDate,
 
     /// A map from year/month to normalized story URL, to scrape source/ID to scrape.
-    stories: HashMap<YearMonth, HashMap<StoryUrlNorm, Story>>,
+    stories: HashMap<Shard, HashMap<StoryUrlNorm, Story>>,
 }
 
 impl MemIndex {
@@ -59,18 +21,18 @@ impl MemIndex {
         for (shard, stories) in self.stories.iter().sorted_by_cached_key(|f| f.0) {
             for (_, story) in stories {
                 out.push(story.clone());
-                assert_eq!(*shard, YearMonth::from_date_time(story.date));
+                assert_eq!(*shard, Shard::from_date_time(story.date));
             }
         }
         out.sort_by(|a, b| a.compare_date(b));
         out.into_iter()
     }
 
-    fn map_mut(&mut self, shard: YearMonth) -> &mut HashMap<StoryUrlNorm, Story> {
+    fn map_mut(&mut self, shard: Shard) -> &mut HashMap<StoryUrlNorm, Story> {
         self.stories.entry(shard).or_default()
     }
 
-    fn map(&self, shard: &YearMonth) -> Option<&HashMap<StoryUrlNorm, Story>> {
+    fn map(&self, shard: &Shard) -> Option<&HashMap<StoryUrlNorm, Story>> {
         self.stories.get(shard)
     }
 
@@ -78,7 +40,7 @@ impl MemIndex {
     fn ensure_consistency(&self) {
         for (shard, stories) in &self.stories {
             for (norm, story) in stories {
-                assert_eq!(YearMonth::from_date_time(story.date), *shard);
+                assert_eq!(Shard::from_date_time(story.date), *shard);
                 assert!(story.id.matches_date(story.date));
                 self.get_story(&story.id).unwrap_or_else(|| {
                     panic!(
@@ -101,7 +63,7 @@ impl StorageWriter for MemIndex {
     ) -> Result<(), PersistError> {
         'outer: for scrape in scrapes {
             let scrape_core = eval.extractor.extract(&scrape);
-            let date = YearMonth::from_date_time(scrape_core.date);
+            let date = Shard::from_date_time(scrape_core.date);
             let normalized_url = scrape_core.url.normalization();
             // Try to pin it to an existing item
             for n in -2..=2 {
@@ -110,7 +72,7 @@ impl StorageWriter for MemIndex {
                     // Merge and then re-insert the story in the correct shard
                     story.merge(eval, scrape);
                     self.most_recent_story = self.most_recent_story.max(story.date);
-                    self.map_mut(YearMonth::from_date_time(story.date))
+                    self.map_mut(Shard::from_date_time(story.date))
                         .insert(key, story);
                     continue 'outer;
                 }
@@ -149,7 +111,7 @@ impl Storage for MemIndex {
     }
 
     fn get_story(&self, id: &StoryIdentifier) -> Option<Story> {
-        let shard = YearMonth::from_year_month(id.year(), id.month());
+        let shard = Shard::from_year_month(id.year(), id.month());
         if let Some(map) = self.map(&shard) {
             map.get(&id.norm).map(Clone::clone)
         } else {
@@ -159,7 +121,7 @@ impl Storage for MemIndex {
     }
 
     fn stories_by_shard(&self, shard: &str) -> Result<Vec<Story>, PersistError> {
-        if let Some(shard) = YearMonth::from_string(shard) {
+        if let Some(shard) = Shard::from_string(shard) {
             if let Some(map) = self.map(&shard) {
                 Ok(map.values().cloned().collect_vec())
             } else {
@@ -205,15 +167,15 @@ mod test {
 
     #[test]
     fn test_year_month() {
-        let date = YearMonth::from_year_month(2000, 12);
-        assert_eq!(YearMonth::from_year_month(2001, 1), date.plus_months(1));
-        assert_eq!(YearMonth::from_year_month(2001, 12), date.plus_months(12));
-        assert_eq!(YearMonth::from_year_month(1999, 12), date.sub_months(12));
-        assert_eq!(YearMonth::from_year_month(2000, 1), date.sub_months(11));
+        let date = Shard::from_year_month(2000, 12);
+        assert_eq!(Shard::from_year_month(2001, 1), date.plus_months(1));
+        assert_eq!(Shard::from_year_month(2001, 12), date.plus_months(12));
+        assert_eq!(Shard::from_year_month(1999, 12), date.sub_months(12));
+        assert_eq!(Shard::from_year_month(2000, 1), date.sub_months(11));
 
         assert_eq!(
             date,
-            YearMonth::from_string(&date.to_string()).expect("Failed to parse")
+            Shard::from_string(&date.to_string()).expect("Failed to parse")
         );
     }
 

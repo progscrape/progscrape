@@ -9,6 +9,7 @@ mod db;
 mod index;
 mod memindex;
 mod scrapestore;
+mod shard;
 
 pub use index::StoryIndex;
 pub use memindex::MemIndex;
@@ -75,4 +76,15 @@ pub enum PersistLocation {
     Memory,
     /// At a given path.
     Path(PathBuf)
+}
+
+impl PersistLocation {
+    pub fn join<P: AsRef<std::path::Path>>(&self, p: P) -> PersistLocation {
+        match self {
+            PersistLocation::Memory => PersistLocation::Memory,
+            PersistLocation::Path(path) => {
+                PersistLocation::Path(path.join(p))
+            }
+        }
+    }
 }

@@ -1,15 +1,16 @@
-use std::collections::HashMap;
+use std::{collections::{HashMap, HashSet}, path::{Path, PathBuf}, sync::{RwLock, Arc}, rc::Rc};
 
 use progscrape_scrapers::{TypedScrape, ScrapeId, StoryDate};
 use serde::{Serialize, Deserialize};
 
 use crate::PersistError;
 
-use super::db::DB;
+use super::{db::DB, PersistLocation};
 
 /// Long-term persistence for raw scrape data.
 pub struct ScrapeStore {
-    db: DB
+    location: PersistLocation,
+    shards: RwLock<HashMap<String, Arc<DB>>>,
 }
 
 #[derive(Default, Serialize, Deserialize)]
@@ -20,23 +21,45 @@ struct ScrapeCacheEntry {
 }
 
 impl ScrapeStore {
-    pub fn new(location: &str) -> Result<Self, PersistError> {
-        let db = DB::open(location)?;
-        db.create_table::<ScrapeCacheEntry>()?;
-        db.create_unique_index::<ScrapeCacheEntry>("idx_id", &["id"])?;
+    pub fn new(location: PersistLocation) -> Result<Self, PersistError> {
+        tracing::info!("Initialized ScrapeStore at {:?}", location);
         Ok(Self {
-            db
+            location,
+            shards: RwLock::new(HashMap::new()),
         })
     }
 
-    pub fn insert_scrape(&mut self, scrape: &TypedScrape) -> Result<(), PersistError> {
+    fn open_shard<'a>(&'a self, shard: String) -> Result<Arc<DB>, PersistError> {
+        let mut lock = self.shards.write().expect("Poisoned");
+        let db = if let Some(db) = lock.get(&shard) {
+            db
+        } else {
+            let db = match self.location.join(&shard) {
+                PersistLocation::Memory => DB::open(":memory:")?,
+                PersistLocation::Path(ref path) => {
+                    std::fs::create_dir_all(&path)?;
+                    let path = path.join("scrapes.sqlite3");
+                    tracing::info!("Opening scrape database at {}", path.to_string_lossy());
+                    DB::open(path)?
+                }
+            };
+            lock.entry(shard).or_insert(Arc::new(db))
+        };
+        db.create_table::<ScrapeCacheEntry>()?;
+        db.create_unique_index::<ScrapeCacheEntry>("idx_id", &["id"])?;
+        Ok(db.clone())
+    }
+
+    pub fn insert_scrape(&self, scrape: &TypedScrape) -> Result<(), PersistError> {
         self.insert_scrape_batch([scrape].into_iter())
     }
 
-    pub fn insert_scrape_batch<'a, I: Iterator<Item = &'a TypedScrape>>(&mut self, iter: I) -> Result<(), PersistError> {
+    pub fn insert_scrape_batch<'a, I: Iterator<Item = &'a TypedScrape>>(&self, iter: I) -> Result<(), PersistError> {
         for item in iter {
+            let shard = format!("{:04}-{:02}", item.date.year(), item.date.month());
+            let db = self.open_shard(shard)?;
             let json = serde_json::to_string(item)?;
-            self.db.store(&ScrapeCacheEntry {
+            db.store(&ScrapeCacheEntry {
                 date: item.date,
                 id: item.id.to_string(),
                 json
@@ -45,8 +68,10 @@ impl ScrapeStore {
         Ok(())
     }
 
-    pub fn fetch_scrape(&self, id: &ScrapeId) -> Result<Option<TypedScrape>, PersistError> {
-        let scrape = self.db.load::<ScrapeCacheEntry>(id.to_string())?;
+    pub fn fetch_scrape(&self, id: &ScrapeId, date: StoryDate) -> Result<Option<TypedScrape>, PersistError> {
+        let shard = format!("{:04}-{:02}", date.year(), date.month());
+        let db = self.open_shard(shard)?;
+        let scrape = db.load::<ScrapeCacheEntry>(id.to_string())?;
         if let Some(scrape) = scrape {
             let typed_scrape = serde_json::from_str(&scrape.json)?;
             Ok(Some(typed_scrape))
@@ -55,15 +80,17 @@ impl ScrapeStore {
         }
     }
 
-    pub fn fetch_scrape_batch<'a, I: Iterator<Item = &'a ScrapeId>>(&self, iter: I) -> Result<HashMap<ScrapeId, Option<TypedScrape>>, PersistError> {
+    pub fn fetch_scrape_batch<'a, I: Iterator<Item = (&'a ScrapeId, StoryDate)>>(&self, iter: I) -> Result<HashMap<ScrapeId, Option<TypedScrape>>, PersistError> {
         let mut map = HashMap::new();
-        for item in iter {
-            let scrape = self.db.load::<ScrapeCacheEntry>(item.to_string())?;
+        for (id, date) in iter {
+            let shard = format!("{:04}-{:02}", date.year(), date.month());
+            let db = self.open_shard(shard)?;
+            let scrape = db.load::<ScrapeCacheEntry>(id.to_string())?;
             if let Some(scrape) = scrape {
                 let typed_scrape = serde_json::from_str(&scrape.json)?;
-                map.insert(item.clone(), typed_scrape);
+                map.insert(id.clone(), typed_scrape);
             } else {
-                map.insert(item.clone(), None);
+                map.insert(id.clone(), None);
             }
         }
         Ok(map)
@@ -72,20 +99,18 @@ impl ScrapeStore {
 
 #[cfg(test)]
 mod test {
-    use std::path::Path;
-
-    use super::ScrapeStore;
+    use super::*;
 
     #[test]
     fn test_insert() -> Result<(), Box<dyn std::error::Error>> {
-        let mut store = ScrapeStore::new(":memory:")?;
+        let mut store = ScrapeStore::new(PersistLocation::Memory)?;
         let legacy = progscrape_scrapers::import_legacy(Path::new(".."))?;
         let first = &legacy[0..100];
         for scrape in first {
             store.insert_scrape(scrape)?;
         }
         for scrape in first {
-            let loaded_scrape = store.fetch_scrape(&scrape.id)?.unwrap();
+            let loaded_scrape = store.fetch_scrape(&scrape.id, scrape.date)?.unwrap();
             assert_eq!(scrape.id, loaded_scrape.id);
         }
         Ok(())
