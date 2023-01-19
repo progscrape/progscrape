@@ -40,7 +40,10 @@ impl ScrapeStore {
                     std::fs::create_dir_all(&path)?;
                     let path = path.join("scrapes.sqlite3");
                     tracing::info!("Opening scrape database at {}", path.to_string_lossy());
-                    DB::open(path)?
+                    let db = DB::open(path)?;
+                    // Force each DB into WAL mode
+                    db.execute_raw("PRAGMA journal_mode = WAL")?;
+                    db
                 }
             };
             lock.entry(shard).or_insert(Arc::new(db))
@@ -55,15 +58,23 @@ impl ScrapeStore {
     }
 
     pub fn insert_scrape_batch<'a, I: Iterator<Item = &'a TypedScrape>>(&self, iter: I) -> Result<(), PersistError> {
+        let mut per_shard: HashMap<String, Vec<&TypedScrape>> = HashMap::new();
         for item in iter {
             let shard = format!("{:04}-{:02}", item.date.year(), item.date.month());
+            per_shard.entry(shard).or_default().push(item);
+        }
+        for (shard, stories) in per_shard {
             let db = self.open_shard(shard)?;
-            let json = serde_json::to_string(item)?;
-            db.store(&ScrapeCacheEntry {
-                date: item.date,
-                id: item.id.to_string(),
-                json
-            })?;
+            let mut batch = vec![];
+            for item in stories {
+                let json = serde_json::to_string(item)?;
+                batch.push(ScrapeCacheEntry {
+                    date: item.date,
+                    id: item.id.to_string(),
+                    json
+                });
+            }
+            db.store_batch(batch)?;
         }
         Ok(())
     }

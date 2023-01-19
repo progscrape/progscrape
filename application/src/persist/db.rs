@@ -9,7 +9,8 @@ pub struct DB {
 
 impl DB {
     pub fn open<P: AsRef<Path>>(location: P) -> Result<Self, PersistError> {
-        let connection = Mutex::new(rusqlite::Connection::open(location)?);
+        let db = rusqlite::Connection::open(location)?;
+        let connection = Mutex::new(db);
         Ok(Self { connection })
     }
 
@@ -79,6 +80,43 @@ impl DB {
         Ok(())
     }
 
+    pub fn store_batch<T: Serialize>(&self, t: Vec<T>) -> Result<(), PersistError> {
+        self.store_batch_schema(None, t)
+    }
+
+    pub fn store_batch_schema<T: Serialize>(&self, schema: Option<&str>, t: Vec<T>) -> Result<(), PersistError> {
+        if let Some(first) = t.first() {
+            let params = serde_rusqlite::to_params_named(first)?;
+            let params_slice = params.to_slice();
+            let columns = params_slice
+                .iter()
+                .map(|f| f.0.trim_start_matches(':'))
+                .collect::<Vec<_>>()
+                .join(",");
+            let values = params_slice
+                .iter()
+                .map(|f| f.0)
+                .collect::<Vec<_>>()
+                .join(",");
+            let sql = format!(
+                "insert or replace into {}.{}({}) values ({})",
+                Self::schema_for(schema),
+                Self::table_for::<T>(),
+                columns,
+                values
+            );
+
+            let conn = self.connection.lock().expect("Poisoned");
+            let mut prep = conn.prepare(&sql)?;
+            for t in t {
+                let params = serde_rusqlite::to_params_named(t)?;
+                prep.execute(params.to_slice().as_slice())?;
+            }
+            prep.finalize()?;
+        }
+        Ok(())
+    }
+
     pub fn store<T: Serialize>(&self, t: &T) -> Result<(), PersistError> {
         self.store_schema(None, t)
     }
@@ -131,7 +169,7 @@ impl DB {
         }
     }
 
-    pub fn execute_raw(&mut self, sql: &str) -> Result<(), PersistError> {
+    pub fn execute_raw(&self, sql: &str) -> Result<(), PersistError> {
         self.connection.lock().expect("Poisoned").execute_batch(sql)?;
         Ok(())
     }

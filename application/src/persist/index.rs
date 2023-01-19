@@ -21,6 +21,7 @@ use super::shard::{Shard, ShardRange};
 
 const MEMORY_ARENA_SIZE: usize = 50_000_000;
 const STORY_INDEXING_CHUNK_SIZE: usize = 10000;
+const SCRAPE_PROCESSING_CHUNK_SIZE: usize = 1000;
 
 /// For performance, we shard stories by time period to allow for more efficient lookup of normalized URLs.
 struct StoryIndexShard {
@@ -284,11 +285,18 @@ impl StoryIndex {
         scrapes: I,
     ) -> Result<(), PersistError> {
         let mut memindex = memindex::MemIndex::default();
-        let scrapes = scrapes.inspect(|scrape| { self.scrape_db.insert_scrape(scrape); () });
-        memindex.insert_scrapes(eval, scrapes)?;
 
+        // Batch scrape storage/pre-collection
+        tracing::info!("Pre-processing scrapes...");
+        for chunk in &scrapes.chunks(SCRAPE_PROCESSING_CHUNK_SIZE) {
+            let v = chunk.collect_vec();
+            self.scrape_db.insert_scrape_batch(v.iter())?;
+            memindex.insert_scrapes(eval, v.into_iter())?;
+        }
+
+        // Insert by story chunks
         for chunk in &memindex.get_all_stories().chunks(STORY_INDEXING_CHUNK_SIZE) {
-            tracing::info!("Processing chunk...");
+            tracing::info!("Processing story chunk...");
             self.insert_scrape_batch(chunk)?;
         }
 
