@@ -9,6 +9,8 @@ use progscrape_scrapers::import_legacy;
 use tracing_subscriber::filter::LevelFilter;
 use tracing_subscriber::EnvFilter;
 
+use crate::index::Index;
+
 mod config;
 mod cron;
 mod filters;
@@ -71,9 +73,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing::info!("Logging initialized");
 
     match args.command {
-        Command::Serve { root, .. } => {
+        Command::Serve { root, persist_path } => {
+            let persist_path = persist_path.unwrap_or("target/index".into()).canonicalize()?;
+            let index = Index::initialize_with_persistence(persist_path)?;
             let root_path = root.unwrap_or(".".into()).canonicalize()?;
-            web::start_server(&root_path).await?;
+            web::start_server(&root_path, index).await?;
         },
         Command::Initialize { root, persist_path } => {
             let resource_path = root.unwrap_or(".".into()).canonicalize()?.join("resource");

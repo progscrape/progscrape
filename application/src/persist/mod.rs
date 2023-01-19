@@ -42,7 +42,7 @@ pub struct StorageSummary {
 
 /// The underlying storage engine.
 pub trait Storage: Send + Sync {
-    fn most_recent_story(&self) -> StoryDate;
+    fn most_recent_story(&self) -> Result<StoryDate, PersistError>;
 
     /// Count the docs in this index, breaking it out by index segment.
     fn story_count(&self) -> Result<StorageSummary, PersistError>;

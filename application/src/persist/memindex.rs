@@ -93,8 +93,8 @@ impl StorageWriter for MemIndex {
 }
 
 impl Storage for MemIndex {
-    fn most_recent_story(&self) -> StoryDate {
-        self.most_recent_story
+    fn most_recent_story(&self) -> Result<StoryDate, PersistError> {
+        Ok(self.most_recent_story)
     }
 
     fn story_count(&self) -> Result<StorageSummary, PersistError> {

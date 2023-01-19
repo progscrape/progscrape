@@ -14,7 +14,7 @@ use tokio::sync::Mutex;
 
 use crate::{
     cron::{Cron, CronTask},
-    index::{self},
+    index::{self, Index},
     resource::{self, Resources},
     serve_static_files,
 };
@@ -64,13 +64,13 @@ impl IntoResponse for WebError {
 #[derive(Clone)]
 struct AdminState {
     resources: Resources,
-    index: index::Global,
+    index: index::Index,
     cron: Arc<Mutex<Cron>>,
 }
 
 pub fn admin_routes<S>(
     resources: Resources,
-    index: index::Global,
+    index: index::Index,
     cron: Arc<Mutex<Cron>>,
 ) -> Router<S> {
     Router::new()
@@ -98,13 +98,11 @@ fn start_cron(cron: Arc<Mutex<Cron>>, resources: Resources) {
     });
 }
 
-pub async fn start_server(root_path: &std::path::Path) -> Result<(), WebError> {
+pub async fn start_server(root_path: &std::path::Path, index: Index) -> Result<(), WebError> {
     tracing::info!("Root path: {:?}", root_path);
     let resource_path = root_path.join("resource");
 
     let resources = resource::start_watcher(resource_path).await?;
-
-    let global = index::initialize_with_testing_data(root_path, &resources.config())?;
 
     let cron = Arc::new(Mutex::new(Cron::initialize(&resources.config().cron)));
     start_cron(cron.clone(), resources.clone());
@@ -112,12 +110,12 @@ pub async fn start_server(root_path: &std::path::Path) -> Result<(), WebError> {
     // build our application with a route
     let app = Router::new()
         .route("/", get(root))
-        .with_state((global.clone(), resources.clone()))
+        .with_state((index.clone(), resources.clone()))
         .route("/static/:file", get(serve_static_files_immutable))
         .with_state(resources.clone())
         .nest(
             "/admin",
-            admin_routes(resources.clone(), global.clone(), cron.clone()),
+            admin_routes(resources.clone(), index.clone(), cron.clone()),
         )
         .route(
             "/:file",
@@ -140,13 +138,13 @@ fn render_stories<'a>(iter: impl Iterator<Item = &'a Story>) -> Vec<StoryRender>
         .collect::<Vec<_>>()
 }
 
-fn now(global: &index::Global) -> StoryDate {
+fn now(global: &index::Index) -> Result<StoryDate, PersistError> {
     global.storage.most_recent_story()
 }
 
 fn hot_set(
     now: StoryDate,
-    global: &index::Global,
+    global: &index::Index,
     eval: &StoryEvaluator,
 ) -> Result<Vec<Story>, PersistError> {
     let mut hot_set = global.storage.query_frontpage_hot_set(500)?;
@@ -188,10 +186,10 @@ fn render(
 
 // basic handler that responds with a static string
 async fn root(
-    State((index, resources)): State<(index::Global, Resources)>,
+    State((index, resources)): State<(index::Index, Resources)>,
     query: Query<HashMap<String, String>>
 ) -> Result<Html<String>, WebError> {
-    let now = now(&index);
+    let now = now(&index)?;
     let stories = if let Some(search) = query.get("search") {
         render_stories(index.storage.query_search(search, 30)?.iter())
     } else {
@@ -330,7 +328,7 @@ async fn admin_status_frontpage(
     }): State<AdminState>,
     sort: Query<HashMap<String, String>>,
 ) -> Result<Html<String>, WebError> {
-    let now = now(&index);
+    let now = now(&index)?;
     let sort = sort.get("sort").cloned().unwrap_or_default();
     render(
         &resources,
@@ -370,7 +368,7 @@ async fn admin_status_story(
     Path(id): Path<String>,
 ) -> Result<Html<String>, WebError> {
     let id = StoryIdentifier::from_base64(id).ok_or(WebError::NotFound)?;
-    let now = now(&index);
+    let now = now(&index)?;
     tracing::info!("Loading story = {:?}", id);
     let story = index.storage.get_story(&id).ok_or(WebError::NotFound)?;
     let score_details = resources.story_evaluator().scorer.score_detail(&story, now);

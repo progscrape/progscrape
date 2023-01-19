@@ -3,7 +3,7 @@ use tantivy::collector::TopDocs;
 
 use tantivy::directory::{RamDirectory, MmapDirectory};
 use tantivy::query::{BooleanQuery, Occur, Query, RangeQuery, TermQuery};
-use tantivy::{doc, Index};
+use tantivy::{doc, Index, DateTime};
 use tantivy::{
     schema::*, Directory, DocAddress, IndexSettings, IndexSortByField, IndexWriter, Searcher,
 };
@@ -93,6 +93,16 @@ impl StoryIndexShard {
         })
     }
 
+    fn most_recent_story(&self) -> Result<StoryDate, PersistError> {
+        let searcher = self.index.reader()?.searcher();
+        let mut recent: DateTime = DateTime::from_timestamp_secs(0);
+        for (segment_ord, segment_reader) in searcher.segment_readers().iter().enumerate() {
+            let date = segment_reader.fast_fields().date(self.date_field)?;
+            recent = recent.max(date.max_value());
+        }
+        Ok(StoryDate::from_millis(recent.into_timestamp_millis()).unwrap_or_default())
+    }
+
     fn insert_story_document(
         &mut self,
         writer: &mut IndexWriter,
@@ -176,7 +186,7 @@ impl StoryIndexShard {
 pub struct StoryIndex {
     index_cache: HashMap<Shard, StoryIndexShard>,
     location: PersistLocation,
-    start_date: StoryDate,
+    min_max_shard: Option<(Shard, Shard)>,
     scrape_db: ScrapeStore,
 }
 
@@ -186,12 +196,36 @@ impl StoryIndex {
         let start_date = StoryDate::parse_from_rfc3339("2010-01-01T00:00:00-00:00").expect("Failed to part start date");
         let scrape_db = ScrapeStore::new(location.clone())?;
         tracing::info!("Initialized StoryIndex at {:?}", location);
-        Ok(Self {
+
+        // Determine the min/max shard, if any
+        let mut min_max_shard = None;
+        if let PersistLocation::Path(path) = &location {
+            for r in std::fs::read_dir(path)? {
+                if let Ok(d) = r {
+                    if let Some(s) = d.file_name().to_str() {
+                        if let Some(shard) =  Shard::from_string(s) {
+                            let mut temp = min_max_shard.unwrap_or((shard, shard));
+                            temp = (temp.0.min(shard), temp.1.max(shard));
+                            min_max_shard = Some(temp);
+                        }
+                    }
+                }
+            }
+        }
+
+        let mut new = Self {
             index_cache: HashMap::new(),
-            start_date,
+            min_max_shard,
             location,
             scrape_db,
-        })
+        };
+
+        // Pre-warm the newest shard
+        if let Some((_, max)) = new.min_max_shard {
+            new.ensure_shard(max)?;
+        }
+
+        Ok(new)
     }
     
     fn index_for_date(&self, date: StoryDate) -> Shard {
@@ -315,22 +349,29 @@ impl StorageWriter for StoryIndex {
 }
 
 impl Storage for StoryIndex {
-    fn most_recent_story(&self) -> StoryDate {
-        unimplemented!()
+    fn most_recent_story(&self) -> Result<StoryDate, PersistError> {
+        if let Some((_, max)) = self.min_max_shard {
+            let index = self.index_cache.get(&max).expect("Shard was missing");
+            Ok(index.most_recent_story()?)
+        } else {
+            Ok(StoryDate::MIN)
+        }
     }
 
     fn story_count(&self) -> Result<StorageSummary, PersistError> {
         let now = StoryDate::now();
         let mut summary = StorageSummary::default();
-        for shard in (self.index_for_date(self.start_date)..self.index_for_date(now)).rev() {
-            let index = self.index_cache.get(&shard);
-            let mut subtotal = 0;
-            if let Some(index) = index {
-                let meta = index.index.load_metas()?;
-                subtotal += meta.segments.iter().fold(0, |a, b| a + b.num_docs()) as usize;
+        if let Some((min, max)) = self.min_max_shard {
+            for shard in (min..max).rev() {
+                let index = self.index_cache.get(&shard);
+                let mut subtotal = 0;
+                if let Some(index) = index {
+                    let meta = index.index.load_metas()?;
+                    subtotal += meta.segments.iter().fold(0, |a, b| a + b.num_docs()) as usize;
+                }
+                summary.by_shard.push((shard.to_string(), subtotal));
+                summary.total += subtotal;
             }
-            summary.by_shard.push((shard.to_string(), subtotal));
-            summary.total += subtotal;
         }
         Ok(summary)
     }
@@ -345,24 +386,29 @@ impl Storage for StoryIndex {
 
     fn query_frontpage_hot_set(&self, _max_count: usize) -> Result<Vec<Story>, PersistError> {
         unimplemented!()
+        // let mut vec = vec![];
+        // if let Some((min, max)) = self.min_max_shard {
+            
+        // }
     }
 
     fn query_search(&self, search: &str, max_count: usize) -> Result<Vec<Story>, PersistError> {
-        let now = StoryDate::now();
         let vec = vec![];
-        for shard in (self.index_for_date(self.start_date)..self.index_for_date(now)).rev() {
-            let index = self.index_cache.get(&shard);
-            if let Some(index) = index {
-                // println!("Found shard {}", shard);
-                let searcher = index.index.reader()?.searcher();
-                let query = TermQuery::new(
-                    Term::from_field_text(index.title_field, &search),
-                    IndexRecordOption::Basic,
-                );
-                let docs = searcher.search(&query, &TopDocs::with_limit(max_count))?;
-                for doc in docs {
-                    let doc = searcher.doc(doc.1)?;
-                    println!("{}", doc.get_first(index.title_field).and_then(|x| x.as_text()).unwrap_or_default());
+        if let Some((min, max)) = self.min_max_shard {
+            for shard in (min..max).rev() {
+                let index = self.index_cache.get(&shard);
+                if let Some(index) = index {
+                    // println!("Found shard {}", shard);
+                    let searcher = index.index.reader()?.searcher();
+                    let query = TermQuery::new(
+                        Term::from_field_text(index.title_field, &search),
+                        IndexRecordOption::Basic,
+                    );
+                    let docs = searcher.search(&query, &TopDocs::with_limit(max_count))?;
+                    for doc in docs {
+                        let doc = searcher.doc(doc.1)?;
+                        println!("{}", doc.get_first(index.title_field).and_then(|x| x.as_text()).unwrap_or_default());
+                    }
                 }
             }
         }

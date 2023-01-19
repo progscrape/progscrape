@@ -34,6 +34,9 @@ impl ShardRange for Range<Shard> {
 }
 
 impl Shard {
+    pub const MIN: Shard = Shard(u16::MIN);
+    pub const MAX: Shard = Shard(u16::MAX);
+
     pub fn from_year_month(year: u16, month: u8) -> Self {
         assert!(month > 0);
         Shard(year * 12 + month as u16 - 1)
