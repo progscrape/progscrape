@@ -420,6 +420,8 @@ impl StoryIndex {
             tracing::info!("Indexing chunk...");
             let start_chunk = Instant::now();
             let mut count = 0;
+            let mut scrapes_batch = vec![];
+
             for story in stories {
                 count += 1;
                 let shard = Shard::from_date_time(story.date);
@@ -445,7 +447,17 @@ impl StoryIndex {
                     scrape_ids,
                     tags: story.tags.collect()
                 })?;
+
+                let scrapes = story.scrapes.into_values();
+                scrapes_batch.extend(scrapes);
+
+                if scrapes_batch.len() > SCRAPE_PROCESSING_CHUNK_SIZE {
+                    self.scrape_db.insert_scrape_batch(scrapes_batch.iter())?;
+                    scrapes_batch.clear();
+                }
             }
+            self.scrape_db.insert_scrape_batch(scrapes_batch.iter())?;
+            scrapes_batch.clear();
             total += count;
             tracing::info!("Indexed chunk of {} stories in {} second(s)...", count, start_chunk.elapsed().as_secs());
         }
@@ -541,7 +553,7 @@ impl Storage for StoryIndex {
     }
 
     fn query_search(&self, search: &str, max_count: usize) -> Result<Vec<Story>, PersistError> {
-        let vec = vec![];
+        let mut vec = vec![];
         for shard in self.shards().iterate(shard::ShardOrder::NewestFirst) {
             let index = self.get_shard(shard)?;
             let index = index.read().expect("Poisoned");
@@ -552,9 +564,11 @@ impl Storage for StoryIndex {
                 IndexRecordOption::Basic,
             );
             let docs = searcher.search(&query, &TopDocs::with_limit(max_count))?;
-            for doc in docs {
-                let doc = searcher.doc(doc.1)?;
-                println!("{}", doc.get_first(index.title_field).and_then(|x| x.as_text()).unwrap_or_default());
+            for (score, doc_address) in docs {
+                let story = index.lookup_story(&searcher, doc_address)?;
+                let url = StoryUrl::parse(story.url).expect("Failed to parse URL");
+                let date = StoryDate::from_millis(story.date).expect("Failed to re-parse date");
+                vec.push(Story::new_from_parts(story.title, url, date, story.tags));
             }
         }
 
