@@ -16,6 +16,8 @@ use std::ops::{RangeBounds, Deref};
 use std::sync::{RwLock, Arc, RwLockReadGuard};
 use std::time::{Duration, Instant};
 
+use crate::story::StoryCollector;
+
 use super::*;
 use super::scrapestore::ScrapeStore;
 use super::shard::{Shard, ShardRange, ShardOrder};
@@ -531,29 +533,36 @@ impl Storage for StoryIndex {
     }
 
     fn query_frontpage_hot_set(&self, max_count: usize) -> Result<Vec<Story>, PersistError> {
-        let mut vec = vec![];
+        let mut story_collector = StoryCollector::new(max_count);
+        let mut processed = 0;
+        let processing_target = max_count * 2;
         for shard in self.shards().iterate(shard::ShardOrder::NewestFirst) {
-            if vec.len() >= max_count {
+            // Process at least twice as many stories as requested
+            if processed >= processing_target {
                 break;
             }
+
             let index = self.get_shard(shard)?;
             let index = index.read().expect("Poisoned");
             let searcher = index.index.reader()?.searcher();
             let query = AllQuery {};
             let date = index.date_field;
 
-            let top = TopDocs::with_limit(max_count).order_by_fast_field::<i64>(date);
+            let top = TopDocs::with_limit(processing_target - processed).order_by_fast_field::<i64>(date);
             let docs = searcher.search(&query, &top)?;
             tracing::info!("Got {} doc(s) from shard {:?}", docs.len(), shard);
-            for (score, doc_address) in docs {
-                let story = index.lookup_story(&searcher, doc_address)?;
-                let url = StoryUrl::parse(story.url).expect("Failed to parse URL");
-                let date = StoryDate::from_seconds(story.date).expect("Failed to re-parse date");
-                let score = story.score as f32;
-                vec.push(Story::new_from_parts(story.title, url, date, score, story.tags));
+            for (_, doc_address) in docs {
+                processed += 1;
+                let score = searcher.segment_reader(doc_address.segment_ord).fast_fields().f64(index.score_field)?.get_val(doc_address.doc_id) as f32;
+                if story_collector.would_accept(score) {
+                    let story = index.lookup_story(&searcher, doc_address)?;
+                    let url = StoryUrl::parse(story.url).expect("Failed to parse URL");
+                    let date = StoryDate::from_seconds(story.date).expect("Failed to re-parse date");
+                    story_collector.accept(Story::new_from_parts(story.title, url, date, score, story.tags));
+                }
             }
         }
-        Ok(vec)
+        Ok(story_collector.to_sorted())
     }
 
     fn query_search(&self, search: &str, max_count: usize) -> Result<Vec<Story>, PersistError> {

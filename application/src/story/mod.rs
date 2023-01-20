@@ -10,12 +10,14 @@ use std::{
 };
 
 mod id;
+mod collector;
 mod scorer;
 mod tagger;
 
 use self::scorer::StoryScoreType;
 pub use self::{
     id::StoryIdentifier,
+    collector::StoryCollector,
     scorer::{StoryScoreConfig, StoryScorer},
     tagger::{StoryTagger, TaggerConfig},
 };
