@@ -90,6 +90,13 @@ impl StorageWriter for MemIndex {
         }
         Ok(())
     }
+
+    fn insert_stories<I: Iterator<Item = Story>>(
+            &mut self,
+            stories: I
+        ) -> Result<(), PersistError> {
+        unimplemented!()
+    }
 }
 
 impl Storage for MemIndex {

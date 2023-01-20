@@ -34,10 +34,10 @@ pub enum PersistError {
     Unmappable(),
 }
 
-#[derive(Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct StorageSummary {
-    by_shard: Vec<(String, usize)>,
-    total: usize,
+    pub by_shard: Vec<(String, usize)>,
+    pub total: usize,
 }
 
 /// The underlying storage engine.
@@ -66,6 +66,12 @@ pub trait StorageWriter: Storage {
         &mut self,
         eval: &StoryEvaluator,
         scrapes: I,
+    ) -> Result<(), PersistError>;
+
+    /// Insert a set of pre-digested stories. Assumes that the underlying story does not exist.
+    fn insert_stories<I: Iterator<Item = Story>>(
+        &mut self,
+        stories: I
     ) -> Result<(), PersistError>;
 }
 

@@ -57,7 +57,7 @@ impl StoryEvaluator {
     #[cfg(test)]
     pub fn new_for_test() -> Self {
         Self::new(
-            &TaggerConfig::default(),
+            &crate::story::tagger::test::tagger_config(),
             &StoryScoreConfig::default(),
             &ScrapeConfig::default(),
         )
@@ -94,6 +94,18 @@ impl Story {
         story.score = eval.scorer.score(&story, StoryScoreType::Base);
         eval.tagger.tag(&story.title, &mut story.tags);
         story
+    }
+
+    pub fn new_from_parts(title: String, url: StoryUrl, date: StoryDate, tags: Vec<String>) -> Self {
+        Self {
+            id: StoryIdentifier::new(date, url.normalization()),
+            tags: TagSet::from_iter(tags.into_iter()),
+            title: title,
+            url: url,
+            date: date,
+            score: 0.0,
+            scrapes: HashMap::new()
+        }
     }
 
     pub fn merge(&mut self, eval: &StoryEvaluator, scrape: TypedScrape) {
@@ -189,6 +201,12 @@ impl TagSet {
     pub fn new() -> Self {
         Self {
             set: HashSet::new(),
+        }
+    }
+
+    pub fn from_iter<S: AsRef<str>>(iter: impl Iterator<Item = S>) -> Self {
+        Self {
+            set: HashSet::from_iter(iter.map(|s| s.as_ref().to_owned()))
         }
     }
 

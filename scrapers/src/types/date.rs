@@ -1,4 +1,4 @@
-use chrono::{DateTime, Datelike, Duration, Months, NaiveDateTime, TimeZone, Utc};
+use chrono::{DateTime, Datelike, Duration, Months, NaiveDateTime, TimeZone, Utc, NaiveDate, NaiveTime};
 use serde::{Deserialize, Serialize};
 use std::{fmt::Display, ops::Sub, time::SystemTime};
 
@@ -15,6 +15,15 @@ impl StoryDate {
 
     pub const fn new(internal_date: DateTime<Utc>) -> Self {
         Self { internal_date }
+    }
+    pub fn year_month_day(year: i32, month: u32, day: u32) -> Option<Self> {
+        match (NaiveDate::from_ymd_opt(year, month, day), NaiveTime::from_hms_opt(0, 0, 0)) {
+            (Some(d), Some(t)) => {
+                let dt = d.and_time(t);
+                Some(Self::new(Utc.from_utc_datetime(&dt)))
+            }
+            _ => None,
+        }
     }
     pub fn now() -> Self {
         Self::new(DateTime::<Utc>::from(SystemTime::now()))

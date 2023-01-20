@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use clap::{Parser, Subcommand};
 use config::Config;
-use progscrape_application::{StoryIndex, PersistLocation, StorageWriter, StoryEvaluator};
+use progscrape_application::{StoryIndex, PersistLocation, StorageWriter, StoryEvaluator, MemIndex, Storage};
 use progscrape_scrapers::import_legacy;
 use tracing_subscriber::filter::LevelFilter;
 use tracing_subscriber::EnvFilter;
@@ -80,13 +80,30 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             web::start_server(&root_path, index).await?;
         },
         Command::Initialize { root, persist_path } => {
+            if persist_path.exists() {
+                tracing::error!("Path {} must not exist", persist_path.to_string_lossy());
+                return Ok(());
+            };
+            std::fs::create_dir_all(&persist_path)?;
             let resource_path = root.unwrap_or(".".into()).canonicalize()?.join("resource");
             let reader = BufReader::new(File::open(resource_path.join("config/config.json"))?);
             let config: Config = serde_json::from_reader(reader)?;
             let eval = StoryEvaluator::new(&config.tagger, &config.score, &config.scrape);
-        
+
+            let scrapes = progscrape_scrapers::import_legacy(Path::new("."))?;
+            let mut memindex = MemIndex::default();
+
+            // First, build an in-memory index quickly        
+            memindex.insert_scrapes(&eval, scrapes.into_iter())?;
+
             let mut index = StoryIndex::new(PersistLocation::Path(persist_path))?;
-            index.insert_scrapes(&eval, import_legacy(Path::new("."))?.into_iter())?;
+            index.insert_stories(memindex.get_all_stories())?;
+
+            let count = index.story_count()?;
+            tracing::info!("Shard   | Count");
+            for (shard, count) in &count.by_shard {
+                tracing::info!("{} | {}", shard, count);
+            }
         }
     };
     Ok(())

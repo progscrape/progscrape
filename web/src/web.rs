@@ -193,7 +193,7 @@ async fn root(
     let stories = if let Some(search) = query.get("search") {
         render_stories(index.storage.query_search(search, 30)?.iter())
     } else {
-        render_stories(hot_set(now, &index, &resources.story_evaluator())?[0..30].iter())
+        render_stories(hot_set(now, &index, &resources.story_evaluator())?.iter().take(30))
     };
     let top_tags = vec![
         "github.com",

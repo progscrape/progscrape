@@ -253,7 +253,7 @@ impl StoryTagger {
 }
 
 #[cfg(test)]
-mod test {
+pub(crate) mod test {
     use rstest::*;
     use serde_json::json;
 
@@ -261,8 +261,9 @@ mod test {
 
     use super::{StoryTagger, TaggerConfig};
 
+    /// Create a tagger configuration with a wide variety of cases. Note that this is used in `StoryEvaulator`'s test mode.
     #[fixture]
-    fn tagger_config() -> TaggerConfig {
+    pub(crate) fn tagger_config() -> TaggerConfig {
         serde_json::from_value(json!({
             "tags": {
                 "testing": {

@@ -1,23 +1,24 @@
 use itertools::Itertools;
-use tantivy::collector::TopDocs;
 
+use tantivy::collector::TopDocs;
 use tantivy::directory::{RamDirectory, MmapDirectory};
-use tantivy::query::{BooleanQuery, Occur, Query, RangeQuery, TermQuery};
-use tantivy::{doc, Index, DateTime};
+use tantivy::query::{BooleanQuery, Occur, Query, RangeQuery, TermQuery, AllQuery};
+use tantivy::{doc, Index, DateTime, SegmentReader};
 use tantivy::{
     schema::*, Directory, DocAddress, IndexSettings, IndexSortByField, IndexWriter, Searcher,
 };
 
-use progscrape_scrapers::{StoryDate, TypedScrape};
+use progscrape_scrapers::{StoryDate, TypedScrape, ScrapeId, StoryUrl};
 
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
-use std::ops::RangeBounds;
-use std::time::Duration;
+use std::ops::{RangeBounds, Deref};
+use std::sync::{RwLock, Arc, RwLockReadGuard};
+use std::time::{Duration, Instant};
 
 use super::*;
 use super::scrapestore::ScrapeStore;
-use super::shard::{Shard, ShardRange};
+use super::shard::{Shard, ShardRange, ShardOrder};
 
 const MEMORY_ARENA_SIZE: usize = 50_000_000;
 const STORY_INDEXING_CHUNK_SIZE: usize = 10000;
@@ -29,9 +30,11 @@ struct StoryIndexShard {
     url_field: Field,
     url_norm_field: Field,
     url_norm_hash_field: Field,
+    score_field: Field,
     title_field: Field,
     date_field: Field,
     scrape_field: Field,
+    tags_field: Field,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
@@ -53,17 +56,33 @@ struct StoryInsert<'a> {
     url_norm_hash: i64,
     title: &'a str,
     date: i64,
+    score: f64,
+    tags: Vec<String>,
+    scrape_ids: Vec<String>,
 }
 
+#[derive(Debug)]
+struct StoryFetch {
+    url: String,
+    title: String,
+    date: i64,
+    score: f64,
+    tags: Vec<String>,
+    scrape_ids: Vec<String>,
+}
+
+/// The `StoryIndexShard` manages a single shard of the index.
 impl StoryIndexShard {
     pub fn initialize(location: PersistLocation, shard: Shard) -> Result<Self, PersistError> {
         let mut schema_builder = Schema::builder();
-        let date_field = schema_builder.add_i64_field("date", FAST | INDEXED);
+        let date_field = schema_builder.add_i64_field("date", FAST | STORED);
         let url_field = schema_builder.add_text_field("url", STRING | STORED);
         let url_norm_field = schema_builder.add_text_field("url_norm", FAST | STRING);
         let url_norm_hash_field = schema_builder.add_i64_field("url_norm_hash", FAST | INDEXED);
         let title_field = schema_builder.add_text_field("title", TEXT | STORED);
-        let scrape_field = schema_builder.add_json_field("scrapes", TEXT | STORED);
+        let scrape_field = schema_builder.add_text_field("scrapes", TEXT | STORED);
+        let score_field = schema_builder.add_f64_field("score", FAST | STORED);
+        let tags_field = schema_builder.add_text_field("tags", TEXT | STORED);
         let schema = schema_builder.build();
         let settings = IndexSettings {
             sort_by_field: Some(IndexSortByField {
@@ -75,32 +94,41 @@ impl StoryIndexShard {
         let directory: Box<dyn Directory> = match location {
             PersistLocation::Memory => Box::new(RamDirectory::create()),
             PersistLocation::Path(path) => {
-                tracing::info!("Opening index at {}", path.to_string_lossy());
                 let path = path.join(format!("{}/index", shard.to_string()));
+                tracing::info!("Opening index at {}", path.to_string_lossy());
                 std::fs::create_dir_all(&path)?;
                 Box::new(MmapDirectory::open(path)?)
             }
         };
-        let index = Index::create(directory, schema, settings)?;
+        let index = Index::builder().settings(settings).schema(schema).open_or_create(directory)?;
+        let meta = index.load_metas()?;
+        tracing::info!("Loaded index with {} doc(s)", meta.segments.iter().fold(0, |a, b| a + b.num_docs()));
         Ok(Self {
             index,
             url_field,
             url_norm_field,
             url_norm_hash_field,
+            score_field,
             title_field,
             date_field,
             scrape_field,
+            tags_field,
         })
     }
 
     fn most_recent_story(&self) -> Result<StoryDate, PersistError> {
         let searcher = self.index.reader()?.searcher();
-        let mut recent: DateTime = DateTime::from_timestamp_secs(0);
+        let mut recent = 0;
         for (segment_ord, segment_reader) in searcher.segment_readers().iter().enumerate() {
-            let date = segment_reader.fast_fields().date(self.date_field)?;
+            let date = segment_reader.fast_fields().i64(self.date_field)?;
             recent = recent.max(date.max_value());
         }
-        Ok(StoryDate::from_millis(recent.into_timestamp_millis()).unwrap_or_default())
+        Ok(StoryDate::from_millis(recent).unwrap_or_default())
+    }
+
+    fn total_docs(&self) -> Result<usize, PersistError> {
+        let meta = self.index.load_metas()?;
+        Ok(meta.segments.iter().fold(0, |a, b| a + b.num_docs()) as usize)
     }
 
     fn insert_story_document(
@@ -108,13 +136,21 @@ impl StoryIndexShard {
         writer: &mut IndexWriter,
         doc: StoryInsert,
     ) -> Result<(), PersistError> {
-        writer.add_document(doc! {
+        let mut new_doc = doc! {
             self.url_field => doc.url,
             self.url_norm_field => doc.url_norm,
             self.url_norm_hash_field => doc.url_norm_hash,
             self.title_field => doc.title,
             self.date_field => doc.date,
-        })?;
+            self.score_field => doc.score,
+        };
+        for id in doc.scrape_ids {
+            new_doc.add_text(self.scrape_field, id);
+        }
+        for tag in doc.tags {
+            new_doc.add_text(self.tags_field, tag);
+        }
+        writer.add_document(new_doc)?;
         Ok(())
     }
 
@@ -141,6 +177,51 @@ impl StoryIndexShard {
             // Extremely unlikely
             Err(PersistError::Unmappable())
         }
+    }
+
+    fn text_value(&self, doc: &Document, field: Field) -> String {
+        if let Some(val) = doc.get_first(field) {
+            val.as_text().unwrap_or_default().to_owned()
+        } else {
+            "".to_owned()
+        }
+    }
+
+    fn text_values(&self, doc: &Document, field: Field) -> Vec<String> {
+        let mut v = vec![];
+        for value in doc.get_all(field) {
+            if let Some(s) = value.as_text() {
+                v.push(s.into());
+            }
+        }
+        v
+    }
+
+    fn i64_value(&self, doc: &Document, field: Field) -> i64 {
+        if let Some(val) = doc.get_first(field) {
+            val.as_i64().unwrap_or_default().to_owned()
+        } else {
+            0
+        }
+    }
+
+    fn f64_value(&self, doc: &Document, field: Field) -> f64 {
+        if let Some(val) = doc.get_first(field) {
+            val.as_f64().unwrap_or_default().to_owned()
+        } else {
+            0.0
+        }
+    }
+
+    fn lookup_story(&self, searcher: &Searcher, doc_address: DocAddress) -> Result<StoryFetch, PersistError> {
+        let doc = searcher.doc(doc_address)?;
+        let url = self.text_value(&doc, self.url_field);
+        let title = self.text_value(&doc, self.title_field);
+        let date = self.i64_value(&doc, self.date_field);
+        let score = self.f64_value(&doc, self.score_field);
+        let scrape_ids = self.text_values(&doc, self.scrape_field);
+        let tags = self.text_values(&doc, self.tags_field);
+        Ok(StoryFetch { url, title, date, score, scrape_ids, tags })
     }
 
     /// Given a set of `StoryLookupId`s, computes the documents that match them.
@@ -183,130 +264,129 @@ impl StoryIndexShard {
     }
 }
 
+struct IndexCache {
+    cache: HashMap<Shard, Arc<RwLock<StoryIndexShard>>>,
+    range: ShardRange,
+}
+
 pub struct StoryIndex {
-    index_cache: HashMap<Shard, StoryIndexShard>,
+    index_cache: RwLock<IndexCache>,
     location: PersistLocation,
-    min_max_shard: Option<(Shard, Shard)>,
     scrape_db: ScrapeStore,
 }
 
 impl StoryIndex {
     pub fn new(location: PersistLocation) -> Result<Self, PersistError> {
         // TODO: This start date needs to be dynamic
-        let start_date = StoryDate::parse_from_rfc3339("2010-01-01T00:00:00-00:00").expect("Failed to part start date");
         let scrape_db = ScrapeStore::new(location.clone())?;
         tracing::info!("Initialized StoryIndex at {:?}", location);
 
         // Determine the min/max shard, if any
-        let mut min_max_shard = None;
+        let mut range = ShardRange::default();
         if let PersistLocation::Path(path) = &location {
             for r in std::fs::read_dir(path)? {
                 if let Ok(d) = r {
                     if let Some(s) = d.file_name().to_str() {
-                        if let Some(shard) =  Shard::from_string(s) {
-                            let mut temp = min_max_shard.unwrap_or((shard, shard));
-                            temp = (temp.0.min(shard), temp.1.max(shard));
-                            min_max_shard = Some(temp);
+                        if let Some(shard) = Shard::from_string(s) {
+                            range.include(shard);
                         }
                     }
                 }
             }
         }
 
-        let mut new = Self {
-            index_cache: HashMap::new(),
-            min_max_shard,
+        tracing::info!("Found shards {:?}", range);
+
+        let new = Self {
+            index_cache: RwLock::new(IndexCache { cache: HashMap::new(), range }),
             location,
             scrape_db,
         };
 
-        // Pre-warm the newest shard
-        if let Some((_, max)) = new.min_max_shard {
-            new.ensure_shard(max)?;
-        }
-
         Ok(new)
     }
     
-    fn index_for_date(&self, date: StoryDate) -> Shard {
-        Shard::from_date_time(date)
+    pub fn shards(&self) -> ShardRange {
+        self.index_cache.read().expect("Poisoned").range
     }
 
-    fn ensure_shard(&mut self, shard: Shard) -> Result<(), PersistError> {
-        if let std::collections::hash_map::Entry::Vacant(e) = self.index_cache.entry(shard) {
+    fn get_shard_for_date(&self, date: StoryDate) -> Result<Arc<RwLock<StoryIndexShard>>, PersistError> {
+        self.get_shard(Shard::from_date_time(date))
+    }
+
+    fn get_shard(&self, shard: Shard) -> Result<Arc<RwLock<StoryIndexShard>>, PersistError> {
+        let mut lock = self.index_cache.write().expect("Poisoned");
+        if let Some(shard) = lock.cache.get(&shard) {
+            Ok(shard.clone())
+        } else {
             tracing::info!("Creating shard {}", shard.to_string());
             let new_shard = StoryIndexShard::initialize(self.location.clone(), shard)?;
-            e.insert(new_shard);
+            lock.range.include(shard);
+            Ok(lock.cache.entry(shard).or_insert(Arc::new(RwLock::new(new_shard))).clone())
         }
-        Ok(())
     }
 
-    fn insert_scrape_batch<'a, I: Iterator<Item = Story> + 'a>(
+    fn insert_scrape_batch<'a, I: Iterator<Item = TypedScrape> + 'a>(
         &mut self,
+        eval: &StoryEvaluator,
         scrapes: I,
     ) -> Result<(), PersistError> {
-        // Split stories by index shard
-        let mut sharded = HashMap::<Shard, Vec<Story>>::new();
-        for story in scrapes {
-            sharded
-                .entry(self.index_for_date(story.date))
-                .or_default()
-                .push(story);
+        let one_month = Duration::from_secs(60 * 60 * 24 * 30).as_secs() as i64;
+        let mut writers = HashMap::new();
+
+        for scrape in scrapes {
+            let shard = Shard::from_date_time(scrape.date);
+            let shard_index = self.get_shard_for_date(scrape.date)?;
+            let mut shard_index = shard_index.write().expect("Poisoned");
+            let writer = if let Some(writer) = writers.get_mut(&shard) {
+                writer
+            } else {
+                let writer = shard_index.index.writer(MEMORY_ARENA_SIZE)?;
+                writers.entry(shard).or_insert(writer)
+            };
+
+            let searcher = shard_index.index.reader()?.searcher();
+            let lookup = StoryLookupId {
+                url_norm_hash: scrape.url.normalization().hash(),
+                date: scrape.date.timestamp(),
+            };
+            let lookup = HashSet::from_iter([lookup]);
+            let result = shard_index.lookup_stories(&searcher, lookup, (-one_month)..one_month)?;
+            let lookup = result.into_iter().next().expect("TODO");
+            match lookup {
+                StoryLookup::Found(id, doc) => {
+                    let story = shard_index.lookup_story(&searcher, doc)?;
+                    println!("{:?}", story);
+                },
+                StoryLookup::Unfound(id) => {
+                    let story = Story::new(eval, scrape);
+                    let mut scrape_ids = vec![];
+                    for scrape in &story.scrapes {
+                        scrape_ids.push(format!("{}:{}", Shard::from_date_time(scrape.1.date).to_string(), scrape.0.to_string()));
+                    }
+                    shard_index.insert_story_document(writer, StoryInsert {
+                        url: story.url.raw(),
+                        url_norm: story.url.normalization().string(),
+                        url_norm_hash: story.url.normalization().hash(),
+                        score: story.score as f64,
+                        date: story.date.timestamp(),
+                        title: &story.title,
+                        scrape_ids,
+                        tags: story.tags.collect()
+                    })?;
+                }
+            };
         }
 
-        for (shard, stories) in sharded {
-            self.ensure_shard(shard)?;
-            let index = self.index_cache.get_mut(&shard).expect("Shard was missing");
-            let mut writer = index.index.writer(MEMORY_ARENA_SIZE)?;
-            let searcher = index.index.reader()?.searcher();
-            let iter = stories.into_iter().enumerate().map(|(_i, story)| {
-                (
-                    StoryLookupId {
-                        url_norm_hash: story.url.normalization().hash(),
-                        date: story.date.timestamp(),
-                    },
-                    story,
-                )
-            });
-            let stories = HashMap::<_, _>::from_iter(iter);
-            let story_ids = HashSet::from_iter(stories.keys().copied());
-            let one_month = Duration::from_secs(60 * 60 * 24 * 30).as_secs() as i64;
-            let result = index.lookup_stories(&searcher, story_ids, (-one_month)..one_month)?;
-            for result in result {
-                match result {
-                    StoryLookup::Found(a, b) => {
-                        let _story = stories.get(&a).expect("Didn't find a story we should have");
-                        let _url = searcher
-                            .doc(b)?
-                            .get_first(index.url_field)
-                            .unwrap()
-                            .as_text()
-                            .unwrap_or_default()
-                            .to_owned();
-                        let _title = searcher
-                            .doc(b)?
-                            .get_first(index.title_field)
-                            .unwrap()
-                            .as_text()
-                            .unwrap_or_default()
-                            .to_owned();
-                    }
-                    StoryLookup::Unfound(a) => {
-                        let story = stories.get(&a).expect("Didn't find a story we should have");
-                        index.insert_story_document(
-                            &mut writer,
-                            StoryInsert {
-                                url: story.url.raw(),
-                                url_norm: story.url.normalization().string(),
-                                url_norm_hash: story.url.normalization().hash(),
-                                title: &story.title,
-                                date: story.date.timestamp(),
-                            },
-                        )?;
-                    }
-                }
-            }
-            writer.commit()?;
+        let writer_count = writers.len();
+        tracing::info!("Preparing to commit {} writer(s)", writer_count);
+        let mut v = vec![];
+        for (_, writer) in &mut writers {
+            v.push(writer.prepare_commit()?);
+        }
+        tracing::info!("Committing {} writer(s)", writer_count);
+        for writer in v {
+           writer.commit()?;
         }
 
         Ok(())
@@ -318,22 +398,69 @@ impl StoryIndex {
         eval: &StoryEvaluator,
         scrapes: I,
     ) -> Result<(), PersistError> {
-        let mut memindex = memindex::MemIndex::default();
+        let v = scrapes.collect_vec();
 
-        // Batch scrape storage/pre-collection
-        tracing::info!("Pre-processing scrapes...");
-        for chunk in &scrapes.chunks(SCRAPE_PROCESSING_CHUNK_SIZE) {
-            let v = chunk.collect_vec();
-            self.scrape_db.insert_scrape_batch(v.iter())?;
-            memindex.insert_scrapes(eval, v.into_iter())?;
+        tracing::info!("Storing raw scrapes...");
+        self.scrape_db.insert_scrape_batch(v.iter())?;
+
+        tracing::info!("Indexing scrapes...");
+        self.insert_scrape_batch(eval, v.into_iter())?;
+
+        Ok(())
+    }
+
+    fn insert_stories<I: Iterator<Item = Story>>(
+        &mut self,
+        stories: I
+    ) -> Result<(), PersistError> {
+        let mut writers = HashMap::new();
+        let start = Instant::now();
+        let mut total = 0;
+        for stories in &stories.chunks(STORY_INDEXING_CHUNK_SIZE) {
+            tracing::info!("Indexing chunk...");
+            let start_chunk = Instant::now();
+            let mut count = 0;
+            for story in stories {
+                count += 1;
+                let shard = Shard::from_date_time(story.date);
+                let shard_index = self.get_shard_for_date(story.date)?;
+                let mut shard_index = shard_index.write().expect("Poisoned");
+                let writer = if let Some(writer) = writers.get_mut(&shard) {
+                    writer
+                } else {
+                    let writer = shard_index.index.writer(MEMORY_ARENA_SIZE)?;
+                    writers.entry(shard).or_insert(writer)
+                };
+                let mut scrape_ids = vec![];
+                for scrape in &story.scrapes {
+                    scrape_ids.push(format!("{}:{}", Shard::from_date_time(scrape.1.date).to_string(), scrape.0.to_string()));
+                }
+                shard_index.insert_story_document(writer, StoryInsert {
+                    url: story.url.raw(),
+                    url_norm: story.url.normalization().string(),
+                    url_norm_hash: story.url.normalization().hash(),
+                    score: story.score as f64,
+                    date: story.date.timestamp(),
+                    title: &story.title,
+                    scrape_ids,
+                    tags: story.tags.collect()
+                })?;
+            }
+            total += count;
+            tracing::info!("Indexed chunk of {} stories in {} second(s)...", count, start_chunk.elapsed().as_secs());
         }
+        tracing::info!("Indexed total of {} stories in {} second(s)...", total, start.elapsed().as_secs());
 
-        // Insert by story chunks
-        for chunk in &memindex.get_all_stories().chunks(STORY_INDEXING_CHUNK_SIZE) {
-            tracing::info!("Processing story chunk...");
-            self.insert_scrape_batch(chunk)?;
+        let writer_count = writers.len();
+        tracing::info!("Commiting {} writer(s)", writer_count);
+        let commit_start = Instant::now();
+        for (_, writer) in &mut writers {
+            writer.commit()?;
         }
-
+        for (_, writer) in writers {
+            writer.wait_merging_threads()?;
+        }
+        tracing::info!("Committed {} writer(s) in {} second(s)...", writer_count, commit_start.elapsed().as_secs());
         Ok(())
     }
 }
@@ -346,12 +473,20 @@ impl StorageWriter for StoryIndex {
     ) -> Result<(), PersistError> {
         self.insert_scrapes(eval, scrapes)
     }
+
+    fn insert_stories<I: Iterator<Item = Story>>(
+            &mut self,
+            stories: I
+        ) -> Result<(), PersistError> {
+        self.insert_stories(stories)
+    }
 }
 
 impl Storage for StoryIndex {
     fn most_recent_story(&self) -> Result<StoryDate, PersistError> {
-        if let Some((_, max)) = self.min_max_shard {
-            let index = self.index_cache.get(&max).expect("Shard was missing");
+        if let Some(max) = self.shards().iterate(ShardOrder::NewestFirst).next() {
+            let shard = self.get_shard(max)?;
+            let index = shard.read().expect("Poisoned");
             Ok(index.most_recent_story()?)
         } else {
             Ok(StoryDate::MIN)
@@ -359,19 +494,12 @@ impl Storage for StoryIndex {
     }
 
     fn story_count(&self) -> Result<StorageSummary, PersistError> {
-        let now = StoryDate::now();
         let mut summary = StorageSummary::default();
-        if let Some((min, max)) = self.min_max_shard {
-            for shard in (min..max).rev() {
-                let index = self.index_cache.get(&shard);
-                let mut subtotal = 0;
-                if let Some(index) = index {
-                    let meta = index.index.load_metas()?;
-                    subtotal += meta.segments.iter().fold(0, |a, b| a + b.num_docs()) as usize;
-                }
-                summary.by_shard.push((shard.to_string(), subtotal));
-                summary.total += subtotal;
-            }
+        for shard in self.shards().iterate(shard::ShardOrder::OldestFirst) {
+            let index = self.get_shard(shard)?;
+            let subtotal = index.read().expect("Poisoned").total_docs()?;
+            summary.by_shard.push((shard.to_string(), subtotal));
+            summary.total += subtotal;
         }
         Ok(summary)
     }
@@ -384,32 +512,49 @@ impl Storage for StoryIndex {
         unimplemented!()
     }
 
-    fn query_frontpage_hot_set(&self, _max_count: usize) -> Result<Vec<Story>, PersistError> {
-        unimplemented!()
-        // let mut vec = vec![];
-        // if let Some((min, max)) = self.min_max_shard {
-            
-        // }
+    fn query_frontpage_hot_set(&self, max_count: usize) -> Result<Vec<Story>, PersistError> {
+        let mut vec = vec![];
+        for shard in self.shards().iterate(shard::ShardOrder::NewestFirst) {
+            if vec.len() > max_count {
+                break;
+            }
+            let index = self.get_shard(shard)?;
+            let index = index.read().expect("Poisoned");
+            let searcher = index.index.reader()?.searcher();
+            let query = AllQuery {};
+            let date = index.date_field;
+            let top = TopDocs::with_limit(max_count).tweak_score(move |segment_reader: &SegmentReader| {
+                let date = segment_reader.fast_fields().i64(date).expect("Failed to get date field");
+                move |doc, original_score| {
+                    original_score + date.get_val(doc) as f32
+                }
+            });
+            let docs = searcher.search(&query, &top)?;
+            for (score, doc_address) in docs {
+                let story = index.lookup_story(&searcher, doc_address)?;
+                let url = StoryUrl::parse(story.url).expect("Failed to parse URL");
+                let date = StoryDate::from_millis(story.date).expect("Failed to re-parse date");
+                vec.push(Story::new_from_parts(story.title, url, date, story.tags));
+            }
+        }
+        Ok(vec)
     }
 
     fn query_search(&self, search: &str, max_count: usize) -> Result<Vec<Story>, PersistError> {
         let vec = vec![];
-        if let Some((min, max)) = self.min_max_shard {
-            for shard in (min..max).rev() {
-                let index = self.index_cache.get(&shard);
-                if let Some(index) = index {
-                    // println!("Found shard {}", shard);
-                    let searcher = index.index.reader()?.searcher();
-                    let query = TermQuery::new(
-                        Term::from_field_text(index.title_field, &search),
-                        IndexRecordOption::Basic,
-                    );
-                    let docs = searcher.search(&query, &TopDocs::with_limit(max_count))?;
-                    for doc in docs {
-                        let doc = searcher.doc(doc.1)?;
-                        println!("{}", doc.get_first(index.title_field).and_then(|x| x.as_text()).unwrap_or_default());
-                    }
-                }
+        for shard in self.shards().iterate(shard::ShardOrder::NewestFirst) {
+            let index = self.get_shard(shard)?;
+            let index = index.read().expect("Poisoned");
+            // println!("Found shard {}", shard);
+            let searcher = index.index.reader()?.searcher();
+            let query = TermQuery::new(
+                Term::from_field_text(index.title_field, &search),
+                IndexRecordOption::Basic,
+            );
+            let docs = searcher.search(&query, &TopDocs::with_limit(max_count))?;
+            for doc in docs {
+                let doc = searcher.doc(doc.1)?;
+                println!("{}", doc.get_first(index.title_field).and_then(|x| x.as_text()).unwrap_or_default());
             }
         }
 
@@ -420,6 +565,8 @@ impl Storage for StoryIndex {
 #[cfg(test)]
 mod test {
     use std::path::Path;
+
+    use progscrape_scrapers::{hacker_news, StoryUrl, reddit};
 
     use super::*;
 
@@ -478,19 +625,77 @@ mod test {
     }
 
     #[test]
-    fn test_index_lots() -> Result<(), Box<dyn std::error::Error>> {
-        let stories =
-            progscrape_scrapers::import_legacy(Path::new(".."))?;
-        let start_date = stories
-            .iter()
-            .fold(StoryDate::MAX, |a, b| std::cmp::min(a, b.date));
-        let mut index = StoryIndex::new(PersistLocation::Path("/tmp/indextest".into()))?;
+    fn test_index_basic() -> Result<(), Box<dyn std::error::Error>> {
+        tracing_subscriber::fmt().with_max_level(tracing_subscriber::filter::LevelFilter::INFO).init();
+
+        let mut index = StoryIndex::new(PersistLocation::Memory)?;
         let eval = StoryEvaluator::new_for_test();
-        index
-            .insert_scrapes(&eval, stories.into_iter())?;
+        let url = StoryUrl::parse("http://example.com").expect("URL");
+        let date = StoryDate::year_month_day(2020, 1, 1).expect("Date failed");
+        index.insert_scrapes(&eval, [
+            hacker_news::HackerNewsStory::new_with_defaults("story1".into(), None, date, "I love Rust".into(), url.clone()).into()
+        ].into_iter())?;
+
+        let counts = index.story_count()?;
+        assert_eq!(counts.total, 1);
+
+        index.insert_scrapes(&eval, [
+            reddit::RedditStory::new_with_defaults("story1".into(), Some("rust".into()), date, "I love Rust".into(), url.clone()).into()
+        ].into_iter())?;
+
+        let counts = index.story_count()?;
+        assert_eq!(counts.total, 1);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_index_stories() -> Result<(), Box<dyn std::error::Error>> {
+        tracing_subscriber::fmt().with_max_level(tracing_subscriber::filter::LevelFilter::INFO).init();
+
+        let mut memindex = MemIndex::default();
+        let eval = StoryEvaluator::new_for_test();
+        let url = StoryUrl::parse("http://example.com").expect("URL");
+        let date = StoryDate::year_month_day(2020, 1, 1).expect("Date failed");
+        memindex.insert_scrapes(&eval, [
+            hacker_news::HackerNewsStory::new_with_defaults("story1".into(), None, date, "I love Rust".into(), url.clone()).into()
+        ].into_iter())?;
+        memindex.insert_scrapes(&eval, [
+            reddit::RedditStory::new_with_defaults("story1".into(), Some("rust".into()), date, "I love Rust".into(), url.clone()).into()
+        ].into_iter())?;
+
+        let mut index = StoryIndex::new(PersistLocation::Memory)?;
+        index.insert_stories(memindex.get_all_stories())?;
+
+        let counts = index.story_count()?;
+        assert_eq!(counts.total, 1);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_index_lots() -> Result<(), Box<dyn std::error::Error>> {
+        tracing_subscriber::fmt().with_max_level(tracing_subscriber::filter::LevelFilter::INFO).init();
+
+        let path = "/tmp/indextest";
+        std::fs::create_dir_all(path)?;
+        let mut index = StoryIndex::new(PersistLocation::Path(path.into()))?;
+
+        let scrapes =
+            progscrape_scrapers::import_legacy(Path::new(".."))?;
+        let eval = StoryEvaluator::new_for_test();
+        let mut memindex = MemIndex::default();
+
+        // First, build an in-memory index quickly        
+        memindex.insert_scrapes(&eval, scrapes.into_iter())?;
+
+        index.insert_stories(memindex.get_all_stories())?;
+
+        // Query the new index
         for story in index.query_search("rust", 10)? {
             println!("{:?}", story);
         }
+
         Ok(())
     }
 }
