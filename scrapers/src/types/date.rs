@@ -31,6 +31,9 @@ impl StoryDate {
     pub fn from_millis(millis: i64) -> Option<Self> {
         Utc.timestamp_millis_opt(millis).earliest().map(Self::new)
     }
+    pub fn from_seconds(seconds: i64) -> Option<Self> {
+        Self::from_millis(seconds * 1_000)
+    }
     pub fn from_string(date: &str, s: &str) -> Option<Self> {
         let date = NaiveDateTime::parse_from_str(date, s).ok();
         date.map(|x| Self::new(Utc.from_utc_datetime(&x)))
@@ -126,12 +129,22 @@ impl StoryDuration {
         }
     }
 
+    pub fn minutes(minutes: i64) -> Self {
+        Self {
+            duration: chrono::Duration::minutes(minutes),
+        }
+    }
+
     pub fn num_milliseconds(&self) -> i64 {
         self.duration.num_milliseconds()
     }
 
     pub fn num_hours(&self) -> i64 {
         self.duration.num_hours()
+    }
+
+    pub fn num_days(&self) -> i64 {
+        self.duration.num_days()
     }
 }
 
@@ -140,5 +153,21 @@ impl Sub for StoryDuration {
 
     fn sub(self, rhs: Self) -> Self::Output {
         self.duration - rhs.duration
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::StoryDate;
+
+    #[test]
+    fn test_serialize() {
+        let date = StoryDate::year_month_day(2000, 1, 1).expect("Date is valid");
+        let json = serde_json::to_string(&date).expect("Serialize");
+        let date2 = serde_json::from_str::<StoryDate>(&json).expect("Deserialize");
+        assert_eq!(date, date2);
+
+        let date_from_seconds = str::parse::<i64>(&json).expect("Parse");
+        assert_eq!(date, StoryDate::from_seconds(date_from_seconds).expect("From seconds"));
     }
 }

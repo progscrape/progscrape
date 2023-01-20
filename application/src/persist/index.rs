@@ -91,18 +91,24 @@ impl StoryIndexShard {
             }),
             ..Default::default()
         };
-        let directory: Box<dyn Directory> = match location {
-            PersistLocation::Memory => Box::new(RamDirectory::create()),
+        let (directory, exists): (Box<dyn Directory>, bool) = match location {
+            PersistLocation::Memory => (Box::new(RamDirectory::create()), false),
             PersistLocation::Path(path) => {
                 let path = path.join(format!("{}/index", shard.to_string()));
                 tracing::info!("Opening index at {}", path.to_string_lossy());
                 std::fs::create_dir_all(&path)?;
-                Box::new(MmapDirectory::open(path)?)
+                let dir = MmapDirectory::open(path)?;
+                let exists = Index::exists(&dir).unwrap_or(false);
+                (Box::new(dir), exists)
             }
         };
         let index = Index::builder().settings(settings).schema(schema).open_or_create(directory)?;
-        let meta = index.load_metas()?;
-        tracing::info!("Loaded index with {} doc(s)", meta.segments.iter().fold(0, |a, b| a + b.num_docs()));
+        if exists {
+            let meta = index.load_metas()?;
+            tracing::info!("Loaded existing index with {} doc(s)", meta.segments.iter().fold(0, |a, b| a + b.num_docs()));
+        } else {
+            tracing::info!("Created and initialized new index");
+        }
         Ok(Self {
             index,
             url_field,
@@ -123,7 +129,7 @@ impl StoryIndexShard {
             let date = segment_reader.fast_fields().i64(self.date_field)?;
             recent = recent.max(date.max_value());
         }
-        Ok(StoryDate::from_millis(recent).unwrap_or_default())
+        Ok(StoryDate::from_seconds(recent).unwrap_or_default())
     }
 
     fn total_docs(&self) -> Result<usize, PersistError> {
@@ -527,7 +533,7 @@ impl Storage for StoryIndex {
     fn query_frontpage_hot_set(&self, max_count: usize) -> Result<Vec<Story>, PersistError> {
         let mut vec = vec![];
         for shard in self.shards().iterate(shard::ShardOrder::NewestFirst) {
-            if vec.len() > max_count {
+            if vec.len() >= max_count {
                 break;
             }
             let index = self.get_shard(shard)?;
@@ -535,18 +541,16 @@ impl Storage for StoryIndex {
             let searcher = index.index.reader()?.searcher();
             let query = AllQuery {};
             let date = index.date_field;
-            let top = TopDocs::with_limit(max_count).tweak_score(move |segment_reader: &SegmentReader| {
-                let date = segment_reader.fast_fields().i64(date).expect("Failed to get date field");
-                move |doc, original_score| {
-                    original_score + date.get_val(doc) as f32
-                }
-            });
+
+            let top = TopDocs::with_limit(max_count).order_by_fast_field::<i64>(date);
             let docs = searcher.search(&query, &top)?;
+            tracing::info!("Got {} doc(s) from shard {:?}", docs.len(), shard);
             for (score, doc_address) in docs {
                 let story = index.lookup_story(&searcher, doc_address)?;
                 let url = StoryUrl::parse(story.url).expect("Failed to parse URL");
-                let date = StoryDate::from_millis(story.date).expect("Failed to re-parse date");
-                vec.push(Story::new_from_parts(story.title, url, date, story.tags));
+                let date = StoryDate::from_seconds(story.date).expect("Failed to re-parse date");
+                let score = story.score as f32;
+                vec.push(Story::new_from_parts(story.title, url, date, score, story.tags));
             }
         }
         Ok(vec)
@@ -567,8 +571,9 @@ impl Storage for StoryIndex {
             for (score, doc_address) in docs {
                 let story = index.lookup_story(&searcher, doc_address)?;
                 let url = StoryUrl::parse(story.url).expect("Failed to parse URL");
-                let date = StoryDate::from_millis(story.date).expect("Failed to re-parse date");
-                vec.push(Story::new_from_parts(story.title, url, date, story.tags));
+                let date = StoryDate::from_seconds(story.date).expect("Failed to re-parse date");
+                let score = story.score as f32;
+                vec.push(Story::new_from_parts(story.title, url, date, score, story.tags));
             }
         }
 

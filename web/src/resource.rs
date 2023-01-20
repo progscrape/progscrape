@@ -78,6 +78,8 @@ fn create_templates(resource_path: &Path, static_files: Arc<StaticFileRegistry>)
     let mut tera = Tera::new(resource_path.join("templates/**/*").to_string_lossy().borrow())?;
     tera.register_filter("comma", CommaFilter::default());
     tera.register_filter("static", StaticFileFilter::new(static_files));
+    tera.register_filter("relative_time", RelativeTimeFilter::default());
+    tera.register_filter("absolute_time", AbsoluteTimeFilter::default());
     Ok(tera)
 }
 

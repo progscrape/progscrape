@@ -20,8 +20,8 @@
                 <a href="" class="reddit"><img src="{{ 'reddit.png' | static }}" width="16" height="16"></a>
                 <a href="" class="hnews"><img src="{{ 'hnews.png' | static }}" width="16" height="16"></a>
             </span>
-            <span class="age">
-                now
+            <span class="age" title="{{ story.date | absolute_time }}">
+                {{ story.date | relative_time(now=now) }}
             </span>
             <span class="tags">
                 {% for tag in story.tags %}

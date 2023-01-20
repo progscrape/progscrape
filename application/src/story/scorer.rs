@@ -42,7 +42,7 @@ impl StoryScorer {
     /// Re-scores stories w/age score.
     pub fn resort_stories(&self, relative_to: StoryDate, stories: &mut [Story]) {
         stories.sort_by_cached_key(|story| {
-            ((story.score + self.score_age(relative_to - story.date)) * 100000.0) as i64
+            -((story.score + self.score_age(relative_to - story.date)) * 100000.0) as i64
         });
     }
 

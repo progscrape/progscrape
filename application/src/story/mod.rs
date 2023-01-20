@@ -96,14 +96,14 @@ impl Story {
         story
     }
 
-    pub fn new_from_parts(title: String, url: StoryUrl, date: StoryDate, tags: Vec<String>) -> Self {
+    pub fn new_from_parts(title: String, url: StoryUrl, date: StoryDate, score: f32, tags: Vec<String>) -> Self {
         Self {
             id: StoryIdentifier::new(date, url.normalization()),
             tags: TagSet::from_iter(tags.into_iter()),
-            title: title,
-            url: url,
+            title,
+            url,
             date: date,
-            score: 0.0,
+            score,
             scrapes: HashMap::new()
         }
     }

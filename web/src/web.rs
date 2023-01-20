@@ -218,7 +218,8 @@ async fn root(
         "index2.html",
         context!(
             top_tags: Vec<String> = top_tags,
-            stories: Vec<StoryRender> = stories
+            stories: Vec<StoryRender> = stories,
+            now: StoryDate = now
         ),
     )
 }

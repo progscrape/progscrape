@@ -1,6 +1,7 @@
 use std::io::BufReader;
 use std::fs::File;
 use std::path::{Path, PathBuf};
+use std::time::Instant;
 
 use clap::{Parser, Subcommand};
 use config::Config;
@@ -90,20 +91,31 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let config: Config = serde_json::from_reader(reader)?;
             let eval = StoryEvaluator::new(&config.tagger, &config.score, &config.scrape);
 
+            let start = Instant::now();
+
+            let import_start = Instant::now();
             let scrapes = progscrape_scrapers::import_legacy(Path::new("."))?;
+            let import_time = import_start.elapsed();
+
+            // First, build an in-memory index quickly
+            let memindex_start = Instant::now();
             let mut memindex = MemIndex::default();
-
-            // First, build an in-memory index quickly        
             memindex.insert_scrapes(&eval, scrapes.into_iter())?;
+            let memindex_time = memindex_start.elapsed();
 
+            // Now, import those stories
+            let story_start = Instant::now();
             let mut index = StoryIndex::new(PersistLocation::Path(persist_path))?;
             index.insert_stories(memindex.get_all_stories())?;
+            let story_index_time = story_start.elapsed();
 
             let count = index.story_count()?;
             tracing::info!("Shard   | Count");
             for (shard, count) in &count.by_shard {
                 tracing::info!("{} | {}", shard, count);
             }
+
+            tracing::info!("Completed init in {}s (import={}s, memindex={}s, storyindex={}s)", start.elapsed().as_secs(), import_time.as_secs(), memindex_time.as_secs(), story_index_time.as_secs());
         }
     };
     Ok(())
