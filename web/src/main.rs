@@ -6,7 +6,6 @@ use std::time::Instant;
 use clap::{Parser, Subcommand};
 use config::Config;
 use progscrape_application::{StoryIndex, PersistLocation, StorageWriter, StoryEvaluator, MemIndex, Storage};
-use progscrape_scrapers::import_legacy;
 use tracing_subscriber::filter::LevelFilter;
 use tracing_subscriber::EnvFilter;
 

@@ -528,8 +528,28 @@ impl Storage for StoryIndex {
         unimplemented!()
     }
 
-    fn stories_by_shard(&self, _shard: &str) -> Result<Vec<Story>, PersistError> {
-        unimplemented!()
+    fn stories_by_shard(&self, shard: &str) -> Result<Vec<Story>, PersistError> {
+        if let Some(shard) = Shard::from_string(shard) {
+            let index = self.get_shard(shard)?;
+            let index = index.read().expect("Poisoned");
+            let searcher = index.index.reader()?.searcher();
+
+            let mut v = vec![];
+            let now = Instant::now();
+            for (idx, segment_reader) in searcher.segment_readers().iter().enumerate() {
+                for doc_id in segment_reader.doc_ids_alive() {
+                    let story = index.lookup_story(&searcher, DocAddress::new(idx as u32, doc_id))?;
+                    let url = StoryUrl::parse(story.url).expect("Failed to parse URL");
+                    let date = StoryDate::from_seconds(story.date).expect("Failed to re-parse date");
+                    let score = story.score as f32;
+                    v.push(Story::new_from_parts(story.title, url, date, score, story.tags));
+                }
+            }
+            tracing::info!("Loaded {} stories from shard {:?} in {}ms", v.len(), shard, now.elapsed().as_millis());
+            Ok(v)
+        } else {
+            Ok(vec![])
+        }
     }
 
     fn query_frontpage_hot_set(&self, max_count: usize) -> Result<Vec<Story>, PersistError> {
