@@ -737,7 +737,7 @@ mod test {
     use std::path::Path;
 
     use super::*;
-    use progscrape_scrapers::{hacker_news::*, reddit::*, ScrapeId, ScrapeSource, StoryUrl};
+    use progscrape_scrapers::{hacker_news::*, reddit::*, ScrapeSource, StoryUrl};
 
     use crate::{story::TagSet, test::*};
     use rstest::*;
