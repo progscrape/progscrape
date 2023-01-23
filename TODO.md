@@ -6,6 +6,7 @@ TODO:
  - [ ] Remove www. prefix on host
  - [ ] Inverse lookup for tags 
  - [ ] Dump existing index
+ - [ ] Comment links
 
 Maybe:
  - [ ] Metrics?
