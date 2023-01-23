@@ -1,18 +1,21 @@
 use std::{collections::HashMap, net::SocketAddr, sync::Arc};
 
 use axum::{
-    extract::{Path, Query, State},
-    response::{Html, IntoResponse, Response},
+    body::HttpBody,
+    extract::{self, Path, Query, State},
+    middleware::{self, Next},
+    response::{Html, IntoResponse, Redirect, Response},
     routing::{get, post},
-    Json, Router,
+    Extension, Json, Router,
 };
-use hyper::{HeaderMap, StatusCode};
+use hyper::{HeaderMap, Request, StatusCode};
 use serde::{Deserialize, Serialize};
 use tera::Context;
 use thiserror::Error;
 use tokio::sync::Mutex;
 
 use crate::{
+    auth::Auth,
     cron::{Cron, CronTask},
     index::{self, Index},
     resource::{self, Resources},
@@ -58,6 +61,8 @@ pub enum WebError {
     LogSetup2Error(#[from] tracing_subscriber::filter::FromEnvError),
     #[error("Item not found")]
     NotFound,
+    #[error("Invalid command-line arguments")]
+    ArgumentsInvalid(String),
 }
 
 impl IntoResponse for WebError {
@@ -74,25 +79,76 @@ struct AdminState {
     cron: Arc<Mutex<Cron>>,
 }
 
-pub fn admin_routes<S>(
+#[derive(Clone, Serialize, Deserialize)]
+struct CurrentUser {
+    user: String,
+}
+
+async fn authorize<B>(
+    State(auth): State<Auth>,
+    mut req: Request<B>,
+    next: Next<B>,
+) -> Result<Response, StatusCode> {
+    tracing::info!("Attempting authorization against auth = {:?}", auth);
+    let user = match auth {
+        Auth::None => None,
+        Auth::Fixed(fixed) => Some(fixed.clone()),
+        Auth::FromHeader(header) => req
+            .headers()
+            .get(header)
+            .and_then(|header| header.to_str().ok().map(|s| s.to_string())),
+    };
+
+    match user {
+        None => {
+            tracing::error!("No user authorized for this path!");
+            Ok((StatusCode::UNAUTHORIZED, ">progscrape: 403 ▒").into_response())
+        }
+        Some(user) => {
+            req.extensions_mut().insert(CurrentUser { user });
+            Ok(next.run(req).await)
+        }
+    }
+}
+
+async fn ensure_slash<B>(req: Request<B>, next: Next<B>) -> Result<Response, StatusCode> {
+    let test_uri = "/admin";
+    let final_uri = "/admin/";
+    if req.uri().path() == test_uri {
+        tracing::debug!("Redirecting {} -> {}", test_uri, final_uri);
+        return Ok(Redirect::permanent(final_uri).into_response());
+    }
+
+    Ok(next.run(req).await)
+}
+
+async fn handle_404() -> impl IntoResponse {
+    (StatusCode::NOT_FOUND, ">progscrape: 404 ▒")
+}
+
+pub fn admin_routes<S: Clone + Send + Sync + 'static>(
     resources: Resources,
     index: index::Index,
     cron: Arc<Mutex<Cron>>,
+    auth: Auth,
 ) -> Router<S> {
     Router::new()
         .route("/", get(admin))
         .route("/cron/", get(admin_cron))
+        .route("/headers/", get(admin_headers))
         .route("/scrape/", get(admin_scrape))
         .route("/scrape/test", post(admin_scrape_test))
         .route("/index/", get(admin_index_status))
         .route("/index/frontpage/", get(admin_status_frontpage))
         .route("/index/shard/:shard/", get(admin_status_shard))
         .route("/index/story/:story/", get(admin_status_story))
+        .fallback(handle_404)
         .with_state(AdminState {
             resources,
             index,
             cron,
         })
+        .route_layer(middleware::from_fn_with_state(auth, authorize))
 }
 
 fn start_cron(cron: Arc<Mutex<Cron>>, resources: Resources) {
@@ -104,7 +160,11 @@ fn start_cron(cron: Arc<Mutex<Cron>>, resources: Resources) {
     });
 }
 
-pub async fn start_server(root_path: &std::path::Path, index: Index) -> Result<(), WebError> {
+pub async fn start_server(
+    root_path: &std::path::Path,
+    index: Index,
+    auth: Auth,
+) -> Result<(), WebError> {
     tracing::info!("Root path: {:?}", root_path);
     let resource_path = root_path.join("resource");
 
@@ -121,8 +181,9 @@ pub async fn start_server(root_path: &std::path::Path, index: Index) -> Result<(
         .with_state(resources.clone())
         .nest(
             "/admin",
-            admin_routes(resources.clone(), index.clone(), cron.clone()),
+            admin_routes(resources.clone(), index.clone(), cron.clone(), auth),
         )
+        .route_layer(middleware::from_fn(ensure_slash))
         .route(
             "/:file",
             get(serve_static_files_well_known).with_state(resources.clone()),
@@ -234,16 +295,21 @@ async fn root(
 }
 
 async fn admin(
+    Extension(user): Extension<CurrentUser>,
     State(AdminState { resources, .. }): State<AdminState>,
 ) -> Result<Html<String>, WebError> {
     render(
         &resources,
         "admin/admin.html",
-        context!(config: std::sync::Arc<crate::config::Config> = resources.config()),
+        context!(
+            user: CurrentUser = user,
+            config: std::sync::Arc<crate::config::Config> = resources.config()
+        ),
     )
 }
 
 async fn admin_cron(
+    Extension(user): Extension<CurrentUser>,
     State(AdminState {
         cron, resources, ..
     }): State<AdminState>,
@@ -252,13 +318,40 @@ async fn admin_cron(
         &resources,
         "admin/cron.html",
         context!(
+            user: CurrentUser = user,
             config: std::sync::Arc<crate::config::Config> = resources.config(),
             cron: Vec<CronTask> = cron.lock().await.inspect()
         ),
     )
 }
 
+async fn admin_headers(
+    Extension(user): Extension<CurrentUser>,
+    State(AdminState { resources, .. }): State<AdminState>,
+    Query(query): Query<HashMap<String, String>>,
+    raw_headers: HeaderMap,
+) -> Result<Html<String>, WebError> {
+    let mut headers = HashMap::new();
+    for (header, value) in raw_headers {
+        let name = header.map(|h| h.to_string()).unwrap_or("(missing)".into());
+        headers
+            .entry(name)
+            .or_insert(vec![])
+            .push(String::from_utf8_lossy(value.as_bytes()).to_string());
+    }
+    render(
+        &resources,
+        "admin/headers.html",
+        context!(
+            user: CurrentUser = user,
+            query: HashMap<String, String> = query,
+            headers: HashMap<String, Vec<String>> = headers
+        ),
+    )
+}
+
 async fn admin_scrape(
+    Extension(user): Extension<CurrentUser>,
     State(AdminState { resources, .. }): State<AdminState>,
 ) -> Result<Html<String>, WebError> {
     let config = resources.config();
@@ -266,6 +359,7 @@ async fn admin_scrape(
         &resources,
         "admin/scrape.html",
         context!(
+            user: CurrentUser = user,
             config: std::sync::Arc<crate::config::Config> = config,
             scrapes: ScraperPossibilities = resources.scrapers().compute_scrape_possibilities(),
             endpoint: &'static str = "/admin/scrape/test"
@@ -281,6 +375,7 @@ struct AdminScrapeTestParams {
 }
 
 async fn admin_scrape_test(
+    Extension(user): Extension<CurrentUser>,
     State(AdminState { resources, .. }): State<AdminState>,
     Json(params): Json<AdminScrapeTestParams>,
 ) -> Result<Html<String>, WebError> {
@@ -313,11 +408,15 @@ async fn admin_scrape_test(
     render(
         &resources,
         "admin/scrape_test.html",
-        context!(scrapes: HashMap<String, ScraperHttpResult> = scrapes),
+        context!(
+            user: CurrentUser = user,
+            scrapes: HashMap<String, ScraperHttpResult> = scrapes
+        ),
     )
 }
 
 async fn admin_index_status(
+    Extension(user): Extension<CurrentUser>,
     State(AdminState {
         index, resources, ..
     }): State<AdminState>,
@@ -326,6 +425,7 @@ async fn admin_index_status(
         &resources,
         "admin/status.html",
         context!(
+            user: CurrentUser = user,
             storage: StorageSummary = index.storage.story_count()?,
             config: std::sync::Arc<crate::config::Config> = resources.config()
         ),
@@ -333,6 +433,7 @@ async fn admin_index_status(
 }
 
 async fn admin_status_frontpage(
+    Extension(user): Extension<CurrentUser>,
     State(AdminState {
         index, resources, ..
     }): State<AdminState>,
@@ -344,6 +445,7 @@ async fn admin_status_frontpage(
         &resources,
         "admin/frontpage.html",
         context!(
+            user: CurrentUser = user,
             stories: Vec<StoryRender> =
                 render_stories(hot_set(now, &index, &resources.story_evaluator())?.iter(),),
             sort: String = sort
@@ -352,6 +454,7 @@ async fn admin_status_frontpage(
 }
 
 async fn admin_status_shard(
+    Extension(user): Extension<CurrentUser>,
     State(AdminState {
         index, resources, ..
     }): State<AdminState>,
@@ -363,6 +466,7 @@ async fn admin_status_shard(
         &resources,
         "admin/shard.html",
         context!(
+            user: CurrentUser = user,
             shard: String = shard.clone(),
             stories: Vec<StoryRender> =
                 render_stories(index.storage.stories_by_shard(&shard)?.iter(),),
@@ -372,6 +476,7 @@ async fn admin_status_shard(
 }
 
 async fn admin_status_story(
+    Extension(user): Extension<CurrentUser>,
     State(AdminState {
         index, resources, ..
     }): State<AdminState>,
@@ -389,6 +494,7 @@ async fn admin_status_story(
         &resources,
         "admin/story.html",
         context!(
+            user: CurrentUser = user,
             story: StoryRender = story.0.render(0),
             tags: HashMap<String, Vec<String>> = tags,
             score: Vec<(String, f32)> = score_details

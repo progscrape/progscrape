@@ -12,8 +12,10 @@ use tracing_subscriber::filter::LevelFilter;
 use tracing_subscriber::EnvFilter;
 use web::WebError;
 
+use crate::auth::Auth;
 use crate::index::Index;
 
+mod auth;
 mod config;
 mod cron;
 mod filters;
@@ -46,6 +48,20 @@ pub enum Command {
 
         #[arg(long, value_name = "DIR", value_hint = clap::ValueHint::DirPath, help = "Root path")]
         root: Option<PathBuf>,
+
+        #[arg(
+            long,
+            value_name = "HEADER",
+            help = "Header to extract authorization from"
+        )]
+        auth_header: Option<String>,
+
+        #[arg(
+            long,
+            value_name = "HEADER",
+            help = "Fixed authorization value for testing purposes"
+        )]
+        fixed_auth_value: Option<String>,
     },
     Initialize {
         #[arg(long, value_name = "DIR", value_hint = clap::ValueHint::DirPath, help = "Persistence path")]
@@ -89,18 +105,36 @@ async fn go() -> Result<(), WebError> {
     tracing::info!("Logging initialized");
 
     match args.command {
-        Command::Serve { root, persist_path } => {
+        Command::Serve {
+            root,
+            persist_path,
+            auth_header,
+            fixed_auth_value,
+        } => {
             let persist_path = persist_path
                 .unwrap_or("target/index".into())
                 .canonicalize()?;
             let index = Index::initialize_with_persistence(persist_path)?;
             let root_path = root.unwrap_or(".".into()).canonicalize()?;
-            web::start_server(&root_path, index).await?;
+
+            let auth = match (auth_header, fixed_auth_value) {
+                (Some(auth_header), None) => Auth::FromHeader(auth_header),
+                (None, Some(fixed_auth_value)) => Auth::Fixed(fixed_auth_value),
+                (None, None) => Auth::None,
+                _ => {
+                    return Err(WebError::ArgumentsInvalid(
+                        "Invalid auth header parameter".into(),
+                    ));
+                }
+            };
+            web::start_server(&root_path, index, auth).await?;
         }
         Command::Initialize { root, persist_path } => {
             if persist_path.exists() {
-                tracing::error!("Path {} must not exist", persist_path.to_string_lossy());
-                return Ok(());
+                return Err(WebError::ArgumentsInvalid(format!(
+                    "Path {} must not exist",
+                    persist_path.to_string_lossy()
+                )));
             };
             std::fs::create_dir_all(&persist_path)?;
             let resource_path = root.unwrap_or(".".into()).canonicalize()?.join("resource");

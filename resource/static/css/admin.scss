@@ -52,4 +52,12 @@ body {
     table th {
         background-color: lightblue;
     }
+
+    .headers {
+        .value {
+            display: inline-block;
+            word-break: break-all;
+            max-width: 75vw;
+        }
+    }
 }
