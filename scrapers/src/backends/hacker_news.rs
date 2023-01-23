@@ -18,7 +18,7 @@ impl ScrapeSourceDef for HackerNews {
     type Scrape = HackerNewsStory;
     type Scraper = HackerNewsScraper;
 
-    fn comments_url(id: &str, subsource: Option<&str>) -> String {
+    fn comments_url(id: &str, _subsource: Option<&str>) -> String {
         format!("https://news.ycombinator.com/item?id={}", id)
     }
 }

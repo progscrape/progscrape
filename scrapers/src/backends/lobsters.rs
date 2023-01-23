@@ -12,7 +12,7 @@ impl ScrapeSourceDef for Lobsters {
     type Scrape = LobstersStory;
     type Scraper = LobstersScraper;
 
-    fn comments_url(id: &str, subsource: Option<&str>) -> String {
+    fn comments_url(id: &str, _subsource: Option<&str>) -> String {
         format!("https://lobste.rs/s/{}/", id)
     }
 }

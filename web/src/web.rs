@@ -1,8 +1,7 @@
 use std::{collections::HashMap, net::SocketAddr, sync::Arc};
 
 use axum::{
-    body::HttpBody,
-    extract::{self, Path, Query, State},
+    extract::{Path, Query, State},
     middleware::{self, Next},
     response::{Html, IntoResponse, Redirect, Response},
     routing::{get, post},

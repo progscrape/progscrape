@@ -21,7 +21,7 @@ impl ScrapeSourceDef for Slashdot {
     type Scrape = SlashdotStory;
     type Scraper = SlashdotScraper;
 
-    fn comments_url(id: &str, subsource: Option<&str>) -> String {
+    fn comments_url(id: &str, _subsource: Option<&str>) -> String {
         format!("https://tech.slashdot.org/story/{}/", id)
     }
 }
