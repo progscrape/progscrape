@@ -80,6 +80,14 @@ macro_rules! scrapers {
             pub const fn all() -> &'static [ScrapeSource] {
                 &[$(Self::$name),*]
             }
+
+            pub fn id<'a, ID: Clone + Into<Cow<'a, str>>>(&self, id: ID) -> ScrapeId {
+                ScrapeId::new(*self, None, id.into().into())
+            }
+
+            pub fn subsource_id<'a, ID: Clone + Into<Cow<'a, str>>>(&self, subsource: ID, id: ID) -> ScrapeId {
+                ScrapeId::new(*self, Some(subsource.into().into()),  id.into().into())
+            }
         }
 
         #[derive(Clone, Debug, Deserialize, Serialize)]

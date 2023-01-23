@@ -7,3 +7,23 @@ pub use persist::{
 pub use story::{
     Story, StoryEvaluator, StoryIdentifier, StoryRender, StoryScoreConfig, TaggerConfig,
 };
+
+#[cfg(test)]
+mod test {
+    use rstest::*;
+    use tracing_subscriber::EnvFilter;
+
+    #[fixture]
+    #[once]
+    pub fn enable_tracing() -> () {
+        tracing_subscriber::fmt()
+            .with_env_filter(EnvFilter::from_default_env())
+            .init();
+    }
+
+    #[fixture]
+    #[once]
+    pub fn enable_slow_tests() -> bool {
+        matches!(std::env::var("ENABLE_SLOW_TESTS"), Ok(_))
+    }
+}

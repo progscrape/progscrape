@@ -225,7 +225,7 @@ impl Scraper for HackerNewsScraper {
                 } = info;
                 let id = k;
                 stories.push(HackerNewsStory::new(
-                    id, None, date, raw_title, url, points, comments, position,
+                    id, date, raw_title, url, points, comments, position,
                 ));
             } else {
                 errors.push(format!("Unmatched story/info for id {}", k));

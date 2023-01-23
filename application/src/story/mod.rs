@@ -3,19 +3,14 @@
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
-use progscrape_scrapers::{
-    ScrapeConfig, ScrapeExtractor, ScrapeId, StoryDate, StoryUrl,
-};
-use std::{
-    collections::{HashMap, HashSet},
-};
+use progscrape_scrapers::{ScrapeConfig, ScrapeExtractor, ScrapeId, StoryDate, StoryUrl};
+use std::collections::{HashMap, HashSet};
 
 mod collector;
 mod id;
 mod render;
 mod scorer;
 mod tagger;
-
 
 pub use self::{
     collector::StoryCollector,
@@ -111,7 +106,7 @@ impl Story {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TagSet {
     set: HashSet<String>,
 }
@@ -123,9 +118,9 @@ impl TagSet {
         }
     }
 
-    pub fn from_iter<S: AsRef<str>>(iter: impl Iterator<Item = S>) -> Self {
+    pub fn from_iter<S: AsRef<str>>(iter: impl IntoIterator<Item = S>) -> Self {
         Self {
-            set: HashSet::from_iter(iter.map(|s| s.as_ref().to_owned())),
+            set: HashSet::from_iter(iter.into_iter().map(|s| s.as_ref().to_owned())),
         }
     }
 
@@ -143,6 +138,15 @@ impl TagSet {
 
     pub fn dump<'a>(&'a self) -> impl Iterator<Item = String> + 'a {
         self.set.iter().sorted().cloned()
+    }
+}
+
+impl IntoIterator for TagSet {
+    type IntoIter = <HashSet<String> as IntoIterator>::IntoIter;
+    type Item = <HashSet<String> as IntoIterator>::Item;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.set.into_iter()
     }
 }
 

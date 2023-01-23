@@ -54,7 +54,9 @@ impl DB {
                         "blob"
                     }
                     _ => {
-                        return Err(PersistError::Unmappable());
+                        return Err(PersistError::UnexpectedError(
+                            "Could not map this column type".into(),
+                        ));
                     }
                 }
             ));

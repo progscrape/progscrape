@@ -173,7 +173,6 @@ impl RedditScraper {
             .and_modify(|n| *n += 1)
             .or_default()
             + 1;
-        let subreddit = Some(subreddit);
         let seconds: i64 = self.require_integer(data, "created_utc")?;
         let millis = seconds * 1000;
         let date = StoryDate::from_millis(millis).ok_or_else(|| "Unmappable date".to_string())?;
@@ -186,7 +185,7 @@ impl RedditScraper {
         let upvotes = self.require_integer(data, "ups")?;
         let upvote_ratio = self.require_float(data, "upvote_ratio")? as f32;
         let flair = unescape_entities(&self.optional_string(data, "link_flair_text")?);
-        let story = RedditStory::new(
+        let story = RedditStory::new_subsource(
             id,
             subreddit,
             date,

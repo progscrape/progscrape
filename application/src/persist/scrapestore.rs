@@ -1,5 +1,5 @@
 use std::{
-    collections::{HashMap},
+    collections::HashMap,
     sync::{Arc, RwLock},
 };
 
@@ -123,10 +123,16 @@ impl ScrapeStore {
 
 #[cfg(test)]
 mod test {
+    use std::path::Path;
+
+    use rstest::rstest;
+
     use super::*;
 
-    #[test]
-    fn test_insert() -> Result<(), Box<dyn std::error::Error>> {
+    use crate::test::enable_tracing;
+
+    #[rstest]
+    fn test_insert(_enable_tracing: &()) -> Result<(), Box<dyn std::error::Error>> {
         let store = ScrapeStore::new(PersistLocation::Memory)?;
         let legacy = progscrape_scrapers::import_legacy(Path::new(".."))?;
         let first = &legacy[0..100];

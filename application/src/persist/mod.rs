@@ -30,8 +30,8 @@ pub enum PersistError {
     SerdeError(#[from] serde_rusqlite::Error),
     #[error("I/O error")]
     IOError(#[from] std::io::Error),
-    #[error("Unmappable column")]
-    Unmappable(),
+    #[error("Unexpected error")]
+    UnexpectedError(String),
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -74,7 +74,7 @@ pub trait StorageWriter: Storage {
         scrapes: I,
     ) -> Result<(), PersistError>;
 
-    /// Insert a set of pre-digested stories. Assumes that the underlying story does not exist.
+    /// Insert a set of pre-digested stories. Assumes that the underlying story does not exist and no merging is required.
     fn insert_scrape_collections<I: Iterator<Item = ScrapeCollection>>(
         &mut self,
         eval: &StoryEvaluator,

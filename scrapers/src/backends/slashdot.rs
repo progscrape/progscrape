@@ -143,7 +143,6 @@ impl SlashdotScraper {
 
         Ok(SlashdotStory::new(
             id,
-            None,
             date,
             raw_title,
             url,

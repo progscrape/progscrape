@@ -1,7 +1,4 @@
-use std::{
-    fmt::Debug,
-    ops::{RangeInclusive},
-};
+use std::{fmt::Debug, ops::RangeInclusive};
 
 use progscrape_scrapers::StoryDate;
 use serde::{Deserialize, Serialize};

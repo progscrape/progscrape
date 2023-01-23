@@ -1,13 +1,6 @@
-use std::{
-    path::Path,
-    sync::Arc,
-};
+use std::{path::Path, sync::Arc};
 
-
-
-use progscrape_application::{
-    PersistLocation, Storage, StoryIndex,
-};
+use progscrape_application::{PersistLocation, Storage, StoryIndex};
 
 use crate::web::WebError;
 

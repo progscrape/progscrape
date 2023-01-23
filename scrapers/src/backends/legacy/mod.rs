@@ -35,7 +35,7 @@ fn make_hacker_news(
     url: StoryUrl,
     date: StoryDate,
 ) -> GenericScrape<hacker_news::HackerNewsStory> {
-    hacker_news::HackerNewsStory::new_with_defaults(id, None, date, raw_title, url)
+    hacker_news::HackerNewsStory::new_with_defaults(id, date, raw_title, url)
 }
 
 fn make_reddit(
@@ -44,7 +44,7 @@ fn make_reddit(
     url: StoryUrl,
     date: StoryDate,
 ) -> GenericScrape<reddit::RedditStory> {
-    reddit::RedditStory::new_with_defaults(id, None, date, raw_title, url)
+    reddit::RedditStory::new_with_defaults(id, date, raw_title, url)
 }
 
 fn make_lobsters(
@@ -53,7 +53,7 @@ fn make_lobsters(
     url: StoryUrl,
     date: StoryDate,
 ) -> GenericScrape<lobsters::LobstersStory> {
-    lobsters::LobstersStory::new_with_defaults(id, None, date, raw_title, url)
+    lobsters::LobstersStory::new_with_defaults(id, date, raw_title, url)
 }
 
 fn import_legacy_1(root: &Path) -> Result<impl Iterator<Item = TypedScrape>, LegacyError> {

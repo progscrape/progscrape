@@ -103,10 +103,10 @@ macro_rules! scrape_story {
         }
 
         impl $name {
-            pub fn new(id: String, subsource: Option<String>, date: StoryDate, raw_title: String, url: StoryUrl, $( $id: $type ),*) -> GenericScrape<$name> {
+            pub fn new<'a, S: Clone + Into<Cow<'a, str>>>(id: S, date: StoryDate, raw_title: S, url: StoryUrl, $( $id: $type ),*) -> GenericScrape<$name> {
                 GenericScrape {
                     shared: ScrapeShared {
-                        id: ScrapeId::new(<$name as ScrapeStory>::TYPE, subsource, id), date, raw_title, url
+                        id: ScrapeId::new(<$name as ScrapeStory>::TYPE, None, id.into().into()), date, raw_title: raw_title.into().into(), url
                     },
                     data: $name {
                         $($id),*
@@ -114,10 +114,32 @@ macro_rules! scrape_story {
                 }
             }
 
-            pub fn new_with_defaults(id: String, subsource: Option<String>, date: StoryDate, raw_title: String, url: StoryUrl) -> GenericScrape<$name> {
+            pub fn new_subsource<'a, S: Clone + Into<Cow<'a, str>>>(id: S, subsource: S, date: StoryDate, raw_title: S, url: StoryUrl, $( $id: $type ),*) -> GenericScrape<$name> {
                 GenericScrape {
                     shared: ScrapeShared {
-                        id: ScrapeId::new(<$name as ScrapeStory>::TYPE, subsource, id), date, raw_title, url
+                        id: ScrapeId::new(<$name as ScrapeStory>::TYPE, Some(subsource.into().into()), id.into().into()), date, raw_title: raw_title.into().into(), url
+                    },
+                    data: $name {
+                        $($id),*
+                    }
+                }
+            }
+
+            pub fn new_with_defaults<'a, S: Clone + Into<Cow<'a, str>>>(id: S, date: StoryDate, raw_title: S, url: StoryUrl) -> GenericScrape<$name> {
+                GenericScrape {
+                    shared: ScrapeShared {
+                        id: ScrapeId::new(<$name as ScrapeStory>::TYPE, None, id.into().into()), date, raw_title: raw_title.into().into(), url
+                    },
+                    data: $name {
+                        $($id : Default::default() ),*
+                    }
+                }
+            }
+
+            pub fn new_subsource_with_defaults<'a, S: Clone + Into<Cow<'a, str>>>(id: S, subsource: S, date: StoryDate, raw_title: S, url: StoryUrl) -> GenericScrape<$name> {
+                GenericScrape {
+                    shared: ScrapeShared {
+                        id: ScrapeId::new(<$name as ScrapeStory>::TYPE, Some(subsource.into().into()), id.into().into()), date, raw_title: raw_title.into().into(), url
                     },
                     data: $name {
                         $($id : Default::default() ),*

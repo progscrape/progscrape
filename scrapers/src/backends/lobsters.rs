@@ -109,7 +109,6 @@ impl Scraper for LobstersScraper {
                         let score = 0;
                         stories.push(LobstersStory::new(
                             id,
-                            None,
                             date,
                             raw_title,
                             url,

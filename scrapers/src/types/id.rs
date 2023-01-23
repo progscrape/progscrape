@@ -24,6 +24,22 @@ impl ScrapeId {
             _noinit: Default::default(),
         }
     }
+
+    pub fn from_string(s: String) -> Option<Self> {
+        if let Some((head, rest)) = s.split_once('-') {
+            if let Some(source) = ScrapeSource::try_from_str(head) {
+                if let Some((subsource, id)) = rest.split_once('-') {
+                    Some(source.subsource_id(subsource, id))
+                } else {
+                    Some(source.id(rest))
+                }
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
 }
 
 impl Display for ScrapeId {
@@ -71,13 +87,9 @@ impl<'de> Deserialize<'de> for ScrapeId {
             let source = ScrapeSource::try_from_str(head)
                 .ok_or(serde::de::Error::custom("Invalid source"))?;
             if let Some((subsource, id)) = rest.split_once('-') {
-                Ok(ScrapeId::new(
-                    source,
-                    Some(subsource.to_owned()),
-                    id.to_owned(),
-                ))
+                Ok(source.subsource_id(subsource, id))
             } else {
-                Ok(ScrapeId::new(source, None, rest.to_owned()))
+                Ok(source.id(rest))
             }
         } else {
             Err(serde::de::Error::custom("Invalid format"))

@@ -1,6 +1,4 @@
-use chrono::{
-    DateTime, Datelike, Months, NaiveDate, NaiveDateTime, NaiveTime, TimeZone, Utc,
-};
+use chrono::{DateTime, Datelike, Months, NaiveDate, NaiveDateTime, NaiveTime, TimeZone, Utc};
 use serde::{Deserialize, Serialize};
 use std::{fmt::Display, ops::Sub, time::SystemTime};
 

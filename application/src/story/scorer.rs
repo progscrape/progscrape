@@ -1,8 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use progscrape_scrapers::{
-    ExtractedScrapeCollection, ScrapeSource, StoryDate, StoryDuration,
-};
+use progscrape_scrapers::{ExtractedScrapeCollection, ScrapeSource, StoryDate, StoryDuration};
 
 use super::Story;
 

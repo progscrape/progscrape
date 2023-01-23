@@ -1,7 +1,9 @@
 use std::{
-    collections::{hash_map::Entry, HashMap},
+    borrow::Cow,
+    collections::{hash_map::Entry, HashMap, HashSet},
 };
 
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 use crate::{backends::ScrapeCore, ScrapeExtractor, ScrapeId, StoryDate, StoryUrl, TypedScrape};
@@ -61,8 +63,7 @@ pub struct ExtractedScrapeCollection<'a> {
 impl<'a> ExtractedScrapeCollection<'a> {
     pub fn title(&'a self) -> &'a str {
         // TODO: Best title
-        self
-            .scrapes
+        self.scrapes
             .iter()
             .next()
             .expect("Expected at least one scrape")
@@ -71,8 +72,7 @@ impl<'a> ExtractedScrapeCollection<'a> {
     }
 
     pub fn url(&'a self) -> &'a StoryUrl {
-        self
-            .scrapes
+        self.scrapes
             .iter()
             .next()
             .expect("Expected at least one scrape")
@@ -80,9 +80,12 @@ impl<'a> ExtractedScrapeCollection<'a> {
             .url
     }
 
-    pub fn tags<'b>(&'b self) -> Vec<String> {
-        // TODO: Fill this in
-        vec![]
+    pub fn tags<'b>(&'b self) -> Vec<Cow<'a, str>> {
+        let mut tags = HashSet::new();
+        for (_, scrape) in &self.scrapes {
+            tags.extend(&scrape.tags);
+        }
+        tags.into_iter().cloned().collect_vec()
     }
     // /// Choose a title based on source priority, with preference for shorter titles if the priority is the same.
     // fn title_choice(&self) -> (ScrapeSource, Cow<str>) {
