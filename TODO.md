@@ -7,7 +7,8 @@ TODO:
  - [ ] Inverse lookup for tags 
  - [ ] Dump existing index
  - [ ] Hook up scrape to cron
-
+ - [ ] Swap Chrono for time (and use Instant/Duration for cron)
+ 
 Maybe:
  - [ ] Metrics?
 
