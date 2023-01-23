@@ -7,7 +7,7 @@ use std::{
 use serde::{Deserialize, Serialize};
 use url::Url;
 
-use crate::datasci::urlnormalizer::url_normalization_string;
+use crate::datasci::urlnormalizer::{url_normalization_string, url_normalized_host};
 
 /// Story-specific URL that caches the normalization information and other important parts of the URL.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -51,7 +51,7 @@ impl Display for StoryUrl {
 impl StoryUrl {
     pub fn parse<S: AsRef<str>>(s: S) -> Option<Self> {
         if let Ok(url) = Url::parse(s.as_ref()) {
-            if let Some(host) = url.host_str() {
+            if let Some(host) = url_normalized_host(&url) {
                 let host = host.to_owned();
                 let norm_str = StoryUrlNorm {
                     norm: url_normalization_string(&url),

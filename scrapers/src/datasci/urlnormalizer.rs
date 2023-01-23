@@ -63,7 +63,7 @@ impl<'a> PartialEq for EscapedCompareToken<'a> {
 
 lazy_static! {
     pub static ref WWW_PREFIX: Regex =
-        Regex::new("www?[0-9]*\\.").expect("Failed to parse regular expression");
+        Regex::new("\\Awww?[0-9]*\\.").expect("Failed to parse regular expression");
     pub static ref QUERY_PARAM_REGEX: Regex =
         Regex::new(&IGNORED_QUERY_PARAMS.join("|")).expect("Failed to parse regular expression");
     pub static ref TRIM_EXTENSION_REGEX: Regex =
@@ -150,6 +150,18 @@ pub fn url_normalization_string(url: &Url) -> String {
     s
 }
 
+pub fn url_normalized_host(url: &Url) -> Option<&str> {
+    if let Some(s) = url.host_str() {
+        if let Some(n) = WWW_PREFIX.shortest_match_at(s, 0) {
+            Some(&s[n..])
+        } else {
+            Some(s)
+        }
+    } else {
+        None
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -161,6 +173,15 @@ mod test {
         for _i in 0..1000 {
             url_normalization_string(&url);
         }
+    }
+
+    #[rstest]
+    #[case("http://www.example.com", "example.com")]
+    #[case("http://www1.example.com", "example.com")]
+    #[case("http://ww1.example.com", "example.com")]
+    #[case("http://test.www.example.com", "test.www.example.com")]
+    fn test_host_normalization(#[case] a: &str, #[case] b: &str) {
+        assert_eq!(url_normalized_host(&Url::parse(a).expect("url")), Some(b));
     }
 
     #[rstest]
@@ -233,6 +254,7 @@ mod test {
 
     #[rstest]
     #[case("http://1.2.3.4", "http://1.2.3.5")]
+    #[case("https://test.www.google.com", "https://test.www1.google.com")]
     #[case("https://google.com", "https://facebook.com")]
     #[case("https://google.com/abc", "https://google.com/def")]
     #[case("https://google.com/?page=1", "https://google.com/?page=2")]
