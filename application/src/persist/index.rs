@@ -2,7 +2,10 @@ use itertools::Itertools;
 
 use tantivy::collector::TopDocs;
 use tantivy::directory::{MmapDirectory, RamDirectory};
-use tantivy::query::{AllQuery, BooleanQuery, Occur, Query, RangeQuery, TermQuery};
+use tantivy::query::{
+    AllQuery, BooleanQuery, Occur, PhraseQuery, Query, QueryParser, RangeQuery, TermQuery,
+};
+use tantivy::tokenizer::{PreTokenizedString, SimpleTokenizer, Tokenizer};
 use tantivy::{doc, Index};
 use tantivy::{
     schema::*, Directory, DocAddress, IndexSettings, IndexSortByField, IndexWriter, Searcher,
@@ -33,6 +36,7 @@ struct StoryIndexShard {
     url_field: Field,
     url_norm_field: Field,
     url_norm_hash_field: Field,
+    host_field: Field,
     score_field: Field,
     title_field: Field,
     date_field: Field,
@@ -55,6 +59,7 @@ enum StoryLookup {
 #[derive(Default)]
 struct StoryInsert {
     id: String,
+    host: String,
     url: String,
     url_norm: String,
     url_norm_hash: i64,
@@ -84,6 +89,7 @@ impl StoryIndexShard {
         let url_field = schema_builder.add_text_field("url", STRING | STORED);
         let url_norm_field = schema_builder.add_text_field("url_norm", FAST | STRING);
         let url_norm_hash_field = schema_builder.add_i64_field("url_norm_hash", FAST | INDEXED);
+        let host_field = schema_builder.add_text_field("host", TEXT | STORED);
         let title_field = schema_builder.add_text_field("title", TEXT | STORED);
         let scrape_field = schema_builder.add_text_field("scrapes", TEXT | STORED);
         let score_field = schema_builder.add_f64_field("score", FAST | STORED);
@@ -123,6 +129,7 @@ impl StoryIndexShard {
         Ok(Self {
             index,
             id_field,
+            host_field,
             url_field,
             url_norm_field,
             url_norm_hash_field,
@@ -169,6 +176,22 @@ impl StoryIndexShard {
         for tag in doc.tags {
             new_doc.add_text(self.tags_field, tag);
         }
+
+        let tokens = {
+            let mut token_stream = SimpleTokenizer.token_stream(&doc.host);
+            let mut tokens = vec![];
+            while token_stream.advance() {
+                tokens.push(token_stream.token().clone());
+            }
+            tokens
+        };
+        new_doc.add_pre_tokenized_text(
+            self.host_field,
+            PreTokenizedString {
+                text: doc.host,
+                tokens,
+            },
+        );
         writer.add_document(new_doc)?;
         Ok(())
     }
@@ -415,6 +438,7 @@ impl StoryIndex {
         let id = StoryIdentifier::new(story.earliest, extracted.url().normalization()).to_base64();
         let doc = StoryInsert {
             id,
+            host: url.host().to_owned(),
             url: url.raw().to_owned(),
             url_norm: url.normalization().string().to_owned(),
             url_norm_hash: url.normalization().hash(),
@@ -718,11 +742,27 @@ impl Storage for StoryIndex {
             let index = index.read().expect("Poisoned");
             // println!("Found shard {}", shard);
             let searcher = index.index.reader()?.searcher();
-            let query = TermQuery::new(
-                Term::from_field_text(index.title_field, search),
-                IndexRecordOption::Basic,
-            );
-            let docs = searcher.search(&query, &TopDocs::with_limit(max_count))?;
+
+            // This isn't terribly smart, buuuuut it allows us to search either a tag or site
+            let docs = if search.contains('.') {
+                let host_field = index.host_field;
+                let phrase = search
+                    .split(|c: char| !c.is_alphanumeric())
+                    .map(|s| Term::from_field_text(host_field, s))
+                    .enumerate()
+                    .collect_vec();
+                let query = PhraseQuery::new_with_offset(phrase);
+                tracing::debug!("Query = {:?}", query);
+                searcher.search(&query, &TopDocs::with_limit(max_count))?
+            } else {
+                let query = TermQuery::new(
+                    Term::from_field_text(index.title_field, search),
+                    IndexRecordOption::Basic,
+                );
+                tracing::debug!("Query = {:?}", query);
+                searcher.search(&query, &TopDocs::with_limit(max_count))?
+            };
+
             for (_score, doc_address) in docs {
                 vec.push(Self::lookup_story(&index, &searcher, doc_address)?);
             }
@@ -847,6 +887,9 @@ mod test {
             story.scrapes
         );
         assert_eq!(TagSet::from_iter(["rust"]), story.tags);
+
+        let search = index.query_search("example.com", 1)?;
+        assert_eq!(search.len(), 1);
 
         Ok(())
     }
