@@ -7,6 +7,7 @@ TODO:
  - [ ] Dump existing index
  - [ ] Hook up scrape to cron
  - [ ] Swap Chrono for time (and use Instant/Duration for cron)
+ - [ ] Host implies tag (ie: YouTube)
 
 Maybe:
  - [ ] Metrics?

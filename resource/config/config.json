@@ -147,7 +147,7 @@
                 "google": {},
                 "yahoo": {},
                 "microsoft": {"host": "msdn.com"},
-                "twitter": {},
+                "twitter": {"host": "twitter.com"},
                 "zynga": {},
                 "eff": {"host": "eff.org"},
                 "exxon": {},

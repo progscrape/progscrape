@@ -948,6 +948,8 @@ mod test {
     #[case("http://www.att.com", "New AT&T plans", &["at&t", "atandt", "att.com"])]
     #[case("http://example.com", "I love Go", &["golang", "love"])]
     #[case("http://example.com", "I love C", &["clanguage", "love"])]
+    // TODO: This case doesn't work yet
+    // #[case("http://youtube.com/?v=123", "A tutorial", &["video", "youtube", "tutorial"])]
     fn test_findable(
         #[case] url: &str,
         #[case] title: &str,

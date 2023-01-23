@@ -285,7 +285,7 @@ pub(crate) mod test {
         serde_json::from_value(json!({
             "tags": {
                 "testing": {
-                    "video(s)": {},
+                    "video(s)": {"hosts": ["youtube.com", "vimeo.com"]},
                     "rust": {},
                     "chrome": {"alt": "chromium"},
                     "neovim": {"implies": "vim"},
