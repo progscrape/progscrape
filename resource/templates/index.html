@@ -1,137 +1,38 @@
-<!DOCTYPE html>
-<html>
-<head>
-	<title>progscrape{% if search %}: "{{ search|escape }}"{% endif %}</title>
-	<link href="/feed{% if search %}?search={{ search|urlencode }}{% endif %}" type="application/atom+xml" rel="alternate" />
-	<link rel="stylesheet" type="text/css" href="static/iphone.css" media="only screen and (max-width: 480px)" />
-	<link rel="stylesheet" type="text/css" href="static/skinny.css" media="only screen and (min-width: 481px) and (max-width: 980px)" />
-	<link rel="stylesheet" type="text/css" href="static/desktop.css" media="screen and (min-width: 481px)" />
-	<!--[if IE]>
-	<link rel="stylesheet" type="text/css" href="static/desktop.css" media="all" />
-	<![endif]-->
-
-	<meta name="viewport" content="user-scalable=no, width=device-width, initial-scale=1.0" />
-	<meta name="google-site-verification" content="qaDYPixMo44960a9SpLxZ3Qzob3kKcp0OXqdRckZV34" />
-</head>
-<body>
-	<div id="header">
-	<h1><a href="/">&gt;progscrape &#x2592;</a></h1>
-	<a class="subscribe" href="/feed{% if search %}?search={{ search|urlencode }}{% endif %}"><img src="static/feed-icon-14x14.png" /> Subscribe to {% if search %}search {% endif %}feed</a>
-	<h2>All the news that's fit to scrape</h2>
-	<form method="GET" action="/">
-		<input class="search" type="search" name="search" results="5" value="{{ search|escape }}" placeholder="Search" />
-	</form>
-	{% if ignore_cache %}
-	<div>Ignoring cache</div>
-	{% endif %}
-	{% if force_update %}
-	<div>Forcing update</div>
-	{% endif %}
-	{% if debug %}
-	<div>Debugging</div>
-	<div>cursor = {{ cursor }}</div>
-	{% endif %}
-	
-	
-	</div>
-	
-	<div id="main">
-	<div class="container">
-	
-	<div class="column span-19">
-    {% if not stories %}
-    Sorry, nothing found for "{{ search|escape }}".
-    {% endif %}
-    {% if not search and first %}
-    	<div class="popular-tags">Trending tags:
+{% extends "base.html" %}
+{% block title %}progscrape{% endblock title %}
+{% block head %}
+    {{ super() }}
+{% endblock head %}
+{% block content %}
+    <div id="main">
+    <div class="container">
+    <div class="popular-tags">Trending tags:
         {% for tag in top_tags %}
-        	<span class="tag"><a href="/?search={{ tag|urlencode }}">{{ tag }}</a></span>&nbsp;
-        {% endfor %}</div>
-    {% endif %} 
+        <span class="tag"><a href="/?search={{ tag }}">{{ tag }}</a></span>&nbsp;
+        {% endfor %}
+    </div>
+
     {% for story in stories %}
     <div class="story">
-      <h2 class="story-title"><a href="{{ story.url|escape }}">{{ story.autoBreakTitle|escape }}</a></h2>
-      <div class="metadata">
-      <span class="sites">
-      	{% if story.redditUrl %}
-          <a href="{{ story.redditUrl }}" class="reddit"><img src="/static/reddit.png" width="16" height="16"></a>
-      	{% endif %}
-      	{% if story.hackernewsUrl %}
-          <a href="{{ story.hackernewsUrl }}" class="hnews"><img src="/static/hnews.png" width="16" height="16"></a>
-        {% endif %}
-      	{% if story.lobstersUrl %}
-      		<a href="{{ story.lobstersUrl }}" class="lobsters"><img src="/static/lobsters.png" width="16" height="16"></a>
-      	{% endif %}
-      	{% if story.slashdotUrl %}
-      		<a href="{{ story.slashdotUrl }}" class="slashdot"><img src="/static/slashdot.png" width="16" height="16"></a>
-      	{% endif %}
-      </span>
-	    <span class="age">
-        {{ story.age }}
-      </span>
-      <span class="tags">
-        {% for tag in story.tags %}
-        	<span class="tag"><a href="/?search={{ tag|urlencode }}">{{ tag }}</a></span>
-        {% endfor %}
-      </span>
-      </div>
-      {% if debug %}
-      <div>date = {{ story.rfc3339_date }}</div>
-      <div>version = {{ story.version }}</div>
-      <div>title = {{ story.title|escape }}</div>
-      <div>url = {{ story.url|escape }}</div>
-      <div>search = {% for term in story.search %}{{ term|escape }} {% endfor %}</div>
-      <div>score = {{ story.score }} = {{ story.scoreTerms }}</div>
-      <div>tags = {% for tag in story.tags %}{{ tag|escape }} {% endfor %}</div>
-      {% endif %}
+        <h2 class="story-title"><a href="{{ story.url }}">{{ story.title }}</a></h2>
+        <div class="metadata">
+            <span class="sites">
+                <a href="" class="reddit"><img src="{{ 'reddit.png' | static }}" width="16" height="16"></a>
+                <a href="" class="hnews"><img src="{{ 'hnews.png' | static }}" width="16" height="16"></a>
+            </span>
+            <span class="age" title="{{ story.date | absolute_time }}">
+                {{ story.date | relative_time(now=now) }}
+            </span>
+            <span class="tags">
+                {% for tag in story.tags %}
+                <span class="tag"><a href="/?search={{ tag|urlencode }}">{{ tag }}</a></span>
+                {% endfor %}
+            </span>
+        </div>
     </div>
     {% endfor %}
-    <!--
-    {% if not search and first %}
-      <div class="story">
-      <h2 class="story-title"><a href="https://play.google.com/store/apps/details?id=com.progscrape">progscrape now has an Android app!</a></h2>
-      <div class="metadata">
-        <span class="sites"><a href="."><img class="progscrape" src="/favicon.ico"></a></span>
-        <span class="age">announcement</span>
-        <span class="tags"><span class="tag"><a href="/?search=android">android</a></span></span>
-      </div>
-      </div>
-    {% endif %}
-    -->
-    {% if not search and next %}
-    <p><a href="?offset={{ next }}">More &rarr;</a></p>
-    {% endif %}
 
-    </div>
-    
+    <p><a href="?offset=30">More &rarr;</a></p>
     </div>
     </div>
-
-    <div id="footer">
-      <div class="span-8 left">
-        <div><a href="https://play.google.com/store/apps/details?id=com.progscrape">
-          <img alt="Get it on Google Play"
-               src="https://developer.android.com/images/brand/en_generic_rgb_wo_45.png" />
-        </a></div>
-      </div>
-      <div class="span-10 right">
-        Created by <a href="https://grack.com">Matt Mastracci</a> (matthew - at - mastracci.com)<br>
-        This entire project is <a href="https://github.com/mmastrac/progscrape">open source</a><br>
-        Also see: <a href="http://charbase.com">Charbase - visual unicode database</a></div>
-      <span class="clear"></span>
-    </div>
-    
-<script type="text/javascript">
-  var _gaq = _gaq || [];
-  _gaq.push(['_setAccount', 'UA-198407-5']);
-  _gaq.push(['_trackPageview']);
-
-  (function() {
-    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
-    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
-    (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(ga);
-  })();
-</script>
-
-</body>
-</html>
+{% endblock content %}
