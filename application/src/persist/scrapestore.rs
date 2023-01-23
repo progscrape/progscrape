@@ -1,7 +1,5 @@
 use std::{
-    collections::{HashMap, HashSet},
-    path::{Path, PathBuf},
-    rc::Rc,
+    collections::{HashMap},
     sync::{Arc, RwLock},
 };
 
@@ -42,7 +40,7 @@ impl ScrapeStore {
             let db = match self.location.join(&shard) {
                 PersistLocation::Memory => DB::open(":memory:")?,
                 PersistLocation::Path(ref path) => {
-                    std::fs::create_dir_all(&path)?;
+                    std::fs::create_dir_all(path)?;
                     let path = path.join("scrapes.sqlite3");
                     tracing::info!("Opening scrape database at {}", path.to_string_lossy());
                     let db = DB::open(path)?;
@@ -129,7 +127,7 @@ mod test {
 
     #[test]
     fn test_insert() -> Result<(), Box<dyn std::error::Error>> {
-        let mut store = ScrapeStore::new(PersistLocation::Memory)?;
+        let store = ScrapeStore::new(PersistLocation::Memory)?;
         let legacy = progscrape_scrapers::import_legacy(Path::new(".."))?;
         let first = &legacy[0..100];
         for scrape in first {

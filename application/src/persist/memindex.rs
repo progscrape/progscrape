@@ -16,7 +16,7 @@ pub struct MemIndex {
 impl MemIndex {
     pub fn get_all_stories(self) -> impl DoubleEndedIterator<Item = ScrapeCollection> {
         let mut out = vec![];
-        for (shard, stories) in self.stories.into_iter().sorted_by_cached_key(|f| f.0) {
+        for (_shard, stories) in self.stories.into_iter().sorted_by_cached_key(|f| f.0) {
             for (_, story) in stories {
                 out.push(story);
             }
@@ -87,10 +87,10 @@ mod test {
     #[test]
     fn test_index_lots() {
         let stories =
-            progscrape_scrapers::import_legacy(&Path::new("..")).expect("Failed to read scrapes");
+            progscrape_scrapers::import_legacy(Path::new("..")).expect("Failed to read scrapes");
         let mut index = MemIndex::default();
 
-        let eval = StoryEvaluator::new_for_test();
+        let _eval = StoryEvaluator::new_for_test();
         index
             .insert_scrapes(stories.into_iter())
             .expect("Failed to insert scrapes");

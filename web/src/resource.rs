@@ -55,7 +55,7 @@ impl Resources {
 }
 
 fn create_static_files(
-    resource_path: &Path,
+    _resource_path: &Path,
     css: String,
     admin_css: String,
 ) -> Result<StaticFileRegistry, WebError> {

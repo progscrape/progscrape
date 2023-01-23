@@ -4,12 +4,10 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 use progscrape_scrapers::{
-    ScrapeCollection, ScrapeConfig, ScrapeExtractor, ScrapeId, ScrapeSource, StoryDate, StoryUrl,
-    TypedScrape,
+    ScrapeConfig, ScrapeExtractor, ScrapeId, StoryDate, StoryUrl,
 };
 use std::{
-    borrow::Cow,
-    collections::{hash_map::Entry, HashMap, HashSet},
+    collections::{HashMap, HashSet},
 };
 
 mod collector;
@@ -18,7 +16,7 @@ mod render;
 mod scorer;
 mod tagger;
 
-use self::scorer::StoryScoreType;
+
 pub use self::{
     collector::StoryCollector,
     id::StoryIdentifier,

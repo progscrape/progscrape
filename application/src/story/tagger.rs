@@ -288,9 +288,9 @@ pub(crate) mod test {
 
     #[fixture]
     fn tagger(tagger_config: TaggerConfig) -> StoryTagger {
-        let tagger = StoryTagger::new(&tagger_config);
+        
         // println!("{:?}", tagger);
-        tagger
+        StoryTagger::new(&tagger_config)
     }
 
     #[rstest]

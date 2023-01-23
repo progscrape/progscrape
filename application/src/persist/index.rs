@@ -3,18 +3,18 @@ use itertools::Itertools;
 use tantivy::collector::TopDocs;
 use tantivy::directory::{MmapDirectory, RamDirectory};
 use tantivy::query::{AllQuery, BooleanQuery, Occur, Query, RangeQuery, TermQuery};
-use tantivy::{doc, DateTime, Index, SegmentReader};
+use tantivy::{doc, Index};
 use tantivy::{
     schema::*, Directory, DocAddress, IndexSettings, IndexSortByField, IndexWriter, Searcher,
 };
 
-use progscrape_scrapers::{ScrapeId, StoryDate, StoryUrl, TypedScrape};
+use progscrape_scrapers::{StoryDate, StoryUrl, TypedScrape};
 
-use std::borrow::Cow;
+
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
-use std::ops::{Deref, RangeBounds};
-use std::sync::{Arc, RwLock, RwLockReadGuard};
+use std::ops::{RangeBounds};
+use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant};
 
 use crate::story::StoryCollector;
@@ -134,7 +134,7 @@ impl StoryIndexShard {
     fn most_recent_story(&self) -> Result<StoryDate, PersistError> {
         let searcher = self.index.reader()?.searcher();
         let mut recent = 0;
-        for (segment_ord, segment_reader) in searcher.segment_readers().iter().enumerate() {
+        for (_segment_ord, segment_reader) in searcher.segment_readers().iter().enumerate() {
             let date = segment_reader.fast_fields().i64(self.date_field)?;
             recent = recent.max(date.max_value());
         }
@@ -370,7 +370,7 @@ impl StoryIndex {
             scrape_ids.push(format!(
                 "{}:{}",
                 Shard::from_date_time(scrape.date).to_string(),
-                id.to_string()
+                id
             ));
         }
         let url = extracted.url();
@@ -415,11 +415,11 @@ impl StoryIndex {
             let result = shard_index.lookup_stories(&searcher, lookup, (-one_month)..one_month)?;
             let lookup = result.into_iter().next().expect("TODO");
             match lookup {
-                StoryLookup::Found(id, doc) => {
+                StoryLookup::Found(_id, doc) => {
                     let story = shard_index.lookup_story(&searcher, doc)?;
                     println!("{:?}", story);
                 }
-                StoryLookup::Unfound(id) => {
+                StoryLookup::Unfound(_id) => {
                     let story = ScrapeCollection::new_from_one(scrape);
                     let doc = Self::create_story_insert(eval, &story);
                     shard_index.insert_story_document(writer, doc)?;
@@ -531,7 +531,7 @@ impl StoryIndex {
         searcher: &Searcher,
         doc_address: DocAddress,
     ) -> Result<Story, PersistError> {
-        let story = index.lookup_story(&searcher, doc_address)?;
+        let story = index.lookup_story(searcher, doc_address)?;
         let url = StoryUrl::parse(story.url).expect("Failed to parse URL");
         let date = StoryDate::from_seconds(story.date).expect("Failed to re-parse date");
         let score = story.score as f32;
@@ -653,7 +653,7 @@ impl Storage for StoryIndex {
 
     fn query_frontpage_hot_set_detail(
         &self,
-        max_count: usize,
+        _max_count: usize,
     ) -> Result<Vec<(Story, ScrapeCollection)>, PersistError> {
         unimplemented!()
     }
@@ -666,11 +666,11 @@ impl Storage for StoryIndex {
             // println!("Found shard {}", shard);
             let searcher = index.index.reader()?.searcher();
             let query = TermQuery::new(
-                Term::from_field_text(index.title_field, &search),
+                Term::from_field_text(index.title_field, search),
                 IndexRecordOption::Basic,
             );
             let docs = searcher.search(&query, &TopDocs::with_limit(max_count))?;
-            for (score, doc_address) in docs {
+            for (_score, doc_address) in docs {
                 vec.push(Self::lookup_story(&index, &searcher, doc_address)?);
             }
         }
@@ -774,7 +774,7 @@ mod test {
                 Some("rust".into()),
                 date,
                 "I love Rust".into(),
-                url.clone(),
+                url,
             )
             .into()]
             .into_iter(),
@@ -813,7 +813,7 @@ mod test {
                 Some("rust".into()),
                 date,
                 "I love Rust".into(),
-                url.clone(),
+                url,
             )
             .into()]
             .into_iter(),

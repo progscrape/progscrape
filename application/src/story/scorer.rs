@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use progscrape_scrapers::{
-    ExtractedScrapeCollection, ScrapeSource, StoryDate, StoryDuration, TypedScrape,
+    ExtractedScrapeCollection, ScrapeSource, StoryDate, StoryDuration,
 };
 
 use super::Story;
@@ -152,7 +152,7 @@ impl StoryScorer {
     pub fn score_detail(
         &self,
         scrapes: &ExtractedScrapeCollection,
-        now: StoryDate,
+        _now: StoryDate,
     ) -> Vec<(String, f32)> {
         let mut score_bits = vec![];
         let accum = |score_type, score| score_bits.push((format!("{:?}", score_type), score));

@@ -1,5 +1,4 @@
 use std::{
-    borrow::Cow,
     collections::{hash_map::Entry, HashMap},
 };
 
@@ -62,7 +61,7 @@ pub struct ExtractedScrapeCollection<'a> {
 impl<'a> ExtractedScrapeCollection<'a> {
     pub fn title(&'a self) -> &'a str {
         // TODO: Best title
-        &self
+        self
             .scrapes
             .iter()
             .next()
@@ -72,7 +71,7 @@ impl<'a> ExtractedScrapeCollection<'a> {
     }
 
     pub fn url(&'a self) -> &'a StoryUrl {
-        &self
+        self
             .scrapes
             .iter()
             .next()

@@ -92,7 +92,7 @@ impl<T: ScrapeStory> std::ops::DerefMut for GenericScrape<T> {
 }
 
 impl<T: ScrapeStory> GenericScrape<T> {
-    pub fn merge_generic(&mut self, other: Self) {}
+    pub fn merge_generic(&mut self, _other: Self) {}
 }
 
 macro_rules! scrape_story {

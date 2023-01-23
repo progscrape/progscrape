@@ -266,7 +266,7 @@ async fn admin_scrape(
         &resources,
         "admin/scrape.html",
         context!(
-            config: std::sync::Arc<crate::config::Config> = config.clone(),
+            config: std::sync::Arc<crate::config::Config> = config,
             scrapes: ScraperPossibilities = resources.scrapers().compute_scrape_possibilities(),
             endpoint: &'static str = "/admin/scrape/test"
         ),
@@ -378,7 +378,7 @@ async fn admin_status_story(
     Path(id): Path<String>,
 ) -> Result<Html<String>, WebError> {
     let id = StoryIdentifier::from_base64(id).ok_or(WebError::NotFound)?;
-    let now = now(&index)?;
+    let _now = now(&index)?;
     tracing::info!("Loading story = {:?}", id);
     let story = index.storage.get_story(&id).ok_or(WebError::NotFound)?;
     // let score_details = resources.story_evaluator().scorer.score_detail(&story, now);

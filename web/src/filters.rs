@@ -33,13 +33,13 @@ impl tera::Filter for AbsoluteTimeFilter {
     fn filter(
         &self,
         value: &Value,
-        args: &std::collections::HashMap<String, Value>,
+        _args: &std::collections::HashMap<String, Value>,
     ) -> tera::Result<Value> {
         let date = value.as_i64().and_then(StoryDate::from_seconds);
         if let Some(date) = date {
             Ok(format!("{}", date).into())
         } else {
-            Err(format!("Invalid date arguments").into())
+            Err("Invalid date arguments".to_string().into())
         }
     }
 }
@@ -72,7 +72,7 @@ impl tera::Filter for RelativeTimeFilter {
                 Ok("recently added".into())
             }
         } else {
-            Err(format!("Invalid date arguments").into())
+            Err("Invalid date arguments".to_string().into())
         }
     }
 }

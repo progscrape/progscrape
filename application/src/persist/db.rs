@@ -82,12 +82,12 @@ impl DB {
 
     pub fn create_unique_index_schema<T: Serialize + Default>(
         &self,
-        schema: Option<&str>,
+        _schema: Option<&str>,
         name: &str,
         keys: &[&str],
     ) -> Result<(), PersistError> {
         let t = T::default();
-        let params = serde_rusqlite::to_params_named(&t)?;
+        let _params = serde_rusqlite::to_params_named(&t)?;
         // TODO: check keys
         let sql = format!(
             "create unique index if not exists {} on {}({})",
@@ -230,7 +230,7 @@ mod test {
 
     #[test]
     fn load_store() {
-        let mut db = DB::open(":memory:").unwrap();
+        let db = DB::open(":memory:").unwrap();
         db.create_table::<TestSerialize>().unwrap();
         let input = TestSerialize {
             id: "a".into(),
@@ -244,7 +244,7 @@ mod test {
 
     #[test]
     fn load_store_missing() {
-        let mut db = DB::open(":memory:").unwrap();
+        let db = DB::open(":memory:").unwrap();
         db.create_table::<TestSerialize>().unwrap();
         let output = db.load::<TestSerialize>("a".into()).unwrap();
         assert_eq!(None, output);
