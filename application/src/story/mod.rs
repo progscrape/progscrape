@@ -4,26 +4,27 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 use progscrape_scrapers::{
-    ScrapeConfig, ScrapeExtractor, ScrapeId, ScrapeSource, StoryDate, StoryUrl, TypedScrape, ScrapeCollection,
+    ScrapeCollection, ScrapeConfig, ScrapeExtractor, ScrapeId, ScrapeSource, StoryDate, StoryUrl,
+    TypedScrape,
 };
 use std::{
     borrow::Cow,
     collections::{hash_map::Entry, HashMap, HashSet},
 };
 
-mod id;
 mod collector;
+mod id;
 mod render;
 mod scorer;
 mod tagger;
 
 use self::scorer::StoryScoreType;
 pub use self::{
-    id::StoryIdentifier,
     collector::StoryCollector,
+    id::StoryIdentifier,
+    render::{StoryFullRender, StoryRender},
     scorer::{StoryScoreConfig, StoryScorer},
     tagger::{StoryTagger, TaggerConfig},
-    render::{StoryRender, StoryFullRender},
 };
 
 /// Required services to evaulate a story.
@@ -65,7 +66,14 @@ pub struct Story {
 }
 
 impl Story {
-    pub fn new_from_parts(title: String, url: StoryUrl, date: StoryDate, score: f32, tags: Vec<String>, scrapes: HashSet<ScrapeId>) -> Self {
+    pub fn new_from_parts(
+        title: String,
+        url: StoryUrl,
+        date: StoryDate,
+        score: f32,
+        tags: Vec<String>,
+        scrapes: HashSet<ScrapeId>,
+    ) -> Self {
         Self {
             id: StoryIdentifier::new(date, url.normalization()),
             tags: TagSet::from_iter(tags.into_iter()),
@@ -119,7 +127,7 @@ impl TagSet {
 
     pub fn from_iter<S: AsRef<str>>(iter: impl Iterator<Item = S>) -> Self {
         Self {
-            set: HashSet::from_iter(iter.map(|s| s.as_ref().to_owned()))
+            set: HashSet::from_iter(iter.map(|s| s.as_ref().to_owned())),
         }
     }
 

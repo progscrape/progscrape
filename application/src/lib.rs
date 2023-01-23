@@ -1,7 +1,9 @@
 mod persist;
 mod story;
 
-pub use persist::{MemIndex, PersistError, PersistLocation, StoryIndex, Storage, StorageSummary, StorageWriter};
+pub use persist::{
+    MemIndex, PersistError, PersistLocation, Storage, StorageSummary, StorageWriter, StoryIndex,
+};
 pub use story::{
     Story, StoryEvaluator, StoryIdentifier, StoryRender, StoryScoreConfig, TaggerConfig,
 };

@@ -200,8 +200,7 @@ impl StoryTagger {
 
         let mut mutes = HashMap::new();
 
-        'outer:
-        while !tokens.is_empty() {
+        'outer: while !tokens.is_empty() {
             mutes.retain(|_k, v| {
                 if *v == 0 {
                     false

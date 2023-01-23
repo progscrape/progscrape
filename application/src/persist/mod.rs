@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use crate::story::{Story, StoryEvaluator, StoryIdentifier};
-use progscrape_scrapers::{StoryDate, TypedScrape, ScrapeCollection};
+use progscrape_scrapers::{ScrapeCollection, StoryDate, TypedScrape};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -57,7 +57,10 @@ pub trait Storage: Send + Sync {
     fn query_frontpage_hot_set(&self, max_count: usize) -> Result<Vec<Story>, PersistError>;
 
     /// Query the current front page hot set, sorted by overall base score.
-    fn query_frontpage_hot_set_detail(&self, max_count: usize) -> Result<Vec<(Story, ScrapeCollection)>, PersistError>;
+    fn query_frontpage_hot_set_detail(
+        &self,
+        max_count: usize,
+    ) -> Result<Vec<(Story, ScrapeCollection)>, PersistError>;
 
     /// Query a search, scored mostly by date but may include some "hotness".
     fn query_search(&self, search: &str, max_count: usize) -> Result<Vec<Story>, PersistError>;
@@ -75,7 +78,7 @@ pub trait StorageWriter: Storage {
     fn insert_scrape_collections<I: Iterator<Item = ScrapeCollection>>(
         &mut self,
         eval: &StoryEvaluator,
-        stories: I
+        stories: I,
     ) -> Result<(), PersistError>;
 }
 
@@ -85,16 +88,14 @@ pub enum PersistLocation {
     /// In-memory.
     Memory,
     /// At a given path.
-    Path(PathBuf)
+    Path(PathBuf),
 }
 
 impl PersistLocation {
     pub fn join<P: AsRef<std::path::Path>>(&self, p: P) -> PersistLocation {
         match self {
             PersistLocation::Memory => PersistLocation::Memory,
-            PersistLocation::Path(path) => {
-                PersistLocation::Path(path.join(p))
-            }
+            PersistLocation::Path(path) => PersistLocation::Path(path.join(p)),
         }
     }
 }

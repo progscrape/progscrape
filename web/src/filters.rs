@@ -30,7 +30,11 @@ impl tera::Filter for CommaFilter {
 pub struct AbsoluteTimeFilter {}
 
 impl tera::Filter for AbsoluteTimeFilter {
-    fn filter(&self, value: &Value, args: &std::collections::HashMap<String, Value>) -> tera::Result<Value> {
+    fn filter(
+        &self,
+        value: &Value,
+        args: &std::collections::HashMap<String, Value>,
+    ) -> tera::Result<Value> {
         let date = value.as_i64().and_then(StoryDate::from_seconds);
         if let Some(date) = date {
             Ok(format!("{}", date).into())
@@ -44,9 +48,16 @@ impl tera::Filter for AbsoluteTimeFilter {
 pub struct RelativeTimeFilter {}
 
 impl tera::Filter for RelativeTimeFilter {
-    fn filter(&self, value: &Value, args: &std::collections::HashMap<String, Value>) -> tera::Result<Value> {
+    fn filter(
+        &self,
+        value: &Value,
+        args: &std::collections::HashMap<String, Value>,
+    ) -> tera::Result<Value> {
         let date = value.as_i64().and_then(StoryDate::from_seconds);
-        let now = args.get("now").and_then(Value::as_i64).and_then(StoryDate::from_seconds);
+        let now = args
+            .get("now")
+            .and_then(Value::as_i64)
+            .and_then(StoryDate::from_seconds);
         if let (Some(date), Some(now)) = (date, now) {
             let relative = now - date;
             if relative > StoryDuration::days(60) {

@@ -1,7 +1,10 @@
-use std::{ops::{Range, AddAssign, RangeInclusive}, fmt::Debug};
+use std::{
+    fmt::Debug,
+    ops::{AddAssign, Range, RangeInclusive},
+};
 
 use progscrape_scrapers::StoryDate;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct Shard(u16);
@@ -46,20 +49,20 @@ pub enum ShardOrder {
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct ShardRange {
-    range: Option<(Shard, Shard)>
+    range: Option<(Shard, Shard)>,
 }
 
 impl ShardRange {
     pub fn new() -> Self {
         Default::default()
     }
-    
+
     pub fn new_from(range: RangeInclusive<Shard>) -> Self {
         Self {
-            range: Some((*range.start(), *range.end()))
+            range: Some((*range.start(), *range.end())),
         }
     }
-    
+
     pub fn iterate(&self, order: ShardOrder) -> impl Iterator<Item = Shard> {
         let (mut start, end) = self.range.unwrap_or((Shard::MAX, Shard::MIN));
         let orig_start = start;
@@ -67,7 +70,11 @@ impl ShardRange {
             if start > end {
                 None
             } else {
-                let next = Some(if order == ShardOrder::OldestFirst { start } else { Shard( (end.0 - start.0) + orig_start.0 ) });
+                let next = Some(if order == ShardOrder::OldestFirst {
+                    start
+                } else {
+                    Shard((end.0 - start.0) + orig_start.0)
+                });
                 start = start + 1;
                 next
             }
@@ -120,10 +127,12 @@ mod test {
     use itertools::Itertools;
 
     use super::*;
-    
+
     #[test]
     fn test_shard_iterator() {
-        let range = ShardRange::new_from(Shard::from_year_month(2000, 1)..=Shard::from_year_month(2000, 12));
+        let range = ShardRange::new_from(
+            Shard::from_year_month(2000, 1)..=Shard::from_year_month(2000, 12),
+        );
         assert_eq!(range.iterate(ShardOrder::OldestFirst).count(), 12);
         assert_eq!(range.iterate(ShardOrder::NewestFirst).count(), 12);
 

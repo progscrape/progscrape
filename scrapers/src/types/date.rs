@@ -1,4 +1,6 @@
-use chrono::{DateTime, Datelike, Duration, Months, NaiveDateTime, TimeZone, Utc, NaiveDate, NaiveTime};
+use chrono::{
+    DateTime, Datelike, Duration, Months, NaiveDate, NaiveDateTime, NaiveTime, TimeZone, Utc,
+};
 use serde::{Deserialize, Serialize};
 use std::{fmt::Display, ops::Sub, time::SystemTime};
 
@@ -17,7 +19,10 @@ impl StoryDate {
         Self { internal_date }
     }
     pub fn year_month_day(year: i32, month: u32, day: u32) -> Option<Self> {
-        match (NaiveDate::from_ymd_opt(year, month, day), NaiveTime::from_hms_opt(0, 0, 0)) {
+        match (
+            NaiveDate::from_ymd_opt(year, month, day),
+            NaiveTime::from_hms_opt(0, 0, 0),
+        ) {
             (Some(d), Some(t)) => {
                 let dt = d.and_time(t);
                 Some(Self::new(Utc.from_utc_datetime(&dt)))
@@ -168,6 +173,9 @@ mod test {
         assert_eq!(date, date2);
 
         let date_from_seconds = str::parse::<i64>(&json).expect("Parse");
-        assert_eq!(date, StoryDate::from_seconds(date_from_seconds).expect("From seconds"));
+        assert_eq!(
+            date,
+            StoryDate::from_seconds(date_from_seconds).expect("From seconds")
+        );
     }
 }

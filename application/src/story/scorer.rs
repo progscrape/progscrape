@@ -1,8 +1,10 @@
 use serde::{Deserialize, Serialize};
 
-use progscrape_scrapers::{StoryDate, StoryDuration, TypedScrape, ExtractedScrapeCollection, ScrapeSource};
+use progscrape_scrapers::{
+    ExtractedScrapeCollection, ScrapeSource, StoryDate, StoryDuration, TypedScrape,
+};
 
-use super::{Story};
+use super::Story;
 
 #[derive(Clone, Default, Serialize, Deserialize)]
 pub struct StoryScoreConfig {
@@ -43,9 +45,7 @@ impl StoryScorer {
     pub fn resort_stories(&self, relative_to: StoryDate, stories: &mut [Story]) {
         let new_score = move |story: &Story| story.score + self.score_age(relative_to - story.date);
 
-        stories.sort_by_cached_key(|story| {
-            (new_score(story) * -100000.0) as i64
-        });
+        stories.sort_by_cached_key(|story| (new_score(story) * -100000.0) as i64);
     }
 
     #[inline(always)]
@@ -103,7 +103,7 @@ impl StoryScorer {
                 ScrapeSource::Reddit => reddit = Some(scrape),
                 ScrapeSource::Lobsters => lobsters = Some(scrape),
                 ScrapeSource::Slashdot => slashdot = Some(scrape),
-                ScrapeSource::Other => {},
+                ScrapeSource::Other => {}
             }
             // TOOD: Rank for other services
             if let Some(rank) = scrape.rank {
@@ -149,7 +149,11 @@ impl StoryScorer {
         score_total
     }
 
-    pub fn score_detail(&self, scrapes: &ExtractedScrapeCollection, now: StoryDate) -> Vec<(String, f32)> {
+    pub fn score_detail(
+        &self,
+        scrapes: &ExtractedScrapeCollection,
+        now: StoryDate,
+    ) -> Vec<(String, f32)> {
         let mut score_bits = vec![];
         let accum = |score_type, score| score_bits.push((format!("{:?}", score_type), score));
         self.score_impl(scrapes, accum);

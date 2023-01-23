@@ -193,7 +193,7 @@ fn render(
 // basic handler that responds with a static string
 async fn root(
     State((index, resources)): State<(index::Index, Resources)>,
-    query: Query<HashMap<String, String>>
+    query: Query<HashMap<String, String>>,
 ) -> Result<Html<String>, WebError> {
     let now = now(&index)?;
     let stories = if let Some(search) = query.get("search") {

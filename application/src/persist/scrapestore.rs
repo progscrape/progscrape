@@ -1,7 +1,12 @@
-use std::{collections::{HashMap, HashSet}, path::{Path, PathBuf}, sync::{RwLock, Arc}, rc::Rc};
+use std::{
+    collections::{HashMap, HashSet},
+    path::{Path, PathBuf},
+    rc::Rc,
+    sync::{Arc, RwLock},
+};
 
-use progscrape_scrapers::{TypedScrape, ScrapeId, StoryDate};
-use serde::{Serialize, Deserialize};
+use progscrape_scrapers::{ScrapeId, StoryDate, TypedScrape};
+use serde::{Deserialize, Serialize};
 
 use crate::PersistError;
 
@@ -57,7 +62,10 @@ impl ScrapeStore {
         self.insert_scrape_batch([scrape].into_iter())
     }
 
-    pub fn insert_scrape_batch<'a, I: Iterator<Item = &'a TypedScrape>>(&self, iter: I) -> Result<(), PersistError> {
+    pub fn insert_scrape_batch<'a, I: Iterator<Item = &'a TypedScrape>>(
+        &self,
+        iter: I,
+    ) -> Result<(), PersistError> {
         let mut per_shard: HashMap<String, Vec<&TypedScrape>> = HashMap::new();
         for item in iter {
             let shard = format!("{:04}-{:02}", item.date.year(), item.date.month());
@@ -71,7 +79,7 @@ impl ScrapeStore {
                 batch.push(ScrapeCacheEntry {
                     date: item.date,
                     id: item.id.to_string(),
-                    json
+                    json,
                 });
             }
             db.store_batch(batch)?;
@@ -79,7 +87,11 @@ impl ScrapeStore {
         Ok(())
     }
 
-    pub fn fetch_scrape(&self, id: &ScrapeId, date: StoryDate) -> Result<Option<TypedScrape>, PersistError> {
+    pub fn fetch_scrape(
+        &self,
+        id: &ScrapeId,
+        date: StoryDate,
+    ) -> Result<Option<TypedScrape>, PersistError> {
         let shard = format!("{:04}-{:02}", date.year(), date.month());
         let db = self.open_shard(shard)?;
         let scrape = db.load::<ScrapeCacheEntry>(id.to_string())?;
@@ -91,7 +103,10 @@ impl ScrapeStore {
         }
     }
 
-    pub fn fetch_scrape_batch<'a, I: Iterator<Item = (&'a ScrapeId, StoryDate)>>(&self, iter: I) -> Result<HashMap<ScrapeId, Option<TypedScrape>>, PersistError> {
+    pub fn fetch_scrape_batch<'a, I: Iterator<Item = (&'a ScrapeId, StoryDate)>>(
+        &self,
+        iter: I,
+    ) -> Result<HashMap<ScrapeId, Option<TypedScrape>>, PersistError> {
         let mut map = HashMap::new();
         for (id, date) in iter {
             let shard = format!("{:04}-{:02}", date.year(), date.month());

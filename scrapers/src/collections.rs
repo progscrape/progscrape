@@ -1,15 +1,18 @@
-use std::{collections::{HashMap, hash_map::Entry}, borrow::Cow};
+use std::{
+    borrow::Cow,
+    collections::{hash_map::Entry, HashMap},
+};
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
-use crate::{ScrapeId, TypedScrape, backends::ScrapeCore, ScrapeExtractor, StoryUrl, StoryDate};
+use crate::{backends::ScrapeCore, ScrapeExtractor, ScrapeId, StoryDate, StoryUrl, TypedScrape};
 
 /// Collection of scrapes, which can also extract the best title, etc.
 #[derive(Serialize, Deserialize)]
 pub struct ScrapeCollection {
     pub earliest: StoryDate,
 
-    // TODO: We need to clone the scrape ID because we can't use a reference to the key, and making this a hash set 
+    // TODO: We need to clone the scrape ID because we can't use a reference to the key, and making this a hash set
     // prevents mutation/
     pub scrapes: HashMap<ScrapeId, TypedScrape>,
 }
@@ -18,17 +21,18 @@ impl ScrapeCollection {
     pub fn new_from_one(scrape: TypedScrape) -> Self {
         Self {
             earliest: scrape.date,
-            scrapes: HashMap::from_iter([(scrape.id.clone(), scrape)])
+            scrapes: HashMap::from_iter([(scrape.id.clone(), scrape)]),
         }
     }
 
     pub fn new_from_iter(scrapes: impl Iterator<Item = TypedScrape>) -> Self {
         let scrapes = HashMap::from_iter(scrapes.map(|s| (s.id.clone(), s)));
-        let earliest = scrapes.values().map(|x| x.date).min().expect("Requires at least one TypedScrape");
-        Self {
-            earliest,
-            scrapes,
-        }
+        let earliest = scrapes
+            .values()
+            .map(|x| x.date)
+            .min()
+            .expect("Requires at least one TypedScrape");
+        Self { earliest, scrapes }
     }
 
     pub fn merge(&mut self, scrape: TypedScrape) {
@@ -45,7 +49,7 @@ impl ScrapeCollection {
     pub fn extract<'a>(&'a self, extractor: &ScrapeExtractor) -> ExtractedScrapeCollection<'a> {
         let iter = self.scrapes.iter().map(|(k, v)| (k, extractor.extract(v)));
         ExtractedScrapeCollection {
-            scrapes: HashMap::from_iter(iter)
+            scrapes: HashMap::from_iter(iter),
         }
     }
 }
@@ -55,14 +59,26 @@ pub struct ExtractedScrapeCollection<'a> {
     pub scrapes: HashMap<&'a ScrapeId, ScrapeCore<'a>>,
 }
 
-impl <'a> ExtractedScrapeCollection<'a> {
+impl<'a> ExtractedScrapeCollection<'a> {
     pub fn title(&'a self) -> &'a str {
         // TODO: Best title
-        &self.scrapes.iter().next().expect("Expected at least one scrape").1.title
+        &self
+            .scrapes
+            .iter()
+            .next()
+            .expect("Expected at least one scrape")
+            .1
+            .title
     }
 
     pub fn url(&'a self) -> &'a StoryUrl {
-        &self.scrapes.iter().next().expect("Expected at least one scrape").1.url
+        &self
+            .scrapes
+            .iter()
+            .next()
+            .expect("Expected at least one scrape")
+            .1
+            .url
     }
 
     pub fn tags<'b>(&'b self) -> Vec<String> {

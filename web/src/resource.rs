@@ -54,7 +54,11 @@ impl Resources {
     }
 }
 
-fn create_static_files(resource_path: &Path, css: String, admin_css: String) -> Result<StaticFileRegistry, WebError> {
+fn create_static_files(
+    resource_path: &Path,
+    css: String,
+    admin_css: String,
+) -> Result<StaticFileRegistry, WebError> {
     let mut static_files = StaticFileRegistry::default();
     static_files.register_files("resource/static/")?;
     let mut css_vars = ":root {\n".to_owned();
@@ -74,8 +78,16 @@ fn create_static_files_root(resource_path: &Path) -> Result<StaticFileRegistry, 
     Ok(static_files)
 }
 
-fn create_templates(resource_path: &Path, static_files: Arc<StaticFileRegistry>) -> Result<Tera, WebError> {
-    let mut tera = Tera::new(resource_path.join("templates/**/*").to_string_lossy().borrow())?;
+fn create_templates(
+    resource_path: &Path,
+    static_files: Arc<StaticFileRegistry>,
+) -> Result<Tera, WebError> {
+    let mut tera = Tera::new(
+        resource_path
+            .join("templates/**/*")
+            .to_string_lossy()
+            .borrow(),
+    )?;
     tera.register_filter("comma", CommaFilter::default());
     tera.register_filter("static", StaticFileFilter::new(static_files));
     tera.register_filter("relative_time", RelativeTimeFilter::default());

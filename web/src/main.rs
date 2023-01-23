@@ -1,11 +1,13 @@
-use std::io::BufReader;
 use std::fs::File;
+use std::io::BufReader;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 use clap::{Parser, Subcommand};
 use config::Config;
-use progscrape_application::{StoryIndex, PersistLocation, StorageWriter, StoryEvaluator, MemIndex, Storage};
+use progscrape_application::{
+    MemIndex, PersistLocation, Storage, StorageWriter, StoryEvaluator, StoryIndex,
+};
 use tracing_subscriber::filter::LevelFilter;
 use tracing_subscriber::EnvFilter;
 use web::WebError;
@@ -21,13 +23,15 @@ mod serve_static_files;
 mod static_files;
 mod web;
 
-pub enum Engine {
-
-}
+pub enum Engine {}
 
 #[derive(Parser, Debug)]
 struct Args {
-    #[arg(long, value_name = "LOG", help = "Logging filter (overrides SERVER_LOG environment variable)")]
+    #[arg(
+        long,
+        value_name = "LOG",
+        help = "Logging filter (overrides SERVER_LOG environment variable)"
+    )]
     log: Option<String>,
 
     #[command(subcommand)]
@@ -39,7 +43,7 @@ pub enum Command {
     Serve {
         #[arg(long, value_name = "DIR", value_hint = clap::ValueHint::DirPath, help = "Persistence path")]
         persist_path: Option<PathBuf>,
-    
+
         #[arg(long, value_name = "DIR", value_hint = clap::ValueHint::DirPath, help = "Root path")]
         root: Option<PathBuf>,
     },
@@ -71,9 +75,14 @@ async fn go() -> Result<(), WebError> {
 
     // Initialize logging using either the environment variable or --log option
     let env_filter = if let Some(log) = args.log {
-        EnvFilter::builder().with_default_directive(default_directive).parse(log)?
+        EnvFilter::builder()
+            .with_default_directive(default_directive)
+            .parse(log)?
     } else {
-        EnvFilter::builder().with_default_directive(default_directive).with_env_var("SERVER_LOG").from_env()?
+        EnvFilter::builder()
+            .with_default_directive(default_directive)
+            .with_env_var("SERVER_LOG")
+            .from_env()?
     };
 
     tracing_subscriber::fmt().with_env_filter(env_filter).init();
@@ -81,11 +90,13 @@ async fn go() -> Result<(), WebError> {
 
     match args.command {
         Command::Serve { root, persist_path } => {
-            let persist_path = persist_path.unwrap_or("target/index".into()).canonicalize()?;
+            let persist_path = persist_path
+                .unwrap_or("target/index".into())
+                .canonicalize()?;
             let index = Index::initialize_with_persistence(persist_path)?;
             let root_path = root.unwrap_or(".".into()).canonicalize()?;
             web::start_server(&root_path, index).await?;
-        },
+        }
         Command::Initialize { root, persist_path } => {
             if persist_path.exists() {
                 tracing::error!("Path {} must not exist", persist_path.to_string_lossy());
@@ -121,7 +132,13 @@ async fn go() -> Result<(), WebError> {
                 tracing::info!("{} | {}", shard, count);
             }
 
-            tracing::info!("Completed init in {}s (import={}s, memindex={}s, storyindex={}s)", start.elapsed().as_secs(), import_time.as_secs(), memindex_time.as_secs(), story_index_time.as_secs());
+            tracing::info!(
+                "Completed init in {}s (import={}s, memindex={}s, storyindex={}s)",
+                start.elapsed().as_secs(),
+                import_time.as_secs(),
+                memindex_time.as_secs(),
+                story_index_time.as_secs()
+            );
         }
     };
     Ok(())

@@ -7,7 +7,9 @@ use std::{
 
 use crate::config::Config;
 
-use progscrape_application::{MemIndex, Storage, StorageWriter, StoryEvaluator, StoryIndex, PersistLocation};
+use progscrape_application::{
+    MemIndex, PersistLocation, Storage, StorageWriter, StoryEvaluator, StoryIndex,
+};
 
 use crate::web::WebError;
 
@@ -20,7 +22,7 @@ impl Index {
     pub fn initialize_with_persistence<P: AsRef<Path>>(path: P) -> Result<Index, WebError> {
         let index = StoryIndex::new(PersistLocation::Path(path.as_ref().to_owned()))?;
         Ok(Index {
-            storage: Arc::new(index)
+            storage: Arc::new(index),
         })
     }
 }

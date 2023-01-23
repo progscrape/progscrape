@@ -2,9 +2,9 @@ use std::collections::HashMap;
 
 use itertools::Itertools;
 
-use progscrape_scrapers::{StoryUrlNorm, ScrapeCollection};
+use progscrape_scrapers::{ScrapeCollection, StoryUrlNorm};
 
-use super::{*, shard::Shard};
+use super::{shard::Shard, *};
 
 /// Builds an index of stories in memory, useful for pre-aggregation of scrapes into normalized URL collections.
 #[derive(Default, Serialize, Deserialize)]
@@ -52,10 +52,10 @@ impl MemIndex {
             }
 
             // Not found!
-            if let Some(_old) = self
-                .map_mut(date)
-                .insert(normalized_url.clone(), ScrapeCollection::new_from_one(scrape))
-            {
+            if let Some(_old) = self.map_mut(date).insert(
+                normalized_url.clone(),
+                ScrapeCollection::new_from_one(scrape),
+            ) {
                 // TODO: We need to merge duplicate scrapes
                 println!("Unexpected");
             }
