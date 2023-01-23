@@ -132,7 +132,7 @@ mod test {
     use crate::test::enable_tracing;
 
     #[rstest]
-    fn test_insert(_enable_tracing: &()) -> Result<(), Box<dyn std::error::Error>> {
+    fn test_insert(_enable_tracing: &bool) -> Result<(), Box<dyn std::error::Error>> {
         let store = ScrapeStore::new(PersistLocation::Memory)?;
         let legacy = progscrape_scrapers::import_legacy(Path::new(".."))?;
         let first = &legacy[0..100];

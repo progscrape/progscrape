@@ -15,10 +15,11 @@ mod test {
 
     #[fixture]
     #[once]
-    pub fn enable_tracing() -> () {
+    pub fn enable_tracing() -> bool {
         tracing_subscriber::fmt()
             .with_env_filter(EnvFilter::from_default_env())
             .init();
+        true
     }
 
     #[fixture]

@@ -3,7 +3,7 @@ use itertools::Itertools;
 use tantivy::collector::TopDocs;
 use tantivy::directory::{MmapDirectory, RamDirectory};
 use tantivy::query::{AllQuery, BooleanQuery, Occur, Query, RangeQuery, TermQuery};
-use tantivy::{doc, Index, UserOperation};
+use tantivy::{doc, Index};
 use tantivy::{
     schema::*, Directory, DocAddress, IndexSettings, IndexSortByField, IndexWriter, Searcher,
 };
@@ -456,7 +456,7 @@ impl StoryIndex {
             let result = shard_index.lookup_stories(&searcher, lookup, (-one_month)..one_month)?;
             let lookup = result.into_iter().next().expect("TODO");
             match lookup {
-                StoryLookup::Found(id, doc) => {
+                StoryLookup::Found(_id, doc) => {
                     shard_index.add_scrape_id(
                         writer,
                         &searcher,
@@ -776,7 +776,7 @@ mod test {
     }
 
     #[rstest]
-    fn test_index_shard(_enable_tracing: &()) {
+    fn test_index_shard(_enable_tracing: &bool) {
         let ids1 = (0..100).into_iter().map(|x| (x, 0));
         let ids2 = (100..200).into_iter().map(|x| (x, 10));
         let shard = populate_shard(ids1.chain(ids2)).expect("Failed to initialize shard");
@@ -811,7 +811,7 @@ mod test {
     }
 
     #[rstest]
-    fn test_index_scrapes(_enable_tracing: &()) -> Result<(), Box<dyn std::error::Error>> {
+    fn test_index_scrapes(_enable_tracing: &bool) -> Result<(), Box<dyn std::error::Error>> {
         use ScrapeSource::*;
 
         let mut index = StoryIndex::new(PersistLocation::Memory)?;
@@ -853,7 +853,7 @@ mod test {
 
     #[rstest]
     fn test_index_scrape_collections(
-        _enable_tracing: &(),
+        _enable_tracing: &bool,
     ) -> Result<(), Box<dyn std::error::Error>> {
         use ScrapeSource::*;
 
@@ -891,7 +891,7 @@ mod test {
 
     #[rstest]
     fn test_index_lots(
-        _enable_tracing: &(),
+        _enable_tracing: &bool,
         enable_slow_tests: &bool,
     ) -> Result<(), Box<dyn std::error::Error>> {
         if !enable_slow_tests {
