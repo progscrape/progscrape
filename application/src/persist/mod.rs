@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use crate::story::{Story, StoryEvaluator, StoryIdentifier};
+use crate::story::{Story, StoryEvaluator, StoryIdentifier, StoryTagger};
 use progscrape_scrapers::{ScrapeCollection, StoryDate, TypedScrape};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -63,7 +63,12 @@ pub trait Storage: Send + Sync {
     ) -> Result<Vec<(Story, ScrapeCollection)>, PersistError>;
 
     /// Query a search, scored mostly by date but may include some "hotness".
-    fn query_search(&self, search: &str, max_count: usize) -> Result<Vec<Story>, PersistError>;
+    fn query_search(
+        &self,
+        tagger: &StoryTagger,
+        search: &str,
+        max_count: usize,
+    ) -> Result<Vec<Story>, PersistError>;
 }
 
 pub trait StorageWriter: Storage {

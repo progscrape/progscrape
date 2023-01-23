@@ -257,7 +257,9 @@ async fn root(
 ) -> Result<Html<String>, WebError> {
     let now = now(&index)?;
     let stories = if let Some(search) = query.get("search") {
-        index.storage.query_search(search, 30)?
+        index
+            .storage
+            .query_search(&resources.story_evaluator().tagger, search, 30)?
     } else {
         let mut vec = hot_set(now, &index, &resources.story_evaluator())?;
         vec.truncate(30);

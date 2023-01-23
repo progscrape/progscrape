@@ -735,7 +735,12 @@ impl Storage for StoryIndex {
         unimplemented!()
     }
 
-    fn query_search(&self, search: &str, max_count: usize) -> Result<Vec<Story>, PersistError> {
+    fn query_search(
+        &self,
+        tagger: &StoryTagger,
+        search: &str,
+        max_count: usize,
+    ) -> Result<Vec<Story>, PersistError> {
         let mut vec = vec![];
         for shard in self.shards().iterate(shard::ShardOrder::NewestFirst) {
             let index = self.get_shard(shard)?;
@@ -744,7 +749,14 @@ impl Storage for StoryIndex {
             let searcher = index.index.reader()?.searcher();
 
             // This isn't terribly smart, buuuuut it allows us to search either a tag or site
-            let docs = if search.contains('.') {
+            let docs = if let Some(tag) = tagger.check_tag_search(search) {
+                let query = TermQuery::new(
+                    Term::from_field_text(index.tags_field, tag),
+                    IndexRecordOption::Basic,
+                );
+                tracing::debug!("Tag symbol query = {:?}", query);
+                searcher.search(&query, &TopDocs::with_limit(max_count))?
+            } else if search.contains('.') {
                 let host_field = index.host_field;
                 let phrase = search
                     .split(|c: char| !c.is_alphanumeric())
@@ -752,14 +764,14 @@ impl Storage for StoryIndex {
                     .enumerate()
                     .collect_vec();
                 let query = PhraseQuery::new_with_offset(phrase);
-                tracing::debug!("Query = {:?}", query);
+                tracing::debug!("Phrase query = {:?}", query);
                 searcher.search(&query, &TopDocs::with_limit(max_count))?
             } else {
                 let query = TermQuery::new(
                     Term::from_field_text(index.title_field, search),
                     IndexRecordOption::Basic,
                 );
-                tracing::debug!("Query = {:?}", query);
+                tracing::debug!("Term query = {:?}", query);
                 searcher.search(&query, &TopDocs::with_limit(max_count))?
             };
 
@@ -874,7 +886,7 @@ mod test {
         let counts = index.story_count()?;
         assert_eq!(counts.total, 1);
 
-        let search = index.query_search("rust", 10)?;
+        let search = index.query_search(&eval.tagger, "rust", 10)?;
         assert_eq!(search.len(), 1);
 
         let story = &search[0];
@@ -887,9 +899,6 @@ mod test {
             story.scrapes
         );
         assert_eq!(TagSet::from_iter(["rust"]), story.tags);
-
-        let search = index.query_search("example.com", 1)?;
-        assert_eq!(search.len(), 1);
 
         Ok(())
     }
@@ -915,7 +924,7 @@ mod test {
         let counts = index.story_count()?;
         assert_eq!(counts.total, 1);
 
-        let search = index.query_search("rust", 10)?;
+        let search = index.query_search(&eval.tagger, "rust", 10)?;
         assert_eq!(search.len(), 1);
 
         let story = &search[0];
@@ -928,6 +937,42 @@ mod test {
             story.scrapes
         );
         assert_eq!(TagSet::from_iter(["rust"]), story.tags);
+
+        Ok(())
+    }
+
+    /// Ensure that a story is searchable by various terms.
+    #[rstest]
+    #[case("http://example.com", "I love Rust", &["rust", "love", "example.com"])]
+    #[case("http://medium.com", "The pitfalls of C++", &["c++", "cplusplus"])]
+    #[case("http://www.att.com", "New AT&T plans", &["at&t", "atandt", "att.com"])]
+    #[case("http://example.com", "I love Go", &["golang", "love"])]
+    #[case("http://example.com", "I love C", &["clanguage", "love"])]
+    fn test_findable(
+        #[case] url: &str,
+        #[case] title: &str,
+        #[case] search_terms: &[&str],
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let mut index = StoryIndex::new(PersistLocation::Memory)?;
+        let eval = StoryEvaluator::new_for_test();
+        let url = StoryUrl::parse(url).expect("URL");
+        let date = StoryDate::year_month_day(2020, 1, 1).expect("Date failed");
+        index.insert_scrapes(&eval, [hn_story("story1", date, title, &url)].into_iter())?;
+
+        let counts = index.story_count()?;
+        assert_eq!(counts.total, 1);
+
+        for term in search_terms {
+            let search = index.query_search(&eval.tagger, term, 10)?;
+            assert_eq!(
+                1,
+                search.len(),
+                "Expected one search result when querying '{}' for title={} url={}",
+                term,
+                title,
+                url
+            );
+        }
 
         Ok(())
     }
@@ -955,7 +1000,7 @@ mod test {
         index.insert_scrape_collections(&eval, memindex.get_all_stories())?;
 
         // Query the new index
-        for story in index.query_search("rust", 10)? {
+        for story in index.query_search(&eval.tagger, "rust", 10)? {
             println!("{:?}", story);
         }
 

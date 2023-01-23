@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{hash_map::Entry, HashMap, HashSet};
 
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
@@ -144,9 +144,12 @@ impl StoryTagger {
                     },
                     implies: tags.implies.clone().into_iter().collect(),
                 };
-
+                if let Some(internal) = &tags.internal {
+                    new.backward.insert(internal.clone(), tag.clone());
+                }
                 for tag in all_tags {
                     if tags.symbol {
+                        new.backward.insert(record.output.clone(), tag.clone());
                         new.symbols.insert(tag, new.records.len());
                     } else if tag.contains(' ') {
                         let tag = MultiTokenTag {
@@ -237,6 +240,22 @@ impl StoryTagger {
         }
     }
 
+    /// Identify any symbol tags in the search term and report
+    pub fn check_tag_search(&self, search: &str) -> Option<&str> {
+        let lowercase = search.to_lowercase();
+        if let Some(idx) = self.symbols.get(&lowercase) {
+            return Some(&self.records[*idx].output);
+        }
+        if let Some(idx) = self.forward.get(&lowercase) {
+            return Some(&self.records[*idx].output);
+        }
+        if let Some((k, _)) = self.backward.get_key_value(&lowercase) {
+            return Some(k.as_str());
+        }
+
+        None
+    }
+
     pub fn tag_details() -> Vec<(String, TagSet)> {
         // let mut tags = HashMap::new();
         // let mut tag_set = TagSet::new();
@@ -276,6 +295,7 @@ pub(crate) mod test {
                     "at&t": {"internal": "atandt", "symbol": true},
                     "angular": {"alt": "angularjs"},
                     "vi": {"internal": "vieditor"},
+                    "go": {"alt": "golang", "internal": "golang"},
                     "c": {"internal": "clanguage"},
                     "d": {"internal": "dlanguage", "excludes": ["vitamin d", "d wave", "d waves"]},
                     "c++": {"internal": "cplusplus", "symbol": true},
@@ -290,6 +310,23 @@ pub(crate) mod test {
     fn tagger(tagger_config: TaggerConfig) -> StoryTagger {
         // println!("{:?}", tagger);
         StoryTagger::new(&tagger_config)
+    }
+
+    #[rstest]
+    #[case("cplusplus", &["c++", "cplusplus"])]
+    #[case("clanguage", &["c", "clanguage"])]
+    #[case("atandt", &["at&t", "atandt"])]
+    #[case("angular", &["angular", "angularjs"])]
+    #[case("golang", &["go", "golang"])]
+    fn test_search_mapping(tagger: StoryTagger, #[case] a: &str, #[case] b: &[&str]) {
+        for b in b {
+            assert_eq!(
+                tagger.check_tag_search(b),
+                Some(a),
+                "Didn't match for '{}'",
+                b
+            );
+        }
     }
 
     #[rstest]
