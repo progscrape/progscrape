@@ -8,6 +8,7 @@ use config::Config;
 use progscrape_application::{StoryIndex, PersistLocation, StorageWriter, StoryEvaluator, MemIndex, Storage};
 use tracing_subscriber::filter::LevelFilter;
 use tracing_subscriber::EnvFilter;
+use web::WebError;
 
 use crate::index::Index;
 
@@ -51,8 +52,14 @@ pub enum Command {
     },
 }
 
+/// Our entry point.
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    go().await?;
+    Ok(())
+}
+
+async fn go() -> Result<(), WebError> {
     let args = Args::parse();
 
     // We ask for more detailed tracing in debug mode
@@ -99,13 +106,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             // First, build an in-memory index quickly
             let memindex_start = Instant::now();
             let mut memindex = MemIndex::default();
-            memindex.insert_scrapes(&eval, scrapes.into_iter())?;
+            memindex.insert_scrapes(scrapes.into_iter())?;
             let memindex_time = memindex_start.elapsed();
 
             // Now, import those stories
             let story_start = Instant::now();
             let mut index = StoryIndex::new(PersistLocation::Path(persist_path))?;
-            index.insert_stories(memindex.get_all_stories())?;
+            index.insert_scrape_collections(&eval, memindex.get_all_stories())?;
             let story_index_time = story_start.elapsed();
 
             let count = index.story_count()?;

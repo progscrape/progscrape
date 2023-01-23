@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use crate::story::{Story, StoryEvaluator, StoryIdentifier};
-use progscrape_scrapers::{StoryDate, TypedScrape};
+use progscrape_scrapers::{StoryDate, TypedScrape, ScrapeCollection};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -48,13 +48,16 @@ pub trait Storage: Send + Sync {
     fn story_count(&self) -> Result<StorageSummary, PersistError>;
 
     /// Retrieves a single, unique story from the index.
-    fn get_story(&self, id: &StoryIdentifier) -> Option<Story>;
+    fn get_story(&self, id: &StoryIdentifier) -> Option<(Story, ScrapeCollection)>;
 
     /// Retrieves all stories in a shard.
     fn stories_by_shard(&self, shard: &str) -> Result<Vec<Story>, PersistError>;
 
     /// Query the current front page hot set, sorted by overall base score.
     fn query_frontpage_hot_set(&self, max_count: usize) -> Result<Vec<Story>, PersistError>;
+
+    /// Query the current front page hot set, sorted by overall base score.
+    fn query_frontpage_hot_set_detail(&self, max_count: usize) -> Result<Vec<(Story, ScrapeCollection)>, PersistError>;
 
     /// Query a search, scored mostly by date but may include some "hotness".
     fn query_search(&self, search: &str, max_count: usize) -> Result<Vec<Story>, PersistError>;
@@ -69,8 +72,9 @@ pub trait StorageWriter: Storage {
     ) -> Result<(), PersistError>;
 
     /// Insert a set of pre-digested stories. Assumes that the underlying story does not exist.
-    fn insert_stories<I: Iterator<Item = Story>>(
+    fn insert_scrape_collections<I: Iterator<Item = ScrapeCollection>>(
         &mut self,
+        eval: &StoryEvaluator,
         stories: I
     ) -> Result<(), PersistError>;
 }

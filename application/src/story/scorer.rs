@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 
-use progscrape_scrapers::{StoryDate, StoryDuration, TypedScrape};
+use progscrape_scrapers::{StoryDate, StoryDuration, TypedScrape, ExtractedScrapeCollection, ScrapeSource};
 
-use super::Story;
+use super::{Story};
 
 #[derive(Clone, Default, Serialize, Deserialize)]
 pub struct StoryScoreConfig {
@@ -77,14 +77,13 @@ impl StoryScorer {
     #[inline(always)]
     fn score_impl<T: FnMut(StoryScore, f32)>(
         &self,
-        story: &Story,
-        score_type: StoryScoreType,
+        scrapes: &ExtractedScrapeCollection,
         mut accum: T,
     ) {
         use StoryScore::*;
 
-        let title = &story.title;
-        let url = &story.url;
+        let title = scrapes.title();
+        let url = scrapes.url();
 
         // Small random shuffle for stories to mix up the front page a bit
         accum(
@@ -92,31 +91,23 @@ impl StoryScorer {
             (url.normalization().hash() % 6000000) as f32 / 1000000.0,
         );
 
-        // Story age decay
-        if let StoryScoreType::AgedFrom(relative_date) = score_type {
-            let age = relative_date - story.date;
-            accum(StoryScore::Age, self.score_age(age));
-        }
-
         let mut reddit = None;
         let mut hn = None;
         let mut lobsters = None;
         let mut slashdot = None;
 
-        use TypedScrape::*;
         // Pick out the first source we find for each source
-        for (_, scrape) in &story.scrapes {
-            match scrape {
-                HackerNews(x) => {
-                    // TODO: Rank
-                    // if x.data.position != 0 {
-                    //     accum(HNPosition, (30.0 - x.data.position as f32) * 1.2)
-                    // };
-                    hn = Some(x)
-                }
-                Reddit(x) => reddit = Some(x),
-                Lobsters(x) => lobsters = Some(x),
-                Slashdot(x) => slashdot = Some(x),
+        for (_, scrape) in &scrapes.scrapes {
+            match scrape.source.source {
+                ScrapeSource::HackerNews => hn = Some(scrape),
+                ScrapeSource::Reddit => reddit = Some(scrape),
+                ScrapeSource::Lobsters => lobsters = Some(scrape),
+                ScrapeSource::Slashdot => slashdot = Some(scrape),
+                ScrapeSource::Other => {},
+            }
+            // TOOD: Rank for other services
+            if let Some(rank) = scrape.rank {
+                accum(HNPosition, (30.0 - rank as f32) * 1.2);
             }
         }
 
@@ -151,17 +142,17 @@ impl StoryScorer {
         }
     }
 
-    pub fn score(&self, story: &Story, score_type: StoryScoreType) -> f32 {
+    pub fn score(&self, scrapes: &ExtractedScrapeCollection) -> f32 {
         let mut score_total = 0_f32;
         let accum = |_, score| score_total += score;
-        self.score_impl(story, score_type, accum);
+        self.score_impl(scrapes, accum);
         score_total
     }
 
-    pub fn score_detail(&self, story: &Story, now: StoryDate) -> Vec<(String, f32)> {
+    pub fn score_detail(&self, scrapes: &ExtractedScrapeCollection, now: StoryDate) -> Vec<(String, f32)> {
         let mut score_bits = vec![];
         let accum = |score_type, score| score_bits.push((format!("{:?}", score_type), score));
-        self.score_impl(story, StoryScoreType::AgedFrom(now), accum);
+        self.score_impl(scrapes, accum);
         score_bits
     }
 }

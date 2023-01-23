@@ -142,7 +142,7 @@ impl Scraper for LobstersScraper {
 
         ScrapeCore {
             source: &input.shared.id,
-            title: Cow::Borrowed(input.shared.raw_title.as_str()),
+            title: &input.shared.raw_title,
             url: &input.shared.url,
             date: input.shared.date,
             tags,

@@ -34,6 +34,8 @@ pub enum WebError {
     HyperError(#[from] hyper::Error),
     #[error("Persistence error")]
     PersistError(#[from] progscrape_application::PersistError),
+    #[error("Legacy error")]
+    LegacyError(#[from] progscrape_scrapers::LegacyError),
     #[error("Scrape error")]
     ScrapeError(#[from] progscrape_scrapers::ScrapeError),
     #[error("I/O error")]
@@ -50,6 +52,10 @@ pub enum WebError {
     JSONError(#[from] serde_json::Error),
     #[error("Reqwest error")]
     ReqwestError(#[from] reqwest::Error),
+    #[error("Log setup error")]
+    LogSetupError(#[from] tracing_subscriber::filter::ParseError),
+    #[error("Log setup error")]
+    LogSetup2Error(#[from] tracing_subscriber::filter::FromEnvError),
     #[error("Item not found")]
     NotFound,
 }
@@ -191,10 +197,13 @@ async fn root(
 ) -> Result<Html<String>, WebError> {
     let now = now(&index)?;
     let stories = if let Some(search) = query.get("search") {
-        render_stories(index.storage.query_search(search, 30)?.iter())
+        index.storage.query_search(search, 30)?
     } else {
-        render_stories(hot_set(now, &index, &resources.story_evaluator())?.iter().take(30))
+        let mut vec = hot_set(now, &index, &resources.story_evaluator())?;
+        vec.truncate(30);
+        vec
     };
+    let stories = render_stories(stories.iter());
     let top_tags = vec![
         "github.com",
         "rust",
@@ -372,14 +381,15 @@ async fn admin_status_story(
     let now = now(&index)?;
     tracing::info!("Loading story = {:?}", id);
     let story = index.storage.get_story(&id).ok_or(WebError::NotFound)?;
-    let score_details = resources.story_evaluator().scorer.score_detail(&story, now);
+    // let score_details = resources.story_evaluator().scorer.score_detail(&story, now);
+    let score_details = vec![];
     let tags = Default::default(); // _details = resources.story_evaluator().tagger.tag_detail(&story);
 
     render(
         &resources,
         "admin/story.html",
         context!(
-            story: StoryRender = story.render(0),
+            story: StoryRender = story.0.render(0),
             tags: HashMap<String, Vec<String>> = tags,
             score: Vec<(String, f32)> = score_details
         ),

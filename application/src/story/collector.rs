@@ -80,12 +80,14 @@ impl StoryCollector {
 
 #[cfg(test)]
 mod test {
+    use std::collections::HashSet;
+
     use progscrape_scrapers::{StoryUrl, StoryDate};
 
     use super::*;
 
     fn make_story_with_score(score: f32) -> Story {
-        Story::new_from_parts("title".into(), StoryUrl::parse("http://example.com").expect("url"), StoryDate::year_month_day(2000, 1, 1).expect("date"), score, vec![])
+        Story::new_from_parts("title".into(), StoryUrl::parse("http://example.com").expect("url"), StoryDate::year_month_day(2000, 1, 1).expect("date"), score, vec![], HashSet::new())
     }
 
     #[test]

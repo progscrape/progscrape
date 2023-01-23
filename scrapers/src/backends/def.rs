@@ -47,7 +47,7 @@ pub struct ScrapeCore<'a> {
     pub source: &'a ScrapeId,
 
     /// Story title from this scrape source, potentially edited based on source (stripping suffixes, etc).
-    pub title: Cow<'a, str>,
+    pub title: &'a str,
 
     /// Story URL.
     pub url: &'a StoryUrl,
