@@ -20,6 +20,10 @@ impl ScrapeSourceDef for Slashdot {
     type Config = SlashdotConfig;
     type Scrape = SlashdotStory;
     type Scraper = SlashdotScraper;
+
+    fn comments_url(id: &str, subsource: Option<&str>) -> String {
+        format!("https://tech.slashdot.org/story/{}/", id)
+    }
 }
 
 #[derive(Clone, Default, Serialize, Deserialize)]
@@ -47,10 +51,6 @@ scrape_story! {
 
 impl ScrapeStory for SlashdotStory {
     const TYPE: ScrapeSource = ScrapeSource::Slashdot;
-
-    fn comments_url(&self) -> String {
-        unimplemented!()
-    }
 
     fn merge(&mut self, other: Self) {
         self.num_comments = std::cmp::max(self.num_comments, other.num_comments);

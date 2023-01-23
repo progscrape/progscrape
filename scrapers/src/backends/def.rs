@@ -7,12 +7,12 @@ pub trait ScrapeSourceDef {
     type Config: ScrapeConfigSource;
     type Scrape: ScrapeStory;
     type Scraper: Scraper<Config = Self::Config, Output = Self::Scrape>;
+
+    fn comments_url(id: &str, subsource: Option<&str>) -> String;
 }
 
 pub trait ScrapeStory {
     const TYPE: ScrapeSource;
-
-    fn comments_url(&self) -> String;
 
     fn merge(&mut self, other: Self);
 }

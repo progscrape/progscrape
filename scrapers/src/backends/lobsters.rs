@@ -11,6 +11,10 @@ impl ScrapeSourceDef for Lobsters {
     type Config = LobstersConfig;
     type Scrape = LobstersStory;
     type Scraper = LobstersScraper;
+
+    fn comments_url(id: &str, subsource: Option<&str>) -> String {
+        format!("https://lobste.rs/s/{}/", id)
+    }
 }
 
 #[derive(Clone, Default, Serialize, Deserialize)]
@@ -40,10 +44,6 @@ scrape_story! {
 
 impl ScrapeStory for LobstersStory {
     const TYPE: ScrapeSource = ScrapeSource::Lobsters;
-
-    fn comments_url(&self) -> String {
-        unimplemented!()
-    }
 
     fn merge(&mut self, other: LobstersStory) {
         self.score = std::cmp::max(self.score, other.score);

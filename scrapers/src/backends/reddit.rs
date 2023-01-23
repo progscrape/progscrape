@@ -15,6 +15,14 @@ impl ScrapeSourceDef for Reddit {
     type Config = RedditConfig;
     type Scrape = RedditStory;
     type Scraper = RedditScraper;
+
+    fn comments_url(id: &str, subsource: Option<&str>) -> String {
+        if let Some(subsource) = subsource {
+            format!("https://www.reddit.com/r/{}/comments/{}/", subsource, id)
+        } else {
+            format!("https://www.reddit.com/comments/{}/", id)
+        }
+    }
 }
 
 #[derive(Clone, Default, Serialize, Deserialize)]
@@ -67,10 +75,6 @@ scrape_story! {
 
 impl ScrapeStory for RedditStory {
     const TYPE: ScrapeSource = ScrapeSource::Reddit;
-
-    fn comments_url(&self) -> String {
-        unimplemented!()
-    }
 
     fn merge(&mut self, other: RedditStory) {
         self.position = std::cmp::max(self.position, other.position);

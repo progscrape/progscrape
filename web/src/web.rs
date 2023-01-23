@@ -285,7 +285,7 @@ async fn root(
     .collect();
     render(
         &resources,
-        "index2.html",
+        "index.html",
         context!(
             top_tags: Vec<String> = top_tags,
             stories: Vec<StoryRender> = stories,

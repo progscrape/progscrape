@@ -17,6 +17,10 @@ impl ScrapeSourceDef for HackerNews {
     type Config = HackerNewsConfig;
     type Scrape = HackerNewsStory;
     type Scraper = HackerNewsScraper;
+
+    fn comments_url(id: &str, subsource: Option<&str>) -> String {
+        format!("https://news.ycombinator.com/item?id={}", id)
+    }
 }
 
 #[derive(Clone, Default, Serialize, Deserialize)]
@@ -44,10 +48,6 @@ scrape_story! {
 
 impl ScrapeStory for HackerNewsStory {
     const TYPE: ScrapeSource = ScrapeSource::HackerNews;
-
-    fn comments_url(&self) -> String {
-        unimplemented!()
-    }
 
     fn merge(&mut self, other: HackerNewsStory) {
         self.points = std::cmp::max(self.points, other.points);

@@ -25,6 +25,10 @@ impl ScrapeId {
         }
     }
 
+    pub fn comments_url(&self) -> String {
+        self.source.comments_url(&self.id, self.subsource.as_ref().map(|s| s.as_str()))
+    }
+
     pub fn from_string(s: String) -> Option<Self> {
         if let Some((head, rest)) = s.split_once('-') {
             if let Some(source) = ScrapeSource::try_from_str(head) {

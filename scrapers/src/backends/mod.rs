@@ -81,6 +81,13 @@ macro_rules! scrapers {
                 &[$(Self::$name),*]
             }
 
+            pub fn comments_url(&self, id: &str, subsource: Option<&str>) -> String {
+                match self {
+                    $(Self::$name => $package :: $name :: comments_url(id, subsource),)*
+                    _ => unimplemented!()
+                }
+            }
+
             pub fn id<'a, ID: Clone + Into<Cow<'a, str>>>(&self, id: ID) -> ScrapeId {
                 ScrapeId::new(*self, None, id.into().into())
             }

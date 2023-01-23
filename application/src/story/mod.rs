@@ -92,6 +92,10 @@ impl Story {
     pub fn render(&self, order: usize) -> StoryRender {
         let mut tags = vec![self.url.host().to_owned()];
         tags.extend(self.tags.dump());
+        let mut comment_links = HashMap::new();
+        for id in &self.scrapes {
+            comment_links.insert(id.source.into_str().to_string(), id.comments_url());
+        }
         StoryRender {
             order,
             id: self.id.to_base64(),
@@ -101,7 +105,7 @@ impl Story {
             title: self.title.to_owned(),
             date: self.date,
             tags,
-            comment_links: HashMap::new(),
+            comment_links
         }
     }
 }
