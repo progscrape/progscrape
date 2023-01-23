@@ -287,7 +287,10 @@
                 "haskell": {},
                 "nim": {},
                 "prolog": {},
-                "go": {"alt": "golang", "internal": "golang"},
+                "go": {"alt": "golang", "internal": "golang", "excludes": [
+                    "can go", "could go", "will go", "to go", "go to", "go from", "go around", "go in", "go into", "let go", "letting go", "go home",
+                    "go up", "go down", "it go", "go await", "go right", "go wrong"
+                ]},
                 "c": {"internal": "clanguage"},
                 "d": {"internal": "dlanguage", "excludes": ["vitamin d", "d wave", "d waves"]},
                 "c++": {"internal": "cplusplus", "symbol": true},

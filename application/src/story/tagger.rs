@@ -295,7 +295,7 @@ pub(crate) mod test {
                     "at&t": {"internal": "atandt", "symbol": true},
                     "angular": {"alt": "angularjs"},
                     "vi": {"internal": "vieditor"},
-                    "go": {"alt": "golang", "internal": "golang"},
+                    "go": {"alt": "golang", "internal": "golang", "excludes": ["can go", "will go", "to go", "go to", "go in", "go into", "let go", "letting go", "go home"]},
                     "c": {"internal": "clanguage"},
                     "d": {"internal": "dlanguage", "excludes": ["vitamin d", "d wave", "d waves"]},
                     "c++": {"internal": "cplusplus", "symbol": true},
