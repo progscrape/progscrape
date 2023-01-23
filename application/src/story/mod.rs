@@ -105,7 +105,7 @@ impl Story {
             title: self.title.to_owned(),
             date: self.date,
             tags,
-            comment_links
+            comment_links,
         }
     }
 }
