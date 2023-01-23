@@ -6,7 +6,7 @@ TODO:
  - [ ] Remove www. prefix on host
  - [ ] Inverse lookup for tags 
  - [ ] Dump existing index
- - [ ] Comment links
+ - [ ] Hook up scrape to cron
 
 Maybe:
  - [ ] Metrics?
@@ -18,3 +18,4 @@ Done:
  - [ ] Reddit position by subreddit 
  - [ ] Tagging
  - [ ] Hook up search
+ - [ ] Comment links
