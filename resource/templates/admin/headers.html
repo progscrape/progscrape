@@ -1,0 +1,29 @@
+{% extends "admin/base.html" %}
+{% block content %}
+<h1>Headers</h1>
+
+<table class="headers">
+    <tr><th>Name</th><th>Value</th></tr>
+    {% for key, value in headers %}
+    <tr><th>{{ key }}</th><td>
+        {% for value in value %}
+        <span class="value">{{ value }}</span> <br>
+        {% endfor %}
+    </td></tr>
+    {% else %}
+    <tr><td colspan="2">(no values)</td></tr>
+    {% endfor %}
+</table>
+    
+<h1>Query String</h1>
+
+<table>
+    <tr><th>Name</th><th>Value</th></tr>
+    {% for key, value in query %}
+    <tr><th>{{ key }}</th><td>{{ value }}</td></tr>
+    {% else %}
+    <tr><td colspan="2">(no values)</td></tr>
+    {% endfor %}
+</table>
+
+{% endblock %}

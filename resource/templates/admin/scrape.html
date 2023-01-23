@@ -1,0 +1,87 @@
+{% extends "admin/base.html" %}
+{% block content %}
+<h1>Scrape</h1>
+
+<h2>Sources</h2>
+
+<p>Select a source to test a scrape operation.</p>
+
+<table>
+{% for key, value in scrapes.scrapes %}
+<tr><th>{{ key }}</th><td>
+    {% for value in value %}
+    {{ value }}
+    {% else %}
+    (n/a)
+    {% endfor %}
+</td><td><button onclick="select_for_test('{{key}}')">Select</button></td></tr>
+{% endfor %}
+</table>
+
+<div id="test_section" style="display: none;">
+<h2>Test Scrape</h2>
+
+<form id="test_scrape_form">
+<table>
+    <tr><th>Service</th><td><span name="test_service_display"></span><input type="hidden" name="test_service"></input></td></tr>
+    <tr><th>Subsources</th><td name="subresources"></td></tr>
+</table>
+</form>
+
+<p><button onclick="submit_test()">Submit</button></p>
+
+<div id="results_section">
+</div>
+
+</div>
+
+<input type="hidden" id="page_config_data" value="{ {{ 'sources' | json_encode() }}: {{ scrapes.scrapes | json_encode() }}, {{ 'endpoint' | json_encode() }}: {{ endpoint | json_encode() }} }">
+
+<script>
+const CONFIG_DATA = JSON.parse(document.getElementById('page_config_data').value);
+const TEST_ENDPOINT = CONFIG_DATA.endpoint;
+const HEADERS = { 'Content-Type': 'application/json' };
+const TEST_SCRAPE_FORM = document.getElementById('test_scrape_form');
+
+function select_for_test(source) {
+    document.getElementById('test_section').style.display = '';
+    TEST_SCRAPE_FORM.querySelector("[name=test_service_display]").innerText = source;
+    TEST_SCRAPE_FORM.querySelector("[name=test_service]").value = source;
+    let subresources = TEST_SCRAPE_FORM.querySelector("[name=subresources]");
+    subresources.innerHTML = "";
+    for (let v of CONFIG_DATA.sources[source]) {
+        let input = document.createElement('input');
+        input.type = 'checkbox';
+        input.name = v;
+        input.id = `subresource-${v}`;
+        subresources.appendChild(input);
+
+        let label = document.createElement('label');
+        label.htmlFor = `subresource-${v}`;
+        label.innerText = v;
+        subresources.appendChild(label);
+
+        subresources.appendChild(document.createTextNode(' '));
+    }
+}
+
+async function submit_test() {
+    const RESULTS_SECTION = document.getElementById('results_section');
+    RESULTS_SECTION.innerText = '';
+
+    let subsources = [];
+    for (let v of TEST_SCRAPE_FORM.querySelectorAll("input[type=checkbox]:checked")) {
+        subsources.push(v.name);
+    }
+    let source = TEST_SCRAPE_FORM.querySelector("[name=test_service]").value;
+    RESULTS_SECTION.innerText = 'Loading...';
+    let response = await fetch(TEST_ENDPOINT, {method:'post', headers: HEADERS, body: JSON.stringify({ source, subsources })});
+    if (response.status == 200) {
+        RESULTS_SECTION.innerHTML = await response.text();
+    } else {
+        RESULTS_SECTION.innerText = `Failed! ${await response.text()}`;
+    }
+}
+
+</script>
+{% endblock %}

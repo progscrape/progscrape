@@ -1,0 +1,350 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Lobsters</title>
+    <description></description>
+    <link>https://lobste.rs/</link>
+    <atom:link href="https://lobste.rs/rss" rel="self" type="application/rss+xml" />
+
+      <item>
+        <title>Setting up my new laptop: nix style</title>
+        <link>https://bmcgee.ie/posts/2022/12/setting-up-my-new-laptop-nix-style/</link>
+        <guid isPermaLink="false">https://lobste.rs/s/aamjm7</guid>
+        <author>chrispickard@users.lobste.rs (chrispickard)</author>
+        <pubDate>Sat, 24 Dec 2022 09:32:28 -0600</pubDate>
+        <comments>https://lobste.rs/s/aamjm7/setting_up_my_new_laptop_nix_style</comments>
+        <description>
+          
+            &#60;p&#62;&#60;a href=&#34;https://lobste.rs/s/aamjm7/setting_up_my_new_laptop_nix_style&#34;&#62;Comments&#60;/a&#62;&#60;/p&#62;
+        </description>
+          <category>nix</category>
+      </item>
+      <item>
+        <title>Meson 1.0.0</title>
+        <link>https://mesonbuild.com/Release-notes-for-1-0-0.html</link>
+        <guid isPermaLink="false">https://lobste.rs/s/z4ggwb</guid>
+        <author>Flow@users.lobste.rs (Flow)</author>
+        <pubDate>Sat, 24 Dec 2022 04:26:44 -0600</pubDate>
+        <comments>https://lobste.rs/s/z4ggwb/meson_1_0_0</comments>
+        <description>
+          
+            &#60;p&#62;&#60;a href=&#34;https://lobste.rs/s/z4ggwb/meson_1_0_0&#34;&#62;Comments&#60;/a&#62;&#60;/p&#62;
+        </description>
+          <category>programming</category>
+      </item>
+      <item>
+        <title>Testing Without Mocks: A Pattern Language</title>
+        <link>https://www.jamesshore.com/v2/projects/testing-without-mocks/testing-without-mocks</link>
+        <guid isPermaLink="false">https://lobste.rs/s/y9xf6i</guid>
+        <author>calvin@users.lobste.rs (calvin)</author>
+        <pubDate>Sat, 24 Dec 2022 09:35:52 -0600</pubDate>
+        <comments>https://lobste.rs/s/y9xf6i/testing_without_mocks_pattern_language</comments>
+        <description>
+          
+            &#60;p&#62;&#60;a href=&#34;https://lobste.rs/s/y9xf6i/testing_without_mocks_pattern_language&#34;&#62;Comments&#60;/a&#62;&#60;/p&#62;
+        </description>
+          <category>testing</category>
+      </item>
+      <item>
+        <title>Haiku R1/beta4 has been released</title>
+        <link>https://www.haiku-os.org/news/2022-12-23_haiku_r1_beta4/</link>
+        <guid isPermaLink="false">https://lobste.rs/s/xf162v</guid>
+        <author>waddlesplash@users.lobste.rs (waddlesplash)</author>
+        <pubDate>Fri, 23 Dec 2022 13:04:48 -0600</pubDate>
+        <comments>https://lobste.rs/s/xf162v/haiku_r1_beta4_has_been_released</comments>
+        <description>
+          &#60;p&#62;Release notes: &#60;a href=&#34;https://www.haiku-os.org/get-haiku/r1beta4/release-notes/&#34; rel=&#34;ugc&#34;&#62;https://www.haiku-os.org/get-haiku/r1beta4/release-notes/&#60;/a&#62;&#60;/p&#62;&#10;&#60;p&#62;Downloads: &#60;a href=&#34;https://www.haiku-os.org/get-haiku/r1beta4/&#34; rel=&#34;ugc&#34;&#62;https://www.haiku-os.org/get-haiku/r1beta4/&#60;/a&#62;&#60;/p&#62;&#10;
+            &#60;p&#62;&#60;a href=&#34;https://lobste.rs/s/xf162v/haiku_r1_beta4_has_been_released&#34;&#62;Comments&#60;/a&#62;&#60;/p&#62;
+        </description>
+          <category>release</category>
+          <category>osdev</category>
+      </item>
+      <item>
+        <title>Win16 Retro Development</title>
+        <link>https://www.os2museum.com/wp/win16-retro-development/</link>
+        <guid isPermaLink="false">https://lobste.rs/s/myhybl</guid>
+        <author>calvin@users.lobste.rs (calvin)</author>
+        <pubDate>Sat, 24 Dec 2022 12:15:20 -0600</pubDate>
+        <comments>https://lobste.rs/s/myhybl/win16_retro_development</comments>
+        <description>
+          
+            &#60;p&#62;&#60;a href=&#34;https://lobste.rs/s/myhybl/win16_retro_development&#34;&#62;Comments&#60;/a&#62;&#60;/p&#62;
+        </description>
+          <category>windows</category>
+          <category>programming</category>
+          <category>historical</category>
+      </item>
+      <item>
+        <title>Rotary Keyboard</title>
+        <link>https://squidgeefish.com/projects/rotary-keyboard/</link>
+        <guid isPermaLink="false">https://lobste.rs/s/gemicb</guid>
+        <author>gerikson@users.lobste.rs (gerikson)</author>
+        <pubDate>Fri, 23 Dec 2022 17:47:36 -0600</pubDate>
+        <comments>https://lobste.rs/s/gemicb/rotary_keyboard</comments>
+        <description>
+          
+            &#60;p&#62;&#60;a href=&#34;https://lobste.rs/s/gemicb/rotary_keyboard&#34;&#62;Comments&#60;/a&#62;&#60;/p&#62;
+        </description>
+          <category>hardware</category>
+      </item>
+      <item>
+        <title>WPA3: no go on Raspberry Pi (plus some Mac gotchas)</title>
+        <link>https://rachelbythebay.com/w/2022/12/22/wpa3/</link>
+        <guid isPermaLink="false">https://lobste.rs/s/owxohc</guid>
+        <author>magikid@users.lobste.rs (magikid)</author>
+        <pubDate>Fri, 23 Dec 2022 18:34:01 -0600</pubDate>
+        <comments>https://lobste.rs/s/owxohc/wpa3_no_go_on_raspberry_pi_plus_some_mac</comments>
+        <description>
+          
+            &#60;p&#62;&#60;a href=&#34;https://lobste.rs/s/owxohc/wpa3_no_go_on_raspberry_pi_plus_some_mac&#34;&#62;Comments&#60;/a&#62;&#60;/p&#62;
+        </description>
+          <category>devops</category>
+          <category>hardware</category>
+      </item>
+      <item>
+        <title>Reverse Engineering Tiktok&#39;s VM Obfuscation</title>
+        <link>https://nullpt.rs/reverse-engineering-tiktok-vm-1</link>
+        <guid isPermaLink="false">https://lobste.rs/s/m7chku</guid>
+        <author>haze@users.lobste.rs (haze)</author>
+        <pubDate>Fri, 23 Dec 2022 13:38:54 -0600</pubDate>
+        <comments>https://lobste.rs/s/m7chku/reverse_engineering_tiktok_s_vm</comments>
+        <description>
+          
+            &#60;p&#62;&#60;a href=&#34;https://lobste.rs/s/m7chku/reverse_engineering_tiktok_s_vm&#34;&#62;Comments&#60;/a&#62;&#60;/p&#62;
+        </description>
+          <category>reversing</category>
+      </item>
+      <item>
+        <title>News for Ruby 3.2.0</title>
+        <link>https://docs.ruby-lang.org/en/master/NEWS_md.html#label-NEWS+for+Ruby+3.2.0</link>
+        <guid isPermaLink="false">https://lobste.rs/s/rnm9zm</guid>
+        <author>tankf33der@users.lobste.rs (tankf33der)</author>
+        <pubDate>Fri, 23 Dec 2022 23:49:06 -0600</pubDate>
+        <comments>https://lobste.rs/s/rnm9zm/news_for_ruby_3_2_0</comments>
+        <description>
+          
+            &#60;p&#62;&#60;a href=&#34;https://lobste.rs/s/rnm9zm/news_for_ruby_3_2_0&#34;&#62;Comments&#60;/a&#62;&#60;/p&#62;
+        </description>
+          <category>ruby</category>
+          <category>release</category>
+          <category>programming</category>
+      </item>
+      <item>
+        <title>The smallest inter-frame gap in Fast Ethernet</title>
+        <link>https://blog.trends.tf/the-smallest-inter-frame-gap-in-fast-ethernet.html</link>
+        <guid isPermaLink="false">https://lobste.rs/s/lwgftq</guid>
+        <author>Forty-Bot@users.lobste.rs (Forty-Bot)</author>
+        <pubDate>Sat, 24 Dec 2022 09:35:45 -0600</pubDate>
+        <comments>https://lobste.rs/s/lwgftq/smallest_inter_frame_gap_fast_ethernet</comments>
+        <description>
+          
+            &#60;p&#62;&#60;a href=&#34;https://lobste.rs/s/lwgftq/smallest_inter_frame_gap_fast_ethernet&#34;&#62;Comments&#60;/a&#62;&#60;/p&#62;
+        </description>
+          <category>hardware</category>
+          <category>networking</category>
+      </item>
+      <item>
+        <title>Google Privacy Policy updated to recognize Virginia Consumer Data Protection Act (VCDPA)</title>
+        <link>https://deagle.cloud/versions/3207066f-6b3f-4142-8142-154f58b4f8b9</link>
+        <guid isPermaLink="false">https://lobste.rs/s/j9ojvy</guid>
+        <author>adriano@users.lobste.rs (adriano)</author>
+        <pubDate>Sat, 24 Dec 2022 10:55:43 -0600</pubDate>
+        <comments>https://lobste.rs/s/j9ojvy/google_privacy_policy_updated_recognize</comments>
+        <description>
+          
+            &#60;p&#62;&#60;a href=&#34;https://lobste.rs/s/j9ojvy/google_privacy_policy_updated_recognize&#34;&#62;Comments&#60;/a&#62;&#60;/p&#62;
+        </description>
+          <category>privacy</category>
+      </item>
+      <item>
+        <title>Improving Language Model Behavior by Training on a Curated Dataset</title>
+        <link>https://openai.com/blog/improving-language-model-behavior/</link>
+        <guid isPermaLink="false">https://lobste.rs/s/l62nyu</guid>
+        <author>river@users.lobste.rs (river)</author>
+        <pubDate>Sat, 24 Dec 2022 14:12:28 -0600</pubDate>
+        <comments>https://lobste.rs/s/l62nyu/improving_language_model_behavior_by</comments>
+        <description>
+          
+            &#60;p&#62;&#60;a href=&#34;https://lobste.rs/s/l62nyu/improving_language_model_behavior_by&#34;&#62;Comments&#60;/a&#62;&#60;/p&#62;
+        </description>
+          <category>ai</category>
+      </item>
+      <item>
+        <title>Notice of Recent Security Incident</title>
+        <link>https://blog.lastpass.com/2022/12/notice-of-recent-security-incident/</link>
+        <guid isPermaLink="false">https://lobste.rs/s/ezx10k</guid>
+        <author>ebababi@users.lobste.rs (ebababi)</author>
+        <pubDate>Fri, 23 Dec 2022 09:09:43 -0600</pubDate>
+        <comments>https://lobste.rs/s/ezx10k/notice_recent_security_incident</comments>
+        <description>
+          
+            &#60;p&#62;&#60;a href=&#34;https://lobste.rs/s/ezx10k/notice_recent_security_incident&#34;&#62;Comments&#60;/a&#62;&#60;/p&#62;
+        </description>
+          <category>security</category>
+      </item>
+      <item>
+        <title>The Automatic #plotloop Machine</title>
+        <link>https://bylr.info/articles/2022/12/22/automatic-plotloop-machine/</link>
+        <guid isPermaLink="false">https://lobste.rs/s/iyxogf</guid>
+        <author>chrislloyd@users.lobste.rs (chrislloyd)</author>
+        <pubDate>Sat, 24 Dec 2022 10:43:39 -0600</pubDate>
+        <comments>https://lobste.rs/s/iyxogf/automatic_plotloop_machine</comments>
+        <description>
+          
+            &#60;p&#62;&#60;a href=&#34;https://lobste.rs/s/iyxogf/automatic_plotloop_machine&#34;&#62;Comments&#60;/a&#62;&#60;/p&#62;
+        </description>
+          <category>python</category>
+          <category>art</category>
+      </item>
+      <item>
+        <title>The End of Programming</title>
+        <link>https://m-cacm.acm.org/magazines/2023/1/267976-the-end-of-programming/fulltext</link>
+        <guid isPermaLink="false">https://lobste.rs/s/xpgorl</guid>
+        <author>kir0ul@users.lobste.rs (kir0ul)</author>
+        <pubDate>Fri, 23 Dec 2022 20:45:48 -0600</pubDate>
+        <comments>https://lobste.rs/s/xpgorl/end_programming</comments>
+        <description>
+          
+            &#60;p&#62;&#60;a href=&#34;https://lobste.rs/s/xpgorl/end_programming&#34;&#62;Comments&#60;/a&#62;&#60;/p&#62;
+        </description>
+          <category>practices</category>
+          <category>programming</category>
+          <category>education</category>
+          <category>ai</category>
+      </item>
+      <item>
+        <title>A bottle of light</title>
+        <link>https://tomscii.sig7.se/2022/12/A-bottle-of-light</link>
+        <guid isPermaLink="false">https://lobste.rs/s/sav5fo</guid>
+        <author>tomscii@users.lobste.rs (tomscii)</author>
+        <pubDate>Fri, 23 Dec 2022 03:39:07 -0600</pubDate>
+        <comments>https://lobste.rs/s/sav5fo/bottle_light</comments>
+        <description>
+          
+            &#60;p&#62;&#60;a href=&#34;https://lobste.rs/s/sav5fo/bottle_light&#34;&#62;Comments&#60;/a&#62;&#60;/p&#62;
+        </description>
+          <category>hardware</category>
+          <category>show</category>
+          <category>art</category>
+      </item>
+      <item>
+        <title>Happy Holidays, Crustaceans</title>
+        <link>https://lobste.rs/s/0q8v2t/happy_holidays_crustaceans</link>
+        <guid isPermaLink="false">https://lobste.rs/s/0q8v2t</guid>
+        <author>freddyb@users.lobste.rs (freddyb)</author>
+        <pubDate>Fri, 23 Dec 2022 06:57:15 -0600</pubDate>
+        <comments>https://lobste.rs/s/0q8v2t/happy_holidays_crustaceans</comments>
+        <description>
+          &#60;p&#62;Enjoy your time off.&#10;I wish you all a good time and hope you&#8217;ll find a few moments to rest, enjoy and reflect. :)&#60;/p&#62;&#10;&#60;p&#62;P.S: A bit earlier this year, as apparently some people already got the Friday off? Outrageous!&#60;/p&#62;&#10;
+        </description>
+          <category>meta</category>
+      </item>
+      <item>
+        <title>Mastering Emacs Book Club</title>
+        <link>https://susam.net/club/mastering-emacs/</link>
+        <guid isPermaLink="false">https://lobste.rs/s/7muzke</guid>
+        <author>susam@users.lobste.rs (susam)</author>
+        <pubDate>Fri, 23 Dec 2022 04:00:11 -0600</pubDate>
+        <comments>https://lobste.rs/s/7muzke/mastering_emacs_book_club</comments>
+        <description>
+          
+            &#60;p&#62;&#60;a href=&#34;https://lobste.rs/s/7muzke/mastering_emacs_book_club&#34;&#62;Comments&#60;/a&#62;&#60;/p&#62;
+        </description>
+          <category>event</category>
+          <category>emacs</category>
+      </item>
+      <item>
+        <title>9th International Workshop on Plan 9</title>
+        <link>https://iwp9.org/</link>
+        <guid isPermaLink="false">https://lobste.rs/s/frp5jv</guid>
+        <author>orib@users.lobste.rs (orib)</author>
+        <pubDate>Fri, 23 Dec 2022 12:19:18 -0600</pubDate>
+        <comments>https://lobste.rs/s/frp5jv/9th_international_workshop_on_plan_9</comments>
+        <description>
+          
+            &#60;p&#62;&#60;a href=&#34;https://lobste.rs/s/frp5jv/9th_international_workshop_on_plan_9&#34;&#62;Comments&#60;/a&#62;&#60;/p&#62;
+        </description>
+          <category>osdev</category>
+      </item>
+      <item>
+        <title>Let&#39;s build a browser engine</title>
+        <link>https://limpet.net/mbrubeck/2014/08/08/toy-layout-engine-1.html</link>
+        <guid isPermaLink="false">https://lobste.rs/s/ls6yfc</guid>
+        <author>azhenley@users.lobste.rs (azhenley)</author>
+        <pubDate>Fri, 23 Dec 2022 20:01:41 -0600</pubDate>
+        <comments>https://lobste.rs/s/ls6yfc/let_s_build_browser_engine</comments>
+        <description>
+          
+            &#60;p&#62;&#60;a href=&#34;https://lobste.rs/s/ls6yfc/let_s_build_browser_engine&#34;&#62;Comments&#60;/a&#62;&#60;/p&#62;
+        </description>
+          <category>programming</category>
+      </item>
+      <item>
+        <title>Fully-homomorphic encryption, zero-knowledge proofs, and multiparty computation</title>
+        <link>https://www.notamonadtutorial.com/fully-homomorphic-encryption-zero-knowledge-proofs-and-multiparty-computation/</link>
+        <guid isPermaLink="false">https://lobste.rs/s/vijyei</guid>
+        <author>unbalancedparentheses@users.lobste.rs (unbalancedparentheses)</author>
+        <pubDate>Fri, 23 Dec 2022 09:37:39 -0600</pubDate>
+        <comments>https://lobste.rs/s/vijyei/fully_homomorphic_encryption_zero</comments>
+        <description>
+          
+            &#60;p&#62;&#60;a href=&#34;https://lobste.rs/s/vijyei/fully_homomorphic_encryption_zero&#34;&#62;Comments&#60;/a&#62;&#60;/p&#62;
+        </description>
+          <category>math</category>
+          <category>cryptography</category>
+      </item>
+      <item>
+        <title>What are you doing this weekend?</title>
+        <link>https://lobste.rs/s/gf45bd/what_are_you_doing_this_weekend</link>
+        <guid isPermaLink="false">https://lobste.rs/s/gf45bd</guid>
+        <author>caius@users.lobste.rs (caius)</author>
+        <pubDate>Fri, 23 Dec 2022 06:56:15 -0600</pubDate>
+        <comments>https://lobste.rs/s/gf45bd/what_are_you_doing_this_weekend</comments>
+        <description>
+          &#60;p&#62;Feel free to tell what you plan on doing this weekend and even ask for help or feedback.&#60;/p&#62;&#10;&#60;p&#62;Please keep in mind it&#8217;s more than OK to do nothing at all too! Holiday edition, so definitely okay to do everything or nothing for once.&#60;/p&#62;&#10;
+        </description>
+          <category>programming</category>
+          <category>ask</category>
+      </item>
+      <item>
+        <title>What more recent developments in PLT could be useful in languages targeting much older/limited hardw</title>
+        <link>https://lobste.rs/s/su2dgi/what_more_recent_developments_plt_could</link>
+        <guid isPermaLink="false">https://lobste.rs/s/su2dgi</guid>
+        <author>zzing@users.lobste.rs (zzing)</author>
+        <pubDate>Thu, 22 Dec 2022 23:52:32 -0600</pubDate>
+        <comments>https://lobste.rs/s/su2dgi/what_more_recent_developments_plt_could</comments>
+        <description>
+          &#60;p&#62;We see on occasion some rather interesting features come along in PLT such as ocaml&#8217;s effects, and various haskell related things.&#60;/p&#62;&#10;&#60;p&#62;I am also interested in the Commander X16 computer that is being developed using a 6502, similar to a C64 for comparison.&#60;/p&#62;&#10;&#60;p&#62;So I was wondering what would be features either seen in more modern languages or more theoretical PLT research could be of benefit to languages targeting machines that have limited resources such as 8 bit cpu, 64kB ram, etc?&#60;/p&#62;&#10;
+        </description>
+          <category>ask</category>
+          <category>plt</category>
+      </item>
+      <item>
+        <title>The Dawn and Dusk of Sun Microsystems</title>
+        <link>https://www.youtube.com/watch?v=P1TsVW4P5DI</link>
+        <guid isPermaLink="false">https://lobste.rs/s/e5gnii</guid>
+        <author>dgv@users.lobste.rs (dgv)</author>
+        <pubDate>Fri, 23 Dec 2022 12:05:51 -0600</pubDate>
+        <comments>https://lobste.rs/s/e5gnii/dawn_dusk_sun_microsystems</comments>
+        <description>
+          
+            &#60;p&#62;&#60;a href=&#34;https://lobste.rs/s/e5gnii/dawn_dusk_sun_microsystems&#34;&#62;Comments&#60;/a&#62;&#60;/p&#62;
+        </description>
+          <category>video</category>
+          <category>historical</category>
+      </item>
+      <item>
+        <title>PEP 636 &#8211; Structural Pattern Matching: Tutorial</title>
+        <link>https://peps.python.org/pep-0636/</link>
+        <guid isPermaLink="false">https://lobste.rs/s/qvlhkh</guid>
+        <author>rtpg@users.lobste.rs (rtpg)</author>
+        <pubDate>Thu, 22 Dec 2022 23:47:32 -0600</pubDate>
+        <comments>https://lobste.rs/s/qvlhkh/pep_636_structural_pattern_matching</comments>
+        <description>
+          
+            &#60;p&#62;&#60;a href=&#34;https://lobste.rs/s/qvlhkh/pep_636_structural_pattern_matching&#34;&#62;Comments&#60;/a&#62;&#60;/p&#62;
+        </description>
+          <category>python</category>
+      </item>
+  </channel>
+</rss>

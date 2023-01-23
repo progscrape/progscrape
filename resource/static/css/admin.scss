@@ -1,0 +1,63 @@
+@use "normalize";
+@use "reset-internal";
+@use "base-font";
+
+body {
+    padding: 1em;
+    font-size: 12px;
+
+    #header {
+        h1 {
+            margin-bottom: 0.2em;
+            text-shadow: 1px 1px #ddd;
+        }
+        
+        h1 a {
+            font-size: 25px;
+            padding-top: 0.5em;
+            color: #333;
+            font-weight: bold;
+        }
+        
+        h2 {
+            font-size: 11px;
+            color: #888;
+        }
+    
+        .search {
+            input {
+                max-width: 200px;
+            }
+        }
+    
+        .subscribe {
+            font-size: 11px;
+            color: #888;
+    
+            img {
+                vertical-align: sub;
+            }
+        }
+    }
+    
+    table {
+        border-collapse: collapse;
+    }
+
+    table td, table th {
+        border: 1px solid black;
+        padding: 0.1em 0.3em;
+    }
+
+    table th {
+        background-color: lightblue;
+    }
+
+    .headers {
+        .value {
+            display: inline-block;
+            word-break: break-all;
+            max-width: 75vw;
+        }
+    }
+}

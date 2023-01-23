@@ -1,5 +1,0 @@
-blacklist:
-- subnet: 188.165.15.241
-  description: ahrefsbot
-- subnet: 188.165.15.78
-  description: ahrefsbot 2

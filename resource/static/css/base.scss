@@ -1,0 +1,66 @@
+@use "breakpoints";
+
+body { 
+	font-family: 'Lucida Grande', 'Lucida Sans', Helvetica, Arial, Tahoma, Verdana, sans-serif;
+    font-weight: normal;
+	font-size: 12px;
+	color: #111;
+	background: #eee;
+	background-image: var(--url-grey-jpg);
+}
+
+#header {
+    h1 {
+        margin-bottom: 0.2em;
+        text-shadow: 1px 1px #ddd;
+    }
+    
+    h1 a {
+        font-size: 25px;
+        padding-top: 0.5em;
+        color: #333;
+        font-weight: bold;
+    }
+    
+    h2 {
+        font-size: 11px;
+        color: #888;
+    }
+
+    .search {
+        input {
+            max-width: 200px;
+        }
+    }
+
+    .subscribe {
+        font-size: 11px;
+        color: #888;
+
+        img {
+            vertical-align: sub;
+        }
+    }
+}
+
+#footer {
+	font-size: 10px;
+}
+
+@media only screen and (min-width: breakpoints.$width) {
+    #main {
+        background-color: white;
+        border-radius: 6px 6px;
+        
+        border: 1px solid #ccc;
+        box-shadow: 5px 5px 25px #ccc;
+    }
+}
+@media only screen and (max-width: breakpoints.$width) {
+    #main {
+        background-color: white;
+        border-top: 1px solid #ccc;
+        border-bottom: 1px solid #ccc;
+        box-shadow: 5px 5px 25px #ccc;
+    }
+}

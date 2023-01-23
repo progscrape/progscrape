@@ -1,0 +1,21 @@
+{% extends "admin/base.html" %}
+{% block content %}
+<h1>Shard Dump</h1>
+<h2>ID: {{ shard }}</h2>
+<h3>Sort order: {{ macros_story::sort(sort=sort) }}</h3>
+<table>
+<tr>
+    <th>{{ macros_story::sort_header(sort=sort, field="order", name="#") }}</th>
+    <th>{{ macros_story::sort_header(sort=sort, field="date", name="Date") }}</th>
+    <th>{{ macros_story::sort_header(sort=sort, field="score", name="Score") }}</th>
+    <th>Source</th>
+    <th>{{ macros_story::sort_header(sort=sort, field="domain", name="Domain") }}</th>
+    <th>{{ macros_story::sort_header(sort=sort, field="title", name="Story") }}</th>
+</tr>
+{% for story in stories | sort(attribute=(macros_story::sort(sort=sort))) %}
+<tr><td>{{ story.order }}</td><td><a href="../../story/{{ story.id }}/">{{ story.date | date }}</a></td><td>{{ story.score | round(precision=2) }}</td><td>
+    {{ macros_story::comment_links(story=story) }}
+</td><td>{{ story.domain }}</td><td><a href="{{ story.url }}">{{ story.title }}</a></td></tr>
+{% endfor %}
+</table>
+{% endblock %}

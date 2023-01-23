@@ -1,0 +1,30 @@
+{% macro print_config(config, name="root") %}
+<table>
+{% for key, value in config %}
+<tr><th>{{ key }}</th><td>
+{% if value is object %}
+
+    {% if name == "tagger" and key == "tags" %}
+
+    {# Special handling for tagger tags #}
+    <table>
+    {% for category, tags in value %}
+    <tr><th>{{ category }}</th><td>
+    {% for tag, config in tags %}
+    {{ tag }}
+    {% endfor %}
+    </td></tr>
+    {% endfor %}
+    </table>
+    
+    {% else %}
+    {# Workaround for self not working: https://github.com/Keats/tera/issues/562 #}
+    {{ macros_config::print_config(config=value, name=key) }}
+    {% endif %}
+{% else %}
+    {{ value }}
+{% endif %}
+</td></tr>
+{% endfor %}
+</table>
+{% endmacro %}

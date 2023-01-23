@@ -1,0 +1,42 @@
+{% extends "admin/base.html" %}
+{% block content %}
+<table>
+    <tr><th>ID</th><td>{{ story.id }}</td></tr>
+    <tr><th>Title</th><td>{{ story.title }}</td></tr>
+    <tr><th>URL</th><td>{{ story.url }}</td></tr>
+    <tr><th>URL norm</th><td>{{ story.url_norm }} (hash = {{ story.url_norm_hash }})</td></tr>
+    {% for source, scrape in story.scrapes %}
+    <tr><th>Scrape: {{ source }}</th><td>
+        <table>
+            {% for key, value in scrape %}
+            {% for key, value in value %}
+            <tr><th>{{ key }}</th><td>
+            {% if key == "date" %}
+                {{ value | date }}
+            {% elif key == "url" %}
+                {{ value[0] }}
+            {% else %}
+                {{ value }}
+            {% endif %}
+            </td></tr>
+            {% endfor %}
+            {% endfor %}
+        </table>
+    </td></tr>
+    {% endfor %}
+    <tr><th>Score</th><td>
+        <table>
+            {% for row in score %}
+            <tr><th>{{ row.0 }}</th><td>{{ row.1 | round(precision=2) }}</td></tr>
+            {% endfor %}
+        </table>
+    </td></tr>
+    <tr><th>Tags</th><td>
+        <table>
+        {% for key, value in tags %}
+            <tr><th>{{ key }}</th><td>{{ value }}</td></tr>
+        {% endfor %}
+        </table>
+    </td></tr>
+</table>
+{% endblock %}

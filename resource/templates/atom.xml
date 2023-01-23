@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+	<title>progscrape{% if search %}: {{ search|escape }}{% endif %}</title>
+	<link rel="self" href="http://www.progscrape.com/feed/{% if search %}?search={{ search|urlencode }}{% endif %}" />
+	<link rel="alternate" href="http://www.progscrape.com/{% if search %}?search={{ search|urlencode }}{% endif %}" />
+
+	{% for story in stories %}
+	<entry>
+		<title>{{ story.title|escape }}</title>
+		<link rel="alternate" href="{{ story.url|escape }}" />
+		<id>{{ story.url|escape }}</id>
+		<published>{{ story.rfc3339_date }}</published>
+		<summary type="html">
+	      	{% if story.redditUrl %}&lt;a href="{{ story.redditUrl }}"&gt;&lt;img class="reddit" src="http://www.progscrape.com/static/reddit.png" width="16" height="16" /&gt;&lt;/a&gt;
+	      	{% endif %}{% if story.hackernewsUrl %}&lt;a href="{{ story.hackernewsUrl }}"&gt;&lt;img class="hnews" src="http://www.progscrape.com/static/hnews.png" width="16" height="16" /&gt;&lt;/a&gt;
+	      	{% endif %}{% if story.lobstersUrl %}&lt;a href="{{ story.lobstersUrl }}"&gt;&lt;img class="lobsters" src="http://www.progscrape.com/static/lobsters.png" width="16" height="16" /&gt;&lt;/a&gt;
+	      	{% endif %}{% if story.slashdotUrl %}&lt;a href="{{ story.slashdotUrl }}"&gt;&lt;img class="slashdot" src="http://www.progscrape.com/static/slashdot.png" width="16" height="16" /&gt;&lt;/a&gt;
+	      	{% endif %}&lt;p&gt;Tags:
+		        {% for tag in story.tags %}&lt;span class="tag"&gt;&lt;a href="http://www.progscrape.com/?search={{ tag|urlencode }}"&gt;{{ tag|escape }}&lt;/a&gt;&lt;/span&gt; {% endfor %}
+		    &lt;/p&gt;
+		</summary>
+	</entry>
+	{% endfor %}
+</feed>

@@ -1,0 +1,172 @@
+
+.tag {
+    font-size: 10px;
+    font-weight: bold;
+    background-color: #eee;
+    color: #222;
+    padding: 0.1em 0.7em;
+
+    a {
+        color: inherit;
+        text-decoration: none !important;
+    }
+}
+
+.popular-tags {
+    padding-bottom: 1em;
+    font-size: 11px;
+    line-height: 17px;
+    color: #555;
+
+    span.tag {
+        background-color: #eee;
+        color: #222;
+        padding: 0.1em 0.7em;
+    }
+    
+    span.tag:hover {
+        background-color: #222;
+        color: #eee;
+    }
+}
+
+.story {
+	padding-bottom: 0.5em;
+
+    h2.story-title {
+        font-size: 14px;
+        line-height: 24px;
+        padding: 0.3em 0 0em 0;
+        margin: 0;
+
+        a {
+            font-size: 16px;
+            color: #3333cc;
+            text-decoration: none;
+            &:hover {
+                text-decoration: underline;
+            }
+            &:visited {
+                color: #aaa;
+            }
+            &:hover, &:active {
+                color: black;
+            }
+        }
+    }
+    
+    div.metadata {
+        display: table;
+        padding-left: 1em;
+
+        > span {
+            display: table-cell;
+            vertical-align: middle;
+            padding-right: 0.75em;
+        }
+        
+        span.sites {
+            margin: 0;
+            opacity: 0.2;
+        }
+        
+        span.tag {
+            padding: 0.1em 0.3em;
+        }
+    }
+
+    a.feed, a.reddit, a.delicious, a.hnews, a.lobsters, a.slashdot {
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        box-sizing: border-box;
+        border-radius: 2px;
+        border-top: 1px solid rgba(255, 255, 255, .1);
+        border-left: 1px solid rgba(255, 255, 255, .1);
+        border-right: 1px solid rgba(0, 0, 0, .1);
+        border-bottom: 1px solid rgba(0, 0, 0, .1);
+        background-size: 100%;
+        background-origin: border-box;
+        background-repeat: no-repeat;
+    
+        > img {
+            display: none;
+        }
+    }
+    
+    a.reddit {
+        background-image: var(--url-reddit-png);
+    }
+    
+    a.slashdot {
+        background-image: var(--url-slashdot-png);
+    }
+    
+    a.hnews {
+        background-image: var(--url-hnews-png);
+    }
+    
+    a.lobsters {
+        background-image: var(--url-lobsters-png);
+    }
+    
+    a.feed {
+        background-image: var(--url-feed-png);
+    }
+
+    /* Support for devices that can't point so good */
+    @media screen and (pointer: coarse) {
+        & {
+            padding-bottom: 1em !important;
+            padding-top: 1em !important;
+            border-bottom: 1px solid #ccc !important;
+        }
+        
+        h2.story-title {
+            a {
+                text-decoration: underline !important;
+            }
+        }
+
+        .metadata {
+            padding-left: 0 !important;
+        }
+    }
+
+    /* Support for devices w/o hover */
+    @media screen and (any-hover: none) {
+        div.metadata {
+            span.sites, span.age {
+                opacity: 1 !important;
+            }
+            span.tag {
+                background-color: #555 !important;
+                color: #eee !important;
+            }
+        }
+    }
+
+    /* Support for devices w/ hover */
+    div.metadata {
+        span.sites, span.age {
+            opacity: 0.2;
+        }
+        span.tag {
+            background-color: #ccc;
+            color: #fff;
+        }
+        &:hover {
+            span.sites, span.age {
+                opacity: 1;
+            }
+            span.tag {
+                background-color: #555;
+                color: #eee;
+                &:hover {
+                    background-color: black !important;
+                    color: white;
+                }
+            }
+        }
+    }
+}

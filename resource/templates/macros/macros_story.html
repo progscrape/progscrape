@@ -1,0 +1,33 @@
+{% macro comment_links(story) %}
+{% for source, scrape in story.scrapes %}
+    {% if source is matching("hacker_news-") %}
+    <a href="" class="hnews"><img src="{{ 'hnews.png' | static }}" width="16" height="16"></a>
+    {% elif source is matching("reddit-") %}
+    <a href="" class="reddit"><img src="{{ 'reddit.png' | static }}" width="16" height="16"></a>
+    {% elif source is matching("lobsters-") %}
+    ⒧
+    {% elif source is matching("slashdot-") %}
+    ⒮
+    {% else %}
+    <span title="{{ source }}">unknown</span>
+    {% endif %}
+{% endfor %}
+{% endmacro %}
+
+{% macro sort(sort) -%}
+{%- if sort == "date" -%}
+date
+{%- elif sort == "score" -%}
+score
+{%- elif sort == "domain" -%}
+domain
+{%- elif sort == "title" -%}
+title
+{%- else -%}
+order
+{%- endif -%}
+{%- endmacro %}
+
+{% macro sort_header(name, field, sort) %}
+<a href="{% if field == 'order' %}?{% else %}?sort={{ field }}{% endif %}">{{ name }}{% if field == self::sort(sort=sort) %}&nbsp;↓{% endif %}</a>
+{% endmacro %}

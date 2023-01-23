@@ -1,0 +1,20 @@
+{% import "macros/macros_story.html" as macros_story %}
+{% import "macros/macros_config.html" as macros_config %}
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>progscrape: status</title>
+        <link rel="stylesheet" type="text/css" href="{{ 'admin.css' | static }}"></link>
+    </head>
+    <body>
+        <div id="header">
+            <h1><a href="/">&gt;progscrape &#x2592;</a></h1>
+            <h2>All the news that's fit to scrape</h2>
+        </div>
+        <h3>Logged in as: {{ user.user }}</h3>
+        <div id="content">  
+        {% block content %}
+        {% endblock %}
+        </div>
+    </body>
+</html>
