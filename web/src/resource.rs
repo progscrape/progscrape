@@ -159,11 +159,12 @@ pub async fn start_watcher<T: AsRef<Path>>(resource_path: T) -> Result<Resources
 
     let resource_path = resource_path.to_owned();
     tokio::spawn(async move {
-        while let Ok(_) = rx_dirty.changed().await {
+        while rx_dirty.changed().await.is_ok() {
             let resource_path = resource_path.clone();
             tracing::info!("Noticed a change in watched paths!");
-            while let Ok(_) =
-                tokio::time::timeout(Duration::from_millis(100), rx_dirty.changed()).await
+            while tokio::time::timeout(Duration::from_millis(100), rx_dirty.changed())
+                .await
+                .is_ok()
             {
                 tracing::debug!("Debouncing extra event within timeout period");
             }

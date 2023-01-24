@@ -95,7 +95,7 @@ impl StoryScorer {
         let mut slashdot = None;
 
         // Pick out the first source we find for each source
-        for (_, scrape) in &scrapes.scrapes {
+        for scrape in scrapes.scrapes.values() {
             match scrape.source.source {
                 ScrapeSource::HackerNews => hn = Some(scrape),
                 ScrapeSource::Reddit => reddit = Some(scrape),

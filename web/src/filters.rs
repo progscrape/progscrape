@@ -101,7 +101,7 @@ impl tera::Filter for ApproxTimeFilter {
                 } else if relative > StoryDuration::seconds(1) {
                     format!("{} second(s) ago", relative.num_seconds())
                 } else {
-                    format!("just now")
+                    "just now".to_string()
                 }
             } else {
                 let relative = date - now;
@@ -114,7 +114,7 @@ impl tera::Filter for ApproxTimeFilter {
                 } else if relative > StoryDuration::seconds(1) {
                     format!("in {} second(s)", relative.num_seconds())
                 } else {
-                    format!("now")
+                    "now".to_string()
                 }
             }
             .into())

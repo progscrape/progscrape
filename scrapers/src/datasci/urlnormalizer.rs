@@ -150,6 +150,8 @@ pub fn url_normalization_string(url: &Url) -> String {
     s
 }
 
+// Note that clippy totally breaks this function
+#[allow(clippy::manual_filter)]
 pub fn url_normalized_host(url: &Url) -> Option<&str> {
     if let Some(s) = url.host_str() {
         if let Some(n) = WWW_PREFIX.shortest_match_at(s, 0) {

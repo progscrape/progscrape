@@ -1,4 +1,4 @@
-use std::collections::{hash_map::Entry, HashMap, HashSet};
+use std::collections::{HashMap, HashSet};
 
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
@@ -46,12 +46,11 @@ impl MultiTokenTag {
         if slice.len() < self.tag.len() {
             return false;
         }
-        for i in 0..self.tag.len() {
-            if slice[i] != self.tag[i] {
-                return false;
-            }
-        }
-        true
+        // If the next `self.tag.len()` items in slice match, we match (additional items are OK)
+        itertools::equal(
+            slice.iter().take(self.tag.len()).map(T::as_ref),
+            self.tag.iter(),
+        )
     }
 
     pub fn chomp<T: AsRef<str> + std::cmp::PartialEq<String>>(&self, slice: &mut &[T]) -> bool {
@@ -124,7 +123,7 @@ impl StoryTagger {
             symbols: HashMap::new(),
             exclusions: HashMap::new(),
         };
-        for (_category, tags) in &config.tags {
+        for tags in config.tags.values() {
             for (tag, tags) in tags {
                 let (primary, all_tags) = Self::compute_all_tags(tag, &tags.alt, &tags.alts);
                 let excludes = tags

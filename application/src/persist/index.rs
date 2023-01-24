@@ -2,9 +2,7 @@ use itertools::Itertools;
 
 use tantivy::collector::TopDocs;
 use tantivy::directory::{MmapDirectory, RamDirectory};
-use tantivy::query::{
-    AllQuery, BooleanQuery, Occur, PhraseQuery, Query, QueryParser, RangeQuery, TermQuery,
-};
+use tantivy::query::{AllQuery, BooleanQuery, Occur, PhraseQuery, Query, RangeQuery, TermQuery};
 use tantivy::tokenizer::{PreTokenizedString, SimpleTokenizer, Tokenizer};
 use tantivy::{doc, Index};
 use tantivy::{
@@ -364,12 +362,10 @@ impl StoryIndex {
         // Determine the min/max shard, if any
         let mut range = ShardRange::default();
         if let PersistLocation::Path(path) = &location {
-            for r in std::fs::read_dir(path)? {
-                if let Ok(d) = r {
-                    if let Some(s) = d.file_name().to_str() {
-                        if let Some(shard) = Shard::from_string(s) {
-                            range.include(shard);
-                        }
+            for d in std::fs::read_dir(path)?.flatten() {
+                if let Some(s) = d.file_name().to_str() {
+                    if let Some(shard) = Shard::from_string(s) {
+                        range.include(shard);
                     }
                 }
             }
@@ -499,7 +495,7 @@ impl StoryIndex {
         let writer_count = writers.len();
         tracing::info!("Preparing to commit {} writer(s)", writer_count);
         let mut v = vec![];
-        for (_, writer) in &mut writers {
+        for writer in writers.values_mut() {
             v.push(writer.prepare_commit()?);
         }
         tracing::info!("Committing {} writer(s)", writer_count);
@@ -581,7 +577,7 @@ impl StoryIndex {
         let writer_count = writers.len();
         tracing::info!("Commiting {} writer(s)", writer_count);
         let commit_start = Instant::now();
-        for (_, writer) in &mut writers {
+        for writer in writers.values_mut() {
             writer.commit()?;
         }
         for (_, writer) in writers {

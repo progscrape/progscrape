@@ -101,7 +101,7 @@ async fn authorize<B>(
     tracing::info!("Attempting authorization against auth = {:?}", auth);
     let user = match auth {
         Auth::None => None,
-        Auth::Fixed(fixed) => Some(fixed.clone()),
+        Auth::Fixed(fixed) => Some(fixed),
         Auth::FromHeader(header) => req
             .headers()
             .get(header)
@@ -381,12 +381,12 @@ async fn admin_headers(
     Query(query): Query<HashMap<String, String>>,
     raw_headers: HeaderMap,
 ) -> Result<Html<String>, WebError> {
-    let mut headers = HashMap::new();
+    let mut headers: HashMap<_, Vec<String>> = HashMap::new();
     for (header, value) in raw_headers {
         let name = header.map(|h| h.to_string()).unwrap_or("(missing)".into());
         headers
             .entry(name)
-            .or_insert(vec![])
+            .or_default()
             .push(String::from_utf8_lossy(value.as_bytes()).to_string());
     }
     render(

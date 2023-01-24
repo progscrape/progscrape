@@ -1,6 +1,6 @@
 use std::{
     collections::{HashMap, HashSet},
-    ops::{RangeInclusive},
+    ops::RangeInclusive,
     time::{Duration, Instant, SystemTime},
 };
 
