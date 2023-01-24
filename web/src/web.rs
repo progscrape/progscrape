@@ -148,6 +148,7 @@ pub fn admin_routes<S: Clone + Send + Sync + 'static>(
     Router::new()
         .route("/", get(admin))
         .route("/cron/", get(admin_cron))
+        .route("/cron/", post(admin_cron_post))
         .route("/cron/refresh", post(admin_cron_refresh))
         .route("/cron/scrape/:service", post(admin_cron_scrape))
         .route("/headers/", get(admin_headers))
@@ -411,6 +412,20 @@ async fn admin_cron(
             history: Vec<(u64, String, u16, String)> = cron_history.lock().await.entries()
         ),
     )
+}
+
+#[derive(Deserialize)]
+struct AdminCronRunParams {
+    /// Which job do we want to trigger?
+    cron: String,
+}
+
+async fn admin_cron_post(
+    State(AdminState { cron, .. }): State<AdminState>,
+    Json(params): Json<AdminCronRunParams>,
+) -> Result<Json<bool>, WebError> {
+    let success = cron.lock().await.trigger(params.cron);
+    Ok(success.into())
 }
 
 async fn admin_cron_refresh(

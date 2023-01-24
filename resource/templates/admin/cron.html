@@ -5,14 +5,14 @@
 <table>
 <tr><th>Name</th><th>URL</th><th>Last</th><th>Next</th></tr>
 {% for cron in cron %}
-<tr>
+<tr id="cron-{{ loop.index }}" name="{{ cron.name }}">
 <td>{{ cron.name }}</td><td>{{ cron.url }}</td><td>
     {% if cron.last == 0 %}
     (never)
     {% else %}
     {{ cron.last | approx_time }}
     {% endif %}
-</td><td>{{ cron.next | approx_time }}</td>
+</td><td>{{ cron.next | approx_time }}</td><td><button onclick="run('cron-{{ loop.index }}')">Run now</button></td>
 </tr>
 {% endfor %}
 </table>
@@ -22,7 +22,7 @@
 <table class="cron-history">
     <tr><th colspan="2">Time</th><th>Endpoint</th><th>Status Code</th><th>Output</th></tr>
 {% for row in history | sort(key=0) | reverse %}
-    <tr><td>{{ row.0 | absolute_time }}</td><td>{{ row.0 | approx_time }}</td><td>{{ row.1 }}</td><td class="status-{{ row.2 }}">{{ row.2 }}</td><td><button onclick="showOutput(event, '{{loop.index}}')">Output</button><input id="output-{{loop.index}}" type="hidden" value="{{ row.3 }}" /></td></th></tr>
+    <tr><td>{{ row.0 | absolute_time }}</td><td>{{ row.0 | approx_time }}</td><td>{{ row.1 }}</td><td class="status-{{ row.2 }}">{{ row.2 }}</td><td><button onclick="showOutput(event, 'output-{{loop.index}}')">Output</button><input id="output-{{loop.index}}" type="hidden" value="{{ row.3 }}" /></td></th></tr>
 {% endfor %}
 </table>
 
@@ -30,11 +30,23 @@
 {{ macros_config::print_config(config=config.cron) }}
 
 <script>
+    const HEADERS = { 'Content-Type': 'application/json' };
+
+    async function run(job) {
+        let cron = document.getElementById(job).getAttribute('name');
+        let response = await fetch('.', {method:'post', headers: HEADERS, body: JSON.stringify({ cron })});
+        if (response.status == 200) {
+            alert('Successfully submitted job. Refresh to update status.');
+        } else {
+            alert(`Failed to submit job (${response.status}): ${await response.text()}`);
+        }
+    }
+
     function showOutput(event, output) {
         event.preventDefault();
         let wind = window.open('.', "_blank", 'width=640,height=480,toolbar=0,menubar=0,location=0');
         wind.addEventListener('DOMContentLoaded', function() {
-            wind.document.documentElement.innerHTML = document.getElementById('output-' + output).value;
+            wind.document.documentElement.innerHTML = document.getElementById(output).value;
         })
     }
 </script>

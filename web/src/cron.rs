@@ -4,7 +4,6 @@ use std::{
     time::{Duration, Instant, SystemTime},
 };
 
-use itertools::Itertools;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 
@@ -200,6 +199,17 @@ impl Cron {
         } else {
             interval.1.as_duration(interval.0)
         }
+    }
+
+    /// Trigger a task to run at the next call to `tick`.
+    pub fn trigger(&mut self, job_name: String) -> bool {
+        for job in self.queue.iter_mut() {
+            if job.name == job_name {
+                job.next = Instant::now() - Duration::from_secs(1);
+                return true;
+            }
+        }
+        false
     }
 
     pub fn tick(&mut self, jobs: &HashMap<String, CronJob>, now: Instant) -> Vec<String> {
