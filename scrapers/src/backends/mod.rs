@@ -55,7 +55,7 @@ macro_rules! scrapers {
             }
         }
 
-        #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, PartialOrd, Ord, Deserialize, Serialize)]
+        #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, PartialOrd, Ord)]
         pub enum ScrapeSource {
             $($name,)*
             Other,
@@ -151,6 +151,29 @@ macro_rules! scrapers {
             }
         )*
     };
+}
+
+impl Serialize for ScrapeSource {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        self.into_str().serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for ScrapeSource {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        if let Some(source) = ScrapeSource::try_from_str(&s) {
+            Ok(source)
+        } else {
+            Err(serde::de::Error::custom("Invalid source"))
+        }
+    }
 }
 
 scrapers! {
