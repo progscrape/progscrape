@@ -23,7 +23,8 @@ use crate::{
     serve_static_files,
 };
 use progscrape_application::{
-    PersistError, StorageSummary, Story, StoryEvaluator, StoryIdentifier, StoryRender,
+    PersistError, Storage, StorageSummary, StorageWriter, Story, StoryEvaluator, StoryIdentifier,
+    StoryIndex, StoryRender,
 };
 use progscrape_scrapers::{
     ScrapeSource, ScraperHttpResponseInput, ScraperHttpResult, ScraperPossibilities, StoryDate,
@@ -75,7 +76,7 @@ impl IntoResponse for WebError {
 #[derive(Clone)]
 struct AdminState {
     resources: Resources,
-    index: index::Index,
+    index: Index<StoryIndex>,
     cron: Arc<Mutex<Cron>>,
     cron_history: Arc<Mutex<CronHistory>>,
 }
@@ -140,7 +141,7 @@ async fn handle_404() -> impl IntoResponse {
 
 pub fn admin_routes<S: Clone + Send + Sync + 'static>(
     resources: Resources,
-    index: index::Index,
+    index: Index<StoryIndex>,
     cron: Arc<Mutex<Cron>>,
     cron_history: Arc<Mutex<CronHistory>>,
     auth: Auth,
@@ -231,7 +232,7 @@ fn start_cron(
 
 pub async fn start_server(
     root_path: &std::path::Path,
-    index: Index,
+    index: Index<StoryIndex>,
     auth: Auth,
 ) -> Result<(), WebError> {
     tracing::info!("Root path: {:?}", root_path);
@@ -288,16 +289,16 @@ fn render_stories<'a>(iter: impl Iterator<Item = &'a Story>) -> Vec<StoryRender>
         .collect::<Vec<_>>()
 }
 
-fn now(global: &index::Index) -> Result<StoryDate, PersistError> {
-    global.storage.most_recent_story()
+async fn now(global: &Index<StoryIndex>) -> Result<StoryDate, PersistError> {
+    global.storage.read().await.most_recent_story()
 }
 
-fn hot_set(
+async fn hot_set(
     now: StoryDate,
-    global: &index::Index,
+    global: &Index<StoryIndex>,
     eval: &StoryEvaluator,
 ) -> Result<Vec<Story>, PersistError> {
-    let mut hot_set = global.storage.query_frontpage_hot_set(500)?;
+    let mut hot_set = global.storage.read().await.query_frontpage_hot_set(500)?;
     eval.scorer.resort_stories(now, &mut hot_set);
     Ok(hot_set)
 }
@@ -336,16 +337,18 @@ fn render(
 
 // basic handler that responds with a static string
 async fn root(
-    State((index, resources)): State<(index::Index, Resources)>,
+    State((index, resources)): State<(Index<StoryIndex>, Resources)>,
     query: Query<HashMap<String, String>>,
 ) -> Result<Html<String>, WebError> {
-    let now = now(&index)?;
+    let now = now(&index).await?;
     let stories = if let Some(search) = query.get("search") {
         index
             .storage
+            .read()
+            .await
             .query_search(&resources.story_evaluator().tagger, search, 30)?
     } else {
-        let mut vec = hot_set(now, &index, &resources.story_evaluator())?;
+        let mut vec = hot_set(now, &index, &resources.story_evaluator()).await?;
         vec.truncate(30);
         vec
     };
@@ -439,15 +442,56 @@ async fn admin_cron_refresh(
 }
 
 async fn admin_cron_scrape(
-    State(AdminState { resources, .. }): State<AdminState>,
+    State(AdminState {
+        resources, index, ..
+    }): State<AdminState>,
     Path(source): Path<ScrapeSource>,
 ) -> Result<Html<String>, WebError> {
+    let subsources = resources.scrapers().compute_scrape_subsources(source);
+    let urls = resources
+        .scrapers()
+        .compute_scrape_url_demands(source, subsources);
+    let mut map = HashMap::new();
+    for url in urls {
+        let resp = reqwest::Client::new()
+            .get(&url)
+            .header("User-Agent", "progscrape")
+            .send()
+            .await?;
+        let status = resp.status();
+        if status == StatusCode::OK {
+            map.insert(url, ScraperHttpResponseInput::Ok(resp.text().await?));
+        } else {
+            map.insert(
+                url,
+                ScraperHttpResponseInput::HTTPError(status.as_u16(), status.as_str().to_owned()),
+            );
+        }
+    }
+
+    let scrapes = HashMap::from_iter(
+        map.into_iter()
+            .map(|(k, v)| (k, resources.scrapers().scrape_http_result(source, v))),
+    );
+
+    for result in scrapes.values() {
+        match result {
+            ScraperHttpResult::Ok(_, scrapes) => index
+                .storage
+                .write()
+                .await
+                .insert_scrapes(&resources.story_evaluator(), scrapes.iter().cloned())?,
+            ScraperHttpResult::Err(..) => {}
+        }
+    }
+
     render(
         &resources,
         "admin/cron_scrape_run.html",
         context!(
             source: ScrapeSource = source,
-            config: std::sync::Arc<crate::config::Config> = resources.config()
+            config: std::sync::Arc<crate::config::Config> = resources.config(),
+            scrapes: HashMap<String, ScraperHttpResult> = scrapes
         ),
     )
 }
@@ -553,7 +597,7 @@ async fn admin_index_status(
         "admin/status.html",
         context!(
             user: CurrentUser = user,
-            storage: StorageSummary = index.storage.story_count()?,
+            storage: StorageSummary = index.storage.read().await.story_count()?,
             config: std::sync::Arc<crate::config::Config> = resources.config()
         ),
     )
@@ -566,15 +610,18 @@ async fn admin_status_frontpage(
     }): State<AdminState>,
     sort: Query<HashMap<String, String>>,
 ) -> Result<Html<String>, WebError> {
-    let now = now(&index)?;
+    let now = now(&index).await?;
     let sort = sort.get("sort").cloned().unwrap_or_default();
     render(
         &resources,
         "admin/frontpage.html",
         context!(
             user: CurrentUser = user,
-            stories: Vec<StoryRender> =
-                render_stories(hot_set(now, &index, &resources.story_evaluator())?.iter(),),
+            stories: Vec<StoryRender> = render_stories(
+                hot_set(now, &index, &resources.story_evaluator())
+                    .await?
+                    .iter(),
+            ),
             sort: String = sort
         ),
     )
@@ -596,7 +643,7 @@ async fn admin_status_shard(
             user: CurrentUser = user,
             shard: String = shard.clone(),
             stories: Vec<StoryRender> =
-                render_stories(index.storage.stories_by_shard(&shard)?.iter(),),
+                render_stories(index.storage.read().await.stories_by_shard(&shard)?.iter(),),
             sort: String = sort
         ),
     )
@@ -610,9 +657,14 @@ async fn admin_status_story(
     Path(id): Path<String>,
 ) -> Result<Html<String>, WebError> {
     let id = StoryIdentifier::from_base64(id).ok_or(WebError::NotFound)?;
-    let _now = now(&index)?;
+    let _now = now(&index).await?;
     tracing::info!("Loading story = {:?}", id);
-    let story = index.storage.get_story(&id).ok_or(WebError::NotFound)?;
+    let story = index
+        .storage
+        .read()
+        .await
+        .get_story(&id)
+        .ok_or(WebError::NotFound)?;
     // let score_details = resources.story_evaluator().scorer.score_detail(&story, now);
     let score_details = vec![];
     let tags = Default::default(); // _details = resources.story_evaluator().tagger.tag_detail(&story);

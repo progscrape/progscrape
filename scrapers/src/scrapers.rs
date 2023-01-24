@@ -47,6 +47,15 @@ impl Scrapers {
         ScraperPossibilities { scrapes }
     }
 
+    /// Compute the list of all possible scrapes from all sources and subsources.
+    pub fn compute_scrape_subsources(&self, source: ScrapeSource) -> Vec<String> {
+        if let Some(config) = self.config.get(source) {
+            let subsources = config.subsources();
+            return subsources;
+        }
+        vec![]
+    }
+
     /// Given a source and subsources, compute the set of URLs to fetch.
     pub fn compute_scrape_url_demands(
         &self,
