@@ -1,9 +1,10 @@
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{BTreeMap, HashMap, HashSet},
     ops::RangeInclusive,
     time::{Duration, Instant, SystemTime},
 };
 
+use itertools::Itertools;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 
@@ -45,9 +46,68 @@ pub struct CronJob {
     interval: (usize, CronInterval),
 }
 
-#[derive(Default, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct CronConfig {
-    jobs: HashMap<String, CronJob>,
+    pub jobs: HashMap<String, CronJob>,
+    pub jitter: (i8, i8),
+    pub history_age: (usize, CronInterval),
+    pub history_count: usize,
+}
+
+impl Default for CronConfig {
+    fn default() -> Self {
+        Self {
+            jobs: Default::default(),
+            jitter: (0, 0),
+            history_age: (1, CronInterval::Minute),
+            history_count: 10,
+        }
+    }
+}
+
+#[derive(Default)]
+pub struct CronHistory {
+    history: HashMap<String, BTreeMap<Instant, (u16, String)>>,
+}
+
+impl CronHistory {
+    pub fn insert(
+        &mut self,
+        max_age: (usize, CronInterval),
+        max_count: usize,
+        service: String,
+        status_code: u16,
+        output: String,
+    ) {
+        let now = Instant::now();
+        let map = self.history.entry(service.clone()).or_default();
+        map.insert(now, (status_code, output));
+        let cutoff = now - max_age.1.as_duration(max_age.0);
+
+        while let (len, Some(entry)) = (map.len(), map.first_entry()) {
+            if len > max_count || *entry.key() < cutoff {
+                map.pop_first();
+            } else {
+                break;
+            }
+        }
+    }
+
+    pub fn entries(&self) -> Vec<(u64, String, u16, String)> {
+        let mut out = vec![];
+        for (service, entries) in &self.history {
+            for (time, (status, output)) in entries {
+                out.push((
+                    approximate_instant_as_unix_time(*time),
+                    service.clone(),
+                    *status,
+                    output.clone(),
+                ));
+            }
+        }
+        out.sort_by_cached_key(|k| k.0);
+        out
+    }
 }
 
 /// A very basic cron system that allows us to schedule tasks that will be triggered as URL POSTs.
@@ -142,11 +202,11 @@ impl Cron {
         }
     }
 
-    pub fn tick(&mut self, config: &CronConfig, now: Instant) -> Vec<String> {
+    pub fn tick(&mut self, jobs: &HashMap<String, CronJob>, now: Instant) -> Vec<String> {
         // Drain the queue of any ready items
         let mut ready = HashSet::new();
         let mut ret = vec![];
-        let mut remaining = HashMap::<_, _>::from_iter(config.jobs.iter());
+        let mut remaining = HashMap::<_, _>::from_iter(jobs.iter());
         self.queue.retain(|task| {
             if task.next <= now {
                 ready.insert(task.name.clone());
@@ -187,8 +247,8 @@ mod test {
 
     #[test]
     fn test_cron() {
-        let mut config = CronConfig::default();
-        config.jobs.insert(
+        let mut jobs = HashMap::new();
+        jobs.insert(
             "job".into(),
             CronJob {
                 url: "/1".into(),
@@ -200,20 +260,32 @@ mod test {
         // No tasks available yet
         assert_eq!(cron.inspect().len(), 0);
         // No tasks ready yet, but we'll pick up one task
-        assert_eq!(cron.tick(&config, now).len(), 0);
+        assert_eq!(cron.tick(&jobs, now).len(), 0);
         // The one task is available...
         assert_eq!(cron.inspect().len(), 1);
         // ... but not ready
-        assert_eq!(cron.tick(&config, now).len(), 0);
+        assert_eq!(cron.tick(&jobs, now).len(), 0);
 
         // Not ready after one second either
         now = now.checked_add(Duration::from_secs(1)).expect("Add");
-        assert_eq!(cron.tick(&config, now).len(), 0);
+        assert_eq!(cron.tick(&jobs, now).len(), 0);
 
         // In one minute we'll have one task ready (we use 61 seconds to guarantee we ticked over it)
         now = now.checked_add(Duration::from_secs(61)).expect("Add");
-        assert_eq!(cron.tick(&config, now).len(), 1);
+        assert_eq!(cron.tick(&jobs, now).len(), 1);
         // But it can only be picked up once
-        assert_eq!(cron.tick(&config, now).len(), 0);
+        assert_eq!(cron.tick(&jobs, now).len(), 0);
+    }
+
+    #[test]
+    fn test_history() {
+        let mut history = CronHistory::default();
+        history.insert(
+            (1, CronInterval::Minute),
+            10,
+            "service".into(),
+            200,
+            "".into(),
+        );
     }
 }

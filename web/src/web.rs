@@ -1,6 +1,7 @@
 use std::{collections::HashMap, net::SocketAddr, sync::Arc, time::Instant};
 
 use axum::{
+    body::HttpBody,
     extract::{Path, Query, State},
     middleware::{self, Next},
     response::{Html, IntoResponse, Redirect, Response},
@@ -15,7 +16,7 @@ use tokio::sync::Mutex;
 
 use crate::{
     auth::Auth,
-    cron::{Cron, CronTask},
+    cron::{Cron, CronHistory, CronTask},
     index::{self, Index},
     resource::{self, Resources},
     serve_static_files,
@@ -75,6 +76,7 @@ struct AdminState {
     resources: Resources,
     index: index::Index,
     cron: Arc<Mutex<Cron>>,
+    cron_history: Arc<Mutex<CronHistory>>,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -139,11 +141,13 @@ pub fn admin_routes<S: Clone + Send + Sync + 'static>(
     resources: Resources,
     index: index::Index,
     cron: Arc<Mutex<Cron>>,
+    cron_history: Arc<Mutex<CronHistory>>,
     auth: Auth,
 ) -> Router<S> {
     Router::new()
         .route("/", get(admin))
         .route("/cron/", get(admin_cron))
+        .route("/cron/refresh", post(admin_cron_refresh))
         .route("/cron/scrape/:service", post(admin_cron_scrape))
         .route("/headers/", get(admin_headers))
         .route("/scrape/", get(admin_scrape))
@@ -157,12 +161,18 @@ pub fn admin_routes<S: Clone + Send + Sync + 'static>(
             resources,
             index,
             cron,
+            cron_history,
         })
         .route_layer(middleware::from_fn_with_state(auth, authorize))
 }
 
 /// Feed the `Cron` request list into the `Router`.
-fn start_cron(cron: Arc<Mutex<Cron>>, resources: Resources, router: Router<()>) {
+fn start_cron(
+    cron: Arc<Mutex<Cron>>,
+    cron_history: Arc<Mutex<CronHistory>>,
+    resources: Resources,
+    router: Router<()>,
+) {
     // Router doesn't require poll_ready
     let mut router = router.into_make_service();
     tokio::spawn(async move {
@@ -171,11 +181,11 @@ fn start_cron(cron: Arc<Mutex<Cron>>, resources: Resources, router: Router<()>) 
             let ready = cron
                 .lock()
                 .await
-                .tick(&resources.config().cron, Instant::now());
+                .tick(&resources.config().cron.jobs, Instant::now());
 
             // Sleep if no tasks are available
             if ready.is_empty() {
-                tokio::time::sleep(std::time::Duration::from_secs(60)).await;
+                tokio::time::sleep(std::time::Duration::from_secs(10)).await;
                 continue;
             }
 
@@ -186,7 +196,25 @@ fn start_cron(cron: Arc<Mutex<Cron>>, resources: Resources, router: Router<()>) 
                 *req.uri_mut() = uri.parse().expect("uri");
                 (*req.extensions_mut()).insert(CronMarker {});
                 let response = router.call(req).await.expect("Infallible");
-                tracing::info!("Cron task '{}' ran with status {}", uri, response.status());
+                let status = response.status();
+                tracing::info!("Cron task '{}' ran with status {}", uri, status);
+
+                let body = response.into_body().data().await;
+                let body = match body {
+                    Some(Ok(b)) => String::from_utf8_lossy(&b).to_string(),
+                    x @ _ => {
+                        tracing::error!("Could not retrieve body from cron response: {:?}", x);
+                        "(empty)".into()
+                    }
+                };
+
+                cron_history.lock().await.insert(
+                    resources.config().cron.history_age,
+                    resources.config().cron.history_count,
+                    uri,
+                    status.as_u16(),
+                    body,
+                );
             }
         }
     });
@@ -203,6 +231,7 @@ pub async fn start_server(
     let resources = resource::start_watcher(resource_path).await?;
 
     let cron = Arc::new(Mutex::new(Cron::new_with_jitter(-20..=20)));
+    let cron_history = Arc::new(Mutex::new(CronHistory::default()));
 
     // build our application with a route
     let app = Router::new()
@@ -212,7 +241,13 @@ pub async fn start_server(
         .with_state(resources.clone())
         .nest(
             "/admin",
-            admin_routes(resources.clone(), index.clone(), cron.clone(), auth),
+            admin_routes(
+                resources.clone(),
+                index.clone(),
+                cron.clone(),
+                cron_history.clone(),
+                auth,
+            ),
         )
         .route_layer(middleware::from_fn(ensure_slash))
         .route(
@@ -224,7 +259,12 @@ pub async fn start_server(
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     tracing::info!("listening on http://{}", addr);
 
-    start_cron(cron.clone(), resources.clone(), app.clone());
+    start_cron(
+        cron.clone(),
+        cron_history.clone(),
+        resources.clone(),
+        app.clone(),
+    );
 
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
@@ -347,7 +387,10 @@ async fn admin(
 async fn admin_cron(
     Extension(user): Extension<CurrentUser>,
     State(AdminState {
-        cron, resources, ..
+        cron,
+        cron_history,
+        resources,
+        ..
     }): State<AdminState>,
 ) -> Result<Html<String>, WebError> {
     render(
@@ -356,8 +399,19 @@ async fn admin_cron(
         context!(
             user: CurrentUser = user,
             config: std::sync::Arc<crate::config::Config> = resources.config(),
-            cron: Vec<CronTask> = cron.lock().await.inspect()
+            cron: Vec<CronTask> = cron.lock().await.inspect(),
+            history: Vec<(u64, String, u16, String)> = cron_history.lock().await.entries()
         ),
+    )
+}
+
+async fn admin_cron_refresh(
+    State(AdminState { resources, .. }): State<AdminState>,
+) -> Result<Html<String>, WebError> {
+    render(
+        &resources,
+        "admin/cron_refresh.html",
+        context!(config: std::sync::Arc<crate::config::Config> = resources.config()),
     )
 }
 
@@ -367,7 +421,7 @@ async fn admin_cron_scrape(
 ) -> Result<Html<String>, WebError> {
     render(
         &resources,
-        "admin/scrape_run.html",
+        "admin/cron_scrape_run.html",
         context!(
             source: ScrapeSource = source,
             config: std::sync::Arc<crate::config::Config> = resources.config()

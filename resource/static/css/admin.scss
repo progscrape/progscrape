@@ -60,4 +60,20 @@ body {
             max-width: 75vw;
         }
     }
+
+    .cron-history {
+        [class^="status-"] {
+            background-color: orange;
+            color: black;
+        }
+        .status-200 {
+            background-color: green;
+            color: white;
+        }
+
+        .status-400, .status-500 {
+            background-color: red;
+            color: white;
+        }
+    }
 }

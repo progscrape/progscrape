@@ -45,26 +45,29 @@
     "cron": {
         "jobs": {
             "refresh_homepage": {
-                "url": "/cron/refresh",
+                "url": "/admin/cron/refresh",
                 "interval": [1, "Minute"]
             },
             "scrape_hackernews": {
-                "url": "/cron/scrape/hacker_news",
+                "url": "/admin/cron/scrape/hacker_news",
                 "interval": [22, "Minute"]
             },
             "scrape_reddit": {
-                "url": "/cron/scrape/reddit",
-                "interval": [22, "Minute"]
+                "url": "/admin/cron/scrape/reddit",
+                "interval": [25, "Minute"]
             },
             "scrape_lobsters": {
-                "url": "/cron/scrape/lobsters",
-                "interval": [22, "Minute"]
+                "url": "/admin/cron/scrape/lobsters",
+                "interval": [41, "Minute"]
             },
             "scrape_slashdot": {
-                "url": "/cron/scrape/slashdot",
-                "interval": [22, "Minute"]
+                "url": "/admin/cron/scrape/slashdot",
+                "interval": [42, "Minute"]
             }
-        }
+        },
+        "jitter": [-20, 20],
+        "history_age": [1, "Day"],
+        "history_count": 10
     },
     "tagger": {
         "tags": {
