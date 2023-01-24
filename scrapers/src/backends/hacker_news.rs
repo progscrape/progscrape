@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::{
     borrow::{Borrow, Cow},
@@ -26,6 +27,7 @@ impl ScrapeSourceDef for HackerNews {
 #[derive(Clone, Default, Serialize, Deserialize)]
 pub struct HackerNewsConfig {
     homepage: String,
+    pages: Vec<String>,
 }
 
 impl ScrapeConfigSource for HackerNewsConfig {
@@ -34,7 +36,10 @@ impl ScrapeConfigSource for HackerNewsConfig {
     }
 
     fn provide_urls(&self, _: Vec<String>) -> Vec<String> {
-        vec![self.homepage.clone()]
+        self.pages
+            .iter()
+            .map(|s| format!("{}{}", self.homepage, s))
+            .collect_vec()
     }
 }
 

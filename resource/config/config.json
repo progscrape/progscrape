@@ -5,7 +5,8 @@
     },
     "scrape": {
         "hacker_news": {
-            "homepage": "https://news.ycombinator.com/news"
+            "homepage": "https://news.ycombinator.com/",
+            "pages": ["news"]
         },
         "slashdot": {
             "homepage": "https://slashdot.org/",
