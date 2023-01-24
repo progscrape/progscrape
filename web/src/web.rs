@@ -13,6 +13,7 @@ use serde::{Deserialize, Serialize};
 use tera::Context;
 use thiserror::Error;
 use tokio::sync::Mutex;
+use unwrap_infallible::UnwrapInfallible;
 
 use crate::{
     auth::Auth,
@@ -176,7 +177,7 @@ fn start_cron(
     // Router doesn't require poll_ready
     let mut router = router.into_make_service();
     tokio::spawn(async move {
-        let mut router = router.call(()).await.expect("Infallible");
+        let mut router = router.call(()).await.unwrap_infallible();
         loop {
             let ready = cron
                 .lock()
@@ -189,18 +190,25 @@ fn start_cron(
                 continue;
             }
 
-            for uri in ready {
-                tracing::info!("Running cron task: POST '{}'...", uri);
+            for ready_uri in ready {
+                let uri = match ready_uri.parse() {
+                    Ok(uri) => uri,
+                    Err(e) => {
+                        tracing::error!("Failed to parse URI: {} (error was {:?})", ready_uri, e);
+                        continue;
+                    }
+                };
+                tracing::info!("Running cron task: POST '{}'...", ready_uri);
                 let mut req = Request::<Body>::default();
                 *req.method_mut() = Method::POST;
-                *req.uri_mut() = uri.parse().expect("uri");
+                *req.uri_mut() = uri;
                 (*req.extensions_mut()).insert(CronMarker {});
-                let response = router.call(req).await.expect("Infallible");
+                let response = router.call(req).await.unwrap_infallible();
                 let status = response.status();
-                tracing::info!("Cron task '{}' ran with status {}", uri, status);
+                tracing::info!("Cron task '{}' ran with status {}", ready_uri, status);
 
-                let body = response.into_body().data().await;
-                let body = match body {
+                // TODO: Do we need to read data() multiple times?
+                let body = match response.into_body().data().await {
                     Some(Ok(b)) => String::from_utf8_lossy(&b).to_string(),
                     x @ _ => {
                         tracing::error!("Could not retrieve body from cron response: {:?}", x);
@@ -211,7 +219,7 @@ fn start_cron(
                 cron_history.lock().await.insert(
                     resources.config().cron.history_age,
                     resources.config().cron.history_count,
-                    uri,
+                    ready_uri,
                     status.as_u16(),
                     body,
                 );
