@@ -49,19 +49,19 @@
                 "interval": [1, "Minute"]
             },
             "scrape_hackernews": {
-                "url": "/cron/scrape?source=HackerNews",
+                "url": "/cron/scrape/hacker_news",
                 "interval": [22, "Minute"]
             },
             "scrape_reddit": {
-                "url": "/cron/scrape?source=Reddit",
+                "url": "/cron/scrape/reddit",
                 "interval": [22, "Minute"]
             },
             "scrape_lobsters": {
-                "url": "/cron/scrape?source=Lobsters",
+                "url": "/cron/scrape/lobsters",
                 "interval": [22, "Minute"]
             },
             "scrape_slashdot": {
-                "url": "/cron/scrape?source=Slashdot",
+                "url": "/cron/scrape/slashdot",
                 "interval": [22, "Minute"]
             }
         }

@@ -77,6 +77,53 @@ impl tera::Filter for RelativeTimeFilter {
     }
 }
 
+#[derive(Default)]
+pub struct ApproxTimeFilter {}
+
+impl tera::Filter for ApproxTimeFilter {
+    fn filter(
+        &self,
+        value: &Value,
+        _args: &std::collections::HashMap<String, Value>,
+    ) -> tera::Result<Value> {
+        let date = value.as_i64().and_then(StoryDate::from_seconds);
+        let now = StoryDate::now();
+
+        if let Some(date) = date {
+            Ok(if now > date {
+                let relative = now - date;
+                if relative > StoryDuration::days(1) {
+                    format!("{:.2} day(s) ago", relative.num_days_f32())
+                } else if relative > StoryDuration::hours(1) {
+                    format!("{:.2} hour(s) ago", relative.num_hours_f32())
+                } else if relative > StoryDuration::minutes(1) {
+                    format!("{:.2} minutes(s) ago", relative.num_minutes_f32())
+                } else if relative > StoryDuration::seconds(1) {
+                    format!("{} second(s) ago", relative.num_seconds())
+                } else {
+                    format!("just now")
+                }
+            } else {
+                let relative = date - now;
+                if relative > StoryDuration::days(1) {
+                    format!("in {:.2} day(s)", relative.num_days_f32())
+                } else if relative > StoryDuration::hours(1) {
+                    format!("in {:.2} hour(s)", relative.num_hours_f32())
+                } else if relative > StoryDuration::minutes(1) {
+                    format!("in {:.2} minutes(s)", relative.num_minutes_f32())
+                } else if relative > StoryDuration::seconds(1) {
+                    format!("in {} second(s)", relative.num_seconds())
+                } else {
+                    format!("now")
+                }
+            }
+            .into())
+        } else {
+            Err("Invalid date arguments".to_string().into())
+        }
+    }
+}
+
 pub struct StaticFileFilter {
     static_files: Arc<StaticFileRegistry>,
 }

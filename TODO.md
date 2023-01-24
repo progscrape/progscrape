@@ -6,7 +6,7 @@ TODO:
  - [ ] Inverse lookup for tags 
  - [ ] Dump existing index
  - [ ] Hook up scrape to cron
- - [ ] Swap Chrono for time (and use Instant/Duration for cron)
+ - [ ] Swap Chrono for time
  - [ ] Host implies tag (ie: YouTube)
 
 Maybe:
@@ -21,3 +21,4 @@ Done:
  - [ ] Hook up search
  - [ ] Comment links
  - [ ] Remove www. prefix on host
+ - [ ] Use Instant/Duration for cron

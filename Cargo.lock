@@ -1891,7 +1891,6 @@ name = "progscrape-web"
 version = "0.1.0"
 dependencies = [
  "axum",
- "chrono",
  "clap 4.1.2",
  "grass",
  "hyper",

@@ -119,36 +119,37 @@ pub struct StoryDuration {
     duration: chrono::Duration,
 }
 
+macro_rules! duration_unit {
+    ($unit:ident, $num_unit:ident, $num_unit_f32:ident) => {
+        #[inline(always)]
+        #[allow(dead_code)]
+        pub fn $unit($unit: i64) -> Self {
+            Self {
+                duration: chrono::Duration::$unit($unit),
+            }
+        }
+
+        #[inline(always)]
+        #[allow(dead_code)]
+        pub fn $num_unit(&self) -> i64 {
+            self.duration.$num_unit()
+        }
+
+        #[inline(always)]
+        #[allow(dead_code)]
+        pub fn $num_unit_f32(&self) -> f32 {
+            self.duration.num_milliseconds() as f32
+                / Self::$unit(1).duration.num_milliseconds() as f32
+        }
+    };
+}
+
 impl StoryDuration {
-    pub fn days(days: i64) -> Self {
-        Self {
-            duration: chrono::Duration::days(days),
-        }
-    }
-
-    pub fn hours(hours: i64) -> Self {
-        Self {
-            duration: chrono::Duration::hours(hours),
-        }
-    }
-
-    pub fn minutes(minutes: i64) -> Self {
-        Self {
-            duration: chrono::Duration::minutes(minutes),
-        }
-    }
-
-    pub fn num_milliseconds(&self) -> i64 {
-        self.duration.num_milliseconds()
-    }
-
-    pub fn num_hours(&self) -> i64 {
-        self.duration.num_hours()
-    }
-
-    pub fn num_days(&self) -> i64 {
-        self.duration.num_days()
-    }
+    duration_unit!(days, num_days, num_days_f32);
+    duration_unit!(hours, num_hours, num_hours_f32);
+    duration_unit!(minutes, num_minutes, num_minutes_f32);
+    duration_unit!(seconds, num_seconds, num_seconds_f32);
+    duration_unit!(milliseconds, num_milliseconds, num_milliseconds_f32);
 }
 
 impl Sub for StoryDuration {

@@ -1,6 +1,9 @@
-use std::{collections::HashMap, time::SystemTime};
+use std::{
+    collections::{HashMap, HashSet},
+    ops::{RangeInclusive},
+    time::{Duration, Instant, SystemTime},
+};
 
-use chrono::{DateTime, Duration, Utc};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 
@@ -15,13 +18,23 @@ pub enum CronInterval {
 
 impl CronInterval {
     pub fn as_duration(&self, count: usize) -> Duration {
-        let count = count as i64;
+        let count = count as u64;
         match self {
-            Self::Second => Duration::seconds(count),
-            Self::Minute => Duration::minutes(count),
-            Self::Hour => Duration::hours(count),
-            Self::Day => Duration::days(count),
-            Self::Week => Duration::weeks(count),
+            Self::Second => Duration::from_secs(count),
+            Self::Minute => Duration::from_secs(count * 60),
+            Self::Hour => Duration::from_secs(count * 60 * 60),
+            Self::Day => Duration::from_secs(count * 60 * 60 * 24),
+            Self::Week => Duration::from_secs(count * 60 * 60 * 24 * 7),
+        }
+    }
+
+    pub fn as_duration_f32(&self, count: f32) -> Duration {
+        match self {
+            Self::Second => Duration::from_secs_f32(count),
+            Self::Minute => Duration::from_secs_f32(count * 60.0),
+            Self::Hour => Duration::from_secs_f32(count * 60.0 * 60.0),
+            Self::Day => Duration::from_secs_f32(count * 60.0 * 60.0 * 24.0),
+            Self::Week => Duration::from_secs_f32(count * 60.0 * 60.0 * 24.0 * 7.0),
         }
     }
 }
@@ -40,48 +53,104 @@ pub struct CronConfig {
 /// A very basic cron system that allows us to schedule tasks that will be triggered as URL POSTs.
 pub struct Cron {
     queue: Vec<CronTask>,
+    jitter_fraction: Option<RangeInclusive<f32>>,
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone)]
 pub struct CronTask {
     name: String,
     url: String,
-    next: DateTime<Utc>,
+    last: Option<Instant>,
+    next: Instant,
 }
 
-fn now() -> DateTime<Utc> {
-    SystemTime::now().into()
+fn approximate_instant_as_unix_time(when: Instant) -> u64 {
+    let now = Instant::now();
+    if when > now {
+        (SystemTime::now() + (when - now))
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs()
+    } else {
+        (SystemTime::now() - (now - when))
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs()
+    }
 }
 
-fn jitter(percent: u8, interval: (usize, CronInterval)) -> Duration {
-    // Jitter is a percentage of the expected interval
-    let jitter = interval.1.as_duration(interval.0).num_milliseconds();
-    let jitter = jitter * (percent as i64) / 100;
-    Duration::milliseconds(rand::thread_rng().gen_range(0..jitter))
-}
-
-fn next_cron(interval: (usize, CronInterval)) -> DateTime<Utc> {
-    // Jitter is 20% of the expected interval
-    now() + interval.1.as_duration(interval.0) + jitter(20, interval)
+impl Serialize for CronTask {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        #[derive(Serialize)]
+        struct Temp<'a> {
+            name: &'a str,
+            url: &'a str,
+            next: u64,
+            last: u64,
+        }
+        Temp {
+            name: &self.name,
+            url: &self.url,
+            next: approximate_instant_as_unix_time(self.next),
+            last: self
+                .last
+                .map(approximate_instant_as_unix_time)
+                .unwrap_or_default(),
+        }
+        .serialize(serializer)
+    }
 }
 
 impl Cron {
-    /// Create a new cron system from the given `CronConfig`.
-    pub fn initialize(config: &CronConfig) -> Self {
-        let mut new = Self { queue: vec![] };
-        let _ = new.tick(config);
-        new
+    /// Create a new `Cron` system with the specified jitter. The system is empty until ticked once.
+    pub fn new_with_jitter(jitter: RangeInclusive<i8>) -> Self {
+        // No empty ranges for this function (use new())
+        assert!(!jitter.is_empty());
+        // Less than -100 is problematic, obviously, though we'll handle negative jitter without totally falling over
+        assert!(*jitter.start() >= -100);
+
+        // Convert percentage (-20..=+20) to fraction (0.8..=1.2)
+        let start = *(jitter).start() as f32 / 100.0 + 1.0;
+        let end = *(jitter).end() as f32 / 100.0 + 1.0;
+
+        Self {
+            queue: vec![],
+            jitter_fraction: Some(start..=end),
+        }
     }
 
-    pub fn tick(&mut self, config: &CronConfig) -> Vec<String> {
-        let now = now();
+    /// Create a new `Cron` system. The system is empty until ticked once.
+    pub fn new() -> Self {
+        Self {
+            queue: vec![],
+            jitter_fraction: None,
+        }
+    }
 
+    fn jitter(&self, interval: (usize, CronInterval)) -> Duration {
+        if let Some(jitter) = &self.jitter_fraction {
+            // Perform jitter math in floating point
+            let fraction = rand::thread_rng().gen_range(jitter.clone());
+            // For sanity, clamp fraction from EPSILON..2.0
+            let fraction = fraction.clamp(f32::EPSILON, 2.0);
+            interval.1.as_duration_f32(interval.0 as f32 * fraction)
+        } else {
+            interval.1.as_duration(interval.0)
+        }
+    }
+
+    pub fn tick(&mut self, config: &CronConfig, now: Instant) -> Vec<String> {
         // Drain the queue of any ready items
-        let mut ready = vec![];
+        let mut ready = HashSet::new();
+        let mut ret = vec![];
         let mut remaining = HashMap::<_, _>::from_iter(config.jobs.iter());
         self.queue.retain(|task| {
-            if task.next > now {
-                ready.push(task.url.clone());
+            if task.next <= now {
+                ready.insert(task.name.clone());
+                ret.push(task.url.clone());
                 false
             } else {
                 remaining.remove(&task.name);
@@ -91,17 +160,60 @@ impl Cron {
 
         // If we find a job in the config and it isn't already in the queue, add it in
         for (name, job) in remaining {
+            let last = if ready.contains(name) {
+                Some(now)
+            } else {
+                None
+            };
             self.queue.push(CronTask {
                 name: name.clone(),
                 url: job.url.clone(),
-                next: next_cron(job.interval),
+                next: now + self.jitter(job.interval),
+                last,
             });
         }
 
-        ready
+        ret
     }
 
     pub fn inspect(&self) -> Vec<CronTask> {
         self.queue.to_vec()
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_cron() {
+        let mut config = CronConfig::default();
+        config.jobs.insert(
+            "job".into(),
+            CronJob {
+                url: "/1".into(),
+                interval: (1, CronInterval::Minute),
+            },
+        );
+        let mut cron = Cron::new();
+        let mut now = Instant::now();
+        // No tasks available yet
+        assert_eq!(cron.inspect().len(), 0);
+        // No tasks ready yet, but we'll pick up one task
+        assert_eq!(cron.tick(&config, now).len(), 0);
+        // The one task is available...
+        assert_eq!(cron.inspect().len(), 1);
+        // ... but not ready
+        assert_eq!(cron.tick(&config, now).len(), 0);
+
+        // Not ready after one second either
+        now = now.checked_add(Duration::from_secs(1)).expect("Add");
+        assert_eq!(cron.tick(&config, now).len(), 0);
+
+        // In one minute we'll have one task ready (we use 61 seconds to guarantee we ticked over it)
+        now = now.checked_add(Duration::from_secs(61)).expect("Add");
+        assert_eq!(cron.tick(&config, now).len(), 1);
+        // But it can only be picked up once
+        assert_eq!(cron.tick(&config, now).len(), 0);
     }
 }

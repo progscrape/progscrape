@@ -3,10 +3,16 @@
 <h1>Cron</h1>
 
 <table>
-<tr><th>Name</th><th>URL</th><th>Next</th></tr>
+<tr><th>Name</th><th>URL</th><th>Last</th><th>Next</th></tr>
 {% for cron in cron %}
 <tr>
-<td>{{ cron.name }}</td><td>{{ cron.url }}</td><td>{{ cron.next }}</td>
+<td>{{ cron.name }}</td><td>{{ cron.url }}</td><td>
+    {% if cron.last == 0 %}
+    (never)
+    {% else %}
+    {{ cron.last | approx_time }}
+    {% endif %}
+</td><td>{{ cron.next | approx_time }}</td>
 </tr>
 {% endfor %}
 </table>
