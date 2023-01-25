@@ -27,7 +27,8 @@ use progscrape_application::{
     StoryIndex, StoryRender,
 };
 use progscrape_scrapers::{
-    ScrapeSource, ScraperHttpResponseInput, ScraperHttpResult, ScraperPossibilities, StoryDate,
+    ScrapeId, ScrapeSource, ScraperHttpResponseInput, ScraperHttpResult, ScraperPossibilities,
+    StoryDate, TypedScrape,
 };
 
 #[derive(Debug, Error)]
@@ -663,7 +664,7 @@ async fn admin_status_story(
         .storage
         .read()
         .await
-        .get_story(&id)
+        .get_story(&id)?
         .ok_or(WebError::NotFound)?;
     // let score_details = resources.story_evaluator().scorer.score_detail(&story, now);
     let score_details = vec![];
@@ -675,6 +676,7 @@ async fn admin_status_story(
         context!(
             user: CurrentUser = user,
             story: StoryRender = story.0.render(0),
+            scrapes: HashMap<ScrapeId, TypedScrape> = story.1.scrapes,
             tags: HashMap<String, Vec<String>> = tags,
             score: Vec<(String, f32)> = score_details
         ),

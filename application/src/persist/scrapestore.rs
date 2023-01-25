@@ -8,12 +8,12 @@ use serde::{Deserialize, Serialize};
 
 use crate::PersistError;
 
-use super::{db::DB, PersistLocation};
+use super::{db::DB, shard::Shard, PersistLocation};
 
 /// Long-term persistence for raw scrape data.
 pub struct ScrapeStore {
     location: PersistLocation,
-    shards: RwLock<HashMap<String, Arc<DB>>>,
+    shards: RwLock<HashMap<Shard, Arc<DB>>>,
 }
 
 #[derive(Default, Serialize, Deserialize)]
@@ -32,12 +32,12 @@ impl ScrapeStore {
         })
     }
 
-    fn open_shard<'a>(&'a self, shard: String) -> Result<Arc<DB>, PersistError> {
+    fn open_shard<'a>(&'a self, shard: Shard) -> Result<Arc<DB>, PersistError> {
         let mut lock = self.shards.write().expect("Poisoned");
         let db = if let Some(db) = lock.get(&shard) {
             db
         } else {
-            let db = match self.location.join(&shard) {
+            let db = match self.location.join(&shard.to_string()) {
                 PersistLocation::Memory => DB::open(":memory:")?,
                 PersistLocation::Path(ref path) => {
                     std::fs::create_dir_all(path)?;
@@ -64,9 +64,9 @@ impl ScrapeStore {
         &self,
         iter: I,
     ) -> Result<(), PersistError> {
-        let mut per_shard: HashMap<String, Vec<&TypedScrape>> = HashMap::new();
+        let mut per_shard: HashMap<Shard, Vec<&TypedScrape>> = HashMap::new();
         for item in iter {
-            let shard = format!("{:04}-{:02}", item.date.year(), item.date.month());
+            let shard = Shard::from_date_time(item.date);
             per_shard.entry(shard).or_default().push(item);
         }
         for (shard, stories) in per_shard {
@@ -87,10 +87,9 @@ impl ScrapeStore {
 
     pub fn fetch_scrape(
         &self,
+        shard: Shard,
         id: &ScrapeId,
-        date: StoryDate,
     ) -> Result<Option<TypedScrape>, PersistError> {
-        let shard = format!("{:04}-{:02}", date.year(), date.month());
         let db = self.open_shard(shard)?;
         let scrape = db.load::<ScrapeCacheEntry>(id.to_string())?;
         if let Some(scrape) = scrape {
@@ -101,13 +100,12 @@ impl ScrapeStore {
         }
     }
 
-    pub fn fetch_scrape_batch<'a, I: Iterator<Item = (&'a ScrapeId, StoryDate)>>(
+    pub fn fetch_scrape_batch<'a, I: Iterator<Item = (Shard, ScrapeId)>>(
         &self,
         iter: I,
     ) -> Result<HashMap<ScrapeId, Option<TypedScrape>>, PersistError> {
         let mut map = HashMap::new();
-        for (id, date) in iter {
-            let shard = format!("{:04}-{:02}", date.year(), date.month());
+        for (shard, id) in iter {
             let db = self.open_shard(shard)?;
             let scrape = db.load::<ScrapeCacheEntry>(id.to_string())?;
             if let Some(scrape) = scrape {
@@ -127,9 +125,9 @@ mod test {
 
     use rstest::rstest;
 
-    use super::*;
-
     use crate::test::enable_tracing;
+
+    use super::*;
 
     #[rstest]
     fn test_insert(_enable_tracing: &bool) -> Result<(), Box<dyn std::error::Error>> {
@@ -140,7 +138,9 @@ mod test {
             store.insert_scrape(scrape)?;
         }
         for scrape in first {
-            let loaded_scrape = store.fetch_scrape(&scrape.id, scrape.date)?.unwrap();
+            let loaded_scrape = store
+                .fetch_scrape(Shard::from_date_time(scrape.date), &scrape.id)?
+                .unwrap();
             assert_eq!(scrape.id, loaded_scrape.id);
         }
         Ok(())

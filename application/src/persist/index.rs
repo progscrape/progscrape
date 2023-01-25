@@ -75,7 +75,7 @@ struct StoryFetch {
     date: i64,
     score: f64,
     tags: Vec<String>,
-    scrape_ids: Vec<String>,
+    scrape_ids: Vec<(Shard, ScrapeId)>,
 }
 
 /// The `StoryIndexShard` manages a single shard of the index.
@@ -311,7 +311,20 @@ impl StoryIndexShard {
         let title = self.text_value(&doc, self.title_field);
         let date = self.i64_value(&doc, self.date_field);
         let score = self.f64_value(&doc, self.score_field);
-        let scrape_ids = self.text_values(&doc, self.scrape_field);
+        let scrape_ids = self
+            .text_values(&doc, self.scrape_field)
+            .into_iter()
+            .filter_map(|id| {
+                if let Some((a, b)) = id.split_once(':') {
+                    if let (Some(shard), Some(id)) =
+                        (Shard::from_string(a), ScrapeId::from_string(b.into()))
+                    {
+                        return Some((shard, id));
+                    }
+                }
+                None
+            })
+            .collect_vec();
         let tags = self.text_values(&doc, self.tags_field);
         Ok(StoryFetch {
             url,
@@ -653,22 +666,33 @@ impl StoryIndex {
         let url = StoryUrl::parse(story.url).expect("Failed to parse URL");
         let date = StoryDate::from_seconds(story.date).expect("Failed to re-parse date");
         let score = story.score as f32;
-        let mut scrapes = HashSet::new();
-        for id in story.scrape_ids {
-            if let Some((_, b)) = id.split_once(':') {
-                if let Some(id) = ScrapeId::from_string(b.into()) {
-                    scrapes.insert(id);
-                }
-            }
-        }
         Ok(Story::new_from_parts(
             story.title,
             url,
             date,
             score,
             story.tags,
-            scrapes,
+            story.scrape_ids.into_iter().map(|(_, b)| b).collect(),
         ))
+    }
+
+    fn lookup_story_and_scrapes(
+        &self,
+        index: &StoryIndexShard,
+        searcher: &Searcher,
+        doc_address: DocAddress,
+    ) -> Result<(Story, ScrapeCollection), PersistError> {
+        let story = index.lookup_story(searcher, doc_address)?;
+        let url = StoryUrl::parse(story.url).expect("Failed to parse URL");
+        let date = StoryDate::from_seconds(story.date).expect("Failed to re-parse date");
+        let score = story.score as f32;
+        let scrape_ids = story.scrape_ids.iter().map(|(_, b)| b.clone()).collect();
+        let scrapes = self
+            .scrape_db
+            .fetch_scrape_batch(story.scrape_ids.into_iter())?;
+        let scrapes = ScrapeCollection::new_from_iter(scrapes.into_values().flatten());
+        let story = Story::new_from_parts(story.title, url, date, score, story.tags, scrape_ids);
+        Ok((story, scrapes))
     }
 
     fn get_story_doc(
@@ -731,8 +755,23 @@ impl Storage for StoryIndex {
         Ok(summary)
     }
 
-    fn get_story(&self, _id: &StoryIdentifier) -> Option<(Story, ScrapeCollection)> {
-        unimplemented!()
+    fn get_story(
+        &self,
+        id: &StoryIdentifier,
+    ) -> Result<Option<(Story, ScrapeCollection)>, PersistError> {
+        let shard = self.get_shard(Shard::from_year_month(id.year(), id.month()))?;
+        let shard = shard.read().expect("Poisoned");
+        let query = TermQuery::new(
+            Term::from_field_text(shard.id_field, &id.to_base64()),
+            IndexRecordOption::Basic,
+        );
+        let searcher = shard.index.reader()?.searcher();
+        let docs = searcher.search(&query, &TopDocs::with_limit(1))?;
+        for (_, doc_address) in docs {
+            let (story, scrapes) = self.lookup_story_and_scrapes(&shard, &searcher, doc_address)?;
+            return Ok(Some((story, scrapes)));
+        }
+        Ok(None)
     }
 
     fn stories_by_shard(&self, shard: &str) -> Result<Vec<Story>, PersistError> {

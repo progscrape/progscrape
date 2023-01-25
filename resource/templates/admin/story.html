@@ -4,8 +4,8 @@
     <tr><th>ID</th><td>{{ story.id }}</td></tr>
     <tr><th>Title</th><td>{{ story.title }}</td></tr>
     <tr><th>URL</th><td>{{ story.url }}</td></tr>
-    <tr><th>URL norm</th><td>{{ story.url_norm }} (hash = {{ story.url_norm_hash }})</td></tr>
-    {% for source, scrape in story.scrapes %}
+    {# <tr><th>URL norm</th><td>{{ story.url_norm }} (hash = {{ story.url_norm_hash }})</td></tr> #}
+    {% for source, scrape in scrapes %}
     <tr><th>Scrape: {{ source }}</th><td>
         <table>
             {% for key, value in scrape %}

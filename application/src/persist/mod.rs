@@ -48,7 +48,10 @@ pub trait Storage: Send + Sync {
     fn story_count(&self) -> Result<StorageSummary, PersistError>;
 
     /// Retrieves a single, unique story from the index.
-    fn get_story(&self, id: &StoryIdentifier) -> Option<(Story, ScrapeCollection)>;
+    fn get_story(
+        &self,
+        id: &StoryIdentifier,
+    ) -> Result<Option<(Story, ScrapeCollection)>, PersistError>;
 
     /// Retrieves all stories in a shard.
     fn stories_by_shard(&self, shard: &str) -> Result<Vec<Story>, PersistError>;
