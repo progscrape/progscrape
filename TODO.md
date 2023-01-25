@@ -5,9 +5,9 @@ TODO:
  - [ ] Slashdot tags should use URL not title
  - [ ] Inverse lookup for tags 
  - [ ] Dump existing index
- - [ ] Hook up scrape to cron
  - [ ] Swap Chrono for time
  - [ ] Host implies tag (ie: YouTube)
+ - [ ] Rework indexing so writes don't hold a long lock 
 
 Maybe:
  - [ ] Metrics?
@@ -22,4 +22,4 @@ Done:
  - [ ] Comment links
  - [ ] Remove www. prefix on host
  - [ ] Use Instant/Duration for cron
- 
+ - [ ] Hook up scrape to cron
