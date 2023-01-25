@@ -47,6 +47,15 @@ impl ScrapeCollection {
         }
     }
 
+    pub fn url(&self) -> &StoryUrl {
+        &self
+            .scrapes
+            .values()
+            .next()
+            .expect("Requires at least one TypedScrape")
+            .url
+    }
+
     pub fn extract<'a>(&'a self, extractor: &ScrapeExtractor) -> ExtractedScrapeCollection<'a> {
         let iter = self.scrapes.iter().map(|(k, v)| (k, extractor.extract(v)));
         ExtractedScrapeCollection {

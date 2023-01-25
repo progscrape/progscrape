@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::{borrow::Cow, fmt::Debug};
 
+pub use self::def::ScrapeCore;
 pub(crate) use self::def::*;
 use crate::types::*;
 

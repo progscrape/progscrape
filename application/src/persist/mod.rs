@@ -87,6 +87,13 @@ pub trait StorageWriter: Storage {
     ) -> Result<(), PersistError>;
 }
 
+#[derive(Debug)]
+pub enum ScrapePersistResult {
+    MergedWithExistingStory,
+    AlreadyPartOfExistingStory,
+    NewStory,
+}
+
 #[derive(Clone, Debug)]
 /// Where is this persistence engine storing data?
 pub enum PersistLocation {
