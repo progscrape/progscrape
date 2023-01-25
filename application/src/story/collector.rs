@@ -37,16 +37,21 @@ impl StoryCollector {
         }
     }
 
+    pub fn len(&self) -> usize {
+        self.stories.len()
+    }
+
     pub fn min_score(&self) -> f32 {
         self.stories.peek().map(|x| x.0.score).unwrap_or(f32::MIN)
     }
 
+    #[inline(always)]
     pub fn would_accept(&self, score: f32) -> bool {
         self.stories.len() < self.capacity || score > self.min_score()
     }
 
     pub fn accept(&mut self, story: Story) -> bool {
-        if story.score <= self.min_score() {
+        if !self.would_accept(story.score) {
             return false;
         }
         self.stories.push(StoryWrapper(story));
@@ -93,6 +98,15 @@ mod test {
             vec![],
             HashSet::new(),
         )
+    }
+
+    #[test]
+    fn test_collect_lower() {
+        let mut collector = StoryCollector::new(10);
+        collector.accept(make_story_with_score(10.0));
+        collector.accept(make_story_with_score(9.0));
+
+        assert_eq!(collector.len(), 2);
     }
 
     #[test]
