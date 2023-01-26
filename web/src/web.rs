@@ -27,8 +27,8 @@ use progscrape_application::{
     StoryIndex, StoryRender,
 };
 use progscrape_scrapers::{
-    ScrapeCollection, ScrapeId, ScrapeSource, ScraperHttpResponseInput, ScraperHttpResult,
-    StoryDate, TypedScrape,
+    ScrapeCollection, ScrapeSource, ScraperHttpResponseInput, ScraperHttpResult,
+    StoryDate,
 };
 
 #[derive(Debug, Error)]
@@ -213,7 +213,7 @@ fn start_cron(
                 // TODO: Do we need to read data() multiple times?
                 let body = match response.into_body().data().await {
                     Some(Ok(b)) => String::from_utf8_lossy(&b).to_string(),
-                    x @ _ => {
+                    x => {
                         tracing::error!("Could not retrieve body from cron response: {:?}", x);
                         "(empty)".into()
                     }
@@ -607,7 +607,7 @@ async fn admin_status_frontpage(
         context!(
             now,
             user,
-            stories: Vec<StoryRender> = render_stories(
+            stories = render_stories(
                 hot_set(now, &index, &resources.story_evaluator())
                     .await?
                     .iter(),
@@ -630,10 +630,9 @@ async fn admin_status_shard(
         &resources,
         "admin/shard.html",
         context!(
-            user: CurrentUser = user,
-            shard: String = shard.clone(),
-            stories: Vec<StoryRender> =
-                render_stories(index.storage.read().await.stories_by_shard(&shard)?.iter(),),
+            user,
+            shard = shard.clone(),
+            stories = render_stories(index.storage.read().await.stories_by_shard(&shard)?.iter(),),
             sort: String = sort
         ),
     )
@@ -667,12 +666,12 @@ async fn admin_status_story(
         &resources,
         "admin/story.html",
         context!(
-            now: StoryDate = now,
-            user: CurrentUser = user,
-            story: StoryRender = story.render(0),
-            scrapes: HashMap<ScrapeId, TypedScrape> = scrapes.scrapes,
-            tags: HashMap<String, Vec<String>> = tags,
-            score: Vec<(String, f32)> = score_details
+            now,
+            user,
+            story = story.render(0),
+            scrapes = scrapes.scrapes,
+            tags: HashMap<String, Vec<String>>,
+            score = score_details
         ),
     )
 }

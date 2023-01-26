@@ -101,7 +101,7 @@ pub trait Storage: Send + Sync {
     where
         Self: StorageFetch<S>,
     {
-        <Self as StorageFetch<S>>::fetch_type(&self, query, max)
+        <Self as StorageFetch<S>>::fetch_type(self, query, max)
     }
 
     /// Fetch a single story with the specified payload type.
@@ -113,7 +113,7 @@ pub trait Storage: Send + Sync {
     where
         Self: StorageFetch<S>,
     {
-        Ok(<Self as StorageFetch<S>>::fetch_type(&self, query, 1)?
+        Ok(<Self as StorageFetch<S>>::fetch_type(self, query, 1)?
             .into_iter()
             .next())
     }

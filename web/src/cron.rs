@@ -79,7 +79,7 @@ impl CronHistory {
         output: String,
     ) {
         let now = Instant::now();
-        let map = self.history.entry(service.clone()).or_default();
+        let map = self.history.entry(service).or_default();
         map.insert(now, (status_code, output));
         let cutoff = now - max_age.1.as_duration(max_age.0);
 
