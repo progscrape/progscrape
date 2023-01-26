@@ -58,11 +58,13 @@ pub struct StoryFetch {
 
 /// For performance, we shard stories by time period to allow for more efficient lookup of normalized URLs.
 pub struct StoryIndexShard {
-    pub index: Index,
-    pub reader: IndexReader,
-    pub searcher: Searcher,
+    index: Index,
+    reader: IndexReader,
+    searcher: Searcher,
     schema: StorySchema,
 }
+
+const MEMORY_ARENA_SIZE: usize = 50_000_000;
 
 /// The `StoryIndexShard` manages a single shard of the index.
 impl StoryIndexShard {
@@ -121,6 +123,35 @@ impl StoryIndexShard {
         mut f: F,
     ) -> Result<T, PersistError> {
         Ok(f(&self.searcher, &self.schema))
+    }
+
+    /// Provides a valid writer and schema temporarily for the callback function.
+    #[inline(always)]
+    pub fn with_writer<
+        F: FnOnce(&Self, &mut IndexWriter, &StorySchema) -> Result<T, PersistError>,
+        T,
+    >(
+        &mut self,
+        f: F,
+    ) -> Result<T, PersistError> {
+        let mut writer = self.writer()?;
+        let res = f(self, &mut writer, &self.schema)?;
+        writer.commit()?;
+        self.reader.reload()?;
+        self.searcher = self.reader.searcher();
+        Ok(res)
+    }
+
+    pub fn writer(&self) -> Result<IndexWriter, PersistError> {
+        Ok(self.index.writer(MEMORY_ARENA_SIZE)?)
+    }
+
+    pub fn commit_writer(&mut self, mut writer: IndexWriter) -> Result<(), PersistError> {
+        writer.commit()?;
+        self.reader.reload()?;
+        self.searcher = self.reader.searcher();
+        writer.wait_merging_threads()?;
+        Ok(())
     }
 
     pub fn most_recent_story(&self) -> Result<StoryDate, PersistError> {

@@ -57,19 +57,22 @@ pub enum StoryQuery {
     TextSearch(String),
 }
 
+pub trait StoryScrapePayload {}
+
+impl StoryScrapePayload for () {}
+impl StoryScrapePayload for Shard {}
+impl StoryScrapePayload for TypedScrape {}
+
+pub trait StorageFetch<S: StoryScrapePayload> {
+    fn fetch_type(&self, query: StoryQuery, max: usize) -> Result<Vec<Story<S>>, PersistError>;
+}
+
 /// The underlying storage engine.
 pub trait Storage: Send + Sync {
     fn most_recent_story(&self) -> Result<StoryDate, PersistError>;
 
     /// Count the docs in this index, breaking it out by index segment.
     fn story_count(&self) -> Result<StorageSummary, PersistError>;
-
-    fn fetch(&self, query: StoryQuery, max: usize) -> Result<Vec<Story<Shard>>, PersistError>;
-    fn fetch_with_scrapes(
-        &self,
-        query: StoryQuery,
-        max: usize,
-    ) -> Result<Vec<Story<TypedScrape>>, PersistError>;
 
     /// Retrieves a single, unique story from the index.
     fn get_story(&self, id: &StoryIdentifier) -> Result<Option<Story<TypedScrape>>, PersistError>;
@@ -87,6 +90,33 @@ pub trait Storage: Send + Sync {
         search: &str,
         max_count: usize,
     ) -> Result<Vec<Story<Shard>>, PersistError>;
+
+    /// Fetch a list of stories with the specified payload type.
+    #[inline(always)]
+    fn fetch<S: StoryScrapePayload>(
+        &self,
+        query: StoryQuery,
+        max: usize,
+    ) -> Result<Vec<Story<S>>, PersistError>
+    where
+        Self: StorageFetch<S>,
+    {
+        <Self as StorageFetch<S>>::fetch_type(&self, query, max)
+    }
+
+    /// Fetch a single story with the specified payload type.
+    #[inline(always)]
+    fn fetch_one<S: StoryScrapePayload>(
+        &self,
+        query: StoryQuery,
+    ) -> Result<Option<Story<S>>, PersistError>
+    where
+        Self: StorageFetch<S>,
+    {
+        Ok(<Self as StorageFetch<S>>::fetch_type(&self, query, 1)?
+            .into_iter()
+            .next())
+    }
 }
 
 pub trait StorageWriter: Storage {

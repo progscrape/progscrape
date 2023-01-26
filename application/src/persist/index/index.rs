@@ -13,7 +13,7 @@ use std::time::Duration;
 use crate::persist::index::indexshard::{StoryIndexShard, StoryLookup, StoryLookupId};
 use crate::persist::scrapestore::ScrapeStore;
 use crate::persist::shard::{ShardOrder, ShardRange};
-use crate::persist::{Shard, StoryQuery};
+use crate::persist::{Shard, StorageFetch, StoryQuery};
 use crate::story::{StoryCollector, StoryTagger, TagSet};
 use crate::{
     timer_end, timer_start, MemIndex, PersistError, PersistLocation, Storage, StorageSummary,
@@ -23,7 +23,6 @@ use crate::{
 use super::indexshard::StoryInsert;
 use super::schema::StorySchema;
 
-const MEMORY_ARENA_SIZE: usize = 50_000_000;
 const STORY_INDEXING_CHUNK_SIZE: usize = 10000;
 const SCRAPE_PROCESSING_CHUNK_SIZE: usize = 1000;
 
@@ -74,7 +73,7 @@ impl WriterProvider {
         let writer = if let Some(writer) = self.writers.get_mut(&shard) {
             writer
         } else {
-            let writer = shard_index.index.writer(MEMORY_ARENA_SIZE)?;
+            let writer = shard_index.writer()?;
             self.writers.entry(shard).or_insert(writer)
         };
 
@@ -136,6 +135,17 @@ impl StoryIndex {
         shard_index.with_searcher(|searcher, schema| f(shard, searcher, schema))
     }
 
+    #[inline(always)]
+    fn with_index<F: FnMut(Shard, &StoryIndexShard) -> T, T>(
+        &self,
+        shard: Shard,
+        mut f: F,
+    ) -> Result<T, PersistError> {
+        let shard_index = self.get_shard(shard)?;
+        let shard_index = shard_index.read().expect("Poisoned");
+        Ok(f(shard, &shard_index))
+    }
+
     /// This is a complicated function that gives you access to a function that gives you access
     /// to writers. The function manages the writers until the completion of the outer closure.
     fn with_writers<
@@ -150,21 +160,16 @@ impl StoryIndex {
             index: self.index_cache.clone(),
         };
         let res = f(&mut provider);
-        let WriterProvider { mut writers, .. } = provider;
+        let WriterProvider { writers, .. } = provider;
 
         let writer_count = writers.len();
         if res.is_ok() {
             tracing::info!("Commiting {} writer(s)", writer_count);
             let commit_start = timer_start!();
-            for (shard, writer) in writers.iter_mut() {
-                writer.commit()?;
-                let shard = self.get_shard(*shard)?;
+            for (shard, writer) in writers.into_iter() {
+                let shard = self.get_shard(shard)?;
                 let mut shard = shard.write().expect("Poisoned");
-                shard.reader.reload()?;
-                shard.searcher = shard.reader.searcher();
-            }
-            for writer in writers.into_values() {
-                writer.wait_merging_threads()?;
+                shard.commit_writer(writer)?;
             }
             timer_end!(commit_start, "Committed {} writer(s).", writer_count);
         } else {
@@ -337,48 +342,6 @@ impl StoryIndex {
 
             Ok(())
         })
-    }
-
-    fn lookup_story(
-        &self,
-        index: &StoryIndexShard,
-        doc_address: DocAddress,
-    ) -> Result<Story<Shard>, PersistError> {
-        let story = index.lookup_story(doc_address)?;
-        let url = StoryUrl::parse(story.url).expect("Failed to parse URL");
-        let date = StoryDate::from_seconds(story.date).expect("Failed to re-parse date");
-        let score = story.score as f32;
-        Ok(Story::new_from_parts(
-            story.title,
-            url,
-            date,
-            score,
-            story.tags,
-            story.scrape_ids,
-        ))
-    }
-
-    fn lookup_story_and_scrapes(
-        &self,
-        index: &StoryIndexShard,
-        doc_address: DocAddress,
-    ) -> Result<Story<TypedScrape>, PersistError> {
-        let story = index.lookup_story(doc_address)?;
-        let url = StoryUrl::parse(story.url).expect("Failed to parse URL");
-        let date = StoryDate::from_seconds(story.date).expect("Failed to re-parse date");
-        let score = story.score as f32;
-        let scrapes = self
-            .scrape_db
-            .fetch_scrape_batch(story.scrape_ids.clone())?;
-        let story = Story::new_from_parts(
-            story.title,
-            url,
-            date,
-            score,
-            story.tags,
-            scrapes.into_values().flatten(),
-        );
-        Ok(story)
     }
 
     fn get_story_doc(
@@ -566,6 +529,66 @@ impl StorageWriter for StoryIndex {
     }
 }
 
+impl StorageFetch<Shard> for StoryIndex {
+    fn fetch_type(&self, query: StoryQuery, max: usize) -> Result<Vec<Story<Shard>>, PersistError> {
+        let mut v = vec![];
+        for (shard, doc) in self.fetch_doc_addresses(query, max)? {
+            let doc = self.with_index(shard, |_, index| {
+                let story = index.lookup_story(doc)?;
+                let url = StoryUrl::parse(story.url).expect("Failed to parse URL");
+                let date = StoryDate::from_seconds(story.date).expect("Failed to re-parse date");
+                let score = story.score as f32;
+                Result::<_, PersistError>::Ok(Story::new_from_parts(
+                    story.title,
+                    url,
+                    date,
+                    score,
+                    story.tags,
+                    story.scrape_ids,
+                ))
+            })??;
+
+            v.push(doc);
+        }
+        Ok(v)
+    }
+}
+
+impl StorageFetch<TypedScrape> for StoryIndex {
+    fn fetch_type(
+        &self,
+        query: StoryQuery,
+        max: usize,
+    ) -> Result<Vec<Story<TypedScrape>>, PersistError> {
+        let mut v = vec![];
+        for (shard, doc) in self.fetch_doc_addresses(query, max)? {
+            let doc = self.with_index(shard, |_, index| {
+                let story = index.lookup_story(doc)?;
+                let url = StoryUrl::parse(story.url).expect("Failed to parse URL");
+                let date = StoryDate::from_seconds(story.date).expect("Failed to re-parse date");
+                let score = story.score as f32;
+
+                let scrapes = self
+                    .scrape_db
+                    .fetch_scrape_batch(story.scrape_ids.clone())?;
+                let story = Story::new_from_parts(
+                    story.title,
+                    url,
+                    date,
+                    score,
+                    story.tags,
+                    scrapes.into_values().flatten(),
+                );
+
+                Result::<_, PersistError>::Ok(story)
+            })??;
+
+            v.push(doc);
+        }
+        Ok(v)
+    }
+}
+
 impl Storage for StoryIndex {
     fn most_recent_story(&self) -> Result<StoryDate, PersistError> {
         if let Some(max) = self.shards().iterate(ShardOrder::NewestFirst).next() {
@@ -588,33 +611,9 @@ impl Storage for StoryIndex {
         Ok(summary)
     }
 
-    fn fetch(&self, query: StoryQuery, max: usize) -> Result<Vec<Story<Shard>>, PersistError> {
-        let mut v = vec![];
-        for (shard, doc) in self.fetch_doc_addresses(query, max)? {
-            let shard = self.get_shard(shard)?;
-            let shard = shard.read().expect("Poisoned");
-            v.push(self.lookup_story(&shard, doc)?);
-        }
-        Ok(v)
-    }
-
-    fn fetch_with_scrapes(
-        &self,
-        query: StoryQuery,
-        max: usize,
-    ) -> Result<Vec<Story<TypedScrape>>, PersistError> {
-        let mut v = vec![];
-        for (shard, doc) in self.fetch_doc_addresses(query, max)? {
-            let shard = self.get_shard(shard)?;
-            let shard = shard.read().expect("Poisoned");
-            v.push(self.lookup_story_and_scrapes(&shard, doc)?);
-        }
-        Ok(v)
-    }
-
     fn get_story(&self, id: &StoryIdentifier) -> Result<Option<Story<TypedScrape>>, PersistError> {
         Ok(self
-            .fetch_with_scrapes(StoryQuery::ById(id.clone()), 1)?
+            .fetch(StoryQuery::ById(id.clone()), 1)?
             .into_iter()
             .next())
     }
@@ -661,23 +660,24 @@ mod test {
     fn populate_shard(
         ids: impl Iterator<Item = (i64, i64)>,
     ) -> Result<StoryIndexShard, PersistError> {
-        let shard = StoryIndexShard::initialize(
+        let mut shard = StoryIndexShard::initialize(
             PersistLocation::Memory,
             Shard::default(),
             StorySchema::instantiate_global_schema(),
         )?;
-        let mut writer = shard.index.writer(MEMORY_ARENA_SIZE)?;
-        for (url_norm_hash, date) in ids {
-            shard.insert_story_document(
-                &mut writer,
-                StoryInsert {
-                    url_norm_hash,
-                    date,
-                    ..Default::default()
-                },
-            )?;
-        }
-        writer.commit()?;
+        shard.with_writer(move |shard, writer, _| {
+            for (url_norm_hash, date) in ids {
+                shard.insert_story_document(
+                    writer,
+                    StoryInsert {
+                        url_norm_hash,
+                        date,
+                        ..Default::default()
+                    },
+                )?;
+            }
+            Ok(())
+        })?;
         Ok(shard)
     }
 
