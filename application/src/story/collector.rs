@@ -2,34 +2,34 @@ use std::{cmp::Ordering, collections::BinaryHeap};
 
 use crate::Story;
 
-pub struct StoryCollector {
-    stories: BinaryHeap<StoryWrapper>,
+pub struct StoryCollector<T> {
+    stories: BinaryHeap<StoryWrapper<T>>,
     capacity: usize,
 }
 
-struct StoryWrapper(Story);
+struct StoryWrapper<T>(f32, T);
 
-impl Ord for StoryWrapper {
+impl<T> Ord for StoryWrapper<T> {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.0.score.total_cmp(&other.0.score).reverse()
+        self.0.total_cmp(&other.0).reverse()
     }
 }
 
-impl PartialOrd for StoryWrapper {
+impl<T> PartialOrd for StoryWrapper<T> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.0.score.total_cmp(&other.0.score).reverse())
+        Some(self.0.total_cmp(&other.0).reverse())
     }
 }
 
-impl PartialEq for StoryWrapper {
+impl<T> PartialEq for StoryWrapper<T> {
     fn eq(&self, other: &Self) -> bool {
-        self.0.score.total_cmp(&other.0.score) == Ordering::Equal
+        self.0.total_cmp(&other.0) == Ordering::Equal
     }
 }
 
-impl Eq for StoryWrapper {}
+impl<T> Eq for StoryWrapper<T> {}
 
-impl StoryCollector {
+impl<T> StoryCollector<T> {
     pub fn new(capacity: usize) -> Self {
         Self {
             stories: BinaryHeap::with_capacity(capacity + 1),
@@ -42,7 +42,7 @@ impl StoryCollector {
     }
 
     pub fn min_score(&self) -> f32 {
-        self.stories.peek().map(|x| x.0.score).unwrap_or(f32::MIN)
+        self.stories.peek().map(|x| x.0).unwrap_or(f32::MIN)
     }
 
     #[inline(always)]
@@ -50,22 +50,22 @@ impl StoryCollector {
         self.stories.len() < self.capacity || score > self.min_score()
     }
 
-    pub fn accept(&mut self, story: Story) -> bool {
-        if !self.would_accept(story.score) {
+    pub fn accept(&mut self, score: f32, story: T) -> bool {
+        if !self.would_accept(score) {
             return false;
         }
-        self.stories.push(StoryWrapper(story));
+        self.stories.push(StoryWrapper(score, story));
         while self.stories.len() > self.capacity {
             self.stories.pop();
         }
         true
     }
 
-    pub fn to_sorted(mut self) -> Vec<Story> {
+    pub fn to_sorted(mut self) -> Vec<T> {
         // This will be easier w/.drain_sorted()
         let mut v = Vec::with_capacity(self.stories.len());
         while let Some(story) = self.stories.pop() {
-            v.push(story.0);
+            v.push(story.1);
         }
         v.reverse();
         v
@@ -75,15 +75,21 @@ impl StoryCollector {
     pub fn scores(&self) -> Vec<f32> {
         use itertools::Itertools;
 
-        let mut v = self.stories.iter().map(|x| x.0.score).collect_vec();
+        let mut v = self.stories.iter().map(|x| x.0).collect_vec();
         v.sort_by(|a, b| a.total_cmp(b));
         v
     }
 }
 
+impl StoryCollector<Story> {
+    pub fn accept_story(&mut self, story: Story) -> bool {
+        self.accept(story.score, story)
+    }
+}
+
 #[cfg(test)]
 mod test {
-    use std::collections::{HashMap, HashSet};
+    
 
     use progscrape_scrapers::{StoryDate, StoryUrl};
 
@@ -103,8 +109,8 @@ mod test {
     #[test]
     fn test_collect_lower() {
         let mut collector = StoryCollector::new(10);
-        collector.accept(make_story_with_score(10.0));
-        collector.accept(make_story_with_score(9.0));
+        collector.accept_story(make_story_with_score(10.0));
+        collector.accept_story(make_story_with_score(9.0));
 
         assert_eq!(collector.len(), 2);
     }
@@ -119,20 +125,20 @@ mod test {
 
         // Will accept all scores when not at capacity
         for i in 0..10 {
-            assert!(collector.accept(make_story_with_score(i as f32 * 10.0)));
+            assert!(collector.accept_story(make_story_with_score(i as f32 * 10.0)));
         }
 
         assert_eq!(collector.min_score() as i32, 0);
 
         // Won't accept scores below or equal to the min
         assert!(!collector.would_accept(-10.0));
-        assert!(!collector.accept(make_story_with_score(-10.0)));
+        assert!(!collector.accept_story(make_story_with_score(-10.0)));
         assert!(!collector.would_accept(0.0));
-        assert!(!collector.accept(make_story_with_score(0.0)));
+        assert!(!collector.accept_story(make_story_with_score(0.0)));
 
         // Will accept
-        assert!(collector.accept(make_story_with_score(1.0)));
+        assert!(collector.accept_story(make_story_with_score(1.0)));
         // Will not accept (1.0 is now the minimum)
-        assert!(!collector.accept(make_story_with_score(1.0)));
+        assert!(!collector.accept_story(make_story_with_score(1.0)));
     }
 }

@@ -41,12 +41,35 @@ pub struct StorageSummary {
     pub total: usize,
 }
 
+/// The type of story fetch to perform.
+pub enum StoryQuery {
+    /// A single story.
+    ById(StoryIdentifier),
+    /// All stories from a given shard.
+    ByShard(Shard),
+    /// Front page stories.
+    FrontPage(),
+    /// Stories matching a tag query.
+    TagSearch(String),
+    /// Stories matching a domain query.
+    DomainSearch(String),
+    /// Stories matching a text search.
+    TextSearch(String),
+}
+
 /// The underlying storage engine.
 pub trait Storage: Send + Sync {
     fn most_recent_story(&self) -> Result<StoryDate, PersistError>;
 
     /// Count the docs in this index, breaking it out by index segment.
     fn story_count(&self) -> Result<StorageSummary, PersistError>;
+
+    fn fetch(&self, query: StoryQuery, max: usize) -> Result<Vec<Story>, PersistError>;
+    fn fetch_with_scrapes(
+        &self,
+        query: StoryQuery,
+        max: usize,
+    ) -> Result<Vec<(Story, ScrapeCollection)>, PersistError>;
 
     /// Retrieves a single, unique story from the index.
     fn get_story(
