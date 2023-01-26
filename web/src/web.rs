@@ -17,18 +17,18 @@ use unwrap_infallible::UnwrapInfallible;
 
 use crate::{
     auth::Auth,
-    cron::{Cron, CronHistory, CronTask},
+    cron::{Cron, CronHistory},
     index::Index,
     resource::{self, Resources},
     serve_static_files,
 };
 use progscrape_application::{
-    PersistError, Shard, Storage, StorageSummary, StorageWriter, Story, StoryEvaluator,
-    StoryIdentifier, StoryIndex, StoryRender,
+    PersistError, Shard, Storage, StorageWriter, Story, StoryEvaluator, StoryIdentifier,
+    StoryIndex, StoryRender,
 };
 use progscrape_scrapers::{
     ScrapeCollection, ScrapeId, ScrapeSource, ScraperHttpResponseInput, ScraperHttpResult,
-    ScraperPossibilities, StoryDate, TypedScrape,
+    StoryDate, TypedScrape,
 };
 
 #[derive(Debug, Error)]
@@ -304,21 +304,54 @@ async fn hot_set(
     Ok(hot_set)
 }
 
+macro_rules! context_assign {
+    ($id:ident , ,) => {};
+    ($id:ident , , $typ:ty) => {
+        let $id: $typ = $id;
+    };
+    ($id:ident , $expr:expr , $typ:ty) => {
+        let $id: $typ = $expr;
+    };
+    ($id:ident , $expr:expr ,) => {
+        let $id = $expr;
+    };
+}
+
 macro_rules! context {
-    ( $($id:ident : $typ:ty = $expr:expr),* ) => {
+    ( $($id:ident $(: $typ:ty)? $(= $expr:expr)? ),* $(,)? ) => {
         {
-            #[derive(Serialize)]
-            struct TempStruct {
-                $(
-                    $id: $typ,
-                )*
+            use ::serde::{*, ser::*};
+
+            // Compute the length of the interior map in a roundabout way
+            const fn one(_: &'static str) -> usize { 1 }
+            const LEN: usize = 0 $( + one((stringify!($id))) )*;
+
+            // Create a local variable for each item of the context, with a type if specified.
+            $(
+                context_assign!($id , $($expr)? , $($typ)?);
+            )*
+
+            // Create a struct that has one generic type bound for each member.
+            #[allow(non_camel_case_types)]
+            struct TempStruct<$($id),*> {
+                $( $id: $id ),*
+            }
+
+            // Manual serializer implementation required to avoid `non_camel_case_types` warnings.
+            #[allow(non_camel_case_types)]
+            impl<$($id: Serialize),*> Serialize for TempStruct<$($id),*> {
+                fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+                    where S: serde::Serializer,
+                {
+                    let mut map = serializer.serialize_map(Some(LEN))?;
+                    $(map.serialize_entry(stringify!($id), &self.$id)?;)*
+                    map.end()
+                }
             }
 
             #[allow(clippy::redundant_field_names)]
             Context::from_serialize(&TempStruct {
-                $(
-                    $id: $expr,
-                )*
+                $( $id, )*
             })?
         }
     };
@@ -368,19 +401,8 @@ async fn root(
         "kernel",
         "google",
         "arstechnica.com",
-    ]
-    .into_iter()
-    .map(str::to_owned)
-    .collect();
-    render(
-        &resources,
-        "index.html",
-        context!(
-            top_tags: Vec<String> = top_tags,
-            stories: Vec<StoryRender> = stories,
-            now: StoryDate = now
-        ),
-    )
+    ];
+    render(&resources, "index.html", context!(top_tags, stories, now))
 }
 
 async fn admin(
@@ -390,10 +412,7 @@ async fn admin(
     render(
         &resources,
         "admin/admin.html",
-        context!(
-            user: CurrentUser = user,
-            config: std::sync::Arc<crate::config::Config> = resources.config()
-        ),
+        context!(user, config = resources.config()),
     )
 }
 
@@ -410,10 +429,10 @@ async fn admin_cron(
         &resources,
         "admin/cron.html",
         context!(
-            user: CurrentUser = user,
-            config: std::sync::Arc<crate::config::Config> = resources.config(),
-            cron: Vec<CronTask> = cron.lock().await.inspect(),
-            history: Vec<(u64, String, u16, String)> = cron_history.lock().await.entries()
+            user,
+            config = resources.config(),
+            cron = cron.lock().await.inspect(),
+            history = cron_history.lock().await.entries()
         ),
     )
 }
@@ -438,7 +457,7 @@ async fn admin_cron_refresh(
     render(
         &resources,
         "admin/cron_refresh.html",
-        context!(config: std::sync::Arc<crate::config::Config> = resources.config()),
+        context!(config = resources.config()),
     )
 }
 
@@ -490,9 +509,9 @@ async fn admin_cron_scrape(
         &resources,
         "admin/cron_scrape_run.html",
         context!(
-            source: ScrapeSource = source,
-            config: std::sync::Arc<crate::config::Config> = resources.config(),
-            scrapes: HashMap<String, ScraperHttpResult> = scrapes
+            source,
+            config = resources.config(),
+            scrapes: HashMap<String, ScraperHttpResult>,
         ),
     )
 }
@@ -514,11 +533,7 @@ async fn admin_headers(
     render(
         &resources,
         "admin/headers.html",
-        context!(
-            user: CurrentUser = user,
-            query: HashMap<String, String> = query,
-            headers: HashMap<String, Vec<String>> = headers
-        ),
+        context!(user, query, headers),
     )
 }
 
@@ -531,10 +546,10 @@ async fn admin_scrape(
         &resources,
         "admin/scrape.html",
         context!(
-            user: CurrentUser = user,
-            config: std::sync::Arc<crate::config::Config> = config,
-            scrapes: ScraperPossibilities = resources.scrapers().compute_scrape_possibilities(),
-            endpoint: &'static str = "/admin/scrape/test"
+            user,
+            config,
+            scrapes = resources.scrapers().compute_scrape_possibilities(),
+            endpoint = "/admin/scrape/test"
         ),
     )
 }
@@ -580,10 +595,7 @@ async fn admin_scrape_test(
     render(
         &resources,
         "admin/scrape_test.html",
-        context!(
-            user: CurrentUser = user,
-            scrapes: HashMap<String, ScraperHttpResult> = scrapes
-        ),
+        context!(user, scrapes: HashMap<String, ScraperHttpResult>),
     )
 }
 
@@ -597,9 +609,9 @@ async fn admin_index_status(
         &resources,
         "admin/status.html",
         context!(
-            user: CurrentUser = user,
-            storage: StorageSummary = index.storage.read().await.story_count()?,
-            config: std::sync::Arc<crate::config::Config> = resources.config()
+            user,
+            storage = index.storage.read().await.story_count()?,
+            config = resources.config()
         ),
     )
 }
@@ -617,14 +629,14 @@ async fn admin_status_frontpage(
         &resources,
         "admin/frontpage.html",
         context!(
-            now: StoryDate = now,
-            user: CurrentUser = user,
+            now,
+            user,
             stories: Vec<StoryRender> = render_stories(
                 hot_set(now, &index, &resources.story_evaluator())
                     .await?
                     .iter(),
             ),
-            sort: String = sort
+            sort,
         ),
     )
 }
