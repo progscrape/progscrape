@@ -18,17 +18,17 @@ use unwrap_infallible::UnwrapInfallible;
 use crate::{
     auth::Auth,
     cron::{Cron, CronHistory, CronTask},
-    index::{self, Index},
+    index::Index,
     resource::{self, Resources},
     serve_static_files,
 };
 use progscrape_application::{
-    PersistError, Storage, StorageSummary, StorageWriter, Story, StoryEvaluator, StoryIdentifier,
-    StoryIndex, StoryRender,
+    PersistError, Shard, Storage, StorageSummary, StorageWriter, Story, StoryEvaluator,
+    StoryIdentifier, StoryIndex, StoryRender,
 };
 use progscrape_scrapers::{
-    ScrapeId, ScrapeSource, ScraperHttpResponseInput, ScraperHttpResult, ScraperPossibilities,
-    StoryDate, TypedScrape,
+    ScrapeCollection, ScrapeId, ScrapeSource, ScraperHttpResponseInput, ScraperHttpResult,
+    ScraperPossibilities, StoryDate, TypedScrape,
 };
 
 #[derive(Debug, Error)]
@@ -284,7 +284,7 @@ pub async fn start_server(
     Ok(())
 }
 
-fn render_stories<'a>(iter: impl Iterator<Item = &'a Story>) -> Vec<StoryRender> {
+fn render_stories<'a, S: 'a>(iter: impl Iterator<Item = &'a Story<S>>) -> Vec<StoryRender> {
     iter.enumerate()
         .map(|(n, x)| x.render(n))
         .collect::<Vec<_>>()
@@ -298,7 +298,7 @@ async fn hot_set(
     now: StoryDate,
     global: &Index<StoryIndex>,
     eval: &StoryEvaluator,
-) -> Result<Vec<Story>, PersistError> {
+) -> Result<Vec<Story<Shard>>, PersistError> {
     let mut hot_set = global.storage.read().await.query_frontpage_hot_set(500)?;
     eval.scorer.resort_stories(now, &mut hot_set);
     Ok(hot_set)
@@ -661,12 +661,13 @@ async fn admin_status_story(
     let id = StoryIdentifier::from_base64(id).ok_or(WebError::NotFound)?;
     let now = now(&index).await?;
     tracing::info!("Loading story = {:?}", id);
-    let (story, scrapes) = index
+    let story = index
         .storage
         .read()
         .await
         .get_story(&id)?
         .ok_or(WebError::NotFound)?;
+    let scrapes = ScrapeCollection::new_from_iter(story.scrapes.clone().into_values());
     let extract = scrapes.extract(&resources.story_evaluator().extractor);
     let score_details = resources
         .story_evaluator()

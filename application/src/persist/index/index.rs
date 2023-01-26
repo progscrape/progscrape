@@ -78,7 +78,7 @@ impl WriterProvider {
             self.writers.entry(shard).or_insert(writer)
         };
 
-        Ok(f(shard, &shard_index, writer)?)
+        f(shard, &shard_index, writer)
     }
 }
 
@@ -133,7 +133,7 @@ impl StoryIndex {
     ) -> Result<T, PersistError> {
         let shard_index = self.get_shard(shard)?;
         let shard_index = shard_index.read().expect("Poisoned");
-        Ok(shard_index.with_searcher(|searcher, schema| f(shard, searcher, schema))?)
+        shard_index.with_searcher(|searcher, schema| f(shard, searcher, schema))
     }
 
     /// This is a complicated function that gives you access to a function that gives you access
@@ -343,7 +343,7 @@ impl StoryIndex {
         &self,
         index: &StoryIndexShard,
         doc_address: DocAddress,
-    ) -> Result<Story, PersistError> {
+    ) -> Result<Story<Shard>, PersistError> {
         let story = index.lookup_story(doc_address)?;
         let url = StoryUrl::parse(story.url).expect("Failed to parse URL");
         let date = StoryDate::from_seconds(story.date).expect("Failed to re-parse date");
@@ -362,7 +362,7 @@ impl StoryIndex {
         &self,
         index: &StoryIndexShard,
         doc_address: DocAddress,
-    ) -> Result<(Story, ScrapeCollection), PersistError> {
+    ) -> Result<Story<TypedScrape>, PersistError> {
         let story = index.lookup_story(doc_address)?;
         let url = StoryUrl::parse(story.url).expect("Failed to parse URL");
         let date = StoryDate::from_seconds(story.date).expect("Failed to re-parse date");
@@ -370,10 +370,15 @@ impl StoryIndex {
         let scrapes = self
             .scrape_db
             .fetch_scrape_batch(story.scrape_ids.clone())?;
-        let scrapes = ScrapeCollection::new_from_iter(scrapes.into_values().flatten());
-        let story =
-            Story::new_from_parts(story.title, url, date, score, story.tags, story.scrape_ids);
-        Ok((story, scrapes))
+        let story = Story::new_from_parts(
+            story.title,
+            url,
+            date,
+            score,
+            story.tags,
+            scrapes.into_values().flatten(),
+        );
+        Ok(story)
     }
 
     fn get_story_doc(
@@ -583,7 +588,7 @@ impl Storage for StoryIndex {
         Ok(summary)
     }
 
-    fn fetch(&self, query: StoryQuery, max: usize) -> Result<Vec<Story>, PersistError> {
+    fn fetch(&self, query: StoryQuery, max: usize) -> Result<Vec<Story<Shard>>, PersistError> {
         let mut v = vec![];
         for (shard, doc) in self.fetch_doc_addresses(query, max)? {
             let shard = self.get_shard(shard)?;
@@ -597,7 +602,7 @@ impl Storage for StoryIndex {
         &self,
         query: StoryQuery,
         max: usize,
-    ) -> Result<Vec<(Story, ScrapeCollection)>, PersistError> {
+    ) -> Result<Vec<Story<TypedScrape>>, PersistError> {
         let mut v = vec![];
         for (shard, doc) in self.fetch_doc_addresses(query, max)? {
             let shard = self.get_shard(shard)?;
@@ -607,17 +612,14 @@ impl Storage for StoryIndex {
         Ok(v)
     }
 
-    fn get_story(
-        &self,
-        id: &StoryIdentifier,
-    ) -> Result<Option<(Story, ScrapeCollection)>, PersistError> {
+    fn get_story(&self, id: &StoryIdentifier) -> Result<Option<Story<TypedScrape>>, PersistError> {
         Ok(self
             .fetch_with_scrapes(StoryQuery::ById(id.clone()), 1)?
             .into_iter()
             .next())
     }
 
-    fn stories_by_shard(&self, shard: &str) -> Result<Vec<Story>, PersistError> {
+    fn stories_by_shard(&self, shard: &str) -> Result<Vec<Story<Shard>>, PersistError> {
         if let Some(shard) = Shard::from_string(shard) {
             self.fetch(StoryQuery::ByShard(shard), usize::MAX)
         } else {
@@ -625,15 +627,8 @@ impl Storage for StoryIndex {
         }
     }
 
-    fn query_frontpage_hot_set(&self, max_count: usize) -> Result<Vec<Story>, PersistError> {
+    fn query_frontpage_hot_set(&self, max_count: usize) -> Result<Vec<Story<Shard>>, PersistError> {
         self.fetch(StoryQuery::FrontPage(), max_count)
-    }
-
-    fn query_frontpage_hot_set_detail(
-        &self,
-        _max_count: usize,
-    ) -> Result<Vec<(Story, ScrapeCollection)>, PersistError> {
-        unimplemented!()
     }
 
     fn query_search(
@@ -641,7 +636,7 @@ impl Storage for StoryIndex {
         tagger: &StoryTagger,
         search: &str,
         max_count: usize,
-    ) -> Result<Vec<Story>, PersistError> {
+    ) -> Result<Vec<Story<Shard>>, PersistError> {
         // This isn't terribly smart, buuuuut it allows us to search either a tag or site
         if let Some(tag) = tagger.check_tag_search(search) {
             self.fetch(StoryQuery::TagSearch(tag.to_string()), max_count)
@@ -818,7 +813,7 @@ mod test {
         let date = StoryDate::year_month_day(2020, 1, 1).expect("Date failed");
 
         for i in 0..30 {
-            let url = StoryUrl::parse(&format!("http://domain-{}.com/", i)).expect("URL");
+            let url = StoryUrl::parse(format!("http://domain-{}.com/", i)).expect("URL");
             batch.push(hn_story(
                 &format!("story-{}", i),
                 date,

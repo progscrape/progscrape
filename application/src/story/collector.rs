@@ -81,8 +81,8 @@ impl<T> StoryCollector<T> {
     }
 }
 
-impl StoryCollector<Story> {
-    pub fn accept_story(&mut self, story: Story) -> bool {
+impl<S> StoryCollector<Story<S>> {
+    pub fn accept_story(&mut self, story: Story<S>) -> bool {
         self.accept(story.score, story)
     }
 }
@@ -90,18 +90,18 @@ impl StoryCollector<Story> {
 #[cfg(test)]
 mod test {
 
-    use progscrape_scrapers::{StoryDate, StoryUrl};
+    use progscrape_scrapers::{ScrapeId, StoryDate, StoryUrl};
 
     use super::*;
 
-    fn make_story_with_score(score: f32) -> Story {
+    fn make_story_with_score(score: f32) -> Story<()> {
         Story::new_from_parts(
             "title".into(),
             StoryUrl::parse("http://example.com").expect("url"),
             StoryDate::year_month_day(2000, 1, 1).expect("date"),
             score,
             vec![],
-            vec![],
+            Vec::<(ScrapeId, ())>::new(),
         )
     }
 

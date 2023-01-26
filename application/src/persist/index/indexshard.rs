@@ -191,7 +191,7 @@ impl StoryIndexShard {
         for value in doc.get_all(self.schema.scrape_field) {
             if let Some(id) = value.as_text() {
                 scrape_ids.remove(id);
-                if scrape_ids.len() == 0 {
+                if scrape_ids.is_empty() {
                     return Ok(ScrapePersistResult::AlreadyPartOfExistingStory);
                 }
             }

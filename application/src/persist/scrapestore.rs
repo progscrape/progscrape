@@ -37,7 +37,7 @@ impl ScrapeStore {
         let db = if let Some(db) = lock.get(&shard) {
             db
         } else {
-            let db = match self.location.join(&shard.to_string()) {
+            let db = match self.location.join(shard.to_string()) {
                 PersistLocation::Memory => DB::open(":memory:")?,
                 PersistLocation::Path(ref path) => {
                     std::fs::create_dir_all(path)?;

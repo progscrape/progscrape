@@ -54,32 +54,32 @@ pub struct StoryScrapeId {
     pub shard: Shard,
 }
 
-impl StoryScrapeId {
-    pub fn into_tuple(self) -> (ScrapeId, Shard) {
-        (self.id, self.shard)
+impl From<StoryScrapeId> for (ScrapeId, Shard) {
+    fn from(val: StoryScrapeId) -> Self {
+        (val.id, val.shard)
     }
 }
 
 /// Story scrape w/information from underlying sources.
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct Story {
+pub struct Story<S> {
     pub id: StoryIdentifier,
     pub score: f32,
     pub date: StoryDate,
     pub url: StoryUrl,
     pub title: String,
     pub tags: TagSet,
-    pub scrapes: HashMap<ScrapeId, Shard>,
+    pub scrapes: HashMap<ScrapeId, S>,
 }
 
-impl Story {
+impl<S> Story<S> {
     pub fn new_from_parts(
         title: String,
         url: StoryUrl,
         date: StoryDate,
         score: f32,
         tags: impl IntoIterator<Item = String>,
-        scrapes: impl IntoIterator<Item = StoryScrapeId>,
+        scrapes: impl IntoIterator<Item = impl Into<(ScrapeId, S)>>,
     ) -> Self {
         Self {
             id: StoryIdentifier::new(date, url.normalization()),
@@ -88,18 +88,18 @@ impl Story {
             url,
             date,
             score,
-            scrapes: HashMap::from_iter(scrapes.into_iter().map(StoryScrapeId::into_tuple)),
+            scrapes: HashMap::from_iter(scrapes.into_iter().map(|x| x.into())),
         }
     }
 
     /// Compares two stories, ordering by score.
-    pub fn compare_score(&self, other: &Story) -> std::cmp::Ordering {
+    pub fn compare_score(&self, other: &Self) -> std::cmp::Ordering {
         // Sort by score, but fall back to date if score is somehow a NaN (it shouldn't be, but we'll just be robust here)
         f32::partial_cmp(&self.score, &other.score).unwrap_or_else(|| self.date.cmp(&other.date))
     }
 
     /// Compares two stories, ordering by date.
-    pub fn compare_date(&self, other: &Story) -> std::cmp::Ordering {
+    pub fn compare_date(&self, other: &Self) -> std::cmp::Ordering {
         self.date.cmp(&other.date)
     }
 

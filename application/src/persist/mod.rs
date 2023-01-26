@@ -64,30 +64,21 @@ pub trait Storage: Send + Sync {
     /// Count the docs in this index, breaking it out by index segment.
     fn story_count(&self) -> Result<StorageSummary, PersistError>;
 
-    fn fetch(&self, query: StoryQuery, max: usize) -> Result<Vec<Story>, PersistError>;
+    fn fetch(&self, query: StoryQuery, max: usize) -> Result<Vec<Story<Shard>>, PersistError>;
     fn fetch_with_scrapes(
         &self,
         query: StoryQuery,
         max: usize,
-    ) -> Result<Vec<(Story, ScrapeCollection)>, PersistError>;
+    ) -> Result<Vec<Story<TypedScrape>>, PersistError>;
 
     /// Retrieves a single, unique story from the index.
-    fn get_story(
-        &self,
-        id: &StoryIdentifier,
-    ) -> Result<Option<(Story, ScrapeCollection)>, PersistError>;
+    fn get_story(&self, id: &StoryIdentifier) -> Result<Option<Story<TypedScrape>>, PersistError>;
 
     /// Retrieves all stories in a shard.
-    fn stories_by_shard(&self, shard: &str) -> Result<Vec<Story>, PersistError>;
+    fn stories_by_shard(&self, shard: &str) -> Result<Vec<Story<Shard>>, PersistError>;
 
     /// Query the current front page hot set, sorted by overall base score.
-    fn query_frontpage_hot_set(&self, max_count: usize) -> Result<Vec<Story>, PersistError>;
-
-    /// Query the current front page hot set, sorted by overall base score.
-    fn query_frontpage_hot_set_detail(
-        &self,
-        max_count: usize,
-    ) -> Result<Vec<(Story, ScrapeCollection)>, PersistError>;
+    fn query_frontpage_hot_set(&self, max_count: usize) -> Result<Vec<Story<Shard>>, PersistError>;
 
     /// Query a search, scored mostly by date but may include some "hotness".
     fn query_search(
@@ -95,7 +86,7 @@ pub trait Storage: Send + Sync {
         tagger: &StoryTagger,
         search: &str,
         max_count: usize,
-    ) -> Result<Vec<Story>, PersistError>;
+    ) -> Result<Vec<Story<Shard>>, PersistError>;
 }
 
 pub trait StorageWriter: Storage {

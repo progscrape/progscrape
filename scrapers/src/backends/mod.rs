@@ -154,6 +154,12 @@ macro_rules! scrapers {
     };
 }
 
+impl From<TypedScrape> for (ScrapeId, TypedScrape) {
+    fn from(val: TypedScrape) -> Self {
+        (val.id.clone(), val)
+    }
+}
+
 impl Serialize for ScrapeSource {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
