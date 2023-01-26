@@ -320,39 +320,15 @@ macro_rules! context_assign {
 macro_rules! context {
     ( $($id:ident $(: $typ:ty)? $(= $expr:expr)? ),* $(,)? ) => {
         {
-            use ::serde::{*, ser::*};
-
-            // Compute the length of the interior map in a roundabout way
-            const fn one(_: &'static str) -> usize { 1 }
-            const LEN: usize = 0 $( + one((stringify!($id))) )*;
+            let mut context = Context::new();
 
             // Create a local variable for each item of the context, with a type if specified.
             $(
                 context_assign!($id , $($expr)? , $($typ)?);
+                context.insert(stringify!($id), &$id);
             )*
 
-            // Create a struct that has one generic type bound for each member.
-            #[allow(non_camel_case_types)]
-            struct TempStruct<$($id),*> {
-                $( $id: $id ),*
-            }
-
-            // Manual serializer implementation required to avoid `non_camel_case_types` warnings.
-            #[allow(non_camel_case_types)]
-            impl<$($id: Serialize),*> Serialize for TempStruct<$($id),*> {
-                fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-                    where S: serde::Serializer,
-                {
-                    let mut map = serializer.serialize_map(Some(LEN))?;
-                    $(map.serialize_entry(stringify!($id), &self.$id)?;)*
-                    map.end()
-                }
-            }
-
-            #[allow(clippy::redundant_field_names)]
-            Context::from_serialize(&TempStruct {
-                $( $id, )*
-            })?
+            context
         }
     };
 }
