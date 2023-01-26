@@ -139,7 +139,7 @@ impl StoryIndexShard {
     }
 
     pub fn insert_story_document(
-        &mut self,
+        &self,
         writer: &mut IndexWriter,
         doc: StoryInsert,
     ) -> Result<ScrapePersistResult, PersistError> {
@@ -179,13 +179,13 @@ impl StoryIndexShard {
     }
 
     pub fn add_scrape_id(
-        &mut self,
+        &self,
         writer: &mut IndexWriter,
-        searcher: &Searcher,
+
         doc_address: DocAddress,
         mut scrape_ids: HashSet<String>,
     ) -> Result<ScrapePersistResult, PersistError> {
-        let mut doc = searcher.doc(doc_address)?;
+        let mut doc = self.searcher.doc(doc_address)?;
 
         // Fast exit if these scrapes have already been added
         for value in doc.get_all(self.schema.scrape_field) {
@@ -214,7 +214,8 @@ impl StoryIndexShard {
         }
 
         // Re-add the norm hash
-        let norm = searcher
+        let norm = self
+            .searcher
             .segment_reader(doc_address.segment_ord)
             .fast_fields()
             .i64(self.schema.url_norm_hash_field)?;
@@ -319,25 +320,21 @@ impl StoryIndexShard {
         })
     }
 
-    pub fn doc_fields(
-        &self,
-        searcher: &Searcher,
-        doc_address: DocAddress,
-    ) -> Result<NamedFieldDocument, PersistError> {
-        let doc = searcher.doc(doc_address)?;
-        let named_doc = searcher.schema().to_named_doc(&doc);
+    pub fn doc_fields(&self, doc_address: DocAddress) -> Result<NamedFieldDocument, PersistError> {
+        let doc = self.searcher.doc(doc_address)?;
+        let named_doc = self.schema.schema.to_named_doc(&doc);
         Ok(named_doc)
     }
 
     /// Given a set of `StoryLookupId`s, computes the documents that match them.
     pub fn lookup_stories(
         &self,
-        searcher: &Searcher,
+
         mut stories: HashSet<StoryLookupId>,
         date_range: impl RangeBounds<i64>,
     ) -> Result<Vec<StoryLookup>, PersistError> {
         let mut result = vec![];
-        for (segment_ord, segment_reader) in searcher.segment_readers().iter().enumerate() {
+        for (segment_ord, segment_reader) in self.searcher.segment_readers().iter().enumerate() {
             let index = segment_reader
                 .fast_fields()
                 .i64(self.schema.url_norm_hash_field)?;

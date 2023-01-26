@@ -2,13 +2,13 @@ use itertools::Itertools;
 
 use tantivy::collector::TopDocs;
 use tantivy::query::{AllQuery, PhraseQuery, Query, TermQuery};
-use tantivy::{schema::*, DocAddress, Searcher};
+use tantivy::{schema::*, DocAddress, IndexWriter, Searcher};
 
 use progscrape_scrapers::{ScrapeCollection, ScrapeCore, StoryDate, StoryUrl, TypedScrape};
 
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, RwLock};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use crate::persist::index::indexshard::{StoryIndexShard, StoryLookup, StoryLookupId};
 use crate::persist::scrapestore::ScrapeStore;
@@ -16,8 +16,8 @@ use crate::persist::shard::{ShardOrder, ShardRange};
 use crate::persist::{Shard, StoryQuery};
 use crate::story::{StoryCollector, StoryTagger, TagSet};
 use crate::{
-    MemIndex, PersistError, PersistLocation, Storage, StorageSummary, StorageWriter, Story,
-    StoryEvaluator, StoryIdentifier,
+    timer_end, timer_start, MemIndex, PersistError, PersistLocation, Storage, StorageSummary,
+    StorageWriter, Story, StoryEvaluator, StoryIdentifier,
 };
 
 use super::indexshard::StoryInsert;
@@ -29,14 +29,57 @@ const SCRAPE_PROCESSING_CHUNK_SIZE: usize = 1000;
 
 struct IndexCache {
     cache: HashMap<Shard, Arc<RwLock<StoryIndexShard>>>,
+    location: PersistLocation,
     range: ShardRange,
+    schema: StorySchema,
+}
+
+impl IndexCache {
+    fn get_shard(&mut self, shard: Shard) -> Result<Arc<RwLock<StoryIndexShard>>, PersistError> {
+        if let Some(shard) = self.cache.get(&shard) {
+            Ok(shard.clone())
+        } else {
+            tracing::info!("Creating shard {}", shard.to_string());
+            let new_shard =
+                StoryIndexShard::initialize(self.location.clone(), shard, self.schema.clone())?;
+            self.range.include(shard);
+            Ok(self
+                .cache
+                .entry(shard)
+                .or_insert(Arc::new(RwLock::new(new_shard)))
+                .clone())
+        }
+    }
 }
 
 pub struct StoryIndex {
-    index_cache: RwLock<IndexCache>,
-    location: PersistLocation,
+    index_cache: Arc<RwLock<IndexCache>>,
     scrape_db: ScrapeStore,
     schema: StorySchema,
+}
+
+struct WriterProvider {
+    writers: HashMap<Shard, IndexWriter>,
+    index: Arc<RwLock<IndexCache>>,
+}
+
+impl WriterProvider {
+    fn provide<T>(
+        &mut self,
+        shard: Shard,
+        f: impl FnOnce(Shard, &StoryIndexShard, &'_ mut IndexWriter) -> Result<T, PersistError>,
+    ) -> Result<T, PersistError> {
+        let shard_index = self.index.write().expect("Poisoned").get_shard(shard)?;
+        let shard_index = shard_index.write().expect("Poisoned");
+        let writer = if let Some(writer) = self.writers.get_mut(&shard) {
+            writer
+        } else {
+            let writer = shard_index.index.writer(MEMORY_ARENA_SIZE)?;
+            self.writers.entry(shard).or_insert(writer)
+        };
+
+        Ok(f(shard, &shard_index, writer)?)
+    }
 }
 
 impl StoryIndex {
@@ -58,15 +101,16 @@ impl StoryIndex {
         }
 
         tracing::info!("Found shards {:?}", range);
-
+        let schema = StorySchema::instantiate_global_schema();
         let new = Self {
-            index_cache: RwLock::new(IndexCache {
+            index_cache: Arc::new(RwLock::new(IndexCache {
                 cache: HashMap::new(),
+                location,
                 range,
-            }),
-            location,
+                schema: schema.clone(),
+            })),
             scrape_db,
-            schema: StorySchema::instantiate_global_schema(),
+            schema,
         };
 
         Ok(new)
@@ -78,19 +122,7 @@ impl StoryIndex {
 
     fn get_shard(&self, shard: Shard) -> Result<Arc<RwLock<StoryIndexShard>>, PersistError> {
         let mut lock = self.index_cache.write().expect("Poisoned");
-        if let Some(shard) = lock.cache.get(&shard) {
-            Ok(shard.clone())
-        } else {
-            tracing::info!("Creating shard {}", shard.to_string());
-            let new_shard =
-                StoryIndexShard::initialize(self.location.clone(), shard, self.schema.clone())?;
-            lock.range.include(shard);
-            Ok(lock
-                .cache
-                .entry(shard)
-                .or_insert(Arc::new(RwLock::new(new_shard)))
-                .clone())
-        }
+        lock.get_shard(shard)
     }
 
     #[inline(always)]
@@ -102,6 +134,48 @@ impl StoryIndex {
         let shard_index = self.get_shard(shard)?;
         let shard_index = shard_index.read().expect("Poisoned");
         Ok(shard_index.with_searcher(|searcher, schema| f(shard, searcher, schema))?)
+    }
+
+    /// This is a complicated function that gives you access to a function that gives you access
+    /// to writers. The function manages the writers until the completion of the outer closure.
+    fn with_writers<
+        TOuter,
+        WriterOuterClosure: FnOnce(&mut WriterProvider) -> Result<TOuter, PersistError>,
+    >(
+        &self,
+        f: WriterOuterClosure,
+    ) -> Result<TOuter, PersistError> {
+        let mut provider = WriterProvider {
+            writers: Default::default(),
+            index: self.index_cache.clone(),
+        };
+        let res = f(&mut provider);
+        let WriterProvider { mut writers, .. } = provider;
+
+        let writer_count = writers.len();
+        if res.is_ok() {
+            tracing::info!("Commiting {} writer(s)", writer_count);
+            let commit_start = timer_start!();
+            for (shard, writer) in writers.iter_mut() {
+                writer.commit()?;
+                let shard = self.get_shard(*shard)?;
+                let mut shard = shard.write().expect("Poisoned");
+                shard.reader.reload()?;
+                shard.searcher = shard.reader.searcher();
+            }
+            for writer in writers.into_values() {
+                writer.wait_merging_threads()?;
+            }
+            timer_end!(commit_start, "Committed {} writer(s).", writer_count);
+        } else {
+            // We'll just have to do our best here...
+            for mut writer in writers.into_values() {
+                if let Err(e) = writer.rollback() {
+                    tracing::error!("Ignoring nested error in writer rollback: {:?}", e);
+                }
+            }
+        }
+        res
     }
 
     fn create_scrape_id_from_scrape_core(scrape_core: &ScrapeCore) -> String {
@@ -158,72 +232,49 @@ impl StoryIndex {
         scrapes: I,
     ) -> Result<(), PersistError> {
         let one_month = Duration::from_secs(60 * 60 * 24 * 30).as_secs() as i64;
-        let mut writers = HashMap::new();
 
         let mut memindex = MemIndex::default();
         memindex.insert_scrapes(scrapes)?;
 
-        for scrape in memindex.get_all_stories() {
-            let shard = Shard::from_date_time(scrape.earliest);
-            let shard_index = self.get_shard(shard)?;
-            let mut shard_index = shard_index.write().expect("Poisoned");
-            let writer = if let Some(writer) = writers.get_mut(&shard) {
-                writer
-            } else {
-                let writer = shard_index.index.writer(MEMORY_ARENA_SIZE)?;
-                writers.entry(shard).or_insert(writer)
-            };
+        self.with_writers(|provider| {
+            for scrape in memindex.get_all_stories() {
+                let shard = Shard::from_date_time(scrape.earliest);
+                // TODO: Should be searching multiple shards
+                provider.provide(shard, |_, index, writer| {
+                    let lookup = StoryLookupId {
+                        url_norm_hash: scrape.url().normalization().hash(),
+                        date: scrape.earliest.timestamp(),
+                    };
+                    let lookup = HashSet::from_iter([lookup]);
+                    // TODO: Should be batching
+                    let result = index.lookup_stories(lookup, (-one_month)..one_month)?;
+                    let lookup = result.into_iter().next().expect("TODO");
+                    let insert_type = match lookup {
+                        StoryLookup::Found(_id, doc) => index.add_scrape_id(
+                            writer,
+                            doc,
+                            scrape
+                                .scrapes
+                                .values()
+                                .map(Self::create_scrape_id_from_scrape)
+                                .collect(),
+                        )?,
+                        StoryLookup::Unfound(_id) => {
+                            let doc = Self::create_story_insert(eval, &scrape);
+                            index.insert_story_document(writer, doc)?
+                        }
+                    };
+                    tracing::debug!(
+                        "Inserted scrapes {:?}: {:?}",
+                        scrape.scrapes.keys(),
+                        insert_type
+                    );
 
-            let searcher = shard_index.index.reader()?.searcher();
-            let lookup = StoryLookupId {
-                url_norm_hash: scrape.url().normalization().hash(),
-                date: scrape.earliest.timestamp(),
-            };
-            let lookup = HashSet::from_iter([lookup]);
-            // TODO: Should be batching
-            let result = shard_index.lookup_stories(&searcher, lookup, (-one_month)..one_month)?;
-            let lookup = result.into_iter().next().expect("TODO");
-            let insert_type = match lookup {
-                StoryLookup::Found(_id, doc) => shard_index.add_scrape_id(
-                    writer,
-                    &searcher,
-                    doc,
-                    scrape
-                        .scrapes
-                        .values()
-                        .map(Self::create_scrape_id_from_scrape)
-                        .collect(),
-                )?,
-                StoryLookup::Unfound(_id) => {
-                    let doc = Self::create_story_insert(eval, &scrape);
-                    shard_index.insert_story_document(writer, doc)?
-                }
-            };
-            tracing::debug!(
-                "Inserted scrapes {:?}: {:?}",
-                scrape.scrapes.keys(),
-                insert_type
-            );
-        }
-
-        let writer_count = writers.len();
-        tracing::info!("Commiting {} writer(s)", writer_count);
-        let commit_start = Instant::now();
-        for (shard, writer) in writers.iter_mut() {
-            writer.commit()?;
-            let shard = self.get_shard(*shard)?;
-            let mut shard = shard.write().expect("Poisoned");
-            shard.reader.reload()?;
-            shard.searcher = shard.reader.searcher();
-        }
-        for writer in writers.into_values() {
-            writer.wait_merging_threads()?;
-        }
-        tracing::info!(
-            "Committed {} writer(s) in {} second(s)...",
-            writer_count,
-            commit_start.elapsed().as_secs()
-        );
+                    Ok(())
+                })?;
+            }
+            Ok(())
+        })?;
 
         Ok(())
     }
@@ -250,71 +301,42 @@ impl StoryIndex {
         eval: &StoryEvaluator,
         scrape_collections: I,
     ) -> Result<(), PersistError> {
-        let mut writers = HashMap::new();
-        let start = Instant::now();
-        let mut total = 0;
-        for scrape_collections in &scrape_collections.chunks(STORY_INDEXING_CHUNK_SIZE) {
-            tracing::info!("Indexing chunk...");
-            let start_chunk = Instant::now();
-            let mut count = 0;
-            let mut scrapes_batch = vec![];
+        self.with_writers(|provider| {
+            let start = timer_start!();
+            let mut total = 0;
+            for scrape_collections in &scrape_collections.chunks(STORY_INDEXING_CHUNK_SIZE) {
+                tracing::info!("Indexing chunk...");
+                let start_chunk = timer_start!();
+                let mut count = 0;
+                let mut scrapes_batch = vec![];
 
-            for story in scrape_collections {
-                count += 1;
-                let shard = Shard::from_date_time(story.earliest);
-                let shard_index = self.get_shard(shard)?;
-                let mut shard_index = shard_index.write().expect("Poisoned");
-                let writer = if let Some(writer) = writers.get_mut(&shard) {
-                    writer
-                } else {
-                    let writer = shard_index.index.writer(MEMORY_ARENA_SIZE)?;
-                    writers.entry(shard).or_insert(writer)
-                };
-                let doc = Self::create_story_insert(eval, &story);
-                shard_index.insert_story_document(writer, doc)?;
+                for story in scrape_collections {
+                    count += 1;
+                    let doc = Self::create_story_insert(eval, &story);
+                    let scrapes = story.scrapes.into_values();
+                    scrapes_batch.extend(scrapes);
+                    provider.provide(
+                        Shard::from_date_time(story.earliest),
+                        move |_, index, writer| {
+                            index.insert_story_document(writer, doc)?;
+                            Ok(())
+                        },
+                    )?;
 
-                let scrapes = story.scrapes.into_values();
-                scrapes_batch.extend(scrapes);
-
-                if scrapes_batch.len() > SCRAPE_PROCESSING_CHUNK_SIZE {
-                    self.scrape_db.insert_scrape_batch(scrapes_batch.iter())?;
-                    scrapes_batch.clear();
+                    if scrapes_batch.len() > SCRAPE_PROCESSING_CHUNK_SIZE {
+                        self.scrape_db.insert_scrape_batch(scrapes_batch.iter())?;
+                        scrapes_batch.clear();
+                    }
                 }
+                self.scrape_db.insert_scrape_batch(scrapes_batch.iter())?;
+                scrapes_batch.clear();
+                total += count;
+                timer_end!(start_chunk, "Indexed chunk of {} stories", count);
             }
-            self.scrape_db.insert_scrape_batch(scrapes_batch.iter())?;
-            scrapes_batch.clear();
-            total += count;
-            tracing::info!(
-                "Indexed chunk of {} stories in {} second(s)...",
-                count,
-                start_chunk.elapsed().as_secs()
-            );
-        }
-        tracing::info!(
-            "Indexed total of {} stories in {} second(s)...",
-            total,
-            start.elapsed().as_secs()
-        );
+            timer_end!(start, "Indexed total of {} stories", total);
 
-        let writer_count = writers.len();
-        tracing::info!("Commiting {} writer(s)", writer_count);
-        let commit_start = Instant::now();
-        for (shard, writer) in writers.iter_mut() {
-            writer.commit()?;
-            let shard = self.get_shard(*shard)?;
-            let mut shard = shard.write().expect("Poisoned");
-            shard.reader.reload()?;
-            shard.searcher = shard.reader.searcher();
-        }
-        for writer in writers.into_values() {
-            writer.wait_merging_threads()?;
-        }
-        tracing::info!(
-            "Committed {} writer(s) in {} second(s)...",
-            writer_count,
-            commit_start.elapsed().as_secs()
-        );
-        Ok(())
+            Ok(())
+        })
     }
 
     fn lookup_story(
@@ -359,7 +381,7 @@ impl StoryIndex {
         index: &StoryIndexShard,
         doc_address: DocAddress,
     ) -> Result<NamedFieldDocument, PersistError> {
-        index.with_searcher(|searcher, _| index.doc_fields(searcher, doc_address))?
+        index.doc_fields(doc_address)
     }
 
     fn fetch_by_segment(
@@ -367,19 +389,14 @@ impl StoryIndex {
     ) -> impl FnMut(Shard, &Searcher, &StorySchema) -> Vec<(Shard, DocAddress)> {
         move |shard, searcher, _schema| {
             let mut v = vec![];
-            let now = Instant::now();
+            let now = timer_start!();
             for (idx, segment_reader) in searcher.segment_readers().iter().enumerate() {
                 for doc_id in segment_reader.doc_ids_alive() {
                     let doc_address = DocAddress::new(idx as u32, doc_id);
                     v.push((shard, doc_address));
                 }
             }
-            tracing::info!(
-                "Loaded {} stories from shard {:?} in {}ms",
-                v.len(),
-                shard,
-                now.elapsed().as_millis()
-            );
+            timer_end!(now, "Loaded {} stories from shard {:?}", v.len(), shard);
             v
         }
     }
@@ -649,7 +666,7 @@ mod test {
     fn populate_shard(
         ids: impl Iterator<Item = (i64, i64)>,
     ) -> Result<StoryIndexShard, PersistError> {
-        let mut shard = StoryIndexShard::initialize(
+        let shard = StoryIndexShard::initialize(
             PersistLocation::Memory,
             Shard::default(),
             StorySchema::instantiate_global_schema(),
@@ -688,8 +705,6 @@ mod test {
         let ids1 = (0..100).into_iter().map(|x| (x, 0));
         let ids2 = (100..200).into_iter().map(|x| (x, 10));
         let shard = populate_shard(ids1.chain(ids2)).expect("Failed to initialize shard");
-        let reader = shard.index.reader().expect("Failed to get reader");
-        let searcher = reader.searcher();
         let count_found = |vec: Vec<StoryLookup>| {
             vec.iter()
                 .filter(|x| matches!(x, StoryLookup::Found(..)))
@@ -705,7 +720,7 @@ mod test {
                     })
                     .collect();
                 let result = shard
-                    .lookup_stories(&searcher, lookup, $slop)
+                    .lookup_stories(lookup, $slop)
                     .expect("Failed to look up");
                 assert_eq!($expected, count_found(result));
             };
