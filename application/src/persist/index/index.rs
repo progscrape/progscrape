@@ -1,419 +1,31 @@
 use itertools::Itertools;
 
 use tantivy::collector::TopDocs;
-use tantivy::directory::{MmapDirectory, RamDirectory};
-use tantivy::query::{AllQuery, BooleanQuery, Occur, PhraseQuery, Query, RangeQuery, TermQuery};
-use tantivy::tokenizer::{PreTokenizedString, SimpleTokenizer, Tokenizer};
-use tantivy::{doc, Index, IndexReader};
-use tantivy::{
-    schema::*, Directory, DocAddress, IndexSettings, IndexSortByField, IndexWriter, Searcher,
-};
+use tantivy::query::{AllQuery, PhraseQuery, Query, TermQuery};
+use tantivy::{schema::*, DocAddress, Searcher};
 
-use progscrape_scrapers::{ScrapeCore, ScrapeId, StoryDate, StoryUrl, TypedScrape};
+use progscrape_scrapers::{ScrapeCollection, ScrapeCore, StoryDate, StoryUrl, TypedScrape};
 
 use std::collections::{HashMap, HashSet};
-use std::hash::Hash;
-use std::ops::RangeBounds;
 use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant};
 
-use crate::story::{StoryCollector, StoryScrapeId, TagSet};
+use crate::persist::index::indexshard::{StoryIndexShard, StoryLookup, StoryLookupId};
+use crate::persist::scrapestore::ScrapeStore;
+use crate::persist::shard::{ShardOrder, ShardRange};
+use crate::persist::{Shard, StoryQuery};
+use crate::story::{StoryCollector, StoryTagger, TagSet};
+use crate::{
+    MemIndex, PersistError, PersistLocation, Storage, StorageSummary, StorageWriter, Story,
+    StoryEvaluator, StoryIdentifier,
+};
 
-use super::scrapestore::ScrapeStore;
-use super::shard::{Shard, ShardOrder, ShardRange};
-use super::*;
+use super::indexshard::StoryInsert;
+use super::schema::StorySchema;
 
 const MEMORY_ARENA_SIZE: usize = 50_000_000;
 const STORY_INDEXING_CHUNK_SIZE: usize = 10000;
 const SCRAPE_PROCESSING_CHUNK_SIZE: usize = 1000;
-
-/// For performance, we shard stories by time period to allow for more efficient lookup of normalized URLs.
-struct StoryIndexShard {
-    index: Index,
-    reader: IndexReader,
-    searcher: Searcher,
-    schema: StorySchema,
-}
-
-#[derive(Clone)]
-struct StorySchema {
-    schema: Schema,
-    id_field: Field,
-    url_field: Field,
-    url_norm_field: Field,
-    url_norm_hash_field: Field,
-    host_field: Field,
-    score_field: Field,
-    title_field: Field,
-    date_field: Field,
-    scrape_field: Field,
-    tags_field: Field,
-}
-
-impl StorySchema {
-    fn instantiate_global_schema() -> Self {
-        let mut schema_builder = Schema::builder();
-        let date_field = schema_builder.add_i64_field("date", FAST | STORED);
-        let id_field = schema_builder.add_text_field("id", STRING | STORED);
-        let url_field = schema_builder.add_text_field("url", STRING | STORED);
-        let url_norm_field = schema_builder.add_text_field("url_norm", FAST | STRING);
-        let url_norm_hash_field = schema_builder.add_i64_field("url_norm_hash", FAST | INDEXED);
-        let host_field = schema_builder.add_text_field("host", TEXT | STORED);
-        let title_field = schema_builder.add_text_field("title", TEXT | STORED);
-        let scrape_field = schema_builder.add_text_field("scrapes", TEXT | STORED);
-        let score_field = schema_builder.add_f64_field("score", FAST | STORED);
-        let tags_field = schema_builder.add_text_field("tags", TEXT | STORED);
-        let schema = schema_builder.build();
-
-        Self {
-            schema,
-            id_field,
-            host_field,
-            url_field,
-            url_norm_field,
-            url_norm_hash_field,
-            score_field,
-            title_field,
-            date_field,
-            scrape_field,
-            tags_field,
-        }
-    }
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-struct StoryLookupId {
-    url_norm_hash: i64,
-    date: i64,
-}
-
-#[derive(Debug, PartialEq, Eq)]
-enum StoryLookup {
-    Unfound(StoryLookupId),
-    Found(StoryLookupId, DocAddress),
-}
-
-#[derive(Default)]
-struct StoryInsert {
-    id: String,
-    host: String,
-    url: String,
-    url_norm: String,
-    url_norm_hash: i64,
-    title: String,
-    date: i64,
-    score: f64,
-    tags: TagSet,
-    scrape_ids: Vec<String>,
-}
-
-#[derive(Debug)]
-struct StoryFetch {
-    url: String,
-    title: String,
-    date: i64,
-    score: f64,
-    tags: Vec<String>,
-    scrape_ids: Vec<StoryScrapeId>,
-}
-
-/// The `StoryIndexShard` manages a single shard of the index.
-impl StoryIndexShard {
-    pub fn initialize(
-        location: PersistLocation,
-        shard: Shard,
-        schema: StorySchema,
-    ) -> Result<Self, PersistError> {
-        let settings = IndexSettings {
-            sort_by_field: Some(IndexSortByField {
-                field: "date".to_owned(),
-                order: tantivy::Order::Asc,
-            }),
-            ..Default::default()
-        };
-        let (directory, exists): (Box<dyn Directory>, bool) = match location {
-            PersistLocation::Memory => (Box::new(RamDirectory::create()), false),
-            PersistLocation::Path(path) => {
-                let path = path.join(format!("{}/index", shard.to_string()));
-                tracing::info!("Opening index at {}", path.to_string_lossy());
-                std::fs::create_dir_all(&path)?;
-                let dir = MmapDirectory::open(path)?;
-                let exists = Index::exists(&dir).unwrap_or(false);
-                (Box::new(dir), exists)
-            }
-        };
-        let index = Index::builder()
-            .settings(settings)
-            .schema(schema.schema.clone())
-            .open_or_create(directory)?;
-        if exists {
-            let meta = index.load_metas()?;
-            tracing::info!(
-                "Loaded existing index with {} doc(s)",
-                meta.segments.iter().fold(0, |a, b| a + b.num_docs())
-            );
-        } else {
-            tracing::info!("Created and initialized new index");
-        }
-
-        let reader = index.reader()?;
-        let searcher = reader.searcher();
-
-        Ok(Self {
-            index,
-            reader,
-            searcher,
-            schema,
-        })
-    }
-
-    fn most_recent_story(&self) -> Result<StoryDate, PersistError> {
-        let searcher = self.index.reader()?.searcher();
-        let mut recent = 0;
-        for (_segment_ord, segment_reader) in searcher.segment_readers().iter().enumerate() {
-            let date = segment_reader.fast_fields().i64(self.schema.date_field)?;
-            recent = recent.max(date.max_value());
-        }
-        Ok(StoryDate::from_seconds(recent).unwrap_or_default())
-    }
-
-    fn total_docs(&self) -> Result<usize, PersistError> {
-        let meta = self.index.load_metas()?;
-        Ok(meta.segments.iter().fold(0, |a, b| a + b.num_docs()) as usize)
-    }
-
-    fn insert_story_document(
-        &mut self,
-        writer: &mut IndexWriter,
-        doc: StoryInsert,
-    ) -> Result<ScrapePersistResult, PersistError> {
-        let mut new_doc = doc! {
-            self.schema.id_field => doc.id,
-            self.schema.url_field => doc.url,
-            self.schema.url_norm_field => doc.url_norm,
-            self.schema.url_norm_hash_field => doc.url_norm_hash,
-            self.schema.title_field => doc.title,
-            self.schema.date_field => doc.date,
-            self.schema.score_field => doc.score,
-        };
-        for id in doc.scrape_ids {
-            new_doc.add_text(self.schema.scrape_field, id);
-        }
-        for tag in doc.tags {
-            new_doc.add_text(self.schema.tags_field, tag);
-        }
-
-        let tokens = {
-            let mut token_stream = SimpleTokenizer.token_stream(&doc.host);
-            let mut tokens = vec![];
-            while token_stream.advance() {
-                tokens.push(token_stream.token().clone());
-            }
-            tokens
-        };
-        new_doc.add_pre_tokenized_text(
-            self.schema.host_field,
-            PreTokenizedString {
-                text: doc.host,
-                tokens,
-            },
-        );
-        writer.add_document(new_doc)?;
-        Ok(ScrapePersistResult::NewStory)
-    }
-
-    fn add_scrape_id(
-        &mut self,
-        writer: &mut IndexWriter,
-        searcher: &Searcher,
-        doc_address: DocAddress,
-        mut scrape_ids: HashSet<String>,
-    ) -> Result<ScrapePersistResult, PersistError> {
-        let mut doc = searcher.doc(doc_address)?;
-
-        // Fast exit if these scrapes have already been added
-        for value in doc.get_all(self.schema.scrape_field) {
-            if let Some(id) = value.as_text() {
-                scrape_ids.remove(id);
-                if scrape_ids.len() == 0 {
-                    return Ok(ScrapePersistResult::AlreadyPartOfExistingStory);
-                }
-            }
-        }
-
-        let id = doc
-            .get_first(self.schema.id_field)
-            .ok_or(PersistError::UnexpectedError(
-                "No ID field in document".into(),
-            ))?;
-        let id = id
-            .as_text()
-            .ok_or(PersistError::UnexpectedError(
-                "Unable to convert ID field to string".into(),
-            ))?
-            .to_string();
-        writer.delete_term(Term::from_field_text(self.schema.id_field, &id));
-        for id in scrape_ids {
-            doc.add_text(self.schema.scrape_field, id);
-        }
-
-        // Re-add the norm hash
-        let norm = searcher
-            .segment_reader(doc_address.segment_ord)
-            .fast_fields()
-            .i64(self.schema.url_norm_hash_field)?;
-        doc.add_i64(
-            self.schema.url_norm_hash_field,
-            norm.get_val(doc_address.doc_id),
-        );
-
-        writer.add_document(doc)?;
-        Ok(ScrapePersistResult::MergedWithExistingStory)
-    }
-
-    fn create_norm_query(
-        &self,
-        _url_norm: &str,
-        url_norm_hash: i64,
-        date: StoryDate,
-    ) -> Result<impl Query, PersistError> {
-        if let (Some(start), Some(end)) = (date.checked_sub_months(1), date.checked_add_months(1)) {
-            let url_query = Box::new(TermQuery::new(
-                Term::from_field_i64(self.schema.url_norm_hash_field, url_norm_hash),
-                IndexRecordOption::Basic,
-            ));
-            let date_range_query = Box::new(RangeQuery::new_i64(
-                self.schema.date_field,
-                start.timestamp()..end.timestamp(),
-            ));
-            Ok(BooleanQuery::new(vec![
-                (Occur::Must, url_query),
-                (Occur::Must, date_range_query),
-            ]))
-        } else {
-            // Extremely unlikely
-            Err(PersistError::UnexpectedError(
-                "Could not map date range".into(),
-            ))
-        }
-    }
-
-    fn text_value(&self, doc: &Document, field: Field) -> String {
-        if let Some(val) = doc.get_first(field) {
-            val.as_text().unwrap_or_default().to_owned()
-        } else {
-            "".to_owned()
-        }
-    }
-
-    fn text_values(&self, doc: &Document, field: Field) -> Vec<String> {
-        let mut v = vec![];
-        for value in doc.get_all(field) {
-            if let Some(s) = value.as_text() {
-                v.push(s.into());
-            }
-        }
-        v
-    }
-
-    fn i64_value(&self, doc: &Document, field: Field) -> i64 {
-        if let Some(val) = doc.get_first(field) {
-            val.as_i64().unwrap_or_default().to_owned()
-        } else {
-            0
-        }
-    }
-
-    fn f64_value(&self, doc: &Document, field: Field) -> f64 {
-        if let Some(val) = doc.get_first(field) {
-            val.as_f64().unwrap_or_default().to_owned()
-        } else {
-            0.0
-        }
-    }
-
-    fn lookup_story(&self, doc_address: DocAddress) -> Result<StoryFetch, PersistError> {
-        let doc = self.searcher.doc(doc_address)?;
-        let url = self.text_value(&doc, self.schema.url_field);
-        let title = self.text_value(&doc, self.schema.title_field);
-        let date = self.i64_value(&doc, self.schema.date_field);
-        let score = self.f64_value(&doc, self.schema.score_field);
-        let scrape_ids = self
-            .text_values(&doc, self.schema.scrape_field)
-            .into_iter()
-            .filter_map(|id| {
-                if let Some((a, b)) = id.split_once(':') {
-                    if let (Some(shard), Some(id)) =
-                        (Shard::from_string(a), ScrapeId::from_string(b.into()))
-                    {
-                        return Some(StoryScrapeId { id, shard });
-                    }
-                }
-                None
-            })
-            .collect_vec();
-        let tags = self.text_values(&doc, self.schema.tags_field);
-        Ok(StoryFetch {
-            url,
-            title,
-            date,
-            score,
-            scrape_ids,
-            tags,
-        })
-    }
-
-    fn doc_fields(
-        &self,
-        searcher: &Searcher,
-        doc_address: DocAddress,
-    ) -> Result<NamedFieldDocument, PersistError> {
-        let doc = searcher.doc(doc_address)?;
-        let named_doc = searcher.schema().to_named_doc(&doc);
-        Ok(named_doc)
-    }
-
-    /// Given a set of `StoryLookupId`s, computes the documents that match them.
-    fn lookup_stories(
-        &self,
-        searcher: &Searcher,
-        mut stories: HashSet<StoryLookupId>,
-        date_range: impl RangeBounds<i64>,
-    ) -> Result<Vec<StoryLookup>, PersistError> {
-        let mut result = vec![];
-        for (segment_ord, segment_reader) in searcher.segment_readers().iter().enumerate() {
-            let index = segment_reader
-                .fast_fields()
-                .i64(self.schema.url_norm_hash_field)?;
-            let date = segment_reader.fast_fields().i64(self.schema.date_field)?;
-            let (min, max) = (index.min_value(), index.max_value());
-            stories.retain(|story| {
-                if min <= story.url_norm_hash && max >= story.url_norm_hash {
-                    for i in segment_reader.doc_ids_alive() {
-                        if index.get_val(i) == story.url_norm_hash {
-                            let date = date.get_val(i) - story.date;
-                            if !date_range.contains(&date) {
-                                return true;
-                            }
-                            result.push(StoryLookup::Found(
-                                *story,
-                                DocAddress::new(segment_ord as u32, i),
-                            ));
-                            return false;
-                        }
-                    }
-                }
-                true
-            });
-            // Early exit optimization
-            if stories.is_empty() {
-                break;
-            }
-        }
-        result.extend(stories.into_iter().map(StoryLookup::Unfound));
-        Ok(result)
-    }
-}
 
 struct IndexCache {
     cache: HashMap<Shard, Arc<RwLock<StoryIndexShard>>>,
@@ -464,13 +76,6 @@ impl StoryIndex {
         self.index_cache.read().expect("Poisoned").range
     }
 
-    fn get_shard_for_date(
-        &self,
-        date: StoryDate,
-    ) -> Result<Arc<RwLock<StoryIndexShard>>, PersistError> {
-        self.get_shard(Shard::from_date_time(date))
-    }
-
     fn get_shard(&self, shard: Shard) -> Result<Arc<RwLock<StoryIndexShard>>, PersistError> {
         let mut lock = self.index_cache.write().expect("Poisoned");
         if let Some(shard) = lock.cache.get(&shard) {
@@ -488,6 +93,7 @@ impl StoryIndex {
         }
     }
 
+    #[inline(always)]
     fn with_searcher<F: FnMut(Shard, &Searcher, &StorySchema) -> T, T>(
         &self,
         shard: Shard,
@@ -495,7 +101,7 @@ impl StoryIndex {
     ) -> Result<T, PersistError> {
         let shard_index = self.get_shard(shard)?;
         let shard_index = shard_index.read().expect("Poisoned");
-        Ok(f(shard, &shard_index.searcher, &shard_index.schema))
+        Ok(shard_index.with_searcher(|searcher, schema| f(shard, searcher, schema))?)
     }
 
     fn create_scrape_id_from_scrape_core(scrape_core: &ScrapeCore) -> String {
@@ -750,21 +356,10 @@ impl StoryIndex {
 
     fn get_story_doc(
         &self,
-        id: &StoryIdentifier,
-    ) -> Result<Option<NamedFieldDocument>, PersistError> {
-        let shard = self.get_shard(Shard::from_year_month(id.year(), id.month()))?;
-        let shard = shard.read().expect("Poisoned");
-        let query = TermQuery::new(
-            Term::from_field_text(self.schema.id_field, &id.to_base64()),
-            IndexRecordOption::Basic,
-        );
-        let searcher = shard.index.reader()?.searcher();
-        let docs = searcher.search(&query, &TopDocs::with_limit(1))?;
-        for (_, doc_address) in docs {
-            let doc = shard.doc_fields(&searcher, doc_address)?;
-            return Ok(Some(doc));
-        }
-        Ok(None)
+        index: &StoryIndexShard,
+        doc_address: DocAddress,
+    ) -> Result<NamedFieldDocument, PersistError> {
+        index.with_searcher(|searcher, _| index.doc_fields(searcher, doc_address))?
     }
 
     fn fetch_by_segment(
@@ -791,12 +386,13 @@ impl StoryIndex {
 
     fn fetch_by_id(
         &self,
-        id: StoryIdentifier,
+        id: &StoryIdentifier,
     ) -> impl FnMut(Shard, &Searcher, &StorySchema) -> Result<Vec<(Shard, DocAddress)>, PersistError>
     {
+        let id = id.to_base64();
         move |shard, searcher, schema| {
             let query = TermQuery::new(
-                Term::from_field_text(schema.id_field, &id.to_base64()),
+                Term::from_field_text(schema.id_field, &id),
                 IndexRecordOption::Basic,
             );
             let docs = searcher.search(&query, &TopDocs::with_limit(1))?;
@@ -815,7 +411,7 @@ impl StoryIndex {
     ) -> Result<Vec<(Shard, DocAddress)>, PersistError> {
         let mut vec = vec![];
         let mut remaining = max;
-        for shard in self.shards().iterate(shard::ShardOrder::NewestFirst) {
+        for shard in self.shards().iterate(ShardOrder::NewestFirst) {
             let docs = self.with_searcher(shard, |shard, searcher, _schema| {
                 let docs = searcher.search(&query, &TopDocs::with_limit(remaining))?;
                 Result::<_, PersistError>::Ok(docs.into_iter().map(move |x| (shard, x.1)))
@@ -875,11 +471,7 @@ impl StoryIndex {
         let processing_target = max_count * 2;
 
         // Limit how far back we go since the front page _should_ only be one or two shards unless our index is empty.
-        for shard in self
-            .shards()
-            .iterate(shard::ShardOrder::NewestFirst)
-            .take(3)
-        {
+        for shard in self.shards().iterate(ShardOrder::NewestFirst).take(3) {
             // Process at least twice as many stories as requested
             if processed >= processing_target {
                 break;
@@ -923,7 +515,7 @@ impl StoryIndex {
         match query {
             StoryQuery::ById(id) => self.with_searcher(
                 Shard::from_year_month(id.year(), id.month()),
-                self.fetch_by_id(id),
+                self.fetch_by_id(&id),
             )?,
             StoryQuery::ByShard(shard) => Ok(self.with_searcher(shard, self.fetch_by_segment())?),
             StoryQuery::FrontPage() => self.fetch_front_page(max),
@@ -965,7 +557,7 @@ impl Storage for StoryIndex {
 
     fn story_count(&self) -> Result<StorageSummary, PersistError> {
         let mut summary = StorageSummary::default();
-        for shard in self.shards().iterate(shard::ShardOrder::OldestFirst) {
+        for shard in self.shards().iterate(ShardOrder::OldestFirst) {
             let index = self.get_shard(shard)?;
             let subtotal = index.read().expect("Poisoned").total_docs()?;
             summary.by_shard.push((shard.to_string(), subtotal));
@@ -1051,7 +643,7 @@ mod test {
     use super::*;
     use progscrape_scrapers::{hacker_news::*, reddit::*, ScrapeSource, StoryUrl};
 
-    use crate::{story::TagSet, test::*};
+    use crate::{story::TagSet, test::*, MemIndex};
     use rstest::*;
 
     fn populate_shard(
@@ -1227,14 +819,11 @@ mod test {
 
         // Cause a delete
         let url = StoryUrl::parse("http://domain-3.com/").expect("URL");
-        let _doc = index.get_story_doc(&StoryIdentifier::new(date, url.normalization()))?;
 
         index.insert_scrapes(
             &eval,
             [reddit_story("story-3", "subreddit", date, "Title 3", &url)].into_iter(),
         )?;
-
-        let _doc = index.get_story_doc(&StoryIdentifier::new(date, url.normalization()))?;
 
         index.insert_scrapes(&eval, batch.clone().into_iter())?;
 

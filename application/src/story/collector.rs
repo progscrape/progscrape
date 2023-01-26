@@ -89,7 +89,6 @@ impl StoryCollector<Story> {
 
 #[cfg(test)]
 mod test {
-    
 
     use progscrape_scrapers::{StoryDate, StoryUrl};
 
