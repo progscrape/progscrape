@@ -17,7 +17,7 @@ use std::ops::RangeBounds;
 use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant};
 
-use crate::story::{StoryCollector, TagSet};
+use crate::story::{StoryCollector, StoryScrapeId, TagSet};
 
 use super::scrapestore::ScrapeStore;
 use super::shard::{Shard, ShardOrder, ShardRange};
@@ -75,7 +75,7 @@ struct StoryFetch {
     date: i64,
     score: f64,
     tags: Vec<String>,
-    scrape_ids: Vec<(Shard, ScrapeId)>,
+    scrape_ids: Vec<StoryScrapeId>,
 }
 
 /// The `StoryIndexShard` manages a single shard of the index.
@@ -319,7 +319,7 @@ impl StoryIndexShard {
                     if let (Some(shard), Some(id)) =
                         (Shard::from_string(a), ScrapeId::from_string(b.into()))
                     {
-                        return Some((shard, id));
+                        return Some(StoryScrapeId { id, shard });
                     }
                 }
                 None
@@ -672,7 +672,7 @@ impl StoryIndex {
             date,
             score,
             story.tags,
-            story.scrape_ids.into_iter().map(|(_, b)| b).collect(),
+            story.scrape_ids,
         ))
     }
 
@@ -686,12 +686,12 @@ impl StoryIndex {
         let url = StoryUrl::parse(story.url).expect("Failed to parse URL");
         let date = StoryDate::from_seconds(story.date).expect("Failed to re-parse date");
         let score = story.score as f32;
-        let scrape_ids = story.scrape_ids.iter().map(|(_, b)| b.clone()).collect();
         let scrapes = self
             .scrape_db
-            .fetch_scrape_batch(story.scrape_ids.into_iter())?;
+            .fetch_scrape_batch(story.scrape_ids.clone())?;
         let scrapes = ScrapeCollection::new_from_iter(scrapes.into_values().flatten());
-        let story = Story::new_from_parts(story.title, url, date, score, story.tags, scrape_ids);
+        let story =
+            Story::new_from_parts(story.title, url, date, score, story.tags, story.scrape_ids);
         Ok((story, scrapes))
     }
 
@@ -1003,13 +1003,13 @@ mod test {
 
         let story = &search[0];
         assert_eq!("I love Rust", story.title);
-        assert_eq!(
-            HashSet::from_iter([
-                HackerNews.id("story1"),
-                Reddit.subsource_id("rust", "story1")
-            ]),
-            story.scrapes
-        );
+        assert!(itertools::equal(
+            [
+                &HackerNews.id("story1"),
+                &Reddit.subsource_id("rust", "story1")
+            ],
+            story.scrapes.keys().sorted()
+        ),);
         assert_eq!(TagSet::from_iter(["rust"]), story.tags);
 
         Ok(())
@@ -1041,13 +1041,13 @@ mod test {
 
         let story = &search[0];
         assert_eq!("I love Rust", story.title);
-        assert_eq!(
-            HashSet::from_iter([
-                HackerNews.id("story1"),
-                Reddit.subsource_id("rust", "story1")
-            ]),
-            story.scrapes
-        );
+        assert!(itertools::equal(
+            [
+                &HackerNews.id("story1"),
+                &Reddit.subsource_id("rust", "story1")
+            ],
+            story.scrapes.keys().sorted()
+        ),);
         assert_eq!(TagSet::from_iter(["rust"]), story.tags);
 
         Ok(())

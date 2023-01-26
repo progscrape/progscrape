@@ -83,7 +83,7 @@ impl StoryCollector {
 
 #[cfg(test)]
 mod test {
-    use std::collections::HashSet;
+    use std::collections::{HashMap, HashSet};
 
     use progscrape_scrapers::{StoryDate, StoryUrl};
 
@@ -96,7 +96,7 @@ mod test {
             StoryDate::year_month_day(2000, 1, 1).expect("date"),
             score,
             vec![],
-            HashSet::new(),
+            vec![],
         )
     }
 

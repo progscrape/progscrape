@@ -6,7 +6,7 @@ use std::{
 use progscrape_scrapers::{ScrapeId, StoryDate, TypedScrape};
 use serde::{Deserialize, Serialize};
 
-use crate::PersistError;
+use crate::{story::StoryScrapeId, PersistError};
 
 use super::{db::DB, shard::Shard, PersistLocation};
 
@@ -100,19 +100,19 @@ impl ScrapeStore {
         }
     }
 
-    pub fn fetch_scrape_batch<'a, I: Iterator<Item = (Shard, ScrapeId)>>(
+    pub fn fetch_scrape_batch<'a, I: IntoIterator<Item = StoryScrapeId>>(
         &self,
         iter: I,
     ) -> Result<HashMap<ScrapeId, Option<TypedScrape>>, PersistError> {
         let mut map = HashMap::new();
-        for (shard, id) in iter {
-            let db = self.open_shard(shard)?;
-            let scrape = db.load::<ScrapeCacheEntry>(id.to_string())?;
+        for id in iter {
+            let db = self.open_shard(id.shard)?;
+            let scrape = db.load::<ScrapeCacheEntry>(id.id.to_string())?;
             if let Some(scrape) = scrape {
                 let typed_scrape = serde_json::from_str(&scrape.json)?;
-                map.insert(id.clone(), typed_scrape);
+                map.insert(id.id.clone(), typed_scrape);
             } else {
-                map.insert(id.clone(), None);
+                map.insert(id.id.clone(), None);
             }
         }
         Ok(map)

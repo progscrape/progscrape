@@ -13,6 +13,7 @@ mod shard;
 
 pub use index::StoryIndex;
 pub use memindex::MemIndex;
+pub use shard::Shard;
 
 #[derive(Error, Debug)]
 pub enum PersistError {

@@ -12,6 +12,8 @@ mod render;
 mod scorer;
 mod tagger;
 
+use crate::persist::Shard;
+
 pub use self::{
     collector::StoryCollector,
     id::StoryIdentifier,
@@ -46,6 +48,18 @@ impl StoryEvaluator {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct StoryScrapeId {
+    pub id: ScrapeId,
+    pub shard: Shard,
+}
+
+impl StoryScrapeId {
+    pub fn into_tuple(self) -> (ScrapeId, Shard) {
+        (self.id, self.shard)
+    }
+}
+
 /// Story scrape w/information from underlying sources.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Story {
@@ -55,7 +69,7 @@ pub struct Story {
     pub url: StoryUrl,
     pub title: String,
     pub tags: TagSet,
-    pub scrapes: HashSet<ScrapeId>,
+    pub scrapes: HashMap<ScrapeId, Shard>,
 }
 
 impl Story {
@@ -64,8 +78,8 @@ impl Story {
         url: StoryUrl,
         date: StoryDate,
         score: f32,
-        tags: Vec<String>,
-        scrapes: HashSet<ScrapeId>,
+        tags: impl IntoIterator<Item = String>,
+        scrapes: impl IntoIterator<Item = StoryScrapeId>,
     ) -> Self {
         Self {
             id: StoryIdentifier::new(date, url.normalization()),
@@ -74,7 +88,7 @@ impl Story {
             url,
             date,
             score,
-            scrapes,
+            scrapes: HashMap::from_iter(scrapes.into_iter().map(StoryScrapeId::into_tuple)),
         }
     }
 
@@ -93,7 +107,7 @@ impl Story {
         let mut tags = vec![self.url.host().to_owned()];
         tags.extend(self.tags.dump());
         let mut comment_links = HashMap::new();
-        for id in &self.scrapes {
+        for (id, _) in &self.scrapes {
             comment_links.insert(id.source.into_str().to_string(), id.comments_url());
         }
         StoryRender {

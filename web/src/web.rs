@@ -617,6 +617,7 @@ async fn admin_status_frontpage(
         &resources,
         "admin/frontpage.html",
         context!(
+            now: StoryDate = now,
             user: CurrentUser = user,
             stories: Vec<StoryRender> = render_stories(
                 hot_set(now, &index, &resources.story_evaluator())
@@ -658,25 +659,29 @@ async fn admin_status_story(
     Path(id): Path<String>,
 ) -> Result<Html<String>, WebError> {
     let id = StoryIdentifier::from_base64(id).ok_or(WebError::NotFound)?;
-    let _now = now(&index).await?;
+    let now = now(&index).await?;
     tracing::info!("Loading story = {:?}", id);
-    let story = index
+    let (story, scrapes) = index
         .storage
         .read()
         .await
         .get_story(&id)?
         .ok_or(WebError::NotFound)?;
-    // let score_details = resources.story_evaluator().scorer.score_detail(&story, now);
-    let score_details = vec![];
+    let extract = scrapes.extract(&resources.story_evaluator().extractor);
+    let score_details = resources
+        .story_evaluator()
+        .scorer
+        .score_detail(&extract, now);
     let tags = Default::default(); // _details = resources.story_evaluator().tagger.tag_detail(&story);
 
     render(
         &resources,
         "admin/story.html",
         context!(
+            now: StoryDate = now,
             user: CurrentUser = user,
-            story: StoryRender = story.0.render(0),
-            scrapes: HashMap<ScrapeId, TypedScrape> = story.1.scrapes,
+            story: StoryRender = story.render(0),
+            scrapes: HashMap<ScrapeId, TypedScrape> = scrapes.scrapes,
             tags: HashMap<String, Vec<String>> = tags,
             score: Vec<(String, f32)> = score_details
         ),
