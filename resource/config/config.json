@@ -138,7 +138,9 @@
                 "drone(s)": {},
                 "bytecode": {},
                 "vpn(s)": {},
-                "malware": {}
+                "malware": {},
+                "ransomware": {},
+                "refactor": {"alts": ["refactoring", "refactored"]}
             },
             "company": {
                 "volkswagen(s)": {"alt": "volkswagon(s)"},
