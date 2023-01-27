@@ -33,3 +33,7 @@ progscrape-application = { path = "../application" }
 
 [dev-dependencies]
 rstest = "0.16.0"
+
+[profile.release]
+lto = true
+codegen-units = 1
