@@ -1,0 +1,21 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      logLevel:
+        description: 'Log level'     
+        required: true
+        default: 'warning'
+      tags:
+        description: 'Test scenario tags'  
+
+jobs:
+  build:
+    runs-on: self-hosted
+    #runs-on: macos-12
+    permissions:
+      issues: write
+    steps:
+      - name: Cargo run
+        run: cargo install --git https://github.com/mmastrac/progscrape
