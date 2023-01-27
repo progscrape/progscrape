@@ -6,7 +6,8 @@ pub use persist::{
     StoryIndex, StoryQuery,
 };
 pub use story::{
-    Story, StoryEvaluator, StoryIdentifier, StoryRender, StoryScore, StoryScoreConfig, TaggerConfig,
+    Story, StoryEvaluator, StoryIdentifier, StoryRender, StoryScore, StoryScoreConfig, TagSet,
+    TaggerConfig,
 };
 
 #[cfg(test)]

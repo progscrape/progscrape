@@ -24,7 +24,7 @@ use crate::{
 };
 use progscrape_application::{
     PersistError, Shard, Storage, StorageWriter, Story, StoryEvaluator, StoryIdentifier,
-    StoryIndex, StoryQuery, StoryRender, StoryScore,
+    StoryIndex, StoryQuery, StoryRender, StoryScore, TagSet,
 };
 use progscrape_scrapers::{
     ScrapeCollection, ScrapeSource, ScraperHttpResponseInput, ScraperHttpResult, StoryDate,
@@ -647,6 +647,9 @@ async fn admin_index_frontpage_scoretuner(
         let scrapes = ScrapeCollection::new_from_iter(story.scrapes.values().cloned());
         let extracted = scrapes.extract(&eval.extractor);
         story.score = eval.scorer.score(&extracted) + eval.scorer.score_age(now - story.date);
+        let mut tags = TagSet::from_iter(extracted.tags());
+        eval.tagger.tag(extracted.title(), &mut tags);
+        story.tags = tags;
         story_details.push(StoryDetail {
             story: story.render(0),
             score_detail: eval.scorer.score_detail(&extracted, now),

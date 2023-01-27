@@ -11,7 +11,7 @@
     "scrape": {
         "hacker_news": {
             "homepage": "https://news.ycombinator.com/",
-            "pages": ["news"]
+            "pages": ["news", "news?p=2"]
         },
         "slashdot": {
             "homepage": "https://slashdot.org/",
@@ -153,6 +153,7 @@
                 "intel": {},
                 "apple": {},
                 "facebook": {},
+                "meta": {},
                 "google": {},
                 "yahoo": {},
                 "microsoft": {"host": "msdn.com"},
@@ -229,17 +230,20 @@
                 "yale": {},
                 "navy": {},
                 "debian": {},
-                "nvidia": {}
+                "nvidia": {},
+                "darpa": {}
             },
             "politics": {
                 "obama": {},
                 "trump": {},
                 "clinton": {},
                 "biden": {},
-                "snowden": {}
+                "snowden": {},
+                "elonmusk": {"alt": "elon musk"}
             },
             "geo": {
                 "china": {"alt": "chinese"},
+                "japan": {"alt": "japanese"},
                 "ireland": {"alt": "irish"},
                 "australia": {"alt": "australian"},
                 "taiwan": {},
@@ -270,6 +274,7 @@
                 "php6": {"implies": "php"},
                 "php7": {"implies": "php"},
                 "javascript": {},
+                "typescript": {},
                 "java": {},
                 "perl": {},
                 "python": {},
@@ -328,7 +333,8 @@
                 "vlc": {},
                 "wannacry": {"implies": "malware"},
                 "signal": {},
-                "progscrape": {}
+                "progscrape": {},
+                "azure": {}
             },
             "technology": {
                 "kde": {},
@@ -341,6 +347,7 @@
                 "android": {},
                 "node": {},
                 "ec2": {},
+                "aws": {},
                 "firefox": {},
                 "safari": {},
                 "servo": {},
@@ -419,7 +426,10 @@
                 "unity": {},
                 "angular": {"alt": "angularjs"},
                 "ember": {"alt": "emberjs"},
-                "smb": {}
+                "smb": {},
+                "gpt": {"alt": "chatgpt"},
+                "wasm": {},
+                "llvm": {}
             }
         }
     }

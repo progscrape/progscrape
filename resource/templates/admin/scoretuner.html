@@ -17,6 +17,7 @@
         {{ macros_story::comment_links(story=details.story) }}
     </td>
     <td>{{ details.story.domain }}</td>
+    <td>{% for tag in details.story.tags %}<span class="pill">{{ tag }}</span>{% endfor %}</td>
     <td><a href="{{ details.story.url }}">{{ details.story.title }}</a> </td>
 </tr>
 {% endfor %}
