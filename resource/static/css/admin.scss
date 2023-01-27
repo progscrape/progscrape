@@ -47,6 +47,15 @@ body {
     table td, table th {
         border: 1px solid black;
         padding: 0.1em 0.3em;
+
+        .pill {
+            background-color: #eee;
+            white-space: nowrap;
+            font-size: 90%;
+            padding: 0em 1em;
+            margin: 0.1em 0.2em;
+            border-radius: 1em;
+        }
     }
 
     table th {

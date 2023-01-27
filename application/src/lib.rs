@@ -3,10 +3,10 @@ mod story;
 
 pub use persist::{
     MemIndex, PersistError, PersistLocation, Shard, Storage, StorageSummary, StorageWriter,
-    StoryIndex,
+    StoryIndex, StoryQuery,
 };
 pub use story::{
-    Story, StoryEvaluator, StoryIdentifier, StoryRender, StoryScoreConfig, TaggerConfig,
+    Story, StoryEvaluator, StoryIdentifier, StoryRender, StoryScore, StoryScoreConfig, TaggerConfig,
 };
 
 #[cfg(test)]

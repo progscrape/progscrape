@@ -1,0 +1,24 @@
+{% extends "admin/base.html" %}
+{% block content %}
+<h1>Score Tuner</h1>
+<p>Scores are live-computed from configuration</p>
+
+<table>
+{% for details in story_details %}
+<tr>
+    <td>{{ loop.index }}</td>
+    <td>{{ details.story.score | round(precision=2) }}</td>
+    <td>
+    {% for detail in details.score_detail %}
+        <span class="pill">{{ detail.0 }}: {{ detail.1 | round(precision=2) }}</span>
+    {% endfor %}
+    </td>
+    <td>
+        {{ macros_story::comment_links(story=details.story) }}
+    </td>
+    <td>{{ details.story.domain }}</td>
+    <td><a href="{{ details.story.url }}">{{ details.story.title }}</a> </td>
+</tr>
+{% endfor %}
+</table>
+{% endblock %}

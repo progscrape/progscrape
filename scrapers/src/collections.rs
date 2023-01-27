@@ -57,8 +57,12 @@ impl ScrapeCollection {
     }
 
     pub fn extract<'a>(&'a self, extractor: &ScrapeExtractor) -> ExtractedScrapeCollection<'a> {
-        let iter = self.scrapes.iter().map(|(k, v)| (k, extractor.extract(v)));
+        let iter = self
+            .scrapes
+            .iter()
+            .map(|(k, v)| (k, (extractor.extract(v), v)));
         ExtractedScrapeCollection {
+            earliest: self.earliest,
             scrapes: HashMap::from_iter(iter),
         }
     }
@@ -66,7 +70,8 @@ impl ScrapeCollection {
 
 /// Collection of scrape data that has been extracted from a `ScrapeCollection`.
 pub struct ExtractedScrapeCollection<'a> {
-    pub scrapes: HashMap<&'a ScrapeId, ScrapeCore<'a>>,
+    pub earliest: StoryDate,
+    pub scrapes: HashMap<&'a ScrapeId, (ScrapeCore<'a>, &'a TypedScrape)>,
 }
 
 impl<'a> ExtractedScrapeCollection<'a> {
@@ -77,6 +82,7 @@ impl<'a> ExtractedScrapeCollection<'a> {
             .next()
             .expect("Expected at least one scrape")
             .1
+             .0
             .title
     }
 
@@ -86,12 +92,13 @@ impl<'a> ExtractedScrapeCollection<'a> {
             .next()
             .expect("Expected at least one scrape")
             .1
+             .0
             .url
     }
 
     pub fn tags<'b>(&'b self) -> Vec<Cow<'a, str>> {
         let mut tags = HashSet::new();
-        for (_, scrape) in &self.scrapes {
+        for (_, (scrape, _)) in &self.scrapes {
             tags.extend(&scrape.tags);
         }
         tags.into_iter().cloned().collect_vec()

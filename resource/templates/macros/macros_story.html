@@ -1,7 +1,7 @@
 {% macro comment_links(story) %}
-{% for source, link in story.comment_links %}
-    <a href="{{ link }}" class="{{ source }}"><img src="{{ source ~ '.png' | static }}" width="16" height="16"></a>
-{% endfor %}
+{%- for source, link in story.comment_links -%}
+<a href="{{ link }}" class="{{ source }}"><img src="{{ source ~ '.png' | static }}" width="16" height="16"></a>
+{%- endfor -%}
 {% endmacro %}
 
 {% macro sort(sort) -%}

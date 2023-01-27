@@ -1,7 +1,12 @@
 {
     "score": {
         "age_breakpoint_days": [1, 30],
-        "hour_scores": [-5, -3, -0.1]
+        "hour_scores": [-5, -3, -0.1],
+        "service_rank": {
+            "hacker_news": 1.2,
+            "reddit": 0.7,
+            "lobsters": 1.2
+        }
     },
     "scrape": {
         "hacker_news": {

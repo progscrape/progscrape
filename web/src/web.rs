@@ -24,11 +24,11 @@ use crate::{
 };
 use progscrape_application::{
     PersistError, Shard, Storage, StorageWriter, Story, StoryEvaluator, StoryIdentifier,
-    StoryIndex, StoryRender,
+    StoryIndex, StoryQuery, StoryRender, StoryScore,
 };
 use progscrape_scrapers::{
-    ScrapeCollection, ScrapeSource, ScraperHttpResponseInput, ScraperHttpResult,
-    StoryDate,
+    ScrapeCollection, ScrapeSource, ScraperHttpResponseInput, ScraperHttpResult, StoryDate,
+    TypedScrape,
 };
 
 #[derive(Debug, Error)]
@@ -158,6 +158,10 @@ pub fn admin_routes<S: Clone + Send + Sync + 'static>(
         .route("/scrape/test", post(admin_scrape_test))
         .route("/index/", get(admin_index_status))
         .route("/index/frontpage/", get(admin_status_frontpage))
+        .route(
+            "/index/frontpage/scoretuner/",
+            get(admin_index_frontpage_scoretuner),
+        )
         .route("/index/shard/:shard/", get(admin_status_shard))
         .route("/index/story/:story/", get(admin_status_story))
         .fallback(handle_404)
@@ -614,6 +618,48 @@ async fn admin_status_frontpage(
             ),
             sort,
         ),
+    )
+}
+
+async fn admin_index_frontpage_scoretuner(
+    Extension(user): Extension<CurrentUser>,
+    State(AdminState {
+        index, resources, ..
+    }): State<AdminState>,
+) -> Result<Html<String>, WebError> {
+    let now = now(&index).await?;
+
+    #[derive(Serialize)]
+    struct StoryDetail {
+        story: StoryRender,
+        score_detail: Vec<(StoryScore, f32)>,
+    }
+
+    let stories: Vec<Story<TypedScrape>> = index
+        .storage
+        .read()
+        .await
+        .fetch(StoryQuery::FrontPage(), 500)?;
+    let mut story_details = vec![];
+    let eval = resources.story_evaluator();
+
+    for mut story in stories {
+        let scrapes = ScrapeCollection::new_from_iter(story.scrapes.values().cloned());
+        let extracted = scrapes.extract(&eval.extractor);
+        story.score = eval.scorer.score(&extracted) + eval.scorer.score_age(now - story.date);
+        story_details.push(StoryDetail {
+            story: story.render(0),
+            score_detail: eval.scorer.score_detail(&extracted, now),
+        });
+    }
+
+    // Quick-and-dirty float sort
+    story_details.sort_by_cached_key(|x| (x.story.score * -1000.0) as i32);
+
+    render(
+        &resources,
+        "admin/scoretuner.html",
+        context!(now, user, story_details,),
     )
 }
 

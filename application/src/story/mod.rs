@@ -18,7 +18,7 @@ pub use self::{
     collector::StoryCollector,
     id::StoryIdentifier,
     render::{StoryFullRender, StoryRender},
-    scorer::{StoryScoreConfig, StoryScorer},
+    scorer::{StoryScore, StoryScoreConfig, StoryScorer},
     tagger::{StoryTagger, TaggerConfig},
 };
 

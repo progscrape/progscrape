@@ -4,7 +4,7 @@ use tantivy::collector::TopDocs;
 use tantivy::query::{AllQuery, PhraseQuery, Query, TermQuery};
 use tantivy::{schema::*, DocAddress, IndexWriter, Searcher};
 
-use progscrape_scrapers::{ScrapeCollection, ScrapeCore, StoryDate, StoryUrl, TypedScrape};
+use progscrape_scrapers::{ScrapeCollection, StoryDate, StoryUrl, TypedScrape};
 
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, RwLock};
@@ -183,14 +183,6 @@ impl StoryIndex {
         res
     }
 
-    fn create_scrape_id_from_scrape_core(scrape_core: &ScrapeCore) -> String {
-        format!(
-            "{}:{}",
-            Shard::from_date_time(scrape_core.date).to_string(),
-            scrape_core.source
-        )
-    }
-
     fn create_scrape_id_from_scrape(scrape: &TypedScrape) -> String {
         format!(
             "{}:{}",
@@ -206,7 +198,8 @@ impl StoryIndex {
         let scrape_ids = extracted
             .scrapes
             .values()
-            .map(Self::create_scrape_id_from_scrape_core)
+            .map(|x| x.1)
+            .map(Self::create_scrape_id_from_scrape)
             .collect_vec();
         let title = extracted.title().to_owned();
         let mut tags = TagSet::new();

@@ -1,4 +1,4 @@
-use serde::{Deserialize, Serialize};
+use serde::{ser::SerializeMap, Deserialize, Serialize};
 use std::{borrow::Cow, fmt::Debug};
 
 pub use self::def::ScrapeCore;
@@ -125,6 +125,16 @@ macro_rules! scrapers {
                     )*
                 }
             }
+
+            $(
+            /// Attempt to coerce this `TypedScrape` into a `GenericScrape` of the given type.
+            pub fn $package(&self) -> Option<&GenericScrape<<$package::$name as ScrapeSourceDef>::Scrape>> {
+                match self {
+                    Self::$name(a) => Some(&a),
+                    _ => None,
+                }
+            }
+            )*
         }
 
         impl std::ops::Deref for TypedScrape {
@@ -151,6 +161,113 @@ macro_rules! scrapers {
                 }
             }
         )*
+
+        /// A strongly-typed scrape map that can be used to collect values by scrape source without allocations.
+        pub struct TypedScrapeMap<V> {
+            $( pub $package: V, )*
+            pub other: V
+        }
+
+        impl <V: Default> TypedScrapeMap<V> {
+            pub fn new() -> Self {
+                Self {
+                    $( $package: Default::default(), )*
+                    other: Default::default(),
+                }
+            }
+        }
+
+        impl <V: Copy> TypedScrapeMap<V> {
+            pub fn new_with_all(v: V) -> Self {
+                Self {
+                    $( $package: v, )*
+                    other: v,
+                }
+            }
+        }
+
+        impl <V: Default> Default for TypedScrapeMap<V> {
+            fn default() -> Self {
+                Self::new()
+            }
+        }
+
+        impl <V: Clone> Clone for TypedScrapeMap<V> {
+            fn clone(&self) -> Self {
+                Self {
+                    $( $package: self.$package.clone(), )*
+                    other: self.other.clone(),
+                }
+            }
+        }
+
+        impl <V> TypedScrapeMap<V> {
+            pub fn get(&self, source: ScrapeSource) -> &V {
+                match (source) {
+                    $( ScrapeSource::$name => &self.$package, )*
+                    ScrapeSource::Other => &self.other,
+                }
+            }
+
+            pub fn set(&mut self, source: ScrapeSource, mut value: V) -> V {
+                match (source) {
+                    $( ScrapeSource::$name => std::mem::swap(&mut value, &mut self.$package), )*
+                    ScrapeSource::Other => std::mem::swap(&mut value, &mut self.other),
+                }
+                value
+            }
+
+            pub fn iter<'a>(&'a self) -> impl Iterator<Item = &'a V> {
+                [$( &self.$package, )* &self.other ].into_iter()
+            }
+        }
+
+        const fn one(_: &'static str) -> usize {
+            1
+        }
+
+        impl <V> IntoIterator for TypedScrapeMap<V> {
+            type Item = V;
+            type IntoIter = <[V; 1 $( + one(stringify!($package)) )* ] as IntoIterator>::IntoIter;
+
+            fn into_iter(self) -> Self::IntoIter {
+                [$(self.$package,)* self.other].into_iter()
+            }
+        }
+
+        impl <V: Serialize> Serialize for TypedScrapeMap<V> {
+            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+                where
+                    S: serde::Serializer {
+                let mut map = serializer.serialize_map(None)?;
+                $(
+                    map.serialize_entry(stringify!($package), &self.$package)?;
+                )*
+                map.serialize_entry("other", &self.other)?;
+                map.end()
+            }
+        }
+
+        /// Implement `Deserialize` if and only if `V` is `Default` as well.
+        impl <'de, V: Default + Deserialize<'de>> Deserialize<'de> for TypedScrapeMap<V> {
+            fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+                where
+                    D: serde::Deserializer<'de> {
+
+                #[derive(Deserialize)]
+                struct Temp<V> {
+                    $( #[serde(default)] $package: V, )*
+                    #[serde(default)] other: V,
+                }
+
+                let temp = Temp::deserialize(deserializer)?;
+                Ok(TypedScrapeMap::<V> {
+                    $( $package: temp.$package, )*
+                    other: temp.other,
+                })
+            }
+        }
+
     };
 }
 
