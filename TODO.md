@@ -8,7 +8,6 @@ TODO:
  - [ ] Swap Chrono for time
  - [ ] Host implies tag (ie: YouTube)
  - [ ] Rework indexing so writes don't hold a long lock 
- - [ ] Score tweaking interface
  
 Maybe:
  - [ ] Metrics?
@@ -24,3 +23,4 @@ Done:
  - [ ] Remove www. prefix on host
  - [ ] Use Instant/Duration for cron
  - [ ] Hook up scrape to cron
+ - [ ] Score tweaking interface
