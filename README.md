@@ -34,7 +34,7 @@ SERVER_LOG="debug,tantivy=info" cargo run -- serve --fixed-auth-value 'username@
 
 ## Historical
 
-The app was previously designed to run on Google's AppEngine, at a low-enough load to stay in the free tier. There was a fair bit of caching and we avoid interactivity where possible to make this possible. The last Python versioncurrently runs on Python 2.7, only because Python 3.x was a big undertaking on AppEngine.
+The app was previously designed to run on Google's AppEngine, at a low-enough load to stay in the free tier. There was a fair bit of caching and we avoid interactivity where possible to make this possible. The [last Python version](https://github.com/mmastrac/progscrape/tree/python2) currently runs on Python 2.7, only because Python 3.x was a big undertaking on AppEngine.
 
 ## Android
 
