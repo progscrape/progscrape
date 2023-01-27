@@ -17,5 +17,7 @@ jobs:
     permissions:
       issues: write
     steps:
+      - name: Rustup
+        run: rustup default stable
       - name: Cargo run
         run: cargo install --git https://github.com/mmastrac/progscrape
