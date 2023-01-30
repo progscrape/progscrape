@@ -55,12 +55,12 @@ impl Resources {
 }
 
 fn create_static_files(
-    _resource_path: &Path,
+    resource_path: &Path,
     css: String,
     admin_css: String,
 ) -> Result<StaticFileRegistry, WebError> {
     let mut static_files = StaticFileRegistry::default();
-    static_files.register_files("resource/static/")?;
+    static_files.register_files(resource_path.join("static/"))?;
     let mut css_vars = ":root {\n".to_owned();
     for key in static_files.keys() {
         let url = static_files.lookup_key(&key).unwrap_or_default();
