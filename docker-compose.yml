@@ -9,7 +9,7 @@ services:
           - server
     environment:
       - SERVER_LOG=debug,tantivy=info,hyper::proto=info
-    command: /usr/local/bin/progscrape-web serve --listen-port 0.0.0.0:3000 --persist-path /var/progscrape/index/db --root /var/progscrape/
+    command: /usr/local/bin/progscrape-web serve --listen-port 0.0.0.0:3000 --persist-path /var/progscrape/index/db --root /var/progscrape/ --auth-header 'cf-access-authenticated-user-email'
     volumes:
       - type: volume
         source: index-data
