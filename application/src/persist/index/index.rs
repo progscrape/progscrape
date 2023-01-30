@@ -390,12 +390,15 @@ impl StoryIndex {
         let mut vec = vec![];
         let mut remaining = max;
         for shard in self.shards().iterate(ShardOrder::NewestFirst) {
+            if remaining == 0 {
+                break;
+            }
             let docs = self.with_searcher(shard, |shard, searcher, _schema| {
                 let docs = searcher.search(&query, &TopDocs::with_limit(remaining))?;
                 Result::<_, PersistError>::Ok(docs.into_iter().map(move |x| (shard, x.1)))
             })??;
             vec.extend(docs);
-            remaining = max - vec.len();
+            remaining = max.checked_sub(vec.len()).unwrap_or(0);
         }
         Ok(vec)
     }
