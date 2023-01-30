@@ -607,39 +607,8 @@ impl Storage for StoryIndex {
         Ok(summary)
     }
 
-    fn get_story(&self, id: &StoryIdentifier) -> Result<Option<Story<TypedScrape>>, PersistError> {
-        Ok(self
-            .fetch(StoryQuery::ById(id.clone()), 1)?
-            .into_iter()
-            .next())
-    }
-
-    fn stories_by_shard(&self, shard: &str) -> Result<Vec<Story<Shard>>, PersistError> {
-        if let Some(shard) = Shard::from_string(shard) {
-            self.fetch(StoryQuery::ByShard(shard), usize::MAX)
-        } else {
-            Ok(vec![])
-        }
-    }
-
-    fn query_frontpage_hot_set(&self, max_count: usize) -> Result<Vec<Story<Shard>>, PersistError> {
-        self.fetch(StoryQuery::FrontPage(), max_count)
-    }
-
-    fn query_search(
-        &self,
-        tagger: &StoryTagger,
-        search: &str,
-        max_count: usize,
-    ) -> Result<Vec<Story<Shard>>, PersistError> {
-        // This isn't terribly smart, buuuuut it allows us to search either a tag or site
-        if let Some(tag) = tagger.check_tag_search(search) {
-            self.fetch(StoryQuery::TagSearch(tag.to_string()), max_count)
-        } else if search.contains('.') {
-            self.fetch(StoryQuery::DomainSearch(search.to_string()), max_count)
-        } else {
-            self.fetch(StoryQuery::TextSearch(search.to_string()), max_count)
-        }
+    fn fetch_count(&self, query: StoryQuery, max: usize) -> Result<usize, PersistError> {
+        Ok(self.fetch_doc_addresses(query, max)?.len())
     }
 }
 
@@ -748,7 +717,7 @@ mod test {
         let counts = index.story_count()?;
         assert_eq!(counts.total, 1);
 
-        let search = index.query_search(&eval.tagger, "rust", 10)?;
+        let search = index.fetch::<Shard>(StoryQuery::from_search(&eval.tagger, "rust"), 10)?;
         assert_eq!(search.len(), 1);
 
         let story = &search[0];
@@ -786,7 +755,7 @@ mod test {
         let counts = index.story_count()?;
         assert_eq!(counts.total, 1);
 
-        let search = index.query_search(&eval.tagger, "rust", 10)?;
+        let search = index.fetch::<Shard>(StoryQuery::from_search(&eval.tagger, "rust"), 10)?;
         assert_eq!(search.len(), 1);
 
         let story = &search[0];
@@ -833,8 +802,8 @@ mod test {
 
         index.insert_scrapes(&eval, batch.clone().into_iter())?;
 
-        let front_page = index.query_frontpage_hot_set(100)?;
-        assert_eq!(30, front_page.len());
+        let front_page = index.fetch_count(StoryQuery::FrontPage(), 100)?;
+        assert_eq!(30, front_page);
 
         Ok(())
     }
@@ -863,14 +832,11 @@ mod test {
         assert_eq!(counts.total, 1);
 
         for term in search_terms {
-            let search = index.query_search(&eval.tagger, term, 10)?;
+            let search = index.fetch_count(StoryQuery::from_search(&eval.tagger, term), 10)?;
             assert_eq!(
-                1,
-                search.len(),
+                1, search,
                 "Expected one search result when querying '{}' for title={} url={}",
-                term,
-                title,
-                url
+                term, title, url
             );
         }
 
@@ -900,7 +866,7 @@ mod test {
         index.insert_scrape_collections(&eval, memindex.get_all_stories())?;
 
         // Query the new index
-        for story in index.query_search(&eval.tagger, "rust", 10)? {
+        for story in index.fetch::<Shard>(StoryQuery::from_search(&eval.tagger, "rust"), 10)? {
             println!("{:?}", story);
         }
 

@@ -57,7 +57,20 @@ pub enum StoryQuery {
     TextSearch(String),
 }
 
-pub trait StoryScrapePayload {}
+impl StoryQuery {
+    pub fn from_search(tagger: &StoryTagger, search: &str) -> Self {
+        // This isn't terribly smart, buuuuut it allows us to search either a tag or site
+        if let Some(tag) = tagger.check_tag_search(search) {
+            StoryQuery::TagSearch(tag.to_string())
+        } else if search.contains('.') {
+            StoryQuery::DomainSearch(search.to_string())
+        } else {
+            StoryQuery::TextSearch(search.to_string())
+        }
+    }
+}
+
+pub trait StoryScrapePayload: Send + Sync {}
 
 impl StoryScrapePayload for () {}
 impl StoryScrapePayload for Shard {}
@@ -74,22 +87,8 @@ pub trait Storage: Send + Sync {
     /// Count the docs in this index, breaking it out by index segment.
     fn story_count(&self) -> Result<StorageSummary, PersistError>;
 
-    /// Retrieves a single, unique story from the index.
-    fn get_story(&self, id: &StoryIdentifier) -> Result<Option<Story<TypedScrape>>, PersistError>;
-
-    /// Retrieves all stories in a shard.
-    fn stories_by_shard(&self, shard: &str) -> Result<Vec<Story<Shard>>, PersistError>;
-
-    /// Query the current front page hot set, sorted by overall base score.
-    fn query_frontpage_hot_set(&self, max_count: usize) -> Result<Vec<Story<Shard>>, PersistError>;
-
-    /// Query a search, scored mostly by date but may include some "hotness".
-    fn query_search(
-        &self,
-        tagger: &StoryTagger,
-        search: &str,
-        max_count: usize,
-    ) -> Result<Vec<Story<Shard>>, PersistError>;
+    /// Count the docs matching the query, at most max.
+    fn fetch_count(&self, query: StoryQuery, max: usize) -> Result<usize, PersistError>;
 
     /// Fetch a list of stories with the specified payload type.
     #[inline(always)]

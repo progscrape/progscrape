@@ -23,8 +23,8 @@ use crate::{
     serve_static_files,
 };
 use progscrape_application::{
-    PersistError, Shard, Storage, StorageWriter, Story, StoryEvaluator, StoryIdentifier,
-    StoryIndex, StoryQuery, StoryRender, StoryScore, TagSet,
+    PersistError, Shard, Story, StoryEvaluator, StoryIdentifier, StoryIndex, StoryQuery,
+    StoryRender, StoryScore, TagSet,
 };
 use progscrape_scrapers::{
     ScrapeCollection, ScrapeSource, ScraperHttpResponseInput, ScraperHttpResult, StoryDate,
@@ -295,15 +295,15 @@ fn render_stories<'a, S: 'a>(iter: impl Iterator<Item = &'a Story<S>>) -> Vec<St
 }
 
 async fn now(global: &Index<StoryIndex>) -> Result<StoryDate, PersistError> {
-    global.storage.read().await.most_recent_story()
+    global.most_recent_story().await
 }
 
 async fn hot_set(
     now: StoryDate,
-    global: &Index<StoryIndex>,
+    index: &Index<StoryIndex>,
     eval: &StoryEvaluator,
 ) -> Result<Vec<Story<Shard>>, PersistError> {
-    let mut hot_set = global.storage.read().await.query_frontpage_hot_set(500)?;
+    let mut hot_set = index.fetch(StoryQuery::FrontPage(), 500).await?;
     eval.scorer.resort_stories(now, &mut hot_set);
     Ok(hot_set)
 }
@@ -357,10 +357,11 @@ async fn root(
     let now = now(&index).await?;
     let stories = if let Some(search) = query.get("search") {
         index
-            .storage
-            .read()
-            .await
-            .query_search(&resources.story_evaluator().tagger, search, 30)?
+            .fetch(
+                StoryQuery::from_search(&resources.story_evaluator().tagger, search),
+                30,
+            )
+            .await?
     } else {
         let mut vec = hot_set(now, &index, &resources.story_evaluator()).await?;
         vec.truncate(30);
@@ -476,11 +477,11 @@ async fn admin_cron_scrape(
 
     for result in scrapes.values() {
         match result {
-            ScraperHttpResult::Ok(_, scrapes) => index
-                .storage
-                .write()
-                .await
-                .insert_scrapes(&resources.story_evaluator(), scrapes.iter().cloned())?,
+            ScraperHttpResult::Ok(_, scrapes) => {
+                index
+                    .insert_scrapes(resources.story_evaluator(), scrapes.clone().into_iter())
+                    .await?
+            }
             ScraperHttpResult::Err(..) => {}
         }
     }
@@ -590,7 +591,7 @@ async fn admin_index_status(
         "admin/status.html",
         context!(
             user,
-            storage = index.storage.read().await.story_count()?,
+            storage = index.story_count().await?,
             config = resources.config()
         ),
     )
@@ -635,11 +636,7 @@ async fn admin_index_frontpage_scoretuner(
         score_detail: Vec<(StoryScore, f32)>,
     }
 
-    let stories: Vec<Story<TypedScrape>> = index
-        .storage
-        .read()
-        .await
-        .fetch(StoryQuery::FrontPage(), 500)?;
+    let stories: Vec<Story<TypedScrape>> = index.fetch(StoryQuery::FrontPage(), 500).await?;
     let mut story_details = vec![];
     let eval = resources.story_evaluator();
 
@@ -675,13 +672,19 @@ async fn admin_status_shard(
     sort: Query<HashMap<String, String>>,
 ) -> Result<Html<String>, WebError> {
     let sort = sort.get("sort").cloned().unwrap_or_default();
+    let shard = Shard::from_string(&shard).expect("Failed to parse shard");
     render(
         &resources,
         "admin/shard.html",
         context!(
             user,
-            shard = shard.clone(),
-            stories = render_stories(index.storage.read().await.stories_by_shard(&shard)?.iter(),),
+            shard = shard,
+            stories = render_stories(
+                index
+                    .fetch::<Shard>(StoryQuery::ByShard(shard), usize::MAX)
+                    .await?
+                    .iter()
+            ),
             sort: String = sort
         ),
     )
@@ -698,10 +701,8 @@ async fn admin_status_story(
     let now = now(&index).await?;
     tracing::info!("Loading story = {:?}", id);
     let story = index
-        .storage
-        .read()
-        .await
-        .get_story(&id)?
+        .fetch_one(StoryQuery::ById(id))
+        .await?
         .ok_or(WebError::NotFound)?;
     let scrapes = ScrapeCollection::new_from_iter(story.scrapes.clone().into_values());
     let extract = scrapes.extract(&resources.story_evaluator().extractor);
