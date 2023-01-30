@@ -32,3 +32,5 @@ FROM rust:1.67.0
 ARG TARGETPLATFORM
 COPY --from=builder /output/$TARGETPLATFORM/progscrape-web /usr/local/bin/
 COPY --from=builder /build/resource/ /var/progscrape/resource/
+EXPOSE 3000
+VOLUME /var/progscrape/data
