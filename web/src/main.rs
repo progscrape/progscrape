@@ -1,5 +1,6 @@
 use std::fs::File;
 use std::io::BufReader;
+use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -48,6 +49,9 @@ pub enum Command {
 
         #[arg(long, value_name = "DIR", value_hint = clap::ValueHint::DirPath, help = "Root path")]
         root: Option<PathBuf>,
+
+        #[arg(long, value_name = "ADDRESS", help = "Listen port")]
+        listen_port: Option<String>,
 
         #[arg(
             long,
@@ -110,12 +114,16 @@ async fn go() -> Result<(), WebError> {
             persist_path,
             auth_header,
             fixed_auth_value,
+            listen_port,
         } => {
             let persist_path = persist_path
                 .unwrap_or("target/index".into())
                 .canonicalize()?;
             let index = Index::initialize_with_persistence(persist_path)?;
             let root_path = root.unwrap_or(".".into()).canonicalize()?;
+            let listen_port = listen_port
+                .map(|s| s.parse().expect("Failed to parse socket address"))
+                .unwrap_or(SocketAddr::from(([127, 0, 0, 1], 3000)));
 
             let auth = match (auth_header, fixed_auth_value) {
                 (Some(auth_header), None) => Auth::FromHeader(auth_header),
@@ -127,7 +135,7 @@ async fn go() -> Result<(), WebError> {
                     ));
                 }
             };
-            web::start_server(&root_path, index, auth).await?;
+            web::start_server(&root_path, listen_port, index, auth).await?;
         }
         Command::Initialize { root, persist_path } => {
             if persist_path.exists() {

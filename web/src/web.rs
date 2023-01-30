@@ -237,6 +237,7 @@ fn start_cron(
 
 pub async fn start_server(
     root_path: &std::path::Path,
+    address: SocketAddr,
     index: Index<StoryIndex>,
     auth: Auth,
 ) -> Result<(), WebError> {
@@ -271,8 +272,7 @@ pub async fn start_server(
         );
     // run our app with hyper
     // `axum::Server` is a re-export of `hyper::Server`
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-    tracing::info!("listening on http://{}", addr);
+    tracing::info!("listening on http://{}", address);
 
     start_cron(
         cron.clone(),
@@ -281,7 +281,7 @@ pub async fn start_server(
         app.clone(),
     );
 
-    axum::Server::bind(&addr)
+    axum::Server::bind(&address)
         .serve(app.into_make_service())
         .await?;
 
