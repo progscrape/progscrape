@@ -1,0 +1,43 @@
+services:
+  web:
+    image: mmastrac/progscrape:latest
+    ports:
+      - 3000
+    networks:
+      full-internet:
+        aliases:
+          - server
+    environment:
+      - SERVER_LOG=debug,tantivy=info,hyper::proto=info
+    command: /usr/local/bin/progscrape-web serve --listen-port 0.0.0.0:3000 --persist-path /var/progscrape/index/db --root /var/progscrape/
+    volumes:
+      - type: volume
+        source: index-data
+        target: /var/progscrape/index
+        volume:
+          nocopy: true
+  cloudflare:
+    image: cloudflare/cloudflared:latest
+    environment:
+      - TUNNEL_ORIGIN_CERT=/run/secrets/cloudflare-cert
+      - TUNNEL_CRED_FILE=/run/secrets/cloudflare-tunnel
+      - TUNNEL_URL=http://server:3000/
+    command: tunnel --no-autoupdate run progscrape-rpi-4
+    secrets:
+      - cloudflare-cert
+      - cloudflare-tunnel
+    networks:
+      full-internet:
+
+secrets:
+  cloudflare-cert:
+    file: ".cloudflared/cert.pem"
+  cloudflare-tunnel:
+    file: ".cloudflared/tunnel.json"
+
+networks:
+  full-internet: {}
+
+volumes:
+  index-data:
+
