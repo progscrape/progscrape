@@ -122,7 +122,14 @@ fn import_legacy_2(root: &Path) -> Result<impl Iterator<Item = TypedScrape>, Leg
         let root: Value = serde_json::from_str(&json)?;
         let date = StoryDate::from_millis(root["date"].as_i64().ok_or(LegacyError::MissingField)?)
             .ok_or(LegacyError::MissingField)?;
-        let title = unescape_entities(root["title"].as_str().ok_or(LegacyError::MissingField)?);
+        let mut title = unescape_entities(root["title"].as_str().ok_or(LegacyError::MissingField)?);
+        for error in ["AT&T;", "P&G;", "S&P;", "Q&A;", "H&R;", "AT&To;", "C&C;"] {
+            if title.contains(error) {
+                let old_title = title;
+                title = old_title.replace(error, &error[..error.len() - 1]);
+                tracing::info!("Fixed up title: {} -> {}", old_title, title);
+            }
+        }
         let mut url = unescape_entities(root["url"].as_str().ok_or(LegacyError::MissingField)?);
         if url.contains("&amp") {
             url = url
