@@ -437,14 +437,19 @@ impl StoryIndex {
         max: usize,
     ) -> Result<Vec<(Shard, DocAddress)>, PersistError> {
         let host_field = self.schema.host_field;
-        let phrase = domain
-            .split(|c: char| !c.is_alphanumeric())
-            .map(|s| Term::from_field_text(host_field, s))
-            .enumerate()
-            .collect_vec();
-        let query = PhraseQuery::new_with_offset(phrase);
-        tracing::debug!("Domain phrase query = {:?}", query);
-        self.fetch_search_query(query, max)
+        // TODO: We probably don't want to re-parse this as a URL, but it's the fastest way to normalize it
+        if let Some(url) = StoryUrl::parse(format!("http://{}", domain)) {
+            let phrase = url
+                .host()
+                .split(|c: char| !c.is_alphanumeric())
+                .map(|s| Term::from_field_text(host_field, s))
+                .collect_vec();
+            let query = PhraseQuery::new(phrase);
+            tracing::debug!("Domain phrase query = {:?}", query);
+            self.fetch_search_query(query, max)
+        } else {
+            Err(PersistError::UnexpectedError("Invalid domain".into()))
+        }
     }
 
     fn fetch_text_search(
@@ -889,6 +894,7 @@ mod test {
     #[case("http://www.att.com", "New AT&T plans", &["at&t", "atandt", "att.com"])]
     #[case("http://example.com", "I love Go", &["golang", "love"])]
     #[case("http://example.com", "I love C", &["clanguage", "love"])]
+    #[case("http://www3.xyz.imperial.co.uk", "Why England is England", &["england", "www3.xyz.imperial.co.uk", "xyz.imperial.co.uk",  "co.uk"])]
     // TODO: This case doesn't work yet
     // #[case("http://youtube.com/?v=123", "A tutorial", &["video", "youtube", "tutorial"])]
     fn test_findable(
@@ -907,10 +913,11 @@ mod test {
 
         for term in search_terms {
             let search = index.fetch_count(StoryQuery::from_search(&eval.tagger, term), 10)?;
+            let doc = index.get_story_doc(&StoryIdentifier::new(date, url.normalization()))?;
             assert_eq!(
                 1, search,
-                "Expected one search result when querying '{}' for title={} url={}",
-                term, title, url
+                "Expected one search result when querying '{}' for title={} url={} doc={:?}",
+                term, title, url, doc
             );
         }
 

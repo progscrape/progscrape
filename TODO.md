@@ -11,20 +11,20 @@ TODO:
  - [ ] Dump scrapes from SQLite into GitHub as backup solution
  - [ ] Dump existing index plus old docs to backups
  - [ ] Ensure we check one shard back for clustering if not found in current shard
- - [ ] Reverse order for domain segments so we can do parent domain lookup (or use a different phrase query)
 
 Maybe:
  - [ ] Metrics?
 
 Done:
- - [ ] Lobsters scraper
- - [ ] Cron
- - [ ] Refactor ScrapeData common stuff
- - [ ] Reddit position by subreddit 
- - [ ] Tagging
- - [ ] Hook up search
- - [ ] Comment links
- - [ ] Remove www. prefix on host
- - [ ] Use Instant/Duration for cron
- - [ ] Hook up scrape to cron
- - [ ] Score tweaking interface
+ - [X] Lobsters scraper
+ - [X] Cron
+ - [X] Refactor ScrapeData common stuff
+ - [X] Reddit position by subreddit 
+ - [X] Tagging
+ - [X] Hook up search
+ - [X] Comment links
+ - [X] Remove www. prefix on host
+ - [X] Use Instant/Duration for cron
+ - [X] Hook up scrape to cron
+ - [X] Score tweaking interface
+ - [X] Reverse order for domain segments so we can do parent domain lookup (or use a different phrase query)
