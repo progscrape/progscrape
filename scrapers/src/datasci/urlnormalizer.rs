@@ -62,8 +62,10 @@ impl<'a> PartialEq for EscapedCompareToken<'a> {
 }
 
 lazy_static! {
+    /// Regular expression that trims common www- and mobile-style prefixes. From an analysis of the existing scrape dump, we have
+    /// patterns like: www, www1, www-03, www-psych, www-refresh, m, mobile, etc.
     pub static ref WWW_PREFIX: Regex =
-        Regex::new("\\Awww?[0-9]*\\.").expect("Failed to parse regular expression");
+        Regex::new("\\A(www?[0-9]*|m|mobile)(-[a-z0-9]{1,3})?\\.").expect("Failed to parse regular expression");
     pub static ref QUERY_PARAM_REGEX: Regex =
         Regex::new(&IGNORED_QUERY_PARAMS.join("|")).expect("Failed to parse regular expression");
     pub static ref TRIM_EXTENSION_REGEX: Regex =
@@ -182,6 +184,9 @@ mod test {
     #[case("http://www1.example.com", "example.com")]
     #[case("http://ww1.example.com", "example.com")]
     #[case("http://test.www.example.com", "test.www.example.com")]
+    #[case("http://www-03.example.com", "example.com")]
+    #[case("http://m.example.com", "example.com")]
+    #[case("http://mobile.example.com", "example.com")]
     fn test_host_normalization(#[case] a: &str, #[case] b: &str) {
         assert_eq!(url_normalized_host(&Url::parse(a).expect("url")), Some(b));
     }
