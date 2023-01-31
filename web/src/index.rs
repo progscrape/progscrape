@@ -4,8 +4,8 @@ use std::{
 };
 
 use progscrape_application::{
-    PersistError, PersistLocation, Storage, StorageFetch, StorageSummary, StorageWriter, Story,
-    StoryEvaluator, StoryIndex, StoryQuery, StoryScrapePayload,
+    PersistError, PersistLocation, Shard, Storage, StorageFetch, StorageSummary, StorageWriter,
+    Story, StoryEvaluator, StoryIndex, StoryQuery, StoryScrapePayload,
 };
 use progscrape_scrapers::{StoryDate, TypedScrape};
 
@@ -13,12 +13,14 @@ use crate::web::WebError;
 
 pub struct Index<S: StorageWriter> {
     pub storage: Arc<RwLock<S>>,
+    pub hot_set: Arc<RwLock<Vec<Story<Shard>>>>,
 }
 
 impl<S: StorageWriter> Clone for Index<S> {
     fn clone(&self) -> Self {
         Self {
             storage: self.storage.clone(),
+            hot_set: self.hot_set.clone(),
         }
     }
 }
@@ -52,9 +54,22 @@ impl Index<StoryIndex> {
         path: P,
     ) -> Result<Index<StoryIndex>, WebError> {
         let index = StoryIndex::new(PersistLocation::Path(path.as_ref().to_owned()))?;
+        let hot_set = index.fetch(StoryQuery::FrontPage(), 500)?;
         Ok(Index {
             storage: Arc::new(RwLock::new(index)),
+            hot_set: Arc::new(RwLock::new(hot_set)),
         })
+    }
+
+    pub async fn refresh_hot_set(&self) -> Result<(), PersistError> {
+        let v = self.fetch(StoryQuery::FrontPage(), 500).await?;
+        *self.hot_set.write().expect("Failed to lock hot set") = v.clone();
+        Ok(())
+    }
+
+    pub async fn hot_set(&self) -> Result<Vec<Story<Shard>>, PersistError> {
+        let v = self.hot_set.read().expect("Failed to lock hot set").clone();
+        Ok(v)
     }
 
     pub async fn insert_scrapes<I: Iterator<Item = TypedScrape> + Send + 'static>(

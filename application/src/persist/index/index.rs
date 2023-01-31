@@ -31,6 +31,7 @@ struct IndexCache {
     location: PersistLocation,
     range: ShardRange,
     schema: StorySchema,
+    most_recent_story: Option<StoryDate>,
 }
 
 impl IndexCache {
@@ -107,6 +108,7 @@ impl StoryIndex {
                 location,
                 range,
                 schema: schema.clone(),
+                most_recent_story: None,
             })),
             scrape_db,
             schema,
@@ -172,6 +174,10 @@ impl StoryIndex {
                 shard.commit_writer(writer)?;
             }
             timer_end!(commit_start, "Committed {} writer(s).", writer_count);
+            self.index_cache
+                .write()
+                .expect("Poisoned")
+                .most_recent_story = None;
         } else {
             // We'll just have to do our best here...
             for mut writer in writers.into_values() {
@@ -587,10 +593,18 @@ impl StorageFetch<TypedScrape> for StoryIndex {
 
 impl Storage for StoryIndex {
     fn most_recent_story(&self) -> Result<StoryDate, PersistError> {
+        if let Some(most_recent_story) =
+            self.index_cache.read().expect("Poisoned").most_recent_story
+        {
+            return Ok(most_recent_story);
+        }
+
         if let Some(max) = self.shards().iterate(ShardOrder::NewestFirst).next() {
             let shard = self.get_shard(max)?;
             let index = shard.read().expect("Poisoned");
-            Ok(index.most_recent_story()?)
+            let result = index.most_recent_story()?;
+            (*self.index_cache.write().expect("Poisoned")).most_recent_story = Some(result);
+            Ok(result)
         } else {
             Ok(StoryDate::MIN)
         }

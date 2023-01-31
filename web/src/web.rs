@@ -303,7 +303,7 @@ async fn hot_set(
     index: &Index<StoryIndex>,
     eval: &StoryEvaluator,
 ) -> Result<Vec<Story<Shard>>, PersistError> {
-    let mut hot_set = index.fetch(StoryQuery::FrontPage(), 500).await?;
+    let mut hot_set = index.hot_set().await?;
     eval.scorer.resort_stories(now, &mut hot_set);
     Ok(hot_set)
 }
@@ -433,8 +433,11 @@ async fn admin_cron_post(
 }
 
 async fn admin_cron_refresh(
-    State(AdminState { resources, .. }): State<AdminState>,
+    State(AdminState {
+        resources, index, ..
+    }): State<AdminState>,
 ) -> Result<Html<String>, WebError> {
+    index.refresh_hot_set().await?;
     render(
         &resources,
         "admin/cron_refresh.html",
