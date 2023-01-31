@@ -1,7 +1,7 @@
 use itertools::Itertools;
 
 use tantivy::collector::TopDocs;
-use tantivy::query::{AllQuery, PhraseQuery, Query, TermQuery};
+use tantivy::query::{AllQuery, BooleanQuery, Occur, PhraseQuery, Query, TermQuery};
 use tantivy::{schema::*, DocAddress, IndexWriter, Searcher};
 
 use progscrape_scrapers::{ScrapeCollection, StoryDate, StoryUrl, TypedScrape};
@@ -345,10 +345,19 @@ impl StoryIndex {
 
     fn get_story_doc(
         &self,
-        index: &StoryIndexShard,
-        doc_address: DocAddress,
-    ) -> Result<NamedFieldDocument, PersistError> {
-        index.doc_fields(doc_address)
+        id: &StoryIdentifier,
+    ) -> Result<Option<NamedFieldDocument>, PersistError> {
+        let shard = Shard::from_year_month(id.year(), id.month());
+        let id = self
+            .with_searcher(shard, self.fetch_by_id(&id))??
+            .first()
+            .map(Clone::clone);
+        if let Some((_, doc_address)) = id {
+            let res = self.with_index(shard, |_, index| index.doc_fields(doc_address))??;
+            Ok(Some(res))
+        } else {
+            Ok(None)
+        }
     }
 
     fn fetch_by_segment(
@@ -443,10 +452,18 @@ impl StoryIndex {
         search: &str,
         max: usize,
     ) -> Result<Vec<(Shard, DocAddress)>, PersistError> {
-        let query = TermQuery::new(
+        let query1 = TermQuery::new(
             Term::from_field_text(self.schema.title_field, search),
             IndexRecordOption::Basic,
         );
+        let query2 = TermQuery::new(
+            Term::from_field_text(self.schema.tags_field, search),
+            IndexRecordOption::Basic,
+        );
+        let query = BooleanQuery::new(vec![
+            (Occur::Should, Box::new(query1)),
+            (Occur::Should, Box::new(query2)),
+        ]);
         tracing::debug!("Term query = {:?}", query);
         self.fetch_search_query(query, max)
     }
@@ -631,7 +648,9 @@ mod test {
     use std::path::Path;
 
     use super::*;
-    use progscrape_scrapers::{hacker_news::*, reddit::*, ScrapeSource, StoryUrl};
+    use progscrape_scrapers::{
+        hacker_news::*, lobsters::LobstersStory, reddit::*, ScrapeSource, StoryUrl,
+    };
 
     use crate::{story::TagSet, test::*, MemIndex};
     use rstest::*;
@@ -672,6 +691,18 @@ mod test {
         url: &StoryUrl,
     ) -> TypedScrape {
         RedditStory::new_subsource_with_defaults(id, subreddit, date, title, url.clone()).into()
+    }
+
+    fn lobsters_story(
+        id: &str,
+        date: StoryDate,
+        title: &str,
+        url: &StoryUrl,
+        tags: Vec<String>,
+    ) -> TypedScrape {
+        let mut lobsters = LobstersStory::new_with_defaults(id, date, title, url.clone());
+        lobsters.data.tags = tags;
+        lobsters.into()
     }
 
     #[rstest]
@@ -819,6 +850,35 @@ mod test {
         let front_page = index.fetch_count(StoryQuery::FrontPage(), 100)?;
         assert_eq!(30, front_page);
 
+        Ok(())
+    }
+
+    #[test]
+    fn test_findable_by_extracted_tag() -> Result<(), Box<dyn std::error::Error>> {
+        let mut index = StoryIndex::new(PersistLocation::Memory)?;
+        let eval = StoryEvaluator::new_for_test();
+
+        let url = StoryUrl::parse("http://example.com").expect("URL");
+        let date = StoryDate::year_month_day(2020, 1, 1).expect("Date failed");
+        let title = "Type inference";
+        let tags = vec!["plt".into()];
+        index.insert_scrapes(
+            &eval,
+            [lobsters_story("story1", date, title, &url, tags)].into_iter(),
+        )?;
+
+        let counts = index.story_count()?;
+        assert_eq!(counts.total, 1);
+
+        for term in ["plt"] {
+            let search = index.fetch_count(StoryQuery::from_search(&eval.tagger, term), 10)?;
+            let doc = index.get_story_doc(&StoryIdentifier::new(date, url.normalization()))?;
+            assert_eq!(
+                1, search,
+                "Expected one search result when querying '{}' for title={} url={} doc={:?}",
+                term, title, url, doc
+            );
+        }
         Ok(())
     }
 
