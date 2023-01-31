@@ -5,12 +5,14 @@ use progscrape_scrapers::{ScrapeCollection, StoryDate, TypedScrape};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+mod backerupper;
 mod db;
 mod index;
 mod memindex;
 mod scrapestore;
 mod shard;
 
+pub use backerupper::BackerUpper;
 pub use index::StoryIndex;
 pub use memindex::MemIndex;
 pub use shard::Shard;

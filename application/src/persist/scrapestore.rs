@@ -16,6 +16,14 @@ pub struct ScrapeStore {
     shards: RwLock<HashMap<Shard, Arc<DB>>>,
 }
 
+/// Summary information for a given scrape store, useful for debugging and determining if a scrape store has been modified.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ScrapeStoreStats {
+    pub earliest: StoryDate,
+    pub latest: StoryDate,
+    pub count: usize,
+}
+
 #[derive(Default, Serialize, Deserialize)]
 struct ScrapeCacheEntry {
     date: StoryDate,
@@ -117,6 +125,42 @@ impl ScrapeStore {
         }
         Ok(map)
     }
+
+    /// Fetch all the scrapes, passing them to a given callback (or the error to an error callback).
+    pub fn fetch_all<F: FnMut(TypedScrape) -> Result<(), PersistError>, FE: FnMut(PersistError)>(
+        &self,
+        shard: Shard,
+        mut f: F,
+        mut fe: FE,
+    ) -> Result<(), PersistError> {
+        let db = self.open_shard(shard)?;
+        let sql = format!("select * from {}", DB::table_for::<ScrapeCacheEntry>());
+        db.query_raw_callback(&sql, |scrape: ScrapeCacheEntry| {
+            match serde_json::from_str(&scrape.json) {
+                Ok(typed_scrape) => f(typed_scrape)?,
+                Err(e) => fe(e.into()),
+            }
+            Ok(())
+        })?;
+        Ok(())
+    }
+
+    /// Get the stats for a given shard.
+    pub fn stats(&self, shard: Shard) -> Result<ScrapeStoreStats, PersistError> {
+        let db = self.open_shard(shard)?;
+        // Fetch the stats object from a virtual view of that table
+        let sql = format!(
+            "select count(*) count, coalesce(min(date), 0) as earliest, coalesce(max(date), 0) as latest from {}",
+            DB::table_for::<ScrapeCacheEntry>()
+        );
+        if let Some(stats) = db.query_raw::<ScrapeStoreStats>(&sql)?.into_iter().next() {
+            Ok(stats)
+        } else {
+            Err(PersistError::UnexpectedError(
+                "Failed to fetch single row for query".into(),
+            ))
+        }
+    }
 }
 
 #[cfg(test)]
@@ -132,8 +176,14 @@ mod test {
     #[rstest]
     fn test_insert(_enable_tracing: &bool) -> Result<(), Box<dyn std::error::Error>> {
         let store = ScrapeStore::new(PersistLocation::Memory)?;
+
         let legacy = progscrape_scrapers::import_legacy(Path::new(".."))?;
         let first = &legacy[0..100];
+
+        // No items
+        let stats = store.stats(Shard::from_date_time(first[0].date))?;
+        assert_eq!(stats.count, 0);
+
         for scrape in first {
             store.insert_scrape(scrape)?;
         }
@@ -143,6 +193,11 @@ mod test {
                 .unwrap();
             assert_eq!(scrape.id, loaded_scrape.id);
         }
+
+        // At least one item
+        let stats = store.stats(Shard::from_date_time(first[0].date))?;
+        assert!(stats.count >= 1);
+
         Ok(())
     }
 }

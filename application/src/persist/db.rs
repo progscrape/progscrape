@@ -1,7 +1,9 @@
 use std::{path::Path, sync::Mutex};
 
 use super::*;
+use itertools::Itertools;
 use serde::{de::DeserializeOwned, Serialize};
+
 
 pub struct DB {
     connection: Mutex<rusqlite::Connection>,
@@ -14,7 +16,7 @@ impl DB {
         Ok(Self { connection })
     }
 
-    fn table_for<T: Serialize>() -> &'static str {
+    pub fn table_for<T: Serialize>() -> &'static str {
         std::any::type_name::<T>().rsplit_once(':').unwrap().1
     }
 
@@ -216,6 +218,45 @@ impl DB {
             .execute_batch(sql)?;
         Ok(())
     }
+
+    pub fn query_raw<T: Serialize + DeserializeOwned>(
+        &self,
+        sql: &str,
+    ) -> Result<Vec<T>, PersistError> {
+        let mut v = vec![];
+        self.query_raw_callback(sql, |x| {
+            v.push(x);
+            Ok(())
+        })?;
+        Ok(v)
+    }
+
+    pub fn query_raw_callback<
+        T: Serialize + DeserializeOwned,
+        F: FnMut(T) -> Result<(), PersistError>,
+    >(
+        &self,
+        sql: &str,
+        mut f: F,
+    ) -> Result<(), PersistError> {
+        let db = self.connection.lock().expect("Poisoned");
+        let mut stmt = db.prepare(sql)?;
+        let mut res = stmt.query([])?;
+        loop {
+            match res.next() {
+                Ok(Some(row)) => {
+                    f(serde_rusqlite::from_row::<T>(row)?)?;
+                }
+                Ok(None) => {
+                    break;
+                }
+                x @ Err(_) => {
+                    x?;
+                }
+            }
+        }
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -228,6 +269,22 @@ mod test {
         id: String,
         integer: u32,
         string: String,
+    }
+
+    #[test]
+    fn load_raw() {
+        let db = DB::open(":memory:").unwrap();
+        let out = db
+            .query_raw::<TestSerialize>("select 'x' as id, 1 as integer, 'y' as string")
+            .unwrap();
+        assert_eq!(
+            out[0],
+            TestSerialize {
+                id: "x".into(),
+                integer: 1,
+                string: "y".into()
+            }
+        );
     }
 
     #[test]
