@@ -239,7 +239,8 @@ impl StoryTagger {
         }
     }
 
-    /// Identify any symbol tags in the search term and report
+    /// Identify any tags in the search term and return the appropriate search term to use. If the search term is a symbol,
+    /// we must use its internal version (ie: cplusplus -> c++, c -> clanguage).
     pub fn check_tag_search(&self, search: &str) -> Option<&str> {
         let lowercase = search.to_lowercase();
         if let Some(idx) = self.symbols.get(&lowercase) {
@@ -253,6 +254,21 @@ impl StoryTagger {
         }
 
         None
+    }
+
+    /// Given an iterator of raw, indexed tags, output an iterator that is suitable for display purposes (ie: cplusplus -> c++).
+    pub fn make_display_tags<'a, S: AsRef<str>, I: IntoIterator<Item = S> + 'a>(
+        &'a self,
+        iter: I,
+    ) -> impl Iterator<Item = String> + 'a {
+        iter.into_iter().map(|s| {
+            let lowercase = s.as_ref().to_lowercase();
+            if let Some(backward) = self.backward.get(&lowercase) {
+                backward.clone()
+            } else {
+                lowercase
+            }
+        })
     }
 
     pub fn tag_details() -> Vec<(String, TagSet)> {
@@ -271,6 +287,7 @@ impl StoryTagger {
 
 #[cfg(test)]
 pub(crate) mod test {
+    use itertools::Itertools;
     use rstest::*;
     use serde_json::json;
 
@@ -311,6 +328,18 @@ pub(crate) mod test {
         StoryTagger::new(&tagger_config)
     }
 
+    /// Ensure that symbol-like tags are reverse-lookup'd properly for display purposes.
+    #[rstest]
+    fn test_display_tags(tagger: StoryTagger) {
+        assert_eq!(
+            tagger
+                .make_display_tags(["atandt", "cplusplus", "clanguage", "rust"])
+                .collect_vec(),
+            vec!["at&t", "c++", "c", "rust"]
+        );
+    }
+
+    /// Esnure that we can detect when symbol-like tags are passed to a search function.
     #[rstest]
     #[case("cplusplus", &["c++", "cplusplus"])]
     #[case("clanguage", &["c", "clanguage"])]

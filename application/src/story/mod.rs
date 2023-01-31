@@ -103,9 +103,9 @@ impl<S> Story<S> {
         self.date.cmp(&other.date)
     }
 
-    pub fn render(&self, order: usize) -> StoryRender {
+    pub fn render(&self, tagger: &StoryTagger, order: usize) -> StoryRender {
         let mut tags = vec![self.url.host().to_owned()];
-        tags.extend(self.tags.dump());
+        tags.extend(tagger.make_display_tags(self.tags.dump()));
         let mut comment_links = HashMap::new();
         for (id, _) in &self.scrapes {
             comment_links.insert(id.source.into_str().to_string(), id.comments_url());

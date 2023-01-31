@@ -288,9 +288,12 @@ pub async fn start_server(
     Ok(())
 }
 
-fn render_stories<'a, S: 'a>(iter: impl Iterator<Item = &'a Story<S>>) -> Vec<StoryRender> {
+fn render_stories<'a, S: 'a>(
+    eval: &StoryEvaluator,
+    iter: impl Iterator<Item = &'a Story<S>>,
+) -> Vec<StoryRender> {
     iter.enumerate()
-        .map(|(n, x)| x.render(n))
+        .map(|(n, x)| x.render(&eval.tagger, n))
         .collect::<Vec<_>>()
 }
 
@@ -367,7 +370,7 @@ async fn root(
         vec.truncate(30);
         vec
     };
-    let stories = render_stories(stories.iter());
+    let stories = render_stories(&resources.story_evaluator(), stories.iter());
     let top_tags = vec![
         "github.com",
         "rust",
@@ -616,6 +619,7 @@ async fn admin_status_frontpage(
             now,
             user,
             stories = render_stories(
+                &resources.story_evaluator(),
                 hot_set(now, &index, &resources.story_evaluator())
                     .await?
                     .iter(),
@@ -651,7 +655,7 @@ async fn admin_index_frontpage_scoretuner(
         eval.tagger.tag(extracted.title(), &mut tags);
         story.tags = tags;
         story_details.push(StoryDetail {
-            story: story.render(0),
+            story: story.render(&eval.tagger, 0),
             score_detail: eval.scorer.score_detail(&extracted, now),
         });
     }
@@ -683,6 +687,7 @@ async fn admin_status_shard(
             user,
             shard = shard,
             stories = render_stories(
+                &resources.story_evaluator(),
                 index
                     .fetch::<Shard>(StoryQuery::ByShard(shard), usize::MAX)
                     .await?
@@ -708,11 +713,9 @@ async fn admin_status_story(
         .await?
         .ok_or(WebError::NotFound)?;
     let scrapes = ScrapeCollection::new_from_iter(story.scrapes.clone().into_values());
-    let extract = scrapes.extract(&resources.story_evaluator().extractor);
-    let score_details = resources
-        .story_evaluator()
-        .scorer
-        .score_detail(&extract, now);
+    let eval = resources.story_evaluator();
+    let extract = scrapes.extract(&eval.extractor);
+    let score_details = eval.scorer.score_detail(&extract, now);
     let tags = Default::default(); // _details = resources.story_evaluator().tagger.tag_detail(&story);
 
     render(
@@ -721,7 +724,7 @@ async fn admin_status_story(
         context!(
             now,
             user,
-            story = story.render(0),
+            story = story.render(&eval.tagger, 0),
             scrapes = scrapes.scrapes,
             tags: HashMap<String, Vec<String>>,
             score = score_details
