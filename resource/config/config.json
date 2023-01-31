@@ -148,7 +148,8 @@
                 "ford(s)": {},
                 "bosch": {},
                 "fiat": {},
-                "twilio": {}
+                "twilio": {},
+                "cloudflare": {}
             },
             "org": {
                 "amd": {},
