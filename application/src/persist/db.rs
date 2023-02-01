@@ -4,7 +4,6 @@ use super::*;
 use itertools::Itertools;
 use serde::{de::DeserializeOwned, Serialize};
 
-
 pub struct DB {
     connection: Mutex<rusqlite::Connection>,
 }

@@ -13,8 +13,8 @@ use std::time::Duration;
 use crate::persist::index::indexshard::{StoryIndexShard, StoryLookup, StoryLookupId};
 use crate::persist::scrapestore::ScrapeStore;
 use crate::persist::shard::{ShardOrder, ShardRange};
-use crate::persist::{Shard, StorageFetch, StoryQuery};
-use crate::story::{StoryCollector, StoryTagger, TagSet};
+use crate::persist::{Shard, ShardSummary, StorageFetch, StoryQuery};
+use crate::story::{StoryCollector, TagSet};
 use crate::{
     timer_end, timer_start, MemIndex, PersistError, PersistLocation, Storage, StorageSummary,
     StorageWriter, Story, StoryEvaluator, StoryIdentifier,
@@ -124,6 +124,11 @@ impl StoryIndex {
     fn get_shard(&self, shard: Shard) -> Result<Arc<RwLock<StoryIndexShard>>, PersistError> {
         let mut lock = self.index_cache.write().expect("Poisoned");
         lock.get_shard(shard)
+    }
+
+    /// Borrow the scrape database for a period of time.
+    pub fn with_scrapes<F: FnOnce(&ScrapeStore) -> T, T>(&self, f: F) -> T {
+        f(&self.scrape_db)
     }
 
     #[inline(always)]
@@ -632,13 +637,25 @@ impl Storage for StoryIndex {
         }
     }
 
+    fn shard_range(&self) -> Result<ShardRange, PersistError> {
+        Ok(self.shards())
+    }
+
     fn story_count(&self) -> Result<StorageSummary, PersistError> {
         let mut summary = StorageSummary::default();
         for shard in self.shards().iterate(ShardOrder::OldestFirst) {
             let index = self.get_shard(shard)?;
             let subtotal = index.read().expect("Poisoned").total_docs()?;
-            summary.by_shard.push((shard.to_string(), subtotal));
-            summary.total += subtotal;
+            let scrape_subtotal = self.scrape_db.stats(shard)?.count;
+            summary.by_shard.push((
+                shard.to_string(),
+                ShardSummary {
+                    story_count: subtotal,
+                    scrape_count: scrape_subtotal,
+                },
+            ));
+            summary.total.story_count += subtotal;
+            summary.total.scrape_count += scrape_subtotal;
         }
         Ok(summary)
     }
@@ -757,7 +774,7 @@ mod test {
         )?;
 
         let counts = index.story_count()?;
-        assert_eq!(counts.total, 1);
+        assert_eq!(counts.total.story_count, 1);
 
         index.insert_scrapes(
             &eval,
@@ -765,7 +782,7 @@ mod test {
         )?;
 
         let counts = index.story_count()?;
-        assert_eq!(counts.total, 1);
+        assert_eq!(counts.total.story_count, 1);
 
         let search = index.fetch::<Shard>(StoryQuery::from_search(&eval.tagger, "rust"), 10)?;
         assert_eq!(search.len(), 1);
@@ -803,7 +820,7 @@ mod test {
         index.insert_scrape_collections(&eval, memindex.get_all_stories())?;
 
         let counts = index.story_count()?;
-        assert_eq!(counts.total, 1);
+        assert_eq!(counts.total.story_count, 1);
 
         let search = index.fetch::<Shard>(StoryQuery::from_search(&eval.tagger, "rust"), 10)?;
         assert_eq!(search.len(), 1);
@@ -873,7 +890,7 @@ mod test {
         )?;
 
         let counts = index.story_count()?;
-        assert_eq!(counts.total, 1);
+        assert_eq!(counts.total.story_count, 1);
 
         for term in ["plt"] {
             let search = index.fetch_count(StoryQuery::from_search(&eval.tagger, term), 10)?;
@@ -909,7 +926,7 @@ mod test {
         index.insert_scrapes(&eval, [hn_story("story1", date, title, &url)].into_iter())?;
 
         let counts = index.story_count()?;
-        assert_eq!(counts.total, 1);
+        assert_eq!(counts.total.story_count, 1);
 
         for term in search_terms {
             let search = index.fetch_count(StoryQuery::from_search(&eval.tagger, term), 10)?;

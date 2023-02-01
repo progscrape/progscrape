@@ -7,7 +7,7 @@ use std::time::Instant;
 use clap::{Parser, Subcommand};
 use config::Config;
 use progscrape_application::{
-    MemIndex, PersistLocation, Storage, StorageWriter, StoryEvaluator, StoryIndex,
+    BackerUpper, MemIndex, PersistLocation, Storage, StorageWriter, StoryEvaluator, StoryIndex,
 };
 use tracing_subscriber::filter::LevelFilter;
 use tracing_subscriber::EnvFilter;
@@ -43,6 +43,13 @@ struct Args {
 
 #[derive(Subcommand, Debug)]
 pub enum Command {
+    Backup {
+        #[arg(long, value_name = "DIR", value_hint = clap::ValueHint::DirPath, help = "Persistence path")]
+        persist_path: PathBuf,
+
+        #[arg(long, value_name = "DIR", value_hint = clap::ValueHint::DirPath, help = "Backup output path")]
+        backup_path: PathBuf,
+    },
     Serve {
         #[arg(long, value_name = "DIR", value_hint = clap::ValueHint::DirPath, help = "Persistence path")]
         persist_path: Option<PathBuf>,
@@ -109,6 +116,24 @@ async fn go() -> Result<(), WebError> {
     tracing::info!("Logging initialized");
 
     match args.command {
+        Command::Backup {
+            persist_path,
+            backup_path,
+        } => {
+            let index = Index::initialize_with_persistence(persist_path)?;
+            let backup = BackerUpper::new(backup_path);
+            let storage = index.storage.read().expect("Poisoned");
+            let shard_range = storage.shard_range()?;
+            let results = storage.with_scrapes(|scrapes| backup.backup_range(scrapes, shard_range));
+            for (shard, result) in results {
+                match result {
+                    Ok(res) => tracing::info!("Backed up shard {}: {:?}", shard.to_string(), res),
+                    Err(e) => {
+                        tracing::info!("Backed up shard {}: FAILED {:?}", shard.to_string(), e)
+                    }
+                }
+            }
+        }
         Command::Serve {
             root,
             persist_path,
@@ -171,7 +196,7 @@ async fn go() -> Result<(), WebError> {
             let count = index.story_count()?;
             tracing::info!("Shard   | Count");
             for (shard, count) in &count.by_shard {
-                tracing::info!("{} | {}", shard, count);
+                tracing::info!("{} | {}", shard, count.story_count);
             }
 
             tracing::info!(

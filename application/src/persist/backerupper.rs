@@ -4,10 +4,21 @@ use std::{
 };
 
 use progscrape_scrapers::StoryDate;
+use serde::{Deserialize, Serialize};
 
 use crate::{persist::scrapestore::ScrapeStoreStats, timer_end, timer_start, PersistError, Shard};
 
-use super::scrapestore::ScrapeStore;
+use super::{
+    scrapestore::ScrapeStore,
+    shard::{ShardOrder, ShardRange},
+};
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub enum BackupResult {
+    Empty,
+    NoChange,
+    Success(usize),
+}
 
 pub struct BackerUpper {
     path: PathBuf,
@@ -29,11 +40,11 @@ impl BackerUpper {
         &self,
         name: &str,
         shard: Shard,
-        scrapes: ScrapeStore,
-    ) -> Result<(), PersistError> {
+        scrapes: &ScrapeStore,
+    ) -> Result<BackupResult, PersistError> {
         let stats = scrapes.stats(shard)?;
         if stats.count == 0 {
-            return Ok(());
+            return Ok(BackupResult::Empty);
         }
 
         // Metadata read intentionally drops some errors - we'll intentionally do more work if it's corrupt
@@ -44,7 +55,7 @@ impl BackerUpper {
                 if let Ok(current_stats) = serde_json::from_reader(file).map_err(Self::trace_error)
                 {
                     if stats == current_stats {
-                        return Ok(());
+                        return Ok(BackupResult::NoChange);
                     }
                 }
             }
@@ -64,7 +75,7 @@ impl BackerUpper {
         let mut count = 0;
         scrapes.fetch_all(
             shard,
-            move |scrape| {
+            |scrape| {
                 count += 1;
                 earliest = earliest.min(scrape.date);
                 latest = latest.max(scrape.date);
@@ -105,7 +116,19 @@ impl BackerUpper {
             output.to_string_lossy()
         );
 
-        Ok(())
+        Ok(BackupResult::Success(count))
+    }
+
+    pub fn backup_range(
+        &self,
+        scrapes: &ScrapeStore,
+        shard_range: ShardRange,
+    ) -> Vec<(Shard, Result<BackupResult, PersistError>)> {
+        let mut v = vec![];
+        for shard in shard_range.iterate(ShardOrder::OldestFirst) {
+            v.push((shard, self.backup(&shard.to_string(), shard, scrapes)))
+        }
+        v
     }
 }
 
@@ -129,7 +152,7 @@ mod tests {
         }
 
         let backup = BackerUpper::new("/tmp/backup");
-        backup.backup("2015-01", Shard::from_year_month(2015, 1), store)?;
+        backup.backup("2015-01", Shard::from_year_month(2015, 1), &store)?;
 
         Ok(())
     }

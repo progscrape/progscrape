@@ -17,6 +17,8 @@ pub use index::StoryIndex;
 pub use memindex::MemIndex;
 pub use shard::Shard;
 
+use self::shard::ShardRange;
+
 #[derive(Error, Debug)]
 pub enum PersistError {
     #[error("SQLite error")]
@@ -38,9 +40,15 @@ pub enum PersistError {
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
+pub struct ShardSummary {
+    pub story_count: usize,
+    pub scrape_count: usize,
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct StorageSummary {
-    pub by_shard: Vec<(String, usize)>,
-    pub total: usize,
+    pub by_shard: Vec<(String, ShardSummary)>,
+    pub total: ShardSummary,
 }
 
 /// The type of story fetch to perform.
@@ -84,7 +92,11 @@ pub trait StorageFetch<S: StoryScrapePayload> {
 
 /// The underlying storage engine.
 pub trait Storage: Send + Sync {
+    /// Returns the most recent story date.
     fn most_recent_story(&self) -> Result<StoryDate, PersistError>;
+
+    /// Returns the range of shards for this index.
+    fn shard_range(&self) -> Result<ShardRange, PersistError>;
 
     /// Count the docs in this index, breaking it out by index segment.
     fn story_count(&self) -> Result<StorageSummary, PersistError>;
