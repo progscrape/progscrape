@@ -38,7 +38,7 @@ services:
       RUNNER_WORKDIR: /tmp/work
       RUNNER_SCOPE: 'repo'
       EPHEMERAL: 1
-      LABELS: linux,ARM64
+      LABELS: management,linux,ARM64
     entrypoint: sh -c 'RUNNER_TOKEN=`cat /var/run/secrets/github-access-token` /entrypoint.sh "./bin/Runner.Listener" "run" "--startuptype" "service"'
     secrets:
       - github-access-token
