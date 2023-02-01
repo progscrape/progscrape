@@ -5,7 +5,7 @@
  - [ ] Slashdot tags should use URL not title
  - [ ] Dump scrapes from SQLite into GitHub as backup solution
  - [ ] Dump existing index plus old docs to backups
- - [ ] Ensure we check one shard back for clustering if not found in current shard
+ - [ ] Ensure we check one shard back for clustering if not found in current shard (should be based on scrape date, however, mostly for inactive subreddits)
  - [ ] Determine why the score tuner isn't showing exactly the same results as the front page
  - [ ] Configure RPi4 for reliable hosting
 
