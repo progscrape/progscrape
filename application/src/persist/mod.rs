@@ -12,7 +12,7 @@ mod memindex;
 mod scrapestore;
 mod shard;
 
-pub use backerupper::BackerUpper;
+pub use backerupper::{BackerUpper, BackupResult};
 pub use index::StoryIndex;
 pub use memindex::MemIndex;
 pub use shard::Shard;

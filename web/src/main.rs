@@ -7,7 +7,7 @@ use std::time::Instant;
 use clap::{Parser, Subcommand};
 use config::Config;
 use progscrape_application::{
-    BackerUpper, MemIndex, PersistLocation, Storage, StorageWriter, StoryEvaluator, StoryIndex,
+    MemIndex, PersistLocation, Storage, StorageWriter, StoryEvaluator, StoryIndex,
 };
 use tracing_subscriber::filter::LevelFilter;
 use tracing_subscriber::EnvFilter;
@@ -53,6 +53,9 @@ pub enum Command {
     Serve {
         #[arg(long, value_name = "DIR", value_hint = clap::ValueHint::DirPath, help = "Persistence path")]
         persist_path: Option<PathBuf>,
+
+        #[arg(long, value_name = "DIR", value_hint = clap::ValueHint::DirPath, help = "Backup output path")]
+        backup_path: Option<PathBuf>,
 
         #[arg(long, value_name = "DIR", value_hint = clap::ValueHint::DirPath, help = "Root path")]
         root: Option<PathBuf>,
@@ -121,18 +124,7 @@ async fn go() -> Result<(), WebError> {
             backup_path,
         } => {
             let index = Index::initialize_with_persistence(persist_path)?;
-            let backup = BackerUpper::new(backup_path);
-            let storage = index.storage.read().expect("Poisoned");
-            let shard_range = storage.shard_range()?;
-            let results = storage.with_scrapes(|scrapes| backup.backup_range(scrapes, shard_range));
-            for (shard, result) in results {
-                match result {
-                    Ok(res) => tracing::info!("Backed up shard {}: {:?}", shard.to_string(), res),
-                    Err(e) => {
-                        tracing::info!("Backed up shard {}: FAILED {:?}", shard.to_string(), e)
-                    }
-                }
-            }
+            index.backup(&backup_path)?;
         }
         Command::Serve {
             root,
@@ -140,6 +132,7 @@ async fn go() -> Result<(), WebError> {
             auth_header,
             fixed_auth_value,
             listen_port,
+            backup_path,
         } => {
             let persist_path = persist_path
                 .unwrap_or("target/index".into())
@@ -160,7 +153,7 @@ async fn go() -> Result<(), WebError> {
                     ));
                 }
             };
-            web::start_server(&root_path, listen_port, index, auth).await?;
+            web::start_server(&root_path, backup_path, listen_port, index, auth).await?;
         }
         Command::Initialize { root, persist_path } => {
             if persist_path.exists() {

@@ -4,8 +4,9 @@ use std::{
 };
 
 use progscrape_application::{
-    PersistError, PersistLocation, Shard, Storage, StorageFetch, StorageSummary, StorageWriter,
-    Story, StoryEvaluator, StoryIndex, StoryQuery, StoryScrapePayload,
+    BackerUpper, BackupResult, PersistError, PersistLocation, Shard, Storage, StorageFetch,
+    StorageSummary, StorageWriter, Story, StoryEvaluator, StoryIndex, StoryQuery,
+    StoryScrapePayload,
 };
 use progscrape_scrapers::{StoryDate, TypedScrape};
 
@@ -59,6 +60,27 @@ impl Index<StoryIndex> {
             storage: Arc::new(RwLock::new(index)),
             hot_set: Arc::new(RwLock::new(hot_set)),
         })
+    }
+
+    /// Back up the current index to the given path. The return value of this function is a little convoluted because we
+    /// don't necessarily want to fail the whole operation.
+    pub fn backup(
+        &self,
+        backup_path: &Path,
+    ) -> Result<Vec<(Shard, Result<BackupResult, PersistError>)>, PersistError> {
+        let backup = BackerUpper::new(backup_path);
+        let storage = self.storage.read().expect("Poisoned");
+        let shard_range = storage.shard_range()?;
+        let results = storage.with_scrapes(|scrapes| backup.backup_range(scrapes, shard_range));
+        for (shard, result) in &results {
+            match result {
+                Ok(res) => tracing::info!("Backed up shard {}: {:?}", shard.to_string(), res),
+                Err(e) => {
+                    tracing::error!("Backed up shard {}: FAILED {:?}", shard.to_string(), e)
+                }
+            }
+        }
+        Ok(results)
     }
 
     pub async fn refresh_hot_set(&self) -> Result<(), PersistError> {

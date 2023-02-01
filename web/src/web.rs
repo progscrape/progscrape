@@ -9,6 +9,7 @@ use axum::{
     Extension, Json, Router,
 };
 use hyper::{service::Service, Body, HeaderMap, Method, Request, StatusCode};
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use tera::Context;
 use thiserror::Error;
@@ -80,6 +81,7 @@ struct AdminState {
     index: Index<StoryIndex>,
     cron: Arc<Mutex<Cron>>,
     cron_history: Arc<Mutex<CronHistory>>,
+    backup_path: Option<std::path::PathBuf>,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -145,12 +147,14 @@ pub fn admin_routes<S: Clone + Send + Sync + 'static>(
     index: Index<StoryIndex>,
     cron: Arc<Mutex<Cron>>,
     cron_history: Arc<Mutex<CronHistory>>,
+    backup_path: Option<std::path::PathBuf>,
     auth: Auth,
 ) -> Router<S> {
     Router::new()
         .route("/", get(admin))
         .route("/cron/", get(admin_cron))
         .route("/cron/", post(admin_cron_post))
+        .route("/cron/backup", post(admin_cron_backup))
         .route("/cron/refresh", post(admin_cron_refresh))
         .route("/cron/scrape/:service", post(admin_cron_scrape))
         .route("/headers/", get(admin_headers))
@@ -170,6 +174,7 @@ pub fn admin_routes<S: Clone + Send + Sync + 'static>(
             index,
             cron,
             cron_history,
+            backup_path,
         })
         .route_layer(middleware::from_fn_with_state(auth, authorize))
 }
@@ -235,13 +240,16 @@ fn start_cron(
     });
 }
 
-pub async fn start_server(
-    root_path: &std::path::Path,
+pub async fn start_server<P1: AsRef<std::path::Path>, P2: Into<std::path::PathBuf>>(
+    root_path: P1,
+    backup_path: Option<P2>,
     address: SocketAddr,
     index: Index<StoryIndex>,
     auth: Auth,
 ) -> Result<(), WebError> {
+    let root_path = root_path.as_ref();
     tracing::info!("Root path: {:?}", root_path);
+
     let resource_path = root_path.join("resource");
 
     let resources = resource::start_watcher(resource_path).await?;
@@ -262,6 +270,7 @@ pub async fn start_server(
                 index.clone(),
                 cron.clone(),
                 cron_history.clone(),
+                backup_path.map(P2::into),
                 auth,
             ),
         )
@@ -433,6 +442,23 @@ async fn admin_cron_post(
 ) -> Result<Json<bool>, WebError> {
     let success = cron.lock().await.trigger(params.cron);
     Ok(success.into())
+}
+
+async fn admin_cron_backup(
+    State(AdminState {
+        backup_path, index, ..
+    }): State<AdminState>,
+) -> Result<Json<impl Serialize>, WebError> {
+    let results = if let Some(backup_path) = backup_path {
+        index.backup(&backup_path)?
+    } else {
+        vec![]
+    }
+    .into_iter()
+    .map(|(shard, r)| (shard, r.map_err(|e| e.to_string())))
+    .collect_vec();
+
+    Ok(Json(results))
 }
 
 async fn admin_cron_refresh(

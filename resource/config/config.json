@@ -50,6 +50,10 @@
     },
     "cron": {
         "jobs": {
+            "backup": {
+                "url": "/admin/cron/backup",
+                "interval": [1, "Day"]
+            },
             "refresh_homepage": {
                 "url": "/admin/cron/refresh",
                 "interval": [1, "Minute"]
