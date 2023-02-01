@@ -39,7 +39,8 @@ services:
       RUNNER_SCOPE: 'repo'
       EPHEMERAL: 1
       LABELS: management,linux,ARM64
-    entrypoint: sh -c 'RUNNER_TOKEN=`cat /var/run/secrets/github-access-token` /entrypoint.sh "./bin/Runner.Listener" "run" "--startuptype" "service"'
+    # This image doesn't support docker compose yet, nor passing runner token as a secret but this gives us both
+    entrypoint: sh -c 'apt-get install docker-compose-plugin && RUNNER_TOKEN=`cat /var/run/secrets/github-access-token` /entrypoint.sh "./bin/Runner.Listener" "run" "--startuptype" "service"'
     secrets:
       - github-access-token
     security_opt:
