@@ -29,11 +29,32 @@ services:
     networks:
       full-internet:
 
+  github-runner:
+    image: myoung34/github-runner:latest
+    restart: always
+    environment:
+      REPO_URL: https://github.com/mmastrac/progscrape
+      RUNNER_NAME: progscrape-docker-compose
+      RUNNER_WORKDIR: /tmp/work
+      RUNNER_SCOPE: 'repo'
+      EPHEMERAL: 1
+      LABELS: linux,ARM64
+    entrypoint: sh -c 'RUNNER_TOKEN=`cat /var/run/secrets/github-access-token` /entrypoint.sh "./bin/Runner.Listener" "run" "--startuptype" "service"'
+    secrets:
+      - github-access-token
+    security_opt:
+      # needed on SELinux systems to allow docker container to manage other docker containers
+      - label:disable
+    volumes:
+      - '/var/run/docker.sock:/var/run/docker.sock'
+
 secrets:
   cloudflare-cert:
     file: ".cloudflared/cert.pem"
   cloudflare-tunnel:
     file: ".cloudflared/tunnel.json"
+  github-access-token:
+    file: "./github-pat"
 
 networks:
   full-internet: {}
