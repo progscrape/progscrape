@@ -1,0 +1,23 @@
+name: Sync to Org
+
+on:
+  push:
+    branches: [ "master" ]
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    if: github.repository == 'mmastrac/progscrape'
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        depth: 0
+    - name: Configure git
+      run: |
+        git remote add downstream https://github.com/CodanoCode/progscrape.git
+      shell: bash
+    - name: Force push
+      id: force-push
+      run: |
+        git push downstream master --force
+      shell: bash
