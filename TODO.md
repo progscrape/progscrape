@@ -3,7 +3,6 @@
 ## Launch blockers
 
  - [ ] Slashdot tags should use URL not title
- - [ ] Dump scrapes from SQLite into GitHub as backup solution
  - [ ] Dump existing index plus old docs to backups
  - [ ] Ensure we check one shard back for clustering if not found in current shard (should be based on scrape date, however, mostly for inactive subreddits)
  - [ ] Determine why the score tuner isn't showing exactly the same results as the front page
@@ -37,3 +36,4 @@
  - [X] Score tweaking interface
  - [X] Reverse order for domain segments so we can do parent domain lookup (or use a different phrase query)
  - [X] Inverse lookup for tags
+ - [X] Dump scrapes from SQLite into GitHub as backup solution
