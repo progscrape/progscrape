@@ -892,7 +892,7 @@ mod test {
         let counts = index.story_count()?;
         assert_eq!(counts.total.story_count, 1);
 
-        for term in ["plt"] {
+        for term in ["plt", "type", "inference"] {
             let search = index.fetch_count(StoryQuery::from_search(&eval.tagger, term), 10)?;
             let doc = index.get_story_doc(&StoryIdentifier::new(date, url.normalization()))?;
             assert_eq!(
