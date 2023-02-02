@@ -10,6 +10,7 @@
  - [ ] Confirm that Reddit/HN/Slashdot times are actually correct
  - [ ] Implement feed JSON
  - [ ] Implement restore from backup-style JSON
+ - [ ] Top tags
 
 ## Non-blockers
 
