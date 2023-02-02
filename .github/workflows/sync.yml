@@ -14,7 +14,7 @@ jobs:
         depth: 0
     - name: Configure git
       run: |
-        git remote add downstream https://mmastrac:${DOWNSTREAM_PUSH_KEY}@github.com/CodanoCode/progscrape.git
+        git remote add downstream https://${{ secrets.DOWNSTREAM_PUSH_KEY }}@github.com/CodanoCode/progscrape.git
       shell: bash
     - name: Force push
       id: force-push
