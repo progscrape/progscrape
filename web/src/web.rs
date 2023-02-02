@@ -380,21 +380,7 @@ async fn root(
         vec
     };
     let stories = render_stories(&resources.story_evaluator(), stories.iter());
-    let top_tags = vec![
-        "github.com",
-        "rust",
-        "amazon",
-        "java",
-        "health",
-        "wsj.com",
-        "security",
-        "apple",
-        "theverge.com",
-        "python",
-        "kernel",
-        "google",
-        "arstechnica.com",
-    ];
+    let top_tags = index.top_tags().await?;
     render(&resources, "index.html", context!(top_tags, stories, now))
 }
 

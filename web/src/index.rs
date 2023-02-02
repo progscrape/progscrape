@@ -1,8 +1,10 @@
 use std::{
+    collections::HashMap,
     path::Path,
     sync::{Arc, RwLock},
 };
 
+use itertools::Itertools;
 use progscrape_application::{
     BackerUpper, BackupResult, PersistError, PersistLocation, Shard, Storage, StorageFetch,
     StorageSummary, StorageWriter, Story, StoryEvaluator, StoryIndex, StoryQuery,
@@ -12,9 +14,14 @@ use progscrape_scrapers::{StoryDate, TypedScrape};
 
 use crate::web::WebError;
 
+pub struct HotSet {
+    stories: Vec<Story<Shard>>,
+    top_tags: Vec<String>,
+}
+
 pub struct Index<S: StorageWriter> {
     pub storage: Arc<RwLock<S>>,
-    pub hot_set: Arc<RwLock<Vec<Story<Shard>>>>,
+    pub hot_set: Arc<RwLock<HotSet>>,
 }
 
 impl<S: StorageWriter> Clone for Index<S> {
@@ -55,11 +62,35 @@ impl Index<StoryIndex> {
         path: P,
     ) -> Result<Index<StoryIndex>, WebError> {
         let index = StoryIndex::new(PersistLocation::Path(path.as_ref().to_owned()))?;
-        let hot_set = index.fetch(StoryQuery::FrontPage(), 500)?;
+        let stories = index.fetch(StoryQuery::FrontPage(), 500)?;
+        let hot_set = Self::compute_hot_set(stories);
         Ok(Index {
             storage: Arc::new(RwLock::new(index)),
             hot_set: Arc::new(RwLock::new(hot_set)),
         })
+    }
+
+    fn compute_hot_set(stories: Vec<Story<Shard>>) -> HotSet {
+        // Count each item
+        let mut tag_counts = HashMap::new();
+        for story in &stories {
+            for tag in &story.tags {
+                tag_counts
+                    .entry(tag)
+                    .and_modify(|x| *x += 1)
+                    .or_insert(1_usize);
+            }
+        }
+
+        // Naive sort and truncate (fine for the number of tags we're dealing with)
+        let top_tags = tag_counts
+            .into_iter()
+            .sorted_by_cached_key(|(_, count)| -((*count) as i64))
+            .take(20)
+            .map(|(tag, _)| tag.clone())
+            .collect_vec();
+
+        HotSet { stories, top_tags }
     }
 
     /// Back up the current index to the given path. The return value of this function is a little convoluted because we
@@ -85,13 +116,27 @@ impl Index<StoryIndex> {
 
     pub async fn refresh_hot_set(&self) -> Result<(), PersistError> {
         let v = self.fetch(StoryQuery::FrontPage(), 500).await?;
-        *self.hot_set.write().expect("Failed to lock hot set") = v.clone();
+        *self.hot_set.write().expect("Failed to lock hot set") = Self::compute_hot_set(v);
         Ok(())
     }
 
     pub async fn hot_set(&self) -> Result<Vec<Story<Shard>>, PersistError> {
-        let v = self.hot_set.read().expect("Failed to lock hot set").clone();
+        let v = self
+            .hot_set
+            .read()
+            .expect("Failed to lock hot set")
+            .stories
+            .clone();
         Ok(v)
+    }
+
+    pub async fn top_tags(&self) -> Result<Vec<String>, PersistError> {
+        Ok(self
+            .hot_set
+            .read()
+            .expect("Failed to lock hot set")
+            .top_tags
+            .clone())
     }
 
     pub async fn insert_scrapes<I: Iterator<Item = TypedScrape> + Send + 'static>(

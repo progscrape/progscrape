@@ -157,6 +157,19 @@ impl TagSet {
     pub fn dump<'a>(&'a self) -> impl Iterator<Item = String> + 'a {
         self.set.iter().sorted().cloned()
     }
+
+    pub fn iter<'a>(&'a self) -> impl Iterator<Item = &String> + 'a {
+        self.set.iter()
+    }
+}
+
+impl <'a> IntoIterator for &'a TagSet {
+    type IntoIter = <&'a HashSet<String> as IntoIterator>::IntoIter;
+    type Item = <&'a HashSet<String> as IntoIterator>::Item;
+
+    fn into_iter(self) -> Self::IntoIter {
+        (&self.set).into_iter()
+    }
 }
 
 impl IntoIterator for TagSet {

@@ -134,7 +134,10 @@ impl ScrapeStore {
         mut fe: FE,
     ) -> Result<(), PersistError> {
         let db = self.open_shard(shard)?;
-        let sql = format!("select * from {} order by date", DB::table_for::<ScrapeCacheEntry>());
+        let sql = format!(
+            "select * from {} order by date",
+            DB::table_for::<ScrapeCacheEntry>()
+        );
         db.query_raw_callback(&sql, |scrape: ScrapeCacheEntry| {
             match serde_json::from_str(&scrape.json) {
                 Ok(typed_scrape) => f(typed_scrape)?,
