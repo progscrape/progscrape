@@ -7,6 +7,9 @@
  - [ ] Ensure we check one shard back for clustering if not found in current shard (should be based on scrape date, however, mostly for inactive subreddits)
  - [ ] Determine why the score tuner isn't showing exactly the same results as the front page
  - [ ] Configure RPi4 for reliable hosting
+ - [ ] Confirm that Reddit/HN/Slashdot times are actually correct
+ - [ ] Implement feed JSON
+ - [ ] Implement restore from backup-style JSON
 
 ## Non-blockers
 
