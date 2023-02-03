@@ -11,6 +11,7 @@ use axum::{
 use hyper::{service::Service, Body, HeaderMap, Method, Request, StatusCode};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use tera::Context;
 use thiserror::Error;
 use tokio::sync::Mutex;
@@ -260,6 +261,7 @@ pub async fn start_server<P1: AsRef<std::path::Path>, P2: Into<std::path::PathBu
     // build our application with a route
     let app = Router::new()
         .route("/", get(root))
+        .route("/feed.json", get(root_feed))
         .with_state((index.clone(), resources.clone()))
         .route("/static/:file", get(serve_static_files_immutable))
         .with_state(resources.clone())
@@ -380,12 +382,78 @@ async fn root(
         vec
     };
     let stories = render_stories(&resources.story_evaluator(), stories.iter());
+    let mut top_tags = index.top_tags().await?;
+    top_tags.truncate(20);
+    let top_tags = resources
+        .story_evaluator()
+        .tagger
+        .make_display_tags(top_tags)
+        .collect_vec();
+    render(&resources, "index.html", context!(top_tags, stories, now))
+}
+
+#[derive(Serialize)]
+struct FeedStory {
+    date: String,
+    href: String,
+    title: String,
+    tags: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    reddit: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    hnews: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    lobsters: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    slashdot: Option<String>,
+}
+
+fn to_feed_story(mut story: StoryRender) -> FeedStory {
+    FeedStory {
+        date: story.date.to_rfc3339(),
+        href: story.url,
+        title: story.title,
+        tags: story.tags,
+        reddit: story.comment_links.remove(&ScrapeSource::Reddit),
+        hnews: story.comment_links.remove(&ScrapeSource::HackerNews),
+        lobsters: story.comment_links.remove(&ScrapeSource::Lobsters),
+        slashdot: story.comment_links.remove(&ScrapeSource::Slashdot),
+    }
+}
+
+// basic handler that responds with a static string
+async fn root_feed(
+    State((index, resources)): State<(Index<StoryIndex>, Resources)>,
+    query: Query<HashMap<String, String>>,
+) -> Result<Json<impl Serialize>, WebError> {
+    let now = now(&index).await?;
+    let stories = if let Some(search) = query.get("search") {
+        index
+            .fetch(
+                StoryQuery::from_search(&resources.story_evaluator().tagger, search),
+                30,
+            )
+            .await?
+    } else {
+        let mut vec = hot_set(now, &index, &resources.story_evaluator()).await?;
+        vec.truncate(150);
+        vec
+    };
+    let stories = render_stories(&resources.story_evaluator(), stories.iter())
+        .into_iter()
+        .map(to_feed_story)
+        .collect_vec();
     let top_tags = resources
         .story_evaluator()
         .tagger
         .make_display_tags(index.top_tags().await?)
         .collect_vec();
-    render(&resources, "index.html", context!(top_tags, stories, now))
+
+    Ok(Json(json!({
+        "v": 1,
+        "tags": top_tags,
+        "stories": stories
+    })))
 }
 
 async fn admin(

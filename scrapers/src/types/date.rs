@@ -46,6 +46,9 @@ impl StoryDate {
             .ok()
             .map(|x| Self::new(x.into()))
     }
+    pub fn to_rfc3339(&self) -> String {
+        self.internal_date.to_rfc3339()
+    }
     pub fn parse_from_rfc2822(date: &str) -> Option<Self> {
         DateTime::parse_from_rfc2822(date)
             .ok()

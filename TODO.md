@@ -8,7 +8,6 @@
  - [ ] Determine why the score tuner isn't showing exactly the same results as the front page
  - [ ] Configure RPi4 for reliable hosting
  - [ ] Confirm that Reddit/HN/Slashdot times are actually correct
- - [ ] Implement feed JSON
  - [ ] Implement restore from backup-style JSON
  - [ ] Tags w/internal representation from sites (ie: lobsters) should be reverse-lookup'd (ie: go -> golang)
 
@@ -43,3 +42,4 @@
  - [X] Dump scrapes from SQLite into GitHub as backup solution
  - [X] Top tags
    - [X] Include domains
+ - [X] Implement feed JSON

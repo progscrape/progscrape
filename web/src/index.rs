@@ -91,8 +91,9 @@ impl Index<StoryIndex> {
         // Naive sort and truncate (fine for the number of tags we're dealing with)
         let top_tags = tag_counts
             .into_iter()
+            .filter(|(_, count)| *count > 1)
             .sorted_by_cached_key(|(_, count)| -((*count) as i64))
-            .take(20)
+            .take(50)
             .map(|(tag, _)| tag)
             .collect_vec();
 

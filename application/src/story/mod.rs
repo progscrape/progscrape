@@ -129,7 +129,7 @@ impl<S> Story<S> {
     pub fn render(&self, tagger: &StoryTagger, order: usize) -> StoryRender {
         let mut comment_links = HashMap::new();
         for (id, _) in &self.scrapes {
-            comment_links.insert(id.source.into_str().to_string(), id.comments_url());
+            comment_links.insert(id.source, id.comments_url());
         }
         StoryRender {
             order,
