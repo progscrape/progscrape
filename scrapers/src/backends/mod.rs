@@ -89,6 +89,13 @@ macro_rules! scrapers {
                 }
             }
 
+            pub fn is_comments_host(&self, host: &str) -> bool {
+                match self {
+                    $(Self::$name => $package :: $name :: is_comments_host(host),)*
+                    _ => unimplemented!()
+                }
+            }
+
             pub fn id<'a, ID: Clone + Into<Cow<'a, str>>>(&self, id: ID) -> ScrapeId {
                 ScrapeId::new(*self, None, id.into().into())
             }

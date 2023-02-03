@@ -103,9 +103,30 @@ impl<S> Story<S> {
         self.date.cmp(&other.date)
     }
 
-    pub fn render(&self, tagger: &StoryTagger, order: usize) -> StoryRender {
+    /// Is this story likely a self-post? See the description of `ScrapeId::is_likely_self_post` for details of the
+    /// heuristic and caveats.
+    pub fn is_likely_self_post(&self) -> bool {
+        for scrape_id in self.scrapes.keys() {
+            if scrape_id.is_likely_self_post(&self.url) {
+                return true;
+            }
+        }
+        false
+    }
+
+    pub fn raw_tags(&self) -> Vec<String> {
+        let mut tags = vec![self.url.host().to_owned()];
+        tags.extend(self.tags.dump());
+        tags
+    }
+
+    pub fn render_tags(&self, tagger: &StoryTagger) -> Vec<String> {
         let mut tags = vec![self.url.host().to_owned()];
         tags.extend(tagger.make_display_tags(self.tags.dump()));
+        tags
+    }
+
+    pub fn render(&self, tagger: &StoryTagger, order: usize) -> StoryRender {
         let mut comment_links = HashMap::new();
         for (id, _) in &self.scrapes {
             comment_links.insert(id.source.into_str().to_string(), id.comments_url());
@@ -118,7 +139,7 @@ impl<S> Story<S> {
             domain: self.url.host().to_owned(),
             title: self.title.to_owned(),
             date: self.date,
-            tags,
+            tags: self.render_tags(tagger),
             comment_links,
         }
     }
@@ -163,7 +184,7 @@ impl TagSet {
     }
 }
 
-impl <'a> IntoIterator for &'a TagSet {
+impl<'a> IntoIterator for &'a TagSet {
     type IntoIter = <&'a HashSet<String> as IntoIterator>::IntoIter;
     type Item = <&'a HashSet<String> as IntoIterator>::Item;
 

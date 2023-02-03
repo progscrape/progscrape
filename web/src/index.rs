@@ -74,7 +74,13 @@ impl Index<StoryIndex> {
         // Count each item
         let mut tag_counts = HashMap::new();
         for story in &stories {
-            for tag in &story.tags {
+            // We won't count tags from any self posts because these tend to dominate the trending tags in two
+            // way: first, by spamming the source's domain, and second in cases like Python/Rust where there are
+            // lots of self posts (with low quality in some cases).
+            if story.is_likely_self_post() {
+                continue;
+            }
+            for tag in story.raw_tags() {
                 tag_counts
                     .entry(tag)
                     .and_modify(|x| *x += 1)
@@ -87,7 +93,7 @@ impl Index<StoryIndex> {
             .into_iter()
             .sorted_by_cached_key(|(_, count)| -((*count) as i64))
             .take(20)
-            .map(|(tag, _)| tag.clone())
+            .map(|(tag, _)| tag)
             .collect_vec();
 
         HotSet { stories, top_tags }

@@ -24,6 +24,10 @@ impl ScrapeSourceDef for Slashdot {
     fn comments_url(id: &str, _subsource: Option<&str>) -> String {
         format!("https://tech.slashdot.org/story/{}/", id)
     }
+
+    fn is_comments_host(host: &str) -> bool {
+        host.ends_with("slashdot.org")
+    }
 }
 
 #[derive(Clone, Default, Serialize, Deserialize)]

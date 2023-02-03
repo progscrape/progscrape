@@ -23,6 +23,10 @@ impl ScrapeSourceDef for Reddit {
             format!("https://www.reddit.com/comments/{}/", id)
         }
     }
+
+    fn is_comments_host(host: &str) -> bool {
+        host.ends_with("reddit.com")
+    }
 }
 
 #[derive(Clone, Default, Serialize, Deserialize)]

@@ -4,7 +4,7 @@ use std::{
     marker::PhantomData,
 };
 
-use crate::backends::ScrapeSource;
+use crate::{backends::ScrapeSource, StoryUrl};
 
 /// Identify a scrape by source an ID.
 #[derive(Clone, Eq, PartialEq, Hash, PartialOrd, Ord)]
@@ -25,6 +25,14 @@ impl ScrapeId {
         }
     }
 
+    /// Given a URL, determines if that URL would make this story a self-post. The current heuristic for
+    /// this is whether the url's host looks like a comments host, and the url itself contains the scrape's
+    /// ID. The latter heuristic isn't perfect, but the failure modes are pretty harmless.
+    pub fn is_likely_self_post(&self, url: &StoryUrl) -> bool {
+        self.source.is_comments_host(url.host()) && url.raw().contains(&self.id)
+    }
+
+    /// Generate a comments URL for this scrape.
     pub fn comments_url(&self) -> String {
         self.source
             .comments_url(&self.id, self.subsource.as_deref())

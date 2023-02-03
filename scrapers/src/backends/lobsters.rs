@@ -15,6 +15,10 @@ impl ScrapeSourceDef for Lobsters {
     fn comments_url(id: &str, _subsource: Option<&str>) -> String {
         format!("https://lobste.rs/s/{}/", id)
     }
+
+    fn is_comments_host(host: &str) -> bool {
+        host.ends_with("lobste.rs")
+    }
 }
 
 #[derive(Clone, Default, Serialize, Deserialize)]

@@ -10,7 +10,7 @@
  - [ ] Confirm that Reddit/HN/Slashdot times are actually correct
  - [ ] Implement feed JSON
  - [ ] Implement restore from backup-style JSON
- - [ ] Top tags
+ - [ ] Tags w/internal representation from sites (ie: lobsters) should be reverse-lookup'd (ie: go -> golang)
 
 ## Non-blockers
 
@@ -41,3 +41,5 @@
  - [X] Reverse order for domain segments so we can do parent domain lookup (or use a different phrase query)
  - [X] Inverse lookup for tags
  - [X] Dump scrapes from SQLite into GitHub as backup solution
+ - [X] Top tags
+   - [X] Include domains

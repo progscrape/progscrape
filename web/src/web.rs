@@ -380,7 +380,11 @@ async fn root(
         vec
     };
     let stories = render_stories(&resources.story_evaluator(), stories.iter());
-    let top_tags = index.top_tags().await?;
+    let top_tags = resources
+        .story_evaluator()
+        .tagger
+        .make_display_tags(index.top_tags().await?)
+        .collect_vec();
     render(&resources, "index.html", context!(top_tags, stories, now))
 }
 

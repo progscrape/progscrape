@@ -22,6 +22,10 @@ impl ScrapeSourceDef for HackerNews {
     fn comments_url(id: &str, _subsource: Option<&str>) -> String {
         format!("https://news.ycombinator.com/item?id={}", id)
     }
+
+    fn is_comments_host(host: &str) -> bool {
+        host.ends_with("news.ycombinator.com")
+    }
 }
 
 #[derive(Clone, Default, Serialize, Deserialize)]
