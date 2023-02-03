@@ -10,6 +10,7 @@
  - [ ] Confirm that Reddit/HN/Slashdot times are actually correct
  - [ ] Implement restore from backup-style JSON
  - [ ] Tags w/internal representation from sites (ie: lobsters) should be reverse-lookup'd (ie: go -> golang)
+ - [ ] Reddit flair tags with spaces should be skipped
 
 ## Non-blockers
 
