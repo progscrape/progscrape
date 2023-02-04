@@ -260,7 +260,7 @@ impl Scraper for RedditScraper {
         let mut tags = vec![];
         if let Some(ref subreddit) = input.shared.id.subsource {
             if let Some(config) = args.subreddits.get(subreddit) {
-                if config.flair_is_tag {
+                if config.flair_is_tag && !input.data.flair.contains(' ') {
                     tags.push(Cow::Owned(input.data.flair.to_lowercase()));
                 }
                 if config.is_tag {

@@ -6,7 +6,9 @@ use std::{
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
-use crate::{backends::ScrapeCore, ScrapeExtractor, ScrapeId, StoryDate, StoryUrl, TypedScrape};
+use crate::{
+    backends::ScrapeCore, ScrapeExtractor, ScrapeId, ScrapeSource, StoryDate, StoryUrl, TypedScrape,
+};
 
 /// Collection of scrapes, which can also extract the best title, etc.
 #[derive(Serialize, Deserialize)]
@@ -36,7 +38,9 @@ impl ScrapeCollection {
         Self { earliest, scrapes }
     }
 
+    /// Takes and merges another `TypedScrape`.
     pub fn merge(&mut self, scrape: TypedScrape) {
+        self.earliest = self.earliest.min(scrape.date);
         match self.scrapes.entry(scrape.id.clone()) {
             Entry::Occupied(mut x) => {
                 x.get_mut().merge(scrape);
@@ -44,6 +48,13 @@ impl ScrapeCollection {
             Entry::Vacant(x) => {
                 x.insert(scrape);
             }
+        }
+    }
+
+    /// Takes and merges all the `TypedScrape`s from the other `ScrapeCollection`.
+    pub fn merge_all(&mut self, other: Self) {
+        for scrape in other.scrapes.into_values() {
+            self.merge(scrape)
         }
     }
 
@@ -57,13 +68,37 @@ impl ScrapeCollection {
     }
 
     pub fn extract<'a>(&'a self, extractor: &ScrapeExtractor) -> ExtractedScrapeCollection<'a> {
+        let title_score = |source: &ScrapeSource| {
+            match source {
+                // HN is moderated and titles are high quality
+                ScrapeSource::HackerNews => 0,
+                ScrapeSource::Lobsters => 1,
+                ScrapeSource::Slashdot => 2,
+                // User-submitted titles are generally just OK
+                ScrapeSource::Reddit => 3,
+                ScrapeSource::Other => 99,
+            }
+        };
+
         let iter = self
             .scrapes
             .iter()
             .map(|(k, v)| (k, (extractor.extract(v), v)));
+        let scrapes = HashMap::from_iter(iter);
+        let mut title = "";
+        let mut max_title_score = i32::MAX;
+        for (id, (scrape, _)) in &scrapes {
+            let this_score = title_score(&id.source);
+            if this_score < max_title_score {
+                max_title_score = this_score;
+                title = scrape.title;
+            }
+        }
+
         ExtractedScrapeCollection {
             earliest: self.earliest,
-            scrapes: HashMap::from_iter(iter),
+            title,
+            scrapes,
         }
     }
 }
@@ -71,21 +106,11 @@ impl ScrapeCollection {
 /// Collection of scrape data that has been extracted from a `ScrapeCollection`.
 pub struct ExtractedScrapeCollection<'a> {
     pub earliest: StoryDate,
+    pub title: &'a str,
     pub scrapes: HashMap<&'a ScrapeId, (ScrapeCore<'a>, &'a TypedScrape)>,
 }
 
 impl<'a> ExtractedScrapeCollection<'a> {
-    pub fn title(&'a self) -> &'a str {
-        // TODO: Best title
-        self.scrapes
-            .iter()
-            .next()
-            .expect("Expected at least one scrape")
-            .1
-             .0
-            .title
-    }
-
     pub fn url(&'a self) -> &'a StoryUrl {
         self.scrapes
             .iter()

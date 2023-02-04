@@ -95,7 +95,7 @@ impl StoryScorer {
     ) {
         use StoryScore::*;
 
-        let title = scrapes.title();
+        let title = scrapes.title;
         let url = scrapes.url();
 
         // Small random shuffle for stories to mix up the front page a bit

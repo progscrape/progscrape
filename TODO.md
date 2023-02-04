@@ -5,7 +5,6 @@
  - [ ] Slashdot tags should use URL not title
  - [ ] Dump existing index plus old docs to backups
  - [ ] Ensure we check one shard back for clustering if not found in current shard (should be based on scrape date, however, mostly for inactive subreddits)
- - [ ] Determine why the score tuner isn't showing exactly the same results as the front page
  - [ ] Configure RPi4 for reliable hosting
  - [ ] Confirm that Reddit/HN/Slashdot times are actually correct
  - [ ] Implement restore from backup-style JSON
@@ -19,7 +18,7 @@
  - [ ] Swap Chrono for time
  - [ ] Host implies tag (ie: YouTube)
  - [ ] Rework indexing so writes don't hold a long lock 
- - [ ] Long Reddit titles should split on '|' or '.'
+ - [ ] Long Reddit titles should split on '|' or '.'O
 
 ## Maybe
 
@@ -44,3 +43,4 @@
  - [X] Top tags
    - [X] Include domains
  - [X] Implement feed JSON
+ - [X] Determine why the score tuner isn't showing exactly the same results as the front page

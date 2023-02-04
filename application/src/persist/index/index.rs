@@ -212,7 +212,7 @@ impl StoryIndex {
             .map(|x| x.1)
             .map(Self::create_scrape_id_from_scrape)
             .collect_vec();
-        let title = extracted.title().to_owned();
+        let title = extracted.title.to_owned();
         let mut tags = TagSet::new();
         eval.tagger.tag(&title, &mut tags);
         for tag in extracted.tags() {
@@ -246,38 +246,34 @@ impl StoryIndex {
         memindex.insert_scrapes(scrapes)?;
 
         self.with_writers(|provider| {
-            for scrape in memindex.get_all_stories() {
-                let shard = Shard::from_date_time(scrape.earliest);
+            for story in memindex.get_all_stories() {
+                let shard = Shard::from_date_time(story.earliest);
                 // TODO: Should be searching multiple shards
                 provider.provide(shard, |_, index, writer| {
                     let lookup = StoryLookupId {
-                        url_norm_hash: scrape.url().normalization().hash(),
-                        date: scrape.earliest.timestamp(),
+                        url_norm_hash: story.url().normalization().hash(),
+                        date: story.earliest.timestamp(),
                     };
                     let lookup = HashSet::from_iter([lookup]);
                     // TODO: Should be batching
                     let result = index.lookup_stories(lookup, (-one_month)..one_month)?;
                     let lookup = result.into_iter().next().expect("TODO");
                     let insert_type = match lookup {
-                        StoryLookup::Found(_id, doc) => index.add_scrape_id(
-                            writer,
-                            doc,
-                            scrape
-                                .scrapes
-                                .values()
-                                .map(Self::create_scrape_id_from_scrape)
-                                .collect(),
-                        )?,
+                        StoryLookup::Found(_id, doc) => {
+                            let doc = index.with_searcher(|searcher, _| searcher.doc(doc))??;
+                            let ids = index.extract_scrape_ids_from_doc(&doc);
+                            let scrapes = self.scrape_db.fetch_scrape_batch(ids)?;
+                            let mut orig_story =
+                                ScrapeCollection::new_from_iter(scrapes.into_values().flatten());
+                            orig_story.merge_all(story);
+                            let doc = Self::create_story_insert(eval, &orig_story);
+                            index.reinsert_story_document(writer, doc)?
+                        }
                         StoryLookup::Unfound(_id) => {
-                            let doc = Self::create_story_insert(eval, &scrape);
+                            let doc = Self::create_story_insert(eval, &story);
                             index.insert_story_document(writer, doc)?
                         }
                     };
-                    tracing::debug!(
-                        "Inserted scrapes {:?}: {:?}",
-                        scrape.scrapes.keys(),
-                        insert_type
-                    );
 
                     Ok(())
                 })?;

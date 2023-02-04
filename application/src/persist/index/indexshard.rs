@@ -169,6 +169,17 @@ impl StoryIndexShard {
         Ok(meta.segments.iter().fold(0, |a, b| a + b.num_docs()) as usize)
     }
 
+    /// Re-insert a story document, deleting the old one first.
+    pub fn reinsert_story_document(
+        &self,
+        writer: &mut IndexWriter,
+        doc: StoryInsert,
+    ) -> Result<ScrapePersistResult, PersistError> {
+        writer.delete_term(Term::from_field_text(self.schema.id_field, &doc.id));
+        self.insert_story_document(writer, doc)
+    }
+
+    /// Insert a brand-new story document.
     pub fn insert_story_document(
         &self,
         writer: &mut IndexWriter,
@@ -320,14 +331,9 @@ impl StoryIndexShard {
         }
     }
 
-    pub fn lookup_story(&self, doc_address: DocAddress) -> Result<StoryFetch, PersistError> {
-        let doc = self.searcher.doc(doc_address)?;
-        let url = self.text_value(&doc, self.schema.url_field);
-        let title = self.text_value(&doc, self.schema.title_field);
-        let date = self.i64_value(&doc, self.schema.date_field);
-        let score = self.f64_value(&doc, self.schema.score_field);
-        let scrape_ids = self
-            .text_values(&doc, self.schema.scrape_field)
+    /// Does the tricky work of converting indexed `StoryScrapeId`s to full ones.
+    pub fn extract_scrape_ids_from_doc(&self, doc: &Document) -> Vec<StoryScrapeId> {
+        self.text_values(&doc, self.schema.scrape_field)
             .into_iter()
             .filter_map(|id| {
                 if let Some((a, b)) = id.split_once(':') {
@@ -339,7 +345,16 @@ impl StoryIndexShard {
                 }
                 None
             })
-            .collect_vec();
+            .collect_vec()
+    }
+
+    pub fn lookup_story(&self, doc_address: DocAddress) -> Result<StoryFetch, PersistError> {
+        let doc = self.searcher.doc(doc_address)?;
+        let url = self.text_value(&doc, self.schema.url_field);
+        let title = self.text_value(&doc, self.schema.title_field);
+        let date = self.i64_value(&doc, self.schema.date_field);
+        let score = self.f64_value(&doc, self.schema.score_field);
+        let scrape_ids = self.extract_scrape_ids_from_doc(&doc);
         let tags = self.text_values(&doc, self.schema.tags_field);
         Ok(StoryFetch {
             url,
