@@ -1,7 +1,8 @@
 use serde::{Deserialize, Serialize};
 
 use progscrape_scrapers::{
-    ExtractedScrapeCollection, ScrapeSource, StoryDate, StoryDuration, TypedScrapeMap,
+    ExtractedScrapeCollection, ScrapeCore, ScrapeSource, StoryDate, StoryDuration, TypedScrape,
+    TypedScrapeMap,
 };
 
 use super::Story;
@@ -46,6 +47,10 @@ pub struct StoryScorer {
     config: StoryScoreConfig,
 }
 
+trait ServiceScorer {}
+
+// impl ServiceScorer for Generic
+
 impl StoryScorer {
     pub fn new(config: &StoryScoreConfig) -> Self {
         Self {
@@ -87,10 +92,90 @@ impl StoryScorer {
         }
     }
 
+    /// Score a single scrape so that we can evaluate which of multiple stories we want to
+    /// choose.
+    #[inline(always)]
+    fn score_single<T: FnMut(StoryScore, f32)>(
+        &self,
+        scrape: &TypedScrape,
+        core: &ScrapeCore,
+        mut accum: T,
+    ) {
+        use StoryScore::*;
+
+        let url = core.url;
+
+        let source = scrape.id.source;
+        if let Some(rank) = core.rank {
+            accum(
+                Position(source),
+                (30.0 - rank.clamp(0, 30) as f32) * self.config.service_rank.get(source),
+            );
+        }
+
+        if url.host().contains("gfycat")
+            || url.host().contains("imgur")
+            || url.host().contains("i.reddit.com")
+        {
+            if source == ScrapeSource::HackerNews {
+                accum(ImageLink, -5.0);
+            } else {
+                accum(ImageLink, -10.0);
+            }
+        }
+
+        match scrape {
+            TypedScrape::HackerNews(hn) => {
+                if hn.data.comments > 100 {
+                    accum(CommentCount, 5.0);
+                }
+            }
+            TypedScrape::Reddit(reddit) => {
+                // Penalize Reddit self links
+                if url.host().contains("reddit.com") {
+                    accum(SelfLink, -20.0);
+                }
+
+                // Penalize a long title if reddit is a source
+                if core.title.len() > 130 {
+                    accum(LongRedditTitle, -5.0);
+                }
+
+                if reddit.data.upvote_ratio < 0.6 {
+                    accum(PoorUpvoteRatio, -20.0);
+                }
+                if reddit.data.upvotes < 10 {
+                    accum(UpvoteCount, -20.0);
+                } else if reddit.data.upvotes > 10 {
+                    accum(UpvoteCount, 10.0);
+                } else if reddit.data.upvotes > 100 {
+                    accum(UpvoteCount, 15.0);
+                }
+                if reddit.data.num_comments < 10 {
+                    accum(CommentCount, -5.0);
+                } else if reddit.data.num_comments > 10 {
+                    accum(CommentCount, 5.0);
+                }
+            }
+            TypedScrape::Lobsters(lobsters) => {
+                // This won't get triggered until we start scraping lobsters comment counts
+                if lobsters.data.num_comments > 100 {
+                    accum(CommentCount, 5.0);
+                }
+            }
+            TypedScrape::Slashdot(slashdot) => {
+                if slashdot.data.num_comments > 100 {
+                    accum(CommentCount, 5.0);
+                }
+            }
+        }
+    }
+
     #[inline(always)]
     fn score_impl<T: FnMut(StoryScore, f32)>(
         &self,
         scrapes: &ExtractedScrapeCollection,
+        best: TypedScrapeMap<Option<(&TypedScrape, &ScrapeCore, f32)>>,
         mut accum: T,
     ) {
         use StoryScore::*;
@@ -104,75 +189,42 @@ impl StoryScorer {
             (url.normalization().hash() % 6000000) as f32 / 1000000.0,
         );
 
-        let mut service_scrapes = TypedScrapeMap::new();
+        accum(SourceCount, (scrapes.scrapes.len() as f32).powf(2.0) * 5.0);
 
-        // Pick out the first source we find for each source
-        for (core, scrape) in scrapes.scrapes.values() {
-            let source = core.source.source;
-            service_scrapes.set(source, Some((core, scrape)));
-
-            if let Some(rank) = core.rank {
-                accum(
-                    Position(source),
-                    (30.0 - rank.clamp(0, 30) as f32) * self.config.service_rank.get(source),
-                );
-            }
-        }
-
-        accum(
-            SourceCount,
-            (service_scrapes.iter().flatten().count() as f32).powf(2.0) * 5.0,
-        );
-
-        if let Some(reddit) = service_scrapes.reddit.and_then(|t| t.1.reddit()) {
-            // Penalize a long title if reddit is a source
-            if title.len() > 130 {
-                accum(LongRedditTitle, -5.0);
-            }
-
-            if reddit.data.upvote_ratio < 0.6 {
-                accum(PoorUpvoteRatio, -20.0);
-            }
-            if reddit.data.upvotes < 10 {
-                accum(UpvoteCount, -20.0);
-            } else if reddit.data.upvotes > 10 {
-                accum(UpvoteCount, 10.0);
-            } else if reddit.data.upvotes > 100 {
-                accum(UpvoteCount, 15.0);
-            }
-            if reddit.data.num_comments < 10 {
-                accum(CommentCount, -5.0);
-            } else if reddit.data.num_comments > 10 {
-                accum(CommentCount, 5.0);
-            }
-        }
-
-        // Penalize Reddit self links
-        if url.host().contains("reddit.com") {
-            accum(SelfLink, -20.0);
+        for (scrape, core, _) in best.iter().flatten() {
+            self.score_single(scrape, core, |x, y| accum(x, y));
         }
 
         // Penalize a really long title regardless of source
         if title.len() > 250 {
             accum(LongTitle, -15.0);
         }
+    }
 
-        if url.host().contains("gfycat")
-            || url.host().contains("imgur")
-            || url.host().contains("i.reddit.com")
-        {
-            if service_scrapes.hacker_news.is_some() {
-                accum(ImageLink, -5.0);
-            } else {
-                accum(ImageLink, -10.0);
+    fn calculate_best_scrapes<'a, 'b>(
+        &self,
+        scrapes: &'a ExtractedScrapeCollection<'b>,
+    ) -> TypedScrapeMap<Option<(&'a TypedScrape, &'a ScrapeCore<'b>, f32)>> {
+        let mut service_scrapes = TypedScrapeMap::new();
+        for (id, (core, scrape)) in &scrapes.scrapes {
+            let mut score_total = 0_f32;
+            let accum = |_, score| score_total += score;
+            self.score_single(scrape, core, accum);
+            if let Some((_, _, existing_score)) = service_scrapes.get(id.source) {
+                if *existing_score > score_total {
+                    continue;
+                }
             }
+            service_scrapes.set(id.source, Some((*scrape, core, score_total)));
         }
+        service_scrapes
     }
 
     pub fn score(&self, scrapes: &ExtractedScrapeCollection) -> f32 {
+        let best = self.calculate_best_scrapes(scrapes);
         let mut score_total = 0_f32;
         let accum = |_, score| score_total += score;
-        self.score_impl(scrapes, accum);
+        self.score_impl(scrapes, best, accum);
         score_total
     }
 
@@ -181,10 +233,11 @@ impl StoryScorer {
         scrapes: &ExtractedScrapeCollection,
         now: StoryDate,
     ) -> Vec<(StoryScore, f32)> {
+        let best = self.calculate_best_scrapes(scrapes);
         let mut score_bits = vec![];
         let mut accum = |score_type, score| score_bits.push((score_type, score));
         accum(StoryScore::Age, self.score_age(now - scrapes.earliest));
-        self.score_impl(scrapes, accum);
+        self.score_impl(scrapes, best, accum);
         score_bits
     }
 }

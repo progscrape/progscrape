@@ -44,3 +44,4 @@
    - [X] Include domains
  - [X] Implement feed JSON
  - [X] Determine why the score tuner isn't showing exactly the same results as the front page
+ - [X] Choose the best option when multiple scrapes from Reddit are in the system
