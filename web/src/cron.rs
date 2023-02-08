@@ -81,14 +81,19 @@ impl CronHistory {
         let now = Instant::now();
         let map = self.history.entry(service).or_default();
         map.insert(now, (status_code, output));
-        let cutoff = now - max_age.1.as_duration(max_age.0);
-
-        while let (len, Some(entry)) = (map.len(), map.first_entry()) {
-            if len > max_count || *entry.key() < cutoff {
-                map.pop_first();
-            } else {
-                break;
+        let cutoff = now.checked_sub(max_age.1.as_duration(max_age.0));
+        if let Some(cutoff) = cutoff {
+            while let (len, Some(entry)) = (map.len(), map.first_entry()) {
+                if len > max_count || *entry.key() < cutoff {
+                    map.pop_first();
+                } else {
+                    break;
+                }
             }
+        } else {
+            // This _may_ fail when the computer is recently rebooted as the instant might be relative
+            // to that particular time.
+            tracing::error!("Failed to compute the cutoff, perhaps this computer was rebooted recently? now={:?} duration={} {:?}", now, max_age.0, max_age.1);
         }
     }
 
