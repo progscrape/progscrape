@@ -9,7 +9,8 @@
  - [ ] Confirm that Reddit/HN/Slashdot times are actually correct
  - [ ] Implement restore from backup-style JSON
  - [ ] Tags w/internal representation from sites (ie: lobsters) should be reverse-lookup'd (ie: go -> golang)
- - [ ] Reddit flair tags with spaces should be skipped
+ - [ ] Single-step release-to-deploy pipeline
+ - [ ] Web interface validation (feed.json, frontpage + search at minimum)
 
 ## Non-blockers
 
@@ -45,3 +46,4 @@
  - [X] Implement feed JSON
  - [X] Determine why the score tuner isn't showing exactly the same results as the front page
  - [X] Choose the best option when multiple scrapes from Reddit are in the system
+ - [X] Reddit flair tags with spaces should be skipped
