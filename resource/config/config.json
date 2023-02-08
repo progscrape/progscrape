@@ -26,7 +26,7 @@
             "tag_denylist": ["person", "programming", "practices"]
         },
         "reddit": {
-            "api": "http://reddit.com/r/${subreddits}/.json",
+            "api": "https://reddit.com/r/${subreddits}/.json",
             "subreddit_batch": 5,
             "subreddits": {
                 "programming": {},
