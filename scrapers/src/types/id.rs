@@ -38,8 +38,8 @@ impl ScrapeId {
             .comments_url(&self.id, self.subsource.as_deref())
     }
 
-    pub fn from_string(s: String) -> Option<Self> {
-        if let Some((head, rest)) = s.split_once('-') {
+    pub fn from_string<S: AsRef<str>>(s: S) -> Option<Self> {
+        if let Some((head, rest)) = s.as_ref().split_once('-') {
             if let Some(source) = ScrapeSource::try_from_str(head) {
                 if let Some((subsource, id)) = rest.split_once('-') {
                     Some(source.subsource_id(subsource, id))

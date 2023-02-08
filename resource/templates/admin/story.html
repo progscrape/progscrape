@@ -6,13 +6,13 @@
     <tr><th>URL</th><td>{{ story.url }}</td></tr>
     {# <tr><th>URL norm</th><td>{{ story.url_norm }} (hash = {{ story.url_norm_hash }})</td></tr> #}
     {% for source, scrape in scrapes %}
-    <tr><th>Scrape: {{ source }}</th><td>
+    <tr><th>Scrape: <a href="{{ source | comment_link }}">{{ source }}</a></th><td>
         <table>
             {% for key, value in scrape %}
             {% for key, value in value %}
             <tr><th>{{ key }}</th><td>
             {% if key == "date" %}
-                {{ value | date }}
+                {{ value | date }} ({{ value | approx_time }})
             {% elif key == "url" %}
                 {{ value[0] }}
             {% else %}

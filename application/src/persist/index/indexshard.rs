@@ -338,7 +338,7 @@ impl StoryIndexShard {
             .filter_map(|id| {
                 if let Some((a, b)) = id.split_once(':') {
                     if let (Some(shard), Some(id)) =
-                        (Shard::from_string(a), ScrapeId::from_string(b.into()))
+                        (Shard::from_string(a), ScrapeId::from_string(b))
                     {
                         return Some(StoryScrapeId { id, shard });
                     }

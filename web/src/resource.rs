@@ -88,11 +88,17 @@ fn create_templates(
             .to_string_lossy()
             .borrow(),
     )?;
+
     tera.register_filter("comma", CommaFilter::default());
-    tera.register_filter("static", StaticFileFilter::new(static_files));
+
     tera.register_filter("relative_time", RelativeTimeFilter::default());
     tera.register_filter("absolute_time", AbsoluteTimeFilter::default());
     tera.register_filter("approx_time", ApproxTimeFilter::default());
+
+    tera.register_filter("comment_link", CommentLinkFilter::default());
+
+    tera.register_filter("static", StaticFileFilter::new(static_files));
+
     Ok(tera)
 }
 

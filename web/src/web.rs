@@ -304,7 +304,7 @@ fn render_stories<'a, S: 'a>(
     iter: impl Iterator<Item = &'a Story<S>>,
 ) -> Vec<StoryRender> {
     iter.enumerate()
-        .map(|(n, x)| x.render(&eval.tagger, n))
+        .map(|(n, x)| x.render(&eval, n))
         .collect::<Vec<_>>()
 }
 
@@ -414,10 +414,22 @@ fn to_feed_story(mut story: StoryRender) -> FeedStory {
         href: story.url,
         title: story.title,
         tags: story.tags,
-        reddit: story.comment_links.remove(&ScrapeSource::Reddit),
-        hnews: story.comment_links.remove(&ScrapeSource::HackerNews),
-        lobsters: story.comment_links.remove(&ScrapeSource::Lobsters),
-        slashdot: story.comment_links.remove(&ScrapeSource::Slashdot),
+        reddit: story
+            .sources
+            .remove(ScrapeSource::Reddit)
+            .map(|id| id.comments_url()),
+        hnews: story
+            .sources
+            .remove(ScrapeSource::HackerNews)
+            .map(|id| id.comments_url()),
+        lobsters: story
+            .sources
+            .remove(ScrapeSource::Lobsters)
+            .map(|id| id.comments_url()),
+        slashdot: story
+            .sources
+            .remove(ScrapeSource::Slashdot)
+            .map(|id| id.comments_url()),
     }
 }
 
@@ -739,7 +751,7 @@ async fn admin_index_frontpage_scoretuner(
         eval.tagger.tag(extracted.title, &mut tags);
         story.tags = tags;
         story_details.push(StoryDetail {
-            story: story.render(&eval.tagger, 0),
+            story: story.render(&eval, 0),
             score_detail: eval.scorer.score_detail(&extracted, now),
         });
     }
@@ -808,7 +820,7 @@ async fn admin_status_story(
         context!(
             now,
             user,
-            story = story.render(&eval.tagger, 0),
+            story = story.render(&eval, 0),
             scrapes = scrapes.scrapes,
             tags: HashMap<String, Vec<String>>,
             score = score_details

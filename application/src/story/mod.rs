@@ -3,7 +3,9 @@
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
-use progscrape_scrapers::{ScrapeConfig, ScrapeExtractor, ScrapeId, StoryDate, StoryUrl};
+use progscrape_scrapers::{
+    ScrapeConfig, ScrapeExtractor, ScrapeId, StoryDate, StoryUrl, TypedScrapeMap,
+};
 use std::collections::{HashMap, HashSet};
 
 mod collector;
@@ -126,10 +128,10 @@ impl<S> Story<S> {
         tags
     }
 
-    pub fn render(&self, tagger: &StoryTagger, order: usize) -> StoryRender {
-        let mut comment_links = HashMap::new();
+    pub fn render(&self, eval: &StoryEvaluator, order: usize) -> StoryRender {
+        let mut sources = TypedScrapeMap::new();
         for (id, _) in &self.scrapes {
-            comment_links.insert(id.source, id.comments_url());
+            sources.set(id.source, Some(id.clone()));
         }
         StoryRender {
             order,
@@ -139,8 +141,8 @@ impl<S> Story<S> {
             domain: self.url.host().to_owned(),
             title: self.title.to_owned(),
             date: self.date,
-            tags: self.render_tags(tagger),
-            comment_links,
+            tags: self.render_tags(&eval.tagger),
+            sources,
         }
     }
 }

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use progscrape_scrapers::{ScrapeId, ScrapeSource, StoryDate, TypedScrape};
+use progscrape_scrapers::{ScrapeId, StoryDate, TypedScrape, TypedScrapeMap};
 use serde::{Deserialize, Serialize};
 
 /// Rendered story with all properties hydrated from the underlying scrapes. Extraneous data is removed at this point.
@@ -16,7 +16,7 @@ pub struct StoryRender {
     pub date: StoryDate,
     pub score: f32,
     pub tags: Vec<String>,
-    pub comment_links: HashMap<ScrapeSource, String>,
+    pub sources: TypedScrapeMap<Option<ScrapeId>>,
 }
 
 /// Fully-rendered story, suitable for display on admin screens.

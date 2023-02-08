@@ -209,6 +209,7 @@ macro_rules! scrapers {
         }
 
         impl <V> TypedScrapeMap<V> {
+            /// Get the given value based on a dynamic source.
             pub fn get(&self, source: ScrapeSource) -> &V {
                 match (source) {
                     $( ScrapeSource::$name => &self.$package, )*
@@ -216,6 +217,7 @@ macro_rules! scrapers {
                 }
             }
 
+            /// Set the given value based on a dynamic source.
             pub fn set(&mut self, source: ScrapeSource, mut value: V) -> V {
                 match (source) {
                     $( ScrapeSource::$name => std::mem::swap(&mut value, &mut self.$package), )*
@@ -224,8 +226,20 @@ macro_rules! scrapers {
                 value
             }
 
-            pub fn iter<'a>(&'a self) -> impl Iterator<Item = &'a V> {
+            /// Remove the given value based on a dynamic source, if values have
+            /// a default.
+            pub fn remove(&mut self, source: ScrapeSource) -> V where V: Default {
+                self.set(source, V::default())
+            }
+
+            /// Iterate over the underlying values.
+            pub fn values<'a>(&'a self) -> impl Iterator<Item = &'a V> {
                 [$( &self.$package, )* &self.other ].into_iter()
+            }
+
+            /// Iterate over the underlying keys/values.
+            pub fn iter<'a>(&'a self) -> impl Iterator<Item = (ScrapeSource, &'a V)> {
+                [$( (ScrapeSource::$name, &self.$package), )* (ScrapeSource::Other, &self.other) ].into_iter()
             }
         }
 

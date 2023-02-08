@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use num_format::ToFormattedString;
-use progscrape_scrapers::{StoryDate, StoryDuration};
+use progscrape_scrapers::{ScrapeId, StoryDate, StoryDuration};
 use serde_json::Value;
 
 use super::static_files::StaticFileRegistry;
@@ -121,6 +121,31 @@ impl tera::Filter for ApproxTimeFilter {
         } else {
             Err("Invalid date arguments".to_string().into())
         }
+    }
+}
+
+#[derive(Default)]
+pub struct CommentLinkFilter {}
+
+impl tera::Filter for CommentLinkFilter {
+    fn filter(
+        &self,
+        value: &Value,
+        _args: &std::collections::HashMap<String, Value>,
+    ) -> tera::Result<Value> {
+        let id = value.as_str().unwrap_or_else(|| {
+            tracing::warn!("Invalid input to comment_link filter");
+            ""
+        });
+
+        let s = if let Some(id) = ScrapeId::from_string(id) {
+            id.comments_url()
+        } else {
+            tracing::warn!("Invalid scrape ID for comment_link filter");
+            "<invalid>".to_owned()
+        };
+
+        Ok(s.into())
     }
 }
 
