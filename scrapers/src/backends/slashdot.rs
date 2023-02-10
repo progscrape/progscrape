@@ -1,8 +1,10 @@
 use std::{
     borrow::{Borrow, Cow},
     collections::HashSet,
+    time::SystemTime,
 };
 
+use chrono::{DateTime, TimeZone, Utc};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use tl::{HTMLTag, Parser, ParserOptions};
@@ -66,12 +68,21 @@ pub struct SlashdotScraper {}
 
 impl SlashdotScraper {
     fn parse_time(date: &str) -> Result<StoryDate, String> {
-        // Expected input: 'on Monday January 09, 2023 @08:25PM'
+        // Slashdot runs in EST5EDT (according to the latest slashcode release) if you
+        // are logged out. If we wanted to be more accurate, we could scrape the times from the
+        // RSS feed and correlate with the website but we're going to make do here instead.
 
-        // Clean up "on " prefix, @ signs and commas
-        let date = date.trim_start_matches("on ").replace(['@', ','], "");
+        let tz = chrono_tz::US::Eastern;
+        let res = tz.from_utc_datetime(&DateTime::<Utc>::from(SystemTime::now()).naive_utc());
 
-        // Expected at point: 'Monday January 09 2023 08:25PM'
+        // Clean up "on " prefix, @ signs and commas, then add the offset
+        let date = format!(
+            "{} {}",
+            date.trim_start_matches("on ").replace(['@', ','], ""),
+            res.format("%z")
+        );
+
+        // Expected at point: 'Monday January 09 2023 08:25PM -0500'
 
         // https://docs.rs/chrono/latest/chrono/format/strftime/index.html
         let day_of_week = ["%A ", ""];
@@ -84,7 +95,7 @@ impl SlashdotScraper {
             .cartesian_product(day)
             .cartesian_product(am_pm)
         {
-            let pattern = format!("{}%B {} %Y %I:%M{}", day_of_week, day, am_pm);
+            let pattern = format!("{}%B {} %Y %I:%M{} %z", day_of_week, day, am_pm);
             if let Some(date) = StoryDate::from_string(&date, &pattern) {
                 return Ok(date);
             }

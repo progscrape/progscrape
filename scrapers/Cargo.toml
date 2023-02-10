@@ -13,6 +13,7 @@ serde_cbor = "0.11"
 
 tl = "0.7"
 chrono = { version = "0.4", features = ["serde"] }
+chrono-tz = "0.8"
 roxmltree = "0.18"
 url = "2.3"
 itertools = "0.10"
