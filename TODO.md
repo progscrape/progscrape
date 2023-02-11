@@ -11,7 +11,8 @@
  - [ ] Tags w/internal representation from sites (ie: lobsters) should be reverse-lookup'd (ie: go -> golang)
  - [ ] Single-step release-to-deploy pipeline
  - [ ] Web interface validation (feed.json, frontpage + search at minimum)
-
+ - [ ] Atom feed
+ 
 ## Non-blockers
 
  - [ ] Announcements source
