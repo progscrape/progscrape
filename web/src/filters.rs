@@ -45,6 +45,24 @@ impl tera::Filter for AbsoluteTimeFilter {
 }
 
 #[derive(Default)]
+pub struct RFC3339Filter {}
+
+impl tera::Filter for RFC3339Filter {
+    fn filter(
+        &self,
+        value: &Value,
+        _args: &std::collections::HashMap<String, Value>,
+    ) -> tera::Result<Value> {
+        let date = value.as_i64().and_then(StoryDate::from_seconds);
+        if let Some(date) = date {
+            Ok(date.to_rfc3339().into())
+        } else {
+            Err("Invalid date arguments".to_string().into())
+        }
+    }
+}
+
+#[derive(Default)]
 pub struct RelativeTimeFilter {}
 
 impl tera::Filter for RelativeTimeFilter {

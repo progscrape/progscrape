@@ -91,6 +91,7 @@ fn create_templates(
 
     tera.register_filter("comma", CommaFilter::default());
 
+    tera.register_filter("rfc_3339", RFC3339Filter::default());
     tera.register_filter("relative_time", RelativeTimeFilter::default());
     tera.register_filter("absolute_time", AbsoluteTimeFilter::default());
     tera.register_filter("approx_time", ApproxTimeFilter::default());

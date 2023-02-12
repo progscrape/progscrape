@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+	<title>progscrape</title>
+	<updated>{{ now | rfc_3339 }}</updated>
+	<id>https://{{ host }}/</id>
+	<link rel="self" href="https://{{ host }}/feed" />
+	<link rel="alternate" href="https://{{ host }}/" />
+{% for story in stories %}
+	<entry>
+		<title>{{ story.title }}</title>
+		<link rel="alternate" href="{{ story.url }}" />
+		<id>{{ story.url }}</id>
+		<author>
+			<name>{{ story.domain }}</name>
+		</author>
+		<published>2023-02-11T15:50:00+00:00</published>
+		<updated>{{ story.date | rfc_3339 }}</updated>
+		<summary type="html">
+			{% for source, id in story.sources -%}
+			{%- if id -%}
+			&lt;p&gt;&lt;a href="{{ id | comment_link }}"&gt;&lt;img style="vertical-align: text-bottom;" src="https://{{ host }}{{ source ~ '.png' | static }}" width="16" height="16" /&gt; {{ source | replace(from='_', to=' ') }}&lt;/a&gt;&lt;/p&gt;
+			{%- endif -%}
+			{%- endfor -%}
+			&lt;p&gt;Tags:
+				{%- for tag in story.tags %}
+				&lt;span class="tag"&gt;&lt;a href="https://{{ host }}/?search={{ tag }}"&gt;{{ tag }}&lt;/a&gt;&lt;/span&gt;
+				{%- endfor -%}
+			&lt;/p&gt;
+		</summary>
+	</entry>
+{% endfor -%}
+</feed>

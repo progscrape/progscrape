@@ -2,13 +2,14 @@ use std::{collections::HashMap, net::SocketAddr, sync::Arc, time::Instant};
 
 use axum::{
     body::HttpBody,
-    extract::{Path, Query, State},
+    extract::{Host, Path, Query, State},
+    http::HeaderValue,
     middleware::{self, Next},
     response::{Html, IntoResponse, Redirect, Response},
     routing::{get, post},
     Extension, Json, Router,
 };
-use hyper::{service::Service, Body, HeaderMap, Method, Request, StatusCode};
+use hyper::{header, service::Service, Body, HeaderMap, Method, Request, StatusCode};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -261,7 +262,9 @@ pub async fn start_server<P1: AsRef<std::path::Path>, P2: Into<std::path::PathBu
     // build our application with a route
     let app = Router::new()
         .route("/", get(root))
-        .route("/feed.json", get(root_feed))
+        .route("/feed", get(root_feed_xml))
+        .with_state((index.clone(), resources.clone()))
+        .route("/feed.json", get(root_feed_json))
         .with_state((index.clone(), resources.clone()))
         .route("/static/:file", get(serve_static_files_immutable))
         .with_state(resources.clone())
@@ -434,7 +437,7 @@ fn to_feed_story(mut story: StoryRender) -> FeedStory {
 }
 
 // basic handler that responds with a static string
-async fn root_feed(
+async fn root_feed_json(
     State((index, resources)): State<(Index<StoryIndex>, Resources)>,
     query: Query<HashMap<String, String>>,
 ) -> Result<Json<impl Serialize>, WebError> {
@@ -466,6 +469,38 @@ async fn root_feed(
         "tags": top_tags,
         "stories": stories
     })))
+}
+
+async fn root_feed_xml(
+    Host(host): Host,
+    State((index, resources)): State<(Index<StoryIndex>, Resources)>,
+    query: Query<HashMap<String, String>>,
+) -> Result<impl IntoResponse, WebError> {
+    let now = now(&index).await?;
+    let stories = if let Some(search) = query.get("search") {
+        index
+            .fetch(
+                StoryQuery::from_search(&resources.story_evaluator().tagger, search),
+                30,
+            )
+            .await?
+    } else {
+        let mut vec = hot_set(now, &index, &resources.story_evaluator()).await?;
+        vec.truncate(150);
+        vec
+    };
+    let stories = render_stories(&resources.story_evaluator(), stories.iter());
+
+    let xml = resources
+        .templates()
+        .render("feed.xml", &context!(stories, now, host))?;
+    Ok((
+        [(
+            header::CONTENT_TYPE,
+            HeaderValue::from_static("application/atom+xml"),
+        )],
+        xml,
+    ))
 }
 
 async fn admin(
