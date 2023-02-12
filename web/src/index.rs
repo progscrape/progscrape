@@ -7,7 +7,7 @@ use std::{
 use itertools::Itertools;
 use progscrape_application::{
     BackerUpper, BackupResult, PersistError, PersistLocation, Shard, Storage, StorageFetch,
-    StorageSummary, StorageWriter, Story, StoryEvaluator, StoryIndex, StoryQuery,
+    StorageSummary, StorageWriter, Story, StoryEvaluator, StoryIndex, StoryQuery, StoryRender,
     StoryScrapePayload,
 };
 use progscrape_scrapers::{StoryDate, TypedScrape};
@@ -125,6 +125,32 @@ impl Index<StoryIndex> {
         let v = self.fetch(StoryQuery::FrontPage(), 500).await?;
         *self.hot_set.write().expect("Failed to lock hot set") = Self::compute_hot_set(v);
         Ok(())
+    }
+
+    pub async fn stories<S: From<StoryRender>>(
+        &self,
+        search: Option<impl AsRef<str>>,
+        eval: &StoryEvaluator,
+        count: usize,
+    ) -> Result<Vec<S>, PersistError> {
+        let stories = if let Some(search) = search {
+            self.fetch::<Shard>(StoryQuery::from_search(&eval.tagger, search.as_ref()), 30)
+                .await?
+                .iter()
+                .enumerate()
+                .map(|(index, story)| story.render(eval, index).into())
+                .collect_vec()
+        } else {
+            self.hot_set
+                .read()
+                .expect("Failed to lock hot set")
+                .stories
+                .iter()
+                .enumerate()
+                .map(|(index, story)| story.render(eval, index).into())
+                .collect_vec()
+        };
+        Ok(stories)
     }
 
     pub async fn hot_set(&self) -> Result<Vec<Story<Shard>>, PersistError> {

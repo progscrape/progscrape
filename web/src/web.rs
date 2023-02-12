@@ -315,16 +315,6 @@ async fn now(global: &Index<StoryIndex>) -> Result<StoryDate, PersistError> {
     global.most_recent_story().await
 }
 
-async fn hot_set(
-    now: StoryDate,
-    index: &Index<StoryIndex>,
-    eval: &StoryEvaluator,
-) -> Result<Vec<Story<Shard>>, PersistError> {
-    let mut hot_set = index.hot_set().await?;
-    eval.scorer.resort_stories(now, &mut hot_set);
-    Ok(hot_set)
-}
-
 macro_rules! context_assign {
     ($id:ident , ,) => {};
     ($id:ident , , $typ:ty) => {
@@ -372,19 +362,9 @@ async fn root(
     query: Query<HashMap<String, String>>,
 ) -> Result<Html<String>, WebError> {
     let now = now(&index).await?;
-    let stories = if let Some(search) = query.get("search") {
-        index
-            .fetch(
-                StoryQuery::from_search(&resources.story_evaluator().tagger, search),
-                30,
-            )
-            .await?
-    } else {
-        let mut vec = hot_set(now, &index, &resources.story_evaluator()).await?;
-        vec.truncate(30);
-        vec
-    };
-    let stories = render_stories(&resources.story_evaluator(), stories.iter());
+    let stories = index
+        .stories::<StoryRender>(query.get("search"), &resources.story_evaluator(), 30)
+        .await?;
     let mut top_tags = index.top_tags().await?;
     top_tags.truncate(20);
     let top_tags = resources
@@ -411,28 +391,30 @@ struct FeedStory {
     slashdot: Option<String>,
 }
 
-fn to_feed_story(mut story: StoryRender) -> FeedStory {
-    FeedStory {
-        date: story.date.to_rfc3339(),
-        href: story.url,
-        title: story.title,
-        tags: story.tags,
-        reddit: story
-            .sources
-            .remove(ScrapeSource::Reddit)
-            .map(|id| id.comments_url()),
-        hnews: story
-            .sources
-            .remove(ScrapeSource::HackerNews)
-            .map(|id| id.comments_url()),
-        lobsters: story
-            .sources
-            .remove(ScrapeSource::Lobsters)
-            .map(|id| id.comments_url()),
-        slashdot: story
-            .sources
-            .remove(ScrapeSource::Slashdot)
-            .map(|id| id.comments_url()),
+impl From<StoryRender> for FeedStory {
+    fn from(mut story: StoryRender) -> Self {
+        FeedStory {
+            date: story.date.to_rfc3339(),
+            href: story.url,
+            title: story.title,
+            tags: story.tags,
+            reddit: story
+                .sources
+                .remove(ScrapeSource::Reddit)
+                .map(|id| id.comments_url()),
+            hnews: story
+                .sources
+                .remove(ScrapeSource::HackerNews)
+                .map(|id| id.comments_url()),
+            lobsters: story
+                .sources
+                .remove(ScrapeSource::Lobsters)
+                .map(|id| id.comments_url()),
+            slashdot: story
+                .sources
+                .remove(ScrapeSource::Slashdot)
+                .map(|id| id.comments_url()),
+        }
     }
 }
 
@@ -441,23 +423,9 @@ async fn root_feed_json(
     State((index, resources)): State<(Index<StoryIndex>, Resources)>,
     query: Query<HashMap<String, String>>,
 ) -> Result<Json<impl Serialize>, WebError> {
-    let now = now(&index).await?;
-    let stories = if let Some(search) = query.get("search") {
-        index
-            .fetch(
-                StoryQuery::from_search(&resources.story_evaluator().tagger, search),
-                30,
-            )
-            .await?
-    } else {
-        let mut vec = hot_set(now, &index, &resources.story_evaluator()).await?;
-        vec.truncate(150);
-        vec
-    };
-    let stories = render_stories(&resources.story_evaluator(), stories.iter())
-        .into_iter()
-        .map(to_feed_story)
-        .collect_vec();
+    let stories = index
+        .stories::<FeedStory>(query.get("search"), &resources.story_evaluator(), 150)
+        .await?;
     let top_tags = resources
         .story_evaluator()
         .tagger
@@ -477,19 +445,9 @@ async fn root_feed_xml(
     query: Query<HashMap<String, String>>,
 ) -> Result<impl IntoResponse, WebError> {
     let now = now(&index).await?;
-    let stories = if let Some(search) = query.get("search") {
-        index
-            .fetch(
-                StoryQuery::from_search(&resources.story_evaluator().tagger, search),
-                30,
-            )
-            .await?
-    } else {
-        let mut vec = hot_set(now, &index, &resources.story_evaluator()).await?;
-        vec.truncate(150);
-        vec
-    };
-    let stories = render_stories(&resources.story_evaluator(), stories.iter());
+    let stories = index
+        .stories::<StoryRender>(query.get("search"), &resources.story_evaluator(), 30)
+        .await?;
 
     let xml = resources
         .templates()
@@ -743,20 +701,13 @@ async fn admin_status_frontpage(
 ) -> Result<Html<String>, WebError> {
     let now = now(&index).await?;
     let sort = sort.get("sort").cloned().unwrap_or_default();
+    let stories = index
+        .stories::<StoryRender>(Option::<String>::None, &resources.story_evaluator(), 500)
+        .await?;
     render(
         &resources,
         "admin/frontpage.html",
-        context!(
-            now,
-            user,
-            stories = render_stories(
-                &resources.story_evaluator(),
-                hot_set(now, &index, &resources.story_evaluator())
-                    .await?
-                    .iter(),
-            ),
-            sort,
-        ),
+        context!(now, user, stories, sort,),
     )
 }
 
