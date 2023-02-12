@@ -333,7 +333,7 @@ impl StoryIndexShard {
 
     /// Does the tricky work of converting indexed `StoryScrapeId`s to full ones.
     pub fn extract_scrape_ids_from_doc(&self, doc: &Document) -> Vec<StoryScrapeId> {
-        self.text_values(&doc, self.schema.scrape_field)
+        self.text_values(doc, self.schema.scrape_field)
             .into_iter()
             .filter_map(|id| {
                 if let Some((a, b)) = id.split_once(':') {

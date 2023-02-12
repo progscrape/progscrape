@@ -191,7 +191,7 @@ impl<'a> IntoIterator for &'a TagSet {
     type Item = <&'a HashSet<String> as IntoIterator>::Item;
 
     fn into_iter(self) -> Self::IntoIter {
-        (&self.set).into_iter()
+        self.set.iter()
     }
 }
 

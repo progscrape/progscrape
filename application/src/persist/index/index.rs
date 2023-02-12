@@ -258,7 +258,7 @@ impl StoryIndex {
                     // TODO: Should be batching
                     let result = index.lookup_stories(lookup, (-one_month)..one_month)?;
                     let lookup = result.into_iter().next().expect("TODO");
-                    let insert_type = match lookup {
+                    let _insert_type = match lookup {
                         StoryLookup::Found(_id, doc) => {
                             let doc = index.with_searcher(|searcher, _| searcher.doc(doc))??;
                             let ids = index.extract_scrape_ids_from_doc(&doc);
@@ -350,7 +350,7 @@ impl StoryIndex {
     ) -> Result<Option<NamedFieldDocument>, PersistError> {
         let shard = Shard::from_year_month(id.year(), id.month());
         let id = self
-            .with_searcher(shard, self.fetch_by_id(&id))??
+            .with_searcher(shard, self.fetch_by_id(id))??
             .first()
             .map(Clone::clone);
         if let Some((_, doc_address)) = id {
@@ -414,7 +414,7 @@ impl StoryIndex {
                 Result::<_, PersistError>::Ok(docs.into_iter().map(move |x| (shard, x.1)))
             })??;
             vec.extend(docs);
-            remaining = max.checked_sub(vec.len()).unwrap_or(0);
+            remaining = max.saturating_sub(vec.len());
         }
         Ok(vec)
     }
@@ -626,7 +626,10 @@ impl Storage for StoryIndex {
             let shard = self.get_shard(max)?;
             let index = shard.read().expect("Poisoned");
             let result = index.most_recent_story()?;
-            (*self.index_cache.write().expect("Poisoned")).most_recent_story = Some(result);
+            self.index_cache
+                .write()
+                .expect("Poisoned")
+                .most_recent_story = Some(result);
             Ok(result)
         } else {
             Ok(StoryDate::MIN)

@@ -192,7 +192,7 @@ impl StoryScorer {
         accum(SourceCount, (scrapes.scrapes.len() as f32).powf(2.0) * 5.0);
 
         for (scrape, core, _) in best.values().flatten() {
-            self.score_single(scrape, core, |x, y| accum(x, y));
+            self.score_single(scrape, core, &mut accum);
         }
 
         // Penalize a really long title regardless of source
