@@ -146,6 +146,7 @@ impl Index<StoryIndex> {
                 .expect("Failed to lock hot set")
                 .stories
                 .iter()
+                .take(count)
                 .enumerate()
                 .map(|(index, story)| story.render(eval, index).into())
                 .collect_vec()
