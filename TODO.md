@@ -11,8 +11,7 @@
  - [ ] Tags w/internal representation from sites (ie: lobsters) should be reverse-lookup'd (ie: go -> golang)
  - [ ] Single-step release-to-deploy pipeline
  - [ ] Web interface validation (feed.json, frontpage + search at minimum)
- - [ ] Atom feed
- 
+
 ## Non-blockers
 
  - [ ] Announcements source
@@ -48,3 +47,4 @@
  - [X] Determine why the score tuner isn't showing exactly the same results as the front page
  - [X] Choose the best option when multiple scrapes from Reddit are in the system
  - [X] Reddit flair tags with spaces should be skipped
+ - [X] Atom feed
