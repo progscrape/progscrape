@@ -8,10 +8,17 @@ use progscrape_scrapers::{
 use super::Story;
 
 #[derive(Clone, Default, Serialize, Deserialize)]
+pub struct StoryScoreMultiSourceConfig {
+    power: f32,
+    factor: f32,
+}
+
+#[derive(Clone, Default, Serialize, Deserialize)]
 pub struct StoryScoreConfig {
     age_breakpoint_days: [u32; 2],
     hour_scores: [f32; 3],
     service_rank: TypedScrapeMap<f32>,
+    multi_source: StoryScoreMultiSourceConfig,
 }
 
 pub enum StoryScoreType {
@@ -189,7 +196,11 @@ impl StoryScorer {
             (url.normalization().hash() % 6000000) as f32 / 1000000.0,
         );
 
-        accum(SourceCount, (scrapes.scrapes.len() as f32).powf(2.0) * 5.0);
+        accum(
+            SourceCount,
+            (scrapes.scrapes.len() as f32).powf(self.config.multi_source.power)
+                * self.config.multi_source.factor,
+        );
 
         for (scrape, core, _) in best.values().flatten() {
             self.score_single(scrape, core, &mut accum);
@@ -253,6 +264,10 @@ mod test {
             age_breakpoint_days: [1, 30],
             hour_scores: [-5.0, -3.0, -0.1],
             service_rank: TypedScrapeMap::new_with_all(1.0),
+            multi_source: StoryScoreMultiSourceConfig {
+                power: 2.0,
+                factor: 10.0,
+            },
         };
         let mut last_score = f32::MAX;
         let scorer = StoryScorer::new(&config);

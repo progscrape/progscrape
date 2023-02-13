@@ -6,6 +6,10 @@
             "hacker_news": 1.2,
             "reddit": 0.7,
             "lobsters": 1.2
+        },
+        "multi_source": {
+            "power": 1.2,
+            "factor": 5.0
         }
     },
     "scrape": {
