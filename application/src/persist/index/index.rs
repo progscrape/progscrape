@@ -1,7 +1,8 @@
 use itertools::Itertools;
 
 use tantivy::collector::TopDocs;
-use tantivy::query::{AllQuery, BooleanQuery, Occur, PhraseQuery, Query, TermQuery};
+use tantivy::query::{AllQuery, BooleanQuery, Occur, PhraseQuery, Query, QueryParser, TermQuery};
+use tantivy::tokenizer::{Tokenizer, TokenizerManager};
 use tantivy::{schema::*, DocAddress, IndexWriter, Searcher};
 
 use progscrape_scrapers::{ScrapeCollection, StoryDate, StoryUrl, TypedScrape};
@@ -458,18 +459,12 @@ impl StoryIndex {
         search: &str,
         max: usize,
     ) -> Result<Vec<(Shard, DocAddress)>, PersistError> {
-        let query1 = TermQuery::new(
-            Term::from_field_text(self.schema.title_field, search),
-            IndexRecordOption::Basic,
+        let query_parser = QueryParser::new(
+            self.schema.schema.clone(),
+            vec![self.schema.title_field, self.schema.tags_field],
+            TokenizerManager::default(),
         );
-        let query2 = TermQuery::new(
-            Term::from_field_text(self.schema.tags_field, search),
-            IndexRecordOption::Basic,
-        );
-        let query = BooleanQuery::new(vec![
-            (Occur::Should, Box::new(query1)),
-            (Occur::Should, Box::new(query2)),
-        ]);
+        let query = query_parser.parse_query(search)?;
         tracing::debug!("Term query = {:?}", query);
         self.fetch_search_query(query, max)
     }
@@ -906,7 +901,7 @@ mod test {
     /// Ensure that a story is searchable by various terms.
     #[rstest]
     #[case("http://example.com", "I love Rust", &["rust", "love", "example.com"])]
-    #[case("http://medium.com", "The pitfalls of C++", &["c++", "cplusplus"])]
+    #[case("http://medium.com", "The Pitfalls of C++", &["c++", "cplusplus", "pitfalls", "Pitfalls"])]
     #[case("http://www.att.com", "New AT&T plans", &["at&t", "atandt", "att.com"])]
     #[case("http://example.com", "I love Go", &["golang", "love"])]
     #[case("http://example.com", "I love C", &["clanguage", "love"])]

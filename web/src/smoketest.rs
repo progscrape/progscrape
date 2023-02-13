@@ -113,6 +113,7 @@ mod test {
             ("", Ordering::Greater, 10),
             ("?search=rust", Ordering::Greater, 2),
             ("?search=cobsteme", Ordering::Equal, 1),
+            ("?search=Cobsteme", Ordering::Equal, 1),
         ] {
             // Test the front page
             let s = assert_response(&mut router, "/", query, "text/html; charset=utf-8").await?;
