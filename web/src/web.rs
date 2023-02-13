@@ -383,8 +383,8 @@ async fn root(
     render(&resources, "index.html", context!(top_tags, stories, now))
 }
 
-#[derive(Serialize)]
-struct FeedStory {
+#[derive(Serialize, Deserialize)]
+pub struct FeedStory {
     date: String,
     href: String,
     title: String,
