@@ -328,33 +328,35 @@ scrapers! {
     reddit::Reddit,
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "scrape_test"))]
 pub mod test {
     use super::*;
-    use crate::extractor::ScrapeExtractor;
-    use std::fs::read_to_string;
-    use std::path::PathBuf;
-    use std::str::FromStr;
 
-    pub fn slashdot_files() -> Vec<&'static str> {
-        vec!["slashdot1.html", "slashdot2.html", "slashdot3.html"]
+    macro_rules! stringify_all {
+        ( $($s:literal),* ) => {
+            vec![ $( include_str!( concat!("../../testdata/", $s ) ) ),* ]
+        };
     }
 
-    pub fn hacker_news_files() -> Vec<&'static str> {
-        vec!["hn1.html", "hn2.html", "hn3.html", "hn4.html"]
+    fn slashdot_files() -> Vec<&'static str> {
+        stringify_all!["slashdot1.html", "slashdot2.html", "slashdot3.html"]
     }
 
-    pub fn lobsters_files() -> Vec<&'static str> {
-        vec!["lobsters1.rss", "lobsters2.rss"]
+    fn hacker_news_files() -> Vec<&'static str> {
+        stringify_all!["hn1.html", "hn2.html", "hn3.html", "hn4.html"]
     }
 
-    pub fn reddit_files() -> Vec<&'static str> {
-        vec![
+    fn lobsters_files() -> Vec<&'static str> {
+        stringify_all!["lobsters1.rss", "lobsters2.rss"]
+    }
+
+    fn reddit_files() -> Vec<&'static str> {
+        stringify_all![
             "reddit-prog-tag1.json",
             "reddit-prog-tag2.json",
             "reddit-prog1.json",
             "reddit-science1.json",
-            "reddit-science2.json",
+            "reddit-science2.json"
         ]
     }
 
@@ -368,9 +370,9 @@ pub mod test {
         }
     }
 
-    pub fn scrape_all() -> Vec<TypedScrape> {
+    /// Loads the various sample stories we've collected.
+    pub fn load_sample_scrapes(config: &ScrapeConfig) -> Vec<TypedScrape> {
         let mut v = vec![];
-        let config = ScrapeConfig::default();
         for source in [
             ScrapeSource::HackerNews,
             ScrapeSource::Lobsters,
@@ -378,24 +380,22 @@ pub mod test {
             ScrapeSource::Slashdot,
         ] {
             for file in files_by_source(source) {
-                let mut res = scrape(&config, source, &load_file(file))
+                let mut res = scrape(&config, source, &file)
                     .unwrap_or_else(|_| panic!("Scrape of {:?} failed", source));
                 v.append(&mut res.0);
             }
+            v.sort_by_key(|scrape| scrape.date);
         }
         v
     }
 
-    pub fn load_file(f: &str) -> String {
-        let mut path = PathBuf::from_str("testdata").unwrap();
-        path.push(f);
-        read_to_string(path).unwrap()
-    }
-
     #[test]
     fn test_scrape_all() {
-        let extractor = ScrapeExtractor::new(&ScrapeConfig::default());
-        for scrape in scrape_all() {
+        use crate::ScrapeExtractor;
+
+        let config = ScrapeConfig::default();
+        let extractor = ScrapeExtractor::new(&config);
+        for scrape in load_sample_scrapes(&config) {
             let scrape = extractor.extract(&scrape);
             // Sanity check the scrapes
             assert!(

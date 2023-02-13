@@ -12,3 +12,6 @@ pub use collections::{ExtractedScrapeCollection, ScrapeCollection};
 pub use extractor::*;
 pub use scrapers::*;
 pub use types::*;
+
+#[cfg(feature = "scrape_test")]
+pub use backends::test::load_sample_scrapes;

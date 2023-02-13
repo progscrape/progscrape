@@ -33,6 +33,8 @@ progscrape-application = { path = "../application" }
 
 [dev-dependencies]
 rstest = "0.16.0"
+tempfile = "3.3"
+progscrape-scrapers = { path = "../scrapers", features=["scrape_test"] }
 
 [profile.release]
 lto = true

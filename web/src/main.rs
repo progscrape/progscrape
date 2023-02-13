@@ -23,6 +23,7 @@ mod filters;
 mod index;
 mod resource;
 mod serve_static_files;
+mod smoketest;
 mod static_files;
 mod web;
 

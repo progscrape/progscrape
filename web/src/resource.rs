@@ -128,6 +128,18 @@ fn create_config(resource_path: &Path) -> Result<Config, WebError> {
 
 fn generate<T: AsRef<Path>>(resource_path: T) -> Result<ResourceHolder, WebError> {
     let resource_path = resource_path.as_ref();
+    if !resource_path.exists() {
+        tracing::error!(
+            "Root resources path does not exist: {} (cwd was {})",
+            resource_path.to_string_lossy(),
+            std::env::current_dir()
+                .unwrap_or_default()
+                .to_string_lossy()
+        );
+        return Err(WebError::NotFound);
+    }
+
+    let resource_path = &resource_path.canonicalize()?;
     let css = create_css(resource_path)?;
     let admin_css = create_admin_css(resource_path)?;
     let static_files = Arc::new(create_static_files(resource_path, css, admin_css)?);
@@ -150,42 +162,51 @@ fn generate<T: AsRef<Path>>(resource_path: T) -> Result<ResourceHolder, WebError
     })
 }
 
-/// Starts a process to watch all the templates/static data and regenerates everything if something changes.
-pub async fn start_watcher<T: AsRef<Path>>(resource_path: T) -> Result<Resources, WebError> {
-    let resource_path = resource_path.as_ref();
-    let (tx, rx) = watch::channel(generate(resource_path)?);
-    let (tx_dirty, mut rx_dirty) = watch::channel(false);
-    let mut watcher = notify::recommended_watcher(move |res| {
-        if let Ok(event) = res {
-            tracing::debug!("Got FS event: {:?}", event);
-            let _ = tx_dirty.send(true);
-        }
-    })?;
-    tracing::info!("Watching path {}...", resource_path.to_string_lossy());
-    watcher.watch(resource_path, RecursiveMode::Recursive)?;
+impl Resources {
+    /// Returns a `Resources` object that doesn't watch a file path.
+    #[cfg(test)]
+    pub fn get_resources<T: AsRef<Path>>(resource_path: T) -> Result<Resources, WebError> {
+        let (_, rx) = watch::channel(generate(resource_path)?);
+        Ok(Resources { rx })
+    }
 
-    let resource_path = resource_path.to_owned();
-    tokio::spawn(async move {
-        while rx_dirty.changed().await.is_ok() {
-            let resource_path = resource_path.clone();
-            tracing::info!("Noticed a change in watched paths!");
-            while tokio::time::timeout(Duration::from_millis(100), rx_dirty.changed())
-                .await
-                .is_ok()
-            {
-                tracing::debug!("Debouncing extra event within timeout period");
+    /// Starts a process to watch all the templates/static data and regenerates everything if something changes.
+    pub async fn start_watcher<T: AsRef<Path>>(resource_path: T) -> Result<Resources, WebError> {
+        let resource_path = resource_path.as_ref();
+        let (tx, rx) = watch::channel(generate(resource_path)?);
+        let (tx_dirty, mut rx_dirty) = watch::channel(false);
+        let mut watcher = notify::recommended_watcher(move |res| {
+            if let Ok(event) = res {
+                tracing::debug!("Got FS event: {:?}", event);
+                let _ = tx_dirty.send(true);
             }
-            tracing::info!("Regenerating...");
-            let res = tokio::task::spawn_blocking(move || generate(resource_path)).await;
-            match res {
-                Ok(Ok(v)) => drop(tx.send(v)),
-                Ok(Err(e)) => tracing::error!("Failed to regenerate data: {:?}", e),
-                _ => {}
-            };
-            tracing::info!("Done!");
-        }
-        // Keep the watcher alive in this task
-        drop(watcher);
-    });
-    Ok(Resources { rx })
+        })?;
+        tracing::info!("Watching path {}...", resource_path.to_string_lossy());
+        watcher.watch(resource_path, RecursiveMode::Recursive)?;
+
+        let resource_path = resource_path.to_owned();
+        tokio::spawn(async move {
+            while rx_dirty.changed().await.is_ok() {
+                let resource_path = resource_path.clone();
+                tracing::info!("Noticed a change in watched paths!");
+                while tokio::time::timeout(Duration::from_millis(100), rx_dirty.changed())
+                    .await
+                    .is_ok()
+                {
+                    tracing::debug!("Debouncing extra event within timeout period");
+                }
+                tracing::info!("Regenerating...");
+                let res = tokio::task::spawn_blocking(move || generate(resource_path)).await;
+                match res {
+                    Ok(Ok(v)) => drop(tx.send(v)),
+                    Ok(Err(e)) => tracing::error!("Failed to regenerate data: {:?}", e),
+                    _ => {}
+                };
+                tracing::info!("Done!");
+            }
+            // Keep the watcher alive in this task
+            drop(watcher);
+        });
+        Ok(Resources { rx })
+    }
 }

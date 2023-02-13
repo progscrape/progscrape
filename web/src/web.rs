@@ -242,6 +242,19 @@ fn start_cron(
     });
 }
 
+/// Create the router for the root page, the Atom feed, and the JSON API.
+pub fn create_feeds<S: Clone + Send + Sync + 'static>(
+    index: Index<StoryIndex>,
+    resources: Resources,
+) -> Router<S> {
+    let app = Router::new()
+        .route("/", get(root))
+        .route("/feed.json", get(root_feed_json))
+        .route("/feed", get(root_feed_xml))
+        .with_state((index.clone(), resources.clone()));
+    app
+}
+
 pub async fn start_server<P1: AsRef<std::path::Path>, P2: Into<std::path::PathBuf>>(
     root_path: P1,
     backup_path: Option<P2>,
@@ -254,18 +267,13 @@ pub async fn start_server<P1: AsRef<std::path::Path>, P2: Into<std::path::PathBu
 
     let resource_path = root_path.join("resource");
 
-    let resources = resource::start_watcher(resource_path).await?;
+    let resources = Resources::start_watcher(resource_path).await?;
 
     let cron = Arc::new(Mutex::new(Cron::new_with_jitter(-20..=20)));
     let cron_history = Arc::new(Mutex::new(CronHistory::default()));
 
     // build our application with a route
-    let app = Router::new()
-        .route("/", get(root))
-        .route("/feed", get(root_feed_xml))
-        .with_state((index.clone(), resources.clone()))
-        .route("/feed.json", get(root_feed_json))
-        .with_state((index.clone(), resources.clone()))
+    let app = create_feeds(index.clone(), resources.clone())
         .route("/static/:file", get(serve_static_files_immutable))
         .with_state(resources.clone())
         .nest(
@@ -422,7 +430,7 @@ impl From<StoryRender> for FeedStory {
 async fn root_feed_json(
     State((index, resources)): State<(Index<StoryIndex>, Resources)>,
     query: Query<HashMap<String, String>>,
-) -> Result<Json<impl Serialize>, WebError> {
+) -> Result<impl IntoResponse, WebError> {
     let stories = index
         .stories::<FeedStory>(query.get("search"), &resources.story_evaluator(), 150)
         .await?;
