@@ -10,7 +10,6 @@
  - [ ] Implement restore from backup-style JSON
  - [ ] Tags w/internal representation from sites (ie: lobsters) should be reverse-lookup'd (ie: go -> golang)
  - [ ] Single-step release-to-deploy pipeline
- - [ ] Web interface validation (feed.json, frontpage + search at minimum)
 
 ## Non-blockers
 
@@ -48,3 +47,4 @@
  - [X] Choose the best option when multiple scrapes from Reddit are in the system
  - [X] Reddit flair tags with spaces should be skipped
  - [X] Atom feed
+ - [X] Web interface validation (feed.json, frontpage + search at minimum)
