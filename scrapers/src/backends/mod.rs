@@ -380,7 +380,7 @@ pub mod test {
             ScrapeSource::Slashdot,
         ] {
             for file in files_by_source(source) {
-                let mut res = scrape(&config, source, &file)
+                let mut res = scrape(config, source, file)
                     .unwrap_or_else(|_| panic!("Scrape of {:?} failed", source));
                 v.append(&mut res.0);
             }
