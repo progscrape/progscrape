@@ -154,16 +154,6 @@ impl Index<StoryIndex> {
         Ok(stories)
     }
 
-    pub async fn hot_set(&self) -> Result<Vec<Story<Shard>>, PersistError> {
-        let v = self
-            .hot_set
-            .read()
-            .expect("Failed to lock hot set")
-            .stories
-            .clone();
-        Ok(v)
-    }
-
     pub async fn top_tags(&self) -> Result<Vec<String>, PersistError> {
         Ok(self
             .hot_set
