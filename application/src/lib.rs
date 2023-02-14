@@ -2,8 +2,9 @@ mod persist;
 mod story;
 
 pub use persist::{
-    BackerUpper, BackupResult, MemIndex, PersistError, PersistLocation, Shard, Storage,
-    StorageFetch, StorageSummary, StorageWriter, StoryIndex, StoryQuery, StoryScrapePayload,
+    BackerUpper, BackupResult, MemIndex, PersistError, PersistLocation, ScrapePersistResult, Shard,
+    Storage, StorageFetch, StorageSummary, StorageWriter, StoryIndex, StoryQuery,
+    StoryScrapePayload,
 };
 pub use story::{
     Story, StoryEvaluator, StoryIdentifier, StoryRender, StoryScore, StoryScoreConfig, TagSet,

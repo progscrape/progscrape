@@ -14,7 +14,7 @@ use std::time::Duration;
 use crate::persist::index::indexshard::{StoryIndexShard, StoryLookup, StoryLookupId};
 use crate::persist::scrapestore::ScrapeStore;
 use crate::persist::shard::{ShardOrder, ShardRange};
-use crate::persist::{Shard, ShardSummary, StorageFetch, StoryQuery};
+use crate::persist::{ScrapePersistResult, Shard, ShardSummary, StorageFetch, StoryQuery};
 use crate::story::{StoryCollector, TagSet};
 use crate::{
     timer_end, timer_start, MemIndex, PersistError, PersistLocation, Storage, StorageSummary,
@@ -240,13 +240,14 @@ impl StoryIndex {
         &mut self,
         eval: &StoryEvaluator,
         scrapes: I,
-    ) -> Result<(), PersistError> {
+    ) -> Result<Vec<ScrapePersistResult>, PersistError> {
         let one_month = Duration::from_secs(60 * 60 * 24 * 30).as_secs() as i64;
 
         let mut memindex = MemIndex::default();
         memindex.insert_scrapes(scrapes)?;
 
         self.with_writers(|provider| {
+            let mut res = vec![];
             for story in memindex.get_all_stories() {
                 let shard = Shard::from_date_time(story.earliest);
                 // TODO: Should be searching multiple shards
@@ -268,10 +269,12 @@ impl StoryIndex {
                                 ScrapeCollection::new_from_iter(scrapes.into_values().flatten());
                             orig_story.merge_all(story);
                             let doc = Self::create_story_insert(eval, &orig_story);
+                            res.push(ScrapePersistResult::MergedWithExistingStory);
                             index.reinsert_story_document(writer, doc)?
                         }
                         StoryLookup::Unfound(_id) => {
                             let doc = Self::create_story_insert(eval, &story);
+                            res.push(ScrapePersistResult::NewStory);
                             index.insert_story_document(writer, doc)?
                         }
                     };
@@ -279,10 +282,8 @@ impl StoryIndex {
                     Ok(())
                 })?;
             }
-            Ok(())
-        })?;
-
-        Ok(())
+            Ok(res)
+        })
     }
 
     /// Insert a list of scrapes into the index.
@@ -290,24 +291,23 @@ impl StoryIndex {
         &mut self,
         eval: &StoryEvaluator,
         scrapes: I,
-    ) -> Result<(), PersistError> {
+    ) -> Result<Vec<ScrapePersistResult>, PersistError> {
         let v = scrapes.into_iter().collect_vec();
 
         tracing::info!("Storing raw scrapes...");
         self.scrape_db.insert_scrape_batch(v.iter())?;
 
         tracing::info!("Indexing scrapes...");
-        self.insert_scrape_batch(eval, v)?;
-
-        Ok(())
+        Ok(self.insert_scrape_batch(eval, v)?)
     }
 
     fn insert_scrape_collections<I: IntoIterator<Item = ScrapeCollection>>(
         &mut self,
         eval: &StoryEvaluator,
         scrape_collections: I,
-    ) -> Result<(), PersistError> {
+    ) -> Result<Vec<ScrapePersistResult>, PersistError> {
         self.with_writers(|provider| {
+            let mut res = vec![];
             let start = timer_start!();
             let mut total = 0;
             for scrape_collections in &scrape_collections
@@ -321,6 +321,7 @@ impl StoryIndex {
 
                 for story in scrape_collections {
                     count += 1;
+                    res.push(ScrapePersistResult::NewStory);
                     let doc = Self::create_story_insert(eval, &story);
                     let scrapes = story.scrapes.into_values();
                     scrapes_batch.extend(scrapes);
@@ -343,8 +344,7 @@ impl StoryIndex {
                 timer_end!(start_chunk, "Indexed chunk of {} stories", count);
             }
             timer_end!(start, "Indexed total of {} stories", total);
-
-            Ok(())
+            Ok(res)
         })
     }
 
@@ -352,8 +352,9 @@ impl StoryIndex {
         &mut self,
         eval: &StoryEvaluator,
         stories: I,
-    ) -> Result<(), PersistError> {
+    ) -> Result<Vec<ScrapePersistResult>, PersistError> {
         self.with_writers(|provider| {
+            let mut res = vec![];
             for id in stories {
                 let searcher = self.fetch_by_id(&id);
                 let docs = self.with_searcher(id.shard(), searcher)??;
@@ -368,11 +369,13 @@ impl StoryIndex {
                         index.reinsert_story_document(writer, doc)?;
                         Ok(())
                     })?;
+                    res.push(ScrapePersistResult::MergedWithExistingStory);
+                } else {
+                    res.push(ScrapePersistResult::NotFound)
                 }
             }
-            Ok(())
-        })?;
-        Ok(())
+            Ok(res)
+        })
     }
 
     fn get_story_doc(
@@ -566,7 +569,7 @@ impl StorageWriter for StoryIndex {
         &mut self,
         eval: &StoryEvaluator,
         scrapes: I,
-    ) -> Result<(), PersistError> {
+    ) -> Result<Vec<ScrapePersistResult>, PersistError> {
         self.insert_scrapes(eval, scrapes)
     }
 
@@ -576,7 +579,7 @@ impl StorageWriter for StoryIndex {
         &mut self,
         eval: &StoryEvaluator,
         scrape_collections: I,
-    ) -> Result<(), PersistError> {
+    ) -> Result<Vec<ScrapePersistResult>, PersistError> {
         self.insert_scrape_collections(eval, scrape_collections)
     }
 
@@ -586,7 +589,7 @@ impl StorageWriter for StoryIndex {
         &mut self,
         eval: &StoryEvaluator,
         stories: I,
-    ) -> Result<(), PersistError> {
+    ) -> Result<Vec<ScrapePersistResult>, PersistError> {
         self.reinsert_stories(eval, stories)
     }
 }
@@ -902,7 +905,10 @@ mod test {
             .expect("Missing story");
 
         // Re-insert it and make sure it comes back with the right info
-        index.reinsert_stories(&eval, [story.id])?;
+        assert_eq!(
+            index.reinsert_stories(&eval, [story.id])?,
+            vec![ScrapePersistResult::MergedWithExistingStory]
+        );
         let story = index
             .fetch_one::<Shard>(StoryQuery::from_search(&eval.tagger, "rust"))?
             .expect("Missing story");

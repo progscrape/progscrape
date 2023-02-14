@@ -550,11 +550,11 @@ async fn admin_cron_reindex(
         resources, index, ..
     }): State<AdminState>,
 ) -> Result<Html<String>, WebError> {
-    index.reindex_hot_set(resources.story_evaluator()).await?;
+    let results = index.reindex_hot_set(resources.story_evaluator()).await?;
     render(
         &resources,
         "admin/cron_reindex.html",
-        context!(config = resources.config()),
+        context!(config = resources.config(), results),
     )
 }
 
@@ -596,7 +596,7 @@ async fn admin_cron_scrape(
             ScraperHttpResult::Ok(_, scrapes) => {
                 index
                     .insert_scrapes(resources.story_evaluator(), scrapes.clone())
-                    .await?
+                    .await?;
             }
             ScraperHttpResult::Err(..) => {}
         }

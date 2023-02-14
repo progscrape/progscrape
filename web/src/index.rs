@@ -6,9 +6,9 @@ use std::{
 
 use itertools::Itertools;
 use progscrape_application::{
-    BackerUpper, BackupResult, PersistError, PersistLocation, Shard, Storage, StorageFetch,
-    StorageSummary, StorageWriter, Story, StoryEvaluator, StoryIndex, StoryQuery, StoryRender,
-    StoryScrapePayload,
+    BackerUpper, BackupResult, PersistError, PersistLocation, ScrapePersistResult, Shard, Storage,
+    StorageFetch, StorageSummary, StorageWriter, Story, StoryEvaluator, StoryIndex, StoryQuery,
+    StoryRender, StoryScrapePayload,
 };
 use progscrape_scrapers::{StoryDate, TypedScrape};
 
@@ -136,19 +136,24 @@ impl Index<StoryIndex> {
     }
 
     /// Re-index and refresh the hot set using the most current configuration.
-    pub async fn reindex_hot_set(&self, eval: Arc<StoryEvaluator>) -> Result<(), PersistError> {
+    pub async fn reindex_hot_set(
+        &self,
+        eval: Arc<StoryEvaluator>,
+    ) -> Result<Vec<ScrapePersistResult>, PersistError> {
         // Get the hot set story IDs
         let story_ids = self.with_hot_set(|hot_set| {
             Ok(hot_set.iter().map(|story| story.id.clone()).collect_vec())
         })?;
 
         // Reindex the stories
-        async_run_write!(self.storage, move |storage: &mut StoryIndex| {
+        let res = async_run_write!(self.storage, move |storage: &mut StoryIndex| {
             storage.reinsert_stories(&eval, story_ids)
         })?;
 
         // Refresh the hot set from the index
-        Ok(self.refresh_hot_set().await?)
+        self.refresh_hot_set().await?;
+
+        Ok(res)
     }
 
     pub async fn stories<S: From<StoryRender>>(
@@ -190,7 +195,7 @@ impl Index<StoryIndex> {
         &self,
         eval: Arc<StoryEvaluator>,
         scrapes: I,
-    ) -> Result<(), PersistError> {
+    ) -> Result<Vec<ScrapePersistResult>, PersistError> {
         async_run_write!(self.storage, move |storage: &mut StoryIndex| {
             storage.insert_scrapes(&eval, scrapes)
         })
