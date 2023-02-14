@@ -345,11 +345,38 @@ impl StoryIndex {
         })
     }
 
+    fn reinsert_stories<I: Iterator<Item = Story<X>>, X>(
+        &mut self,
+        eval: &StoryEvaluator,
+        stories: I,
+    ) -> Result<(), PersistError> {
+        self.with_writers(|provider| {
+            for story in stories {
+                let searcher = self.fetch_by_id(&story.id);
+                let docs = self.with_searcher(story.id.shard(), searcher)??;
+                if let Some((shard, doc)) = docs.first() {
+                    provider.provide(*shard, |_, index, writer| {
+                        let doc = index.with_searcher(|searcher, _| searcher.doc(*doc))??;
+                        let ids = index.extract_scrape_ids_from_doc(&doc);
+                        let scrapes = self.scrape_db.fetch_scrape_batch(ids)?;
+                        let orig_story =
+                            ScrapeCollection::new_from_iter(scrapes.into_values().flatten());
+                        let doc = Self::create_story_insert(eval, &orig_story);
+                        index.reinsert_story_document(writer, doc)?;
+                        Ok(())
+                    })?;
+                }
+            }
+            Ok(())
+        })?;
+        Ok(())
+    }
+
     fn get_story_doc(
         &self,
         id: &StoryIdentifier,
     ) -> Result<Option<NamedFieldDocument>, PersistError> {
-        let shard = Shard::from_year_month(id.year(), id.month());
+        let shard = id.shard();
         let id = self
             .with_searcher(shard, self.fetch_by_id(id))??
             .first()
@@ -518,10 +545,7 @@ impl StoryIndex {
         max: usize,
     ) -> Result<Vec<(Shard, DocAddress)>, PersistError> {
         match query {
-            StoryQuery::ById(id) => self.with_searcher(
-                Shard::from_year_month(id.year(), id.month()),
-                self.fetch_by_id(&id),
-            )?,
+            StoryQuery::ById(id) => self.with_searcher(id.shard(), self.fetch_by_id(&id))?,
             StoryQuery::ByShard(shard) => Ok(self.with_searcher(shard, self.fetch_by_segment())?),
             StoryQuery::FrontPage() => self.fetch_front_page(max),
             StoryQuery::TagSearch(tag) => self.fetch_tag_search(&tag, max),
@@ -546,6 +570,14 @@ impl StorageWriter for StoryIndex {
         scrape_collections: I,
     ) -> Result<(), PersistError> {
         self.insert_scrape_collections(eval, scrape_collections)
+    }
+
+    fn reinsert_stories<I: Iterator<Item = Story<X>>, X>(
+        &mut self,
+        eval: &StoryEvaluator,
+        stories: I,
+    ) -> Result<(), PersistError> {
+        self.reinsert_stories(eval, stories)
     }
 }
 
@@ -721,6 +753,30 @@ mod test {
         lobsters.into()
     }
 
+    fn rust_story_hn() -> TypedScrape {
+        let url = StoryUrl::parse("http://example.com").expect("URL");
+        let date = StoryDate::year_month_day(2020, 1, 1).expect("Date failed");
+        hn_story("story1", date, "I love Rust", &url)
+    }
+
+    fn rust_story_reddit() -> TypedScrape {
+        let url = StoryUrl::parse("http://example.com").expect("URL");
+        let date = StoryDate::year_month_day(2020, 1, 1).expect("Date failed");
+        reddit_story("story1", "rust", date, "I love rust", &url)
+    }
+
+    fn rust_story_lobsters() -> TypedScrape {
+        let url = StoryUrl::parse("http://example.com").expect("URL");
+        let date = StoryDate::year_month_day(2020, 1, 1).expect("Date failed");
+        lobsters_story(
+            "story1",
+            date,
+            "Type inference in Rust",
+            &url,
+            vec!["plt".to_string()],
+        )
+    }
+
     #[rstest]
     fn test_index_shard(_enable_tracing: &bool) {
         let ids1 = (0..100).into_iter().map(|x| (x, 0));
@@ -760,20 +816,12 @@ mod test {
 
         let mut index = StoryIndex::new(PersistLocation::Memory)?;
         let eval = StoryEvaluator::new_for_test();
-        let url = StoryUrl::parse("http://example.com").expect("URL");
-        let date = StoryDate::year_month_day(2020, 1, 1).expect("Date failed");
-        index.insert_scrapes(
-            &eval,
-            [hn_story("story1", date, "I love Rust", &url)].into_iter(),
-        )?;
+        index.insert_scrapes(&eval, [rust_story_hn()].into_iter())?;
 
         let counts = index.story_count()?;
         assert_eq!(counts.total.story_count, 1);
 
-        index.insert_scrapes(
-            &eval,
-            [reddit_story("story1", "rust", date, "I love rust", &url)].into_iter(),
-        )?;
+        index.insert_scrapes(&eval, [rust_story_reddit()].into_iter())?;
 
         let counts = index.story_count()?;
         assert_eq!(counts.total.story_count, 1);
@@ -803,12 +851,7 @@ mod test {
 
         let mut memindex = MemIndex::default();
         let eval = StoryEvaluator::new_for_test();
-        let url = StoryUrl::parse("http://example.com").expect("URL");
-        let date = StoryDate::year_month_day(2020, 1, 1).expect("Date failed");
-        memindex.insert_scrapes([hn_story("story1", date, "I love Rust", &url)].into_iter())?;
-        memindex.insert_scrapes(
-            [reddit_story("story1", "rust", date, "I love Rust", &url)].into_iter(),
-        )?;
+        memindex.insert_scrapes([rust_story_hn(), rust_story_reddit()].into_iter())?;
 
         let mut index = StoryIndex::new(PersistLocation::Memory)?;
         index.insert_scrape_collections(&eval, memindex.get_all_stories())?;
@@ -829,6 +872,34 @@ mod test {
             story.scrapes.keys().sorted()
         ),);
         assert_eq!(TagSet::from_iter(["rust"]), story.tags);
+
+        Ok(())
+    }
+
+    /// Does re-indexing a story work correctly?
+    #[test]
+    fn test_reindex_story() -> Result<(), Box<dyn std::error::Error>> {
+        // Load a story
+        let mut memindex = MemIndex::default();
+        let eval = StoryEvaluator::new_for_test();
+        memindex.insert_scrapes([rust_story_hn(), rust_story_reddit()].into_iter())?;
+        let mut index = StoryIndex::new(PersistLocation::Memory)?;
+        index.insert_scrape_collections(&eval, memindex.get_all_stories())?;
+
+        // Ask the index for this story
+        let story = index
+            .fetch_one::<Shard>(StoryQuery::from_search(&eval.tagger, "rust"))?
+            .expect("Missing story");
+
+        // Re-insert it and make sure it comes back with the right info
+        index.reinsert_stories(&eval, [story].into_iter())?;
+        let story = index
+            .fetch_one::<Shard>(StoryQuery::from_search(&eval.tagger, "rust"))?
+            .expect("Missing story");
+        assert_eq!(story.title, "I love Rust");
+
+        let counts = index.story_count()?;
+        assert_eq!(counts.total.story_count, 1);
 
         Ok(())
     }
@@ -873,26 +944,20 @@ mod test {
     fn test_findable_by_extracted_tag() -> Result<(), Box<dyn std::error::Error>> {
         let mut index = StoryIndex::new(PersistLocation::Memory)?;
         let eval = StoryEvaluator::new_for_test();
-
-        let url = StoryUrl::parse("http://example.com").expect("URL");
-        let date = StoryDate::year_month_day(2020, 1, 1).expect("Date failed");
-        let title = "Type inference";
-        let tags = vec!["plt".into()];
-        index.insert_scrapes(
-            &eval,
-            [lobsters_story("story1", date, title, &url, tags)].into_iter(),
-        )?;
+        let story = rust_story_lobsters();
+        index.insert_scrapes(&eval, [story.clone()].into_iter())?;
 
         let counts = index.story_count()?;
         assert_eq!(counts.total.story_count, 1);
 
         for term in ["plt", "type", "inference"] {
             let search = index.fetch_count(StoryQuery::from_search(&eval.tagger, term), 10)?;
-            let doc = index.get_story_doc(&StoryIdentifier::new(date, url.normalization()))?;
+            let doc = index
+                .get_story_doc(&StoryIdentifier::new(story.date, story.url.normalization()))?;
             assert_eq!(
                 1, search,
                 "Expected one search result when querying '{}' for title={} url={} doc={:?}",
-                term, title, url, doc
+                term, story.raw_title, story.url, doc
             );
         }
         Ok(())

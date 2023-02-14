@@ -4,6 +4,8 @@ use std::fmt::Display;
 
 use progscrape_scrapers::{StoryDate, StoryUrlNorm};
 
+use crate::Shard;
+
 /// Uniquely identifies a story within the index.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize, Serialize)]
 pub struct StoryIdentifier {
@@ -72,13 +74,19 @@ impl StoryIdentifier {
         from_base64_res(s).ok()
     }
 
-    pub fn year(&self) -> u16 {
+    pub fn shard(&self) -> Shard {
+        Shard::from_year_month(self.year(), self.month())
+    }
+
+    fn year(&self) -> u16 {
         self.date.0
     }
-    pub fn month(&self) -> u8 {
+
+    fn month(&self) -> u8 {
         self.date.1
     }
-    pub fn day(&self) -> u8 {
+
+    fn day(&self) -> u8 {
         self.date.2
     }
 }

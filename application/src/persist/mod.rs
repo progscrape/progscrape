@@ -146,6 +146,13 @@ pub trait StorageWriter: Storage {
         eval: &StoryEvaluator,
         stories: I,
     ) -> Result<(), PersistError>;
+
+    /// Given a set of existing stories, re-inserts them into the index with updated scores and tags.
+    fn reinsert_stories<I: Iterator<Item = Story<X>>, X>(
+        &mut self,
+        eval: &StoryEvaluator,
+        stories: I,
+    ) -> Result<(), PersistError>;
 }
 
 #[derive(Debug)]
