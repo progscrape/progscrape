@@ -138,8 +138,10 @@ async fn go() -> Result<(), WebError> {
             let persist_path = persist_path
                 .unwrap_or("target/index".into())
                 .canonicalize()?;
+            tracing::info!("Persist path: {}", persist_path.to_string_lossy());
             let index = Index::initialize_with_persistence(persist_path)?;
             let root_path = root.unwrap_or(".".into()).canonicalize()?;
+            tracing::info!("Root path: {}", root_path.to_string_lossy());
             let listen_port = listen_port
                 .map(|s| s.parse().expect("Failed to parse socket address"))
                 .unwrap_or(SocketAddr::from(([127, 0, 0, 1], 3000)));

@@ -127,6 +127,30 @@ impl Index<StoryIndex> {
         Ok(())
     }
 
+    /// Borrows the hot set
+    fn with_hot_set<T>(
+        &self,
+        f: impl FnOnce(&Vec<Story<Shard>>) -> Result<T, PersistError>,
+    ) -> Result<T, PersistError> {
+        f(&self.hot_set.read().expect("Failed to lock hot set").stories)
+    }
+
+    /// Re-index and refresh the hot set using the most current configuration.
+    pub async fn reindex_hot_set(&self, eval: Arc<StoryEvaluator>) -> Result<(), PersistError> {
+        // Get the hot set story IDs
+        let story_ids = self.with_hot_set(|hot_set| {
+            Ok(hot_set.iter().map(|story| story.id.clone()).collect_vec())
+        })?;
+
+        // Reindex the stories
+        async_run_write!(self.storage, move |storage: &mut StoryIndex| {
+            storage.reinsert_stories(&eval, story_ids)
+        })?;
+
+        // Refresh the hot set from the index
+        Ok(self.refresh_hot_set().await?)
+    }
+
     pub async fn stories<S: From<StoryRender>>(
         &self,
         search: Option<impl AsRef<str>>,
@@ -141,15 +165,14 @@ impl Index<StoryIndex> {
                 .map(|(index, story)| story.render(eval, index).into())
                 .collect_vec()
         } else {
-            self.hot_set
-                .read()
-                .expect("Failed to lock hot set")
-                .stories
-                .iter()
-                .take(count)
-                .enumerate()
-                .map(|(index, story)| story.render(eval, index).into())
-                .collect_vec()
+            self.with_hot_set(|hot_set| {
+                Ok(hot_set
+                    .iter()
+                    .take(count)
+                    .enumerate()
+                    .map(|(index, story)| story.render(eval, index).into())
+                    .collect_vec())
+            })?
         };
         Ok(stories)
     }

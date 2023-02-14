@@ -158,6 +158,7 @@ pub fn admin_routes<S: Clone + Send + Sync + 'static>(
         .route("/cron/", post(admin_cron_post))
         .route("/cron/backup", post(admin_cron_backup))
         .route("/cron/refresh", post(admin_cron_refresh))
+        .route("/cron/reindex", post(admin_cron_reindex))
         .route("/cron/scrape/:service", post(admin_cron_scrape))
         .route("/headers/", get(admin_headers))
         .route("/scrape/", get(admin_scrape))
@@ -540,6 +541,19 @@ async fn admin_cron_refresh(
     render(
         &resources,
         "admin/cron_refresh.html",
+        context!(config = resources.config()),
+    )
+}
+
+async fn admin_cron_reindex(
+    State(AdminState {
+        resources, index, ..
+    }): State<AdminState>,
+) -> Result<Html<String>, WebError> {
+    index.reindex_hot_set(resources.story_evaluator()).await?;
+    render(
+        &resources,
+        "admin/cron_reindex.html",
         context!(config = resources.config()),
     )
 }
