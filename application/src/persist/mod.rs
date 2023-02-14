@@ -134,21 +134,21 @@ pub trait Storage: Send + Sync {
 
 pub trait StorageWriter: Storage {
     /// Insert a set of scrapes, merging with existing stories if necessary.
-    fn insert_scrapes<I: Iterator<Item = TypedScrape>>(
+    fn insert_scrapes<I: IntoIterator<Item = TypedScrape>>(
         &mut self,
         eval: &StoryEvaluator,
         scrapes: I,
     ) -> Result<(), PersistError>;
 
     /// Insert a set of pre-digested stories. Assumes that the underlying story does not exist and no merging is required.
-    fn insert_scrape_collections<I: Iterator<Item = ScrapeCollection>>(
+    fn insert_scrape_collections<I: IntoIterator<Item = ScrapeCollection>>(
         &mut self,
         eval: &StoryEvaluator,
         stories: I,
     ) -> Result<(), PersistError>;
 
     /// Given a set of existing stories, re-inserts them into the index with updated scores and tags.
-    fn reinsert_stories<I: Iterator<Item = Story<X>>, X>(
+    fn reinsert_stories<I: IntoIterator<Item = StoryIdentifier>>(
         &mut self,
         eval: &StoryEvaluator,
         stories: I,

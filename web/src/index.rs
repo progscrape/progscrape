@@ -163,7 +163,7 @@ impl Index<StoryIndex> {
             .clone())
     }
 
-    pub async fn insert_scrapes<I: Iterator<Item = TypedScrape> + Send + 'static>(
+    pub async fn insert_scrapes<I: IntoIterator<Item = TypedScrape> + Send + 'static>(
         &self,
         eval: Arc<StoryEvaluator>,
         scrapes: I,

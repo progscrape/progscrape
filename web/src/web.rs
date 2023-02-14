@@ -22,7 +22,7 @@ use crate::{
     auth::Auth,
     cron::{Cron, CronHistory},
     index::Index,
-    resource::{self, Resources},
+    resource::{Resources},
     serve_static_files,
 };
 use progscrape_application::{
@@ -247,12 +247,12 @@ pub fn create_feeds<S: Clone + Send + Sync + 'static>(
     index: Index<StoryIndex>,
     resources: Resources,
 ) -> Router<S> {
-    let app = Router::new()
+    
+    Router::new()
         .route("/", get(root))
         .route("/feed.json", get(root_feed_json))
         .route("/feed", get(root_feed_xml))
-        .with_state((index.clone(), resources.clone()));
-    app
+        .with_state((index, resources))
 }
 
 pub async fn start_server<P1: AsRef<std::path::Path>, P2: Into<std::path::PathBuf>>(
@@ -315,7 +315,7 @@ fn render_stories<'a, S: 'a>(
     iter: impl Iterator<Item = &'a Story<S>>,
 ) -> Vec<StoryRender> {
     iter.enumerate()
-        .map(|(n, x)| x.render(&eval, n))
+        .map(|(n, x)| x.render(eval, n))
         .collect::<Vec<_>>()
 }
 
@@ -582,7 +582,7 @@ async fn admin_cron_scrape(
         match result {
             ScraperHttpResult::Ok(_, scrapes) => {
                 index
-                    .insert_scrapes(resources.story_evaluator(), scrapes.clone().into_iter())
+                    .insert_scrapes(resources.story_evaluator(), scrapes.clone())
                     .await?
             }
             ScraperHttpResult::Err(..) => {}

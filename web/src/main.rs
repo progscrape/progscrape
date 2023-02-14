@@ -178,7 +178,7 @@ async fn go() -> Result<(), WebError> {
             // First, build an in-memory index quickly
             let memindex_start = Instant::now();
             let mut memindex = MemIndex::default();
-            memindex.insert_scrapes(scrapes.into_iter())?;
+            memindex.insert_scrapes(scrapes)?;
             let memindex_time = memindex_start.elapsed();
 
             // Now, import those stories

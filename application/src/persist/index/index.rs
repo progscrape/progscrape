@@ -1,8 +1,8 @@
 use itertools::Itertools;
 
 use tantivy::collector::TopDocs;
-use tantivy::query::{AllQuery, BooleanQuery, Occur, PhraseQuery, Query, QueryParser, TermQuery};
-use tantivy::tokenizer::{Tokenizer, TokenizerManager};
+use tantivy::query::{AllQuery, PhraseQuery, Query, QueryParser, TermQuery};
+use tantivy::tokenizer::{TokenizerManager};
 use tantivy::{schema::*, DocAddress, IndexWriter, Searcher};
 
 use progscrape_scrapers::{ScrapeCollection, StoryDate, StoryUrl, TypedScrape};
@@ -236,7 +236,7 @@ impl StoryIndex {
         doc
     }
 
-    fn insert_scrape_batch<'a, I: Iterator<Item = TypedScrape> + 'a>(
+    fn insert_scrape_batch<'a, I: IntoIterator<Item = TypedScrape> + 'a>(
         &mut self,
         eval: &StoryEvaluator,
         scrapes: I,
@@ -286,23 +286,23 @@ impl StoryIndex {
     }
 
     /// Insert a list of scrapes into the index.
-    fn insert_scrapes<I: Iterator<Item = TypedScrape>>(
+    fn insert_scrapes<I: IntoIterator<Item = TypedScrape>>(
         &mut self,
         eval: &StoryEvaluator,
         scrapes: I,
     ) -> Result<(), PersistError> {
-        let v = scrapes.collect_vec();
+        let v = scrapes.into_iter().collect_vec();
 
         tracing::info!("Storing raw scrapes...");
         self.scrape_db.insert_scrape_batch(v.iter())?;
 
         tracing::info!("Indexing scrapes...");
-        self.insert_scrape_batch(eval, v.into_iter())?;
+        self.insert_scrape_batch(eval, v)?;
 
         Ok(())
     }
 
-    fn insert_scrape_collections<I: Iterator<Item = ScrapeCollection>>(
+    fn insert_scrape_collections<I: IntoIterator<Item = ScrapeCollection>>(
         &mut self,
         eval: &StoryEvaluator,
         scrape_collections: I,
@@ -310,7 +310,10 @@ impl StoryIndex {
         self.with_writers(|provider| {
             let start = timer_start!();
             let mut total = 0;
-            for scrape_collections in &scrape_collections.chunks(STORY_INDEXING_CHUNK_SIZE) {
+            for scrape_collections in &scrape_collections
+                .into_iter()
+                .chunks(STORY_INDEXING_CHUNK_SIZE)
+            {
                 tracing::info!("Indexing chunk...");
                 let start_chunk = timer_start!();
                 let mut count = 0;
@@ -345,15 +348,15 @@ impl StoryIndex {
         })
     }
 
-    fn reinsert_stories<I: Iterator<Item = Story<X>>, X>(
+    fn reinsert_stories<I: IntoIterator<Item = StoryIdentifier>>(
         &mut self,
         eval: &StoryEvaluator,
         stories: I,
     ) -> Result<(), PersistError> {
         self.with_writers(|provider| {
-            for story in stories {
-                let searcher = self.fetch_by_id(&story.id);
-                let docs = self.with_searcher(story.id.shard(), searcher)??;
+            for id in stories {
+                let searcher = self.fetch_by_id(&id);
+                let docs = self.with_searcher(id.shard(), searcher)??;
                 if let Some((shard, doc)) = docs.first() {
                     provider.provide(*shard, |_, index, writer| {
                         let doc = index.with_searcher(|searcher, _| searcher.doc(*doc))??;
@@ -556,7 +559,10 @@ impl StoryIndex {
 }
 
 impl StorageWriter for StoryIndex {
-    fn insert_scrapes<I: Iterator<Item = TypedScrape>>(
+    /// Inserts individual scrapes, assuming that there is no story overlap in the input scrapes.
+    /// If there are matching scrapes in stories in the index, those stories are updated with
+    /// the new scrapes.
+    fn insert_scrapes<I: IntoIterator<Item = TypedScrape>>(
         &mut self,
         eval: &StoryEvaluator,
         scrapes: I,
@@ -564,7 +570,9 @@ impl StorageWriter for StoryIndex {
         self.insert_scrapes(eval, scrapes)
     }
 
-    fn insert_scrape_collections<I: Iterator<Item = ScrapeCollection>>(
+    /// Inserts a set of pre-existing scrape collections, assuming that these stories do
+    /// not already exist in the index. This is the fastest way to populate an index.
+    fn insert_scrape_collections<I: IntoIterator<Item = ScrapeCollection>>(
         &mut self,
         eval: &StoryEvaluator,
         scrape_collections: I,
@@ -572,7 +580,9 @@ impl StorageWriter for StoryIndex {
         self.insert_scrape_collections(eval, scrape_collections)
     }
 
-    fn reinsert_stories<I: Iterator<Item = Story<X>>, X>(
+    /// Re-insert a set of stories, assuming that they are in the index. This must only be
+    /// used with a story sourced from this index. Note that the
+    fn reinsert_stories<I: IntoIterator<Item = StoryIdentifier>>(
         &mut self,
         eval: &StoryEvaluator,
         stories: I,
@@ -816,12 +826,12 @@ mod test {
 
         let mut index = StoryIndex::new(PersistLocation::Memory)?;
         let eval = StoryEvaluator::new_for_test();
-        index.insert_scrapes(&eval, [rust_story_hn()].into_iter())?;
+        index.insert_scrapes(&eval, [rust_story_hn()])?;
 
         let counts = index.story_count()?;
         assert_eq!(counts.total.story_count, 1);
 
-        index.insert_scrapes(&eval, [rust_story_reddit()].into_iter())?;
+        index.insert_scrapes(&eval, [rust_story_reddit()])?;
 
         let counts = index.story_count()?;
         assert_eq!(counts.total.story_count, 1);
@@ -851,7 +861,7 @@ mod test {
 
         let mut memindex = MemIndex::default();
         let eval = StoryEvaluator::new_for_test();
-        memindex.insert_scrapes([rust_story_hn(), rust_story_reddit()].into_iter())?;
+        memindex.insert_scrapes([rust_story_hn(), rust_story_reddit()])?;
 
         let mut index = StoryIndex::new(PersistLocation::Memory)?;
         index.insert_scrape_collections(&eval, memindex.get_all_stories())?;
@@ -882,7 +892,7 @@ mod test {
         // Load a story
         let mut memindex = MemIndex::default();
         let eval = StoryEvaluator::new_for_test();
-        memindex.insert_scrapes([rust_story_hn(), rust_story_reddit()].into_iter())?;
+        memindex.insert_scrapes([rust_story_hn(), rust_story_reddit()])?;
         let mut index = StoryIndex::new(PersistLocation::Memory)?;
         index.insert_scrape_collections(&eval, memindex.get_all_stories())?;
 
@@ -892,7 +902,7 @@ mod test {
             .expect("Missing story");
 
         // Re-insert it and make sure it comes back with the right info
-        index.reinsert_stories(&eval, [story].into_iter())?;
+        index.reinsert_stories(&eval, [story.id])?;
         let story = index
             .fetch_one::<Shard>(StoryQuery::from_search(&eval.tagger, "rust"))?
             .expect("Missing story");
@@ -922,17 +932,17 @@ mod test {
         let mut index = StoryIndex::new(PersistLocation::Memory)?;
         let eval = StoryEvaluator::new_for_test();
 
-        index.insert_scrapes(&eval, batch.clone().into_iter())?;
+        index.insert_scrapes(&eval, batch.clone())?;
 
         // Cause a delete
         let url = StoryUrl::parse("http://domain-3.com/").expect("URL");
 
         index.insert_scrapes(
             &eval,
-            [reddit_story("story-3", "subreddit", date, "Title 3", &url)].into_iter(),
+            [reddit_story("story-3", "subreddit", date, "Title 3", &url)],
         )?;
 
-        index.insert_scrapes(&eval, batch.clone().into_iter())?;
+        index.insert_scrapes(&eval, batch.clone())?;
 
         let front_page = index.fetch_count(StoryQuery::FrontPage(), 100)?;
         assert_eq!(30, front_page);
@@ -945,7 +955,7 @@ mod test {
         let mut index = StoryIndex::new(PersistLocation::Memory)?;
         let eval = StoryEvaluator::new_for_test();
         let story = rust_story_lobsters();
-        index.insert_scrapes(&eval, [story.clone()].into_iter())?;
+        index.insert_scrapes(&eval, [story.clone()])?;
 
         let counts = index.story_count()?;
         assert_eq!(counts.total.story_count, 1);
@@ -982,7 +992,7 @@ mod test {
         let eval = StoryEvaluator::new_for_test();
         let url = StoryUrl::parse(url).expect("URL");
         let date = StoryDate::year_month_day(2020, 1, 1).expect("Date failed");
-        index.insert_scrapes(&eval, [hn_story("story1", date, title, &url)].into_iter())?;
+        index.insert_scrapes(&eval, [hn_story("story1", date, title, &url)])?;
 
         let counts = index.story_count()?;
         assert_eq!(counts.total.story_count, 1);
@@ -1018,7 +1028,7 @@ mod test {
         let mut memindex = MemIndex::default();
 
         // First, build an in-memory index quickly
-        memindex.insert_scrapes(scrapes.into_iter())?;
+        memindex.insert_scrapes(scrapes)?;
 
         index.insert_scrape_collections(&eval, memindex.get_all_stories())?;
 

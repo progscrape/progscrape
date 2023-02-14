@@ -32,7 +32,7 @@ impl MemIndex {
         self.stories.get(shard)
     }
 
-    pub fn insert_scrapes<I: Iterator<Item = TypedScrape>>(
+    pub fn insert_scrapes<I: IntoIterator<Item = TypedScrape>>(
         &mut self,
         scrapes: I,
     ) -> Result<(), PersistError> {
@@ -92,7 +92,7 @@ mod test {
 
         let _eval = StoryEvaluator::new_for_test();
         index
-            .insert_scrapes(stories.into_iter())
+            .insert_scrapes(stories)
             .expect("Failed to insert scrapes");
     }
 }

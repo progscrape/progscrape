@@ -6,8 +6,7 @@ mod test {
     use hyper::{header::CONTENT_TYPE, service::Service, Body, Method, Request};
     use progscrape_application::StoryIndex;
     use progscrape_scrapers::{
-        hacker_news::{HackerNews, HackerNewsStory},
-        ScrapeId, StoryUrl,
+        hacker_news::{HackerNewsStory}, StoryUrl,
     };
     use serde::Deserialize;
     use tracing_subscriber::EnvFilter;
@@ -86,7 +85,7 @@ mod test {
         let tempdir = tempfile::tempdir()?;
         let index = Index::<StoryIndex>::initialize_with_persistence(tempdir)?;
         index
-            .insert_scrapes(resources.story_evaluator(), scrapes.into_iter())
+            .insert_scrapes(resources.story_evaluator(), scrapes)
             .await?;
         index.refresh_hot_set().await?;
 

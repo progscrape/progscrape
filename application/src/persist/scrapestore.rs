@@ -65,10 +65,10 @@ impl ScrapeStore {
     }
 
     pub fn insert_scrape(&self, scrape: &TypedScrape) -> Result<(), PersistError> {
-        self.insert_scrape_batch([scrape].into_iter())
+        self.insert_scrape_batch([scrape])
     }
 
-    pub fn insert_scrape_batch<'a, I: Iterator<Item = &'a TypedScrape>>(
+    pub fn insert_scrape_batch<'a, I: IntoIterator<Item = &'a TypedScrape>>(
         &self,
         iter: I,
     ) -> Result<(), PersistError> {
