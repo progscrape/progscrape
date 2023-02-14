@@ -22,7 +22,7 @@ use crate::{
     auth::Auth,
     cron::{Cron, CronHistory},
     index::Index,
-    resource::{Resources},
+    resource::Resources,
     serve_static_files,
 };
 use progscrape_application::{
@@ -247,7 +247,6 @@ pub fn create_feeds<S: Clone + Send + Sync + 'static>(
     index: Index<StoryIndex>,
     resources: Resources,
 ) -> Router<S> {
-    
     Router::new()
         .route("/", get(root))
         .route("/feed.json", get(root_feed_json))

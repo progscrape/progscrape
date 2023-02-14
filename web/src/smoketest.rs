@@ -5,9 +5,7 @@ mod test {
     use axum::{body::HttpBody, http::HeaderValue, routing::IntoMakeService, Router};
     use hyper::{header::CONTENT_TYPE, service::Service, Body, Method, Request};
     use progscrape_application::StoryIndex;
-    use progscrape_scrapers::{
-        hacker_news::{HackerNewsStory}, StoryUrl,
-    };
+    use progscrape_scrapers::{hacker_news::HackerNewsStory, StoryUrl};
     use serde::Deserialize;
     use tracing_subscriber::EnvFilter;
 

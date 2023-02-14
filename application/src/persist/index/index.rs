@@ -2,7 +2,7 @@ use itertools::Itertools;
 
 use tantivy::collector::TopDocs;
 use tantivy::query::{AllQuery, PhraseQuery, Query, QueryParser, TermQuery};
-use tantivy::tokenizer::{TokenizerManager};
+use tantivy::tokenizer::TokenizerManager;
 use tantivy::{schema::*, DocAddress, IndexWriter, Searcher};
 
 use progscrape_scrapers::{ScrapeCollection, StoryDate, StoryUrl, TypedScrape};
