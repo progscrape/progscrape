@@ -85,7 +85,7 @@ mod test {
         index
             .insert_scrapes(resources.story_evaluator(), scrapes)
             .await?;
-        index.refresh_hot_set().await?;
+        index.refresh_hot_set(resources.story_evaluator()).await?;
 
         // Create a router that we can send mock requests to
         let router = create_feeds::<()>(index, resources);

@@ -62,15 +62,25 @@ impl Index<StoryIndex> {
         path: P,
     ) -> Result<Index<StoryIndex>, WebError> {
         let index = StoryIndex::new(PersistLocation::Path(path.as_ref().to_owned()))?;
-        let stories = index.fetch(StoryQuery::FrontPage(), 500)?;
-        let hot_set = Self::compute_hot_set(stories);
         Ok(Index {
             storage: Arc::new(RwLock::new(index)),
-            hot_set: Arc::new(RwLock::new(hot_set)),
+            hot_set: Arc::new(RwLock::new(HotSet {
+                stories: vec![],
+                top_tags: vec![],
+            })),
         })
     }
 
-    fn compute_hot_set(stories: Vec<Story<Shard>>) -> HotSet {
+    fn compute_hot_set(
+        mut stories: Vec<Story<Shard>>,
+        now: StoryDate,
+        eval: Arc<StoryEvaluator>,
+    ) -> HotSet {
+        // First we'll sort these stories
+        stories.sort_by_cached_key(|x| {
+            ((x.score + eval.scorer.score_age(now - x.date)) * -1000.0) as i32
+        });
+
         // Count each item
         let mut tag_counts = HashMap::new();
         for story in &stories {
@@ -121,9 +131,15 @@ impl Index<StoryIndex> {
         Ok(results)
     }
 
-    pub async fn refresh_hot_set(&self) -> Result<(), PersistError> {
+    pub async fn refresh_hot_set(&self, eval: Arc<StoryEvaluator>) -> Result<(), PersistError> {
+        let now = self
+            .storage
+            .read()
+            .expect("Failed to lock storage")
+            .most_recent_story()?;
         let v = self.fetch(StoryQuery::FrontPage(), 500).await?;
-        *self.hot_set.write().expect("Failed to lock hot set") = Self::compute_hot_set(v);
+        *self.hot_set.write().expect("Failed to lock hot set") =
+            Self::compute_hot_set(v, now, eval);
         Ok(())
     }
 
@@ -146,12 +162,13 @@ impl Index<StoryIndex> {
         })?;
 
         // Reindex the stories
-        let res = async_run_write!(self.storage, move |storage: &mut StoryIndex| {
-            storage.reinsert_stories(&eval, story_ids)
+        let eval_clone = eval.clone();
+        let res = async_run_write!(self.storage, |storage: &mut StoryIndex| {
+            storage.reinsert_stories(&eval_clone, story_ids)
         })?;
 
         // Refresh the hot set from the index
-        self.refresh_hot_set().await?;
+        self.refresh_hot_set(eval).await?;
 
         Ok(res)
     }

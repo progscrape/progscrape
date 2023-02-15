@@ -268,6 +268,7 @@ pub async fn start_server<P1: AsRef<std::path::Path>, P2: Into<std::path::PathBu
     let resource_path = root_path.join("resource");
 
     let resources = Resources::start_watcher(resource_path).await?;
+    index.refresh_hot_set(resources.story_evaluator()).await?;
 
     let cron = Arc::new(Mutex::new(Cron::new_with_jitter(-20..=20)));
     let cron_history = Arc::new(Mutex::new(CronHistory::default()));
@@ -537,7 +538,7 @@ async fn admin_cron_refresh(
         resources, index, ..
     }): State<AdminState>,
 ) -> Result<Html<String>, WebError> {
-    index.refresh_hot_set().await?;
+    index.refresh_hot_set(resources.story_evaluator()).await?;
     render(
         &resources,
         "admin/cron_refresh.html",
