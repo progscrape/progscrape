@@ -812,7 +812,7 @@ async fn admin_status_story(
     let now = now(&index).await?;
     tracing::info!("Loading story = {:?}", id);
     let story = index
-        .fetch_one(StoryQuery::ById(id))
+        .fetch_one(StoryQuery::ById(id.clone()))
         .await?
         .ok_or(WebError::NotFound)?;
     let scrapes = ScrapeCollection::new_from_iter(story.scrapes.clone().into_values());
@@ -820,6 +820,7 @@ async fn admin_status_story(
     let extract = scrapes.extract(&eval.extractor);
     let score_details = eval.scorer.score_detail(&extract, now);
     let tags = Default::default(); // _details = resources.story_evaluator().tagger.tag_detail(&story);
+    let doc = index.fetch_detail_one(id).await?.unwrap_or_default();
 
     render(
         &resources,
@@ -830,7 +831,8 @@ async fn admin_status_story(
             story = story.render(&eval, 0),
             scrapes = scrapes.scrapes,
             tags: HashMap<String, Vec<String>>,
-            score = score_details
+            score = score_details,
+            doc,
         ),
     )
 }

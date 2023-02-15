@@ -298,7 +298,7 @@ impl StoryIndex {
         self.scrape_db.insert_scrape_batch(v.iter())?;
 
         tracing::info!("Indexing scrapes...");
-        Ok(self.insert_scrape_batch(eval, v)?)
+        self.insert_scrape_batch(eval, v)
     }
 
     fn insert_scrape_collections<I: IntoIterator<Item = ScrapeCollection>>(
@@ -376,23 +376,6 @@ impl StoryIndex {
             }
             Ok(res)
         })
-    }
-
-    fn get_story_doc(
-        &self,
-        id: &StoryIdentifier,
-    ) -> Result<Option<NamedFieldDocument>, PersistError> {
-        let shard = id.shard();
-        let id = self
-            .with_searcher(shard, self.fetch_by_id(id))??
-            .first()
-            .map(Clone::clone);
-        if let Some((_, doc_address)) = id {
-            let res = self.with_index(shard, |_, index| index.doc_fields(doc_address))??;
-            Ok(Some(res))
-        } else {
-            Ok(None)
-        }
     }
 
     fn fetch_by_segment(
@@ -702,6 +685,31 @@ impl Storage for StoryIndex {
     fn fetch_count(&self, query: StoryQuery, max: usize) -> Result<usize, PersistError> {
         Ok(self.fetch_doc_addresses(query, max)?.len())
     }
+
+    fn fetch_detail_one(
+        &self,
+        query: StoryQuery,
+    ) -> Result<Option<HashMap<String, Vec<String>>>, PersistError> {
+        if let Some((shard, doc)) = self.fetch_doc_addresses(query, 1)?.first() {
+            let res = self.with_index(*shard, |_, index| {
+                let named_doc = index.doc_fields(*doc)?;
+                let mut map = HashMap::new();
+                for (key, value) in named_doc.0 {
+                    map.insert(
+                        key,
+                        value
+                            .into_iter()
+                            .map(|v| serde_json::to_string(&v).unwrap_or_else(|e| e.to_string()))
+                            .collect_vec(),
+                    );
+                }
+                Ok::<_, PersistError>(map)
+            })??;
+            Ok(Some(res))
+        } else {
+            Ok(None)
+        }
+    }
 }
 
 #[cfg(test)]
@@ -961,6 +969,7 @@ mod test {
         let mut index = StoryIndex::new(PersistLocation::Memory)?;
         let eval = StoryEvaluator::new_for_test();
         let story = rust_story_lobsters();
+        let id = StoryIdentifier::new(story.date, story.url.normalization());
         index.insert_scrapes(&eval, [story.clone()])?;
 
         let counts = index.story_count()?;
@@ -968,8 +977,7 @@ mod test {
 
         for term in ["plt", "type", "inference"] {
             let search = index.fetch_count(StoryQuery::from_search(&eval.tagger, term), 10)?;
-            let doc = index
-                .get_story_doc(&StoryIdentifier::new(story.date, story.url.normalization()))?;
+            let doc = index.fetch_detail_one(StoryQuery::ById(id.clone()))?;
             assert_eq!(
                 1, search,
                 "Expected one search result when querying '{}' for title={} url={} doc={:?}",
@@ -998,14 +1006,19 @@ mod test {
         let eval = StoryEvaluator::new_for_test();
         let url = StoryUrl::parse(url).expect("URL");
         let date = StoryDate::year_month_day(2020, 1, 1).expect("Date failed");
+        let id = StoryIdentifier::new(date, url.normalization());
         index.insert_scrapes(&eval, [hn_story("story1", date, title, &url)])?;
 
         let counts = index.story_count()?;
         assert_eq!(counts.total.story_count, 1);
 
+        // We use the doc for test failure analysis
+        let doc = index
+            .fetch_detail_one(StoryQuery::ById(id))?
+            .expect("Didn't find doc");
+
         for term in search_terms {
             let search = index.fetch_count(StoryQuery::from_search(&eval.tagger, term), 10)?;
-            let doc = index.get_story_doc(&StoryIdentifier::new(date, url.normalization()))?;
             assert_eq!(
                 1, search,
                 "Expected one search result when querying '{}' for title={} url={} doc={:?}",

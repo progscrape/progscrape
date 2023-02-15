@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{collections::HashMap, path::PathBuf};
 
 use crate::story::{Story, StoryEvaluator, StoryIdentifier, StoryTagger};
 use progscrape_scrapers::{ScrapeCollection, StoryDate, TypedScrape};
@@ -103,6 +103,12 @@ pub trait Storage: Send + Sync {
 
     /// Count the docs matching the query, at most max.
     fn fetch_count(&self, query: StoryQuery, max: usize) -> Result<usize, PersistError>;
+
+    /// Fetches the index-specific story details for a single story.
+    fn fetch_detail_one(
+        &self,
+        query: StoryQuery,
+    ) -> Result<Option<HashMap<String, Vec<String>>>, PersistError>;
 
     /// Fetch a list of stories with the specified payload type.
     #[inline(always)]

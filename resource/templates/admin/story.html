@@ -38,5 +38,12 @@
         {% endfor %}
         </table>
     </td></tr>
+    <tr><th>Doc</th><td>
+        <table>
+        {% for key, value in doc %}
+        <tr><th>{{ key }}</th><td>{{ value }}</td></tr>
+        {% endfor %}
+        </table>
+    </td></tr>
 </table>
 {% endblock %}

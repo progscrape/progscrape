@@ -7,8 +7,8 @@ use std::{
 use itertools::Itertools;
 use progscrape_application::{
     BackerUpper, BackupResult, PersistError, PersistLocation, ScrapePersistResult, Shard, Storage,
-    StorageFetch, StorageSummary, StorageWriter, Story, StoryEvaluator, StoryIndex, StoryQuery,
-    StoryRender, StoryScrapePayload,
+    StorageFetch, StorageSummary, StorageWriter, Story, StoryEvaluator, StoryIdentifier,
+    StoryIndex, StoryQuery, StoryRender, StoryScrapePayload,
 };
 use progscrape_scrapers::{StoryDate, TypedScrape};
 
@@ -235,6 +235,15 @@ impl Index<StoryIndex> {
     {
         async_run!(self.storage, |storage: &StoryIndex| {
             storage.fetch_one::<S>(query)
+        })
+    }
+
+    pub async fn fetch_detail_one(
+        &self,
+        id: StoryIdentifier,
+    ) -> Result<Option<HashMap<String, Vec<String>>>, PersistError> {
+        async_run!(self.storage, |storage: &StoryIndex| {
+            storage.fetch_detail_one(StoryQuery::ById(id))
         })
     }
 }
