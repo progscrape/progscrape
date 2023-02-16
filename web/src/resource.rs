@@ -37,8 +37,7 @@ impl Resources {
         self.rx.borrow().project_fn(|x| &x.templates)
     }
     pub fn static_files(&self) -> Shared<StaticFileRegistry> {
-        use std::ops::Deref;
-        self.rx.borrow().project_fn(|x| x.static_files.deref())
+        self.rx.borrow().project_fn(|x| &*x.static_files)
     }
     pub fn static_files_root(&self) -> Shared<StaticFileRegistry> {
         self.rx.borrow().project_fn(|x| &x.static_files_root)

@@ -64,7 +64,7 @@ pub struct Shared<T> {
     inner: RawOrProjection<Arc<T>, Arc<Box<dyn SharedProjection<T> + Send + Sync>>>,
 }
 
-impl<'a, T> Serialize for Shared<T>
+impl<'a, T: Serialize> Serialize for Shared<T>
 where
     &'a T: Serialize + 'static,
 {
@@ -72,7 +72,7 @@ where
     where
         S: serde::Serializer,
     {
-        self.serialize(serializer)
+        (**self).serialize(serializer)
     }
 }
 
@@ -98,8 +98,7 @@ impl<T: Send + Sync> Shared<T> {
 
 impl<T: Send + Sync, P: Send + Sync> SharedProjection<P> for (Shared<T>, Arc<Projector<T, P>>) {
     fn read<'a>(&'a self) -> &'a P {
-        use std::ops::Deref;
-        (self.1.ro)(self.0.deref())
+        (self.1.ro)(&*self.0)
     }
 }
 
@@ -108,7 +107,7 @@ impl<T> std::ops::Deref for Shared<T> {
     fn deref(&self) -> &Self::Target {
         use RawOrProjection::*;
         match &self.inner {
-            Lock(x) => x.deref(),
+            Lock(x) => &*x,
             Projection(x) => x.read(),
         }
     }
@@ -152,7 +151,7 @@ impl<T: Send + Sync, P: Send + Sync, const POISON_POLICY: u8> SharedRWProjection
         impl<'a, T, P> std::ops::Deref for HiddenLock<'a, T, P> {
             type Target = P;
             fn deref(&self) -> &Self::Target {
-                (self.projector.ro)(self.lock.deref())
+                (self.projector.ro)(&*self.lock)
             }
         }
 
@@ -175,13 +174,13 @@ impl<T: Send + Sync, P: Send + Sync, const POISON_POLICY: u8> SharedRWProjection
         impl<'a, T, P> std::ops::Deref for HiddenLock<'a, T, P> {
             type Target = P;
             fn deref(&self) -> &Self::Target {
-                (self.projector.ro)(self.lock.deref())
+                (self.projector.ro)(&*self.lock)
             }
         }
 
         impl<'a, T, P> std::ops::DerefMut for HiddenLock<'a, T, P> {
             fn deref_mut(&mut self) -> &mut Self::Target {
-                (self.projector.rw)(self.lock.deref_mut())
+                (self.projector.rw)(&mut *self.lock)
             }
         }
 
@@ -219,8 +218,8 @@ impl<'a, T> std::ops::Deref for SharedReadLock<'a, T> {
     fn deref(&self) -> &Self::Target {
         use RawOrProjection::*;
         match &self.lock {
-            Lock(x) => x.deref(),
-            Projection(x) => x.deref(),
+            Lock(x) => &*x,
+            Projection(x) => &*x,
         }
     }
 }
@@ -230,8 +229,8 @@ impl<'a, T> std::ops::Deref for SharedWriteLock<'a, T> {
     fn deref(&self) -> &Self::Target {
         use RawOrProjection::*;
         match &self.lock {
-            Lock(x) => x.deref(),
-            Projection(x) => x.deref(),
+            Lock(x) => &*x,
+            Projection(x) => &*x,
         }
     }
 }
@@ -240,8 +239,8 @@ impl<'a, T> std::ops::DerefMut for SharedWriteLock<'a, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         use RawOrProjection::*;
         match &mut self.lock {
-            Lock(x) => x.deref_mut(),
-            Projection(x) => x.deref_mut(),
+            Lock(x) => &mut *x,
+            Projection(x) => &mut *x,
         }
     }
 }
