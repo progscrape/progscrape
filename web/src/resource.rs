@@ -15,7 +15,7 @@ use progscrape_application::StoryEvaluator;
 use crate::config::Config;
 use crate::filters::*;
 use crate::static_files::StaticFileRegistry;
-use crate::types::Shared;
+use crate::types::{Shared, SharedRW};
 use crate::web::WebError;
 
 struct ResourceHolder {
@@ -29,27 +29,27 @@ struct ResourceHolder {
 
 #[derive(Clone)]
 pub struct Resources {
-    rx: watch::Receiver<Shared<ResourceHolder>>,
+    r: SharedRW<Shared<ResourceHolder>>,
 }
 
 impl Resources {
     pub fn templates(&self) -> Shared<Tera> {
-        self.rx.borrow().project_fn(|x| &x.templates)
+        self.r.lock_read().project_fn(|x| &x.templates)
     }
     pub fn static_files(&self) -> Shared<StaticFileRegistry> {
-        self.rx.borrow().project_fn(|x| &*x.static_files)
+        self.r.lock_read().project_fn(|x| &*x.static_files)
     }
     pub fn static_files_root(&self) -> Shared<StaticFileRegistry> {
-        self.rx.borrow().project_fn(|x| &x.static_files_root)
+        self.r.lock_read().project_fn(|x| &x.static_files_root)
     }
     pub fn config(&self) -> Shared<Config> {
-        self.rx.borrow().project_fn(|x| &x.config)
+        self.r.lock_read().project_fn(|x| &x.config)
     }
     pub fn story_evaluator(&self) -> Shared<StoryEvaluator> {
-        self.rx.borrow().project_fn(|x| &x.story_evaluator)
+        self.r.lock_read().project_fn(|x| &x.story_evaluator)
     }
     pub fn scrapers(&self) -> Shared<Scrapers> {
-        self.rx.borrow().project_fn(|x| &x.scrapers)
+        self.r.lock_read().project_fn(|x| &x.scrapers)
     }
 }
 
@@ -161,14 +161,15 @@ impl Resources {
     /// Returns a `Resources` object that doesn't watch a file path.
     #[cfg(test)]
     pub fn get_resources<T: AsRef<Path>>(resource_path: T) -> Result<Resources, WebError> {
-        let (_, rx) = watch::channel(generate(resource_path)?);
-        Ok(Resources { rx })
+        Ok(Resources {
+            r: SharedRW::new(generate(resource_path)?),
+        })
     }
 
     /// Starts a process to watch all the templates/static data and regenerates everything if something changes.
     pub async fn start_watcher<T: AsRef<Path>>(resource_path: T) -> Result<Resources, WebError> {
         let resource_path = resource_path.as_ref();
-        let (tx, rx) = watch::channel(generate(resource_path)?);
+        let r = SharedRW::new(generate(resource_path)?);
         let (tx_dirty, mut rx_dirty) = watch::channel(false);
         let mut watcher = notify::recommended_watcher(move |res| {
             if let Ok(event) = res {
@@ -180,6 +181,7 @@ impl Resources {
         watcher.watch(resource_path, RecursiveMode::Recursive)?;
 
         let resource_path = resource_path.to_owned();
+        let r_set = r.clone();
         tokio::spawn(async move {
             while rx_dirty.changed().await.is_ok() {
                 let resource_path = resource_path.clone();
@@ -193,7 +195,7 @@ impl Resources {
                 tracing::info!("Regenerating...");
                 let res = tokio::task::spawn_blocking(move || generate(resource_path)).await;
                 match res {
-                    Ok(Ok(v)) => drop(tx.send(v)),
+                    Ok(Ok(v)) => *r_set.lock_write() = v,
                     Ok(Err(e)) => tracing::error!("Failed to regenerate data: {:?}", e),
                     _ => {}
                 };
@@ -202,6 +204,6 @@ impl Resources {
             // Keep the watcher alive in this task
             drop(watcher);
         });
-        Ok(Resources { rx })
+        Ok(Resources { r })
     }
 }
