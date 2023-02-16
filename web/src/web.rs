@@ -1,4 +1,4 @@
-use std::{collections::HashMap, net::SocketAddr, sync::Arc, time::Instant};
+use std::{collections::HashMap, net::SocketAddr, time::Instant};
 
 use axum::{
     body::HttpBody,
@@ -15,7 +15,6 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tera::Context;
 use thiserror::Error;
-use tokio::sync::Mutex;
 use unwrap_infallible::UnwrapInfallible;
 
 use crate::{
@@ -24,6 +23,7 @@ use crate::{
     index::Index,
     resource::Resources,
     serve_static_files,
+    types::SharedRW,
 };
 use progscrape_application::{
     PersistError, Shard, Story, StoryEvaluator, StoryIdentifier, StoryIndex, StoryQuery,
@@ -81,8 +81,8 @@ impl IntoResponse for WebError {
 struct AdminState {
     resources: Resources,
     index: Index<StoryIndex>,
-    cron: Arc<Mutex<Cron>>,
-    cron_history: Arc<Mutex<CronHistory>>,
+    cron: SharedRW<Cron>,
+    cron_history: SharedRW<CronHistory>,
     backup_path: Option<std::path::PathBuf>,
 }
 
@@ -147,8 +147,8 @@ async fn handle_404() -> impl IntoResponse {
 pub fn admin_routes<S: Clone + Send + Sync + 'static>(
     resources: Resources,
     index: Index<StoryIndex>,
-    cron: Arc<Mutex<Cron>>,
-    cron_history: Arc<Mutex<CronHistory>>,
+    cron: SharedRW<Cron>,
+    cron_history: SharedRW<CronHistory>,
     backup_path: Option<std::path::PathBuf>,
     auth: Auth,
 ) -> Router<S> {
@@ -184,8 +184,8 @@ pub fn admin_routes<S: Clone + Send + Sync + 'static>(
 
 /// Feed the `Cron` request list into the `Router`.
 fn start_cron(
-    cron: Arc<Mutex<Cron>>,
-    cron_history: Arc<Mutex<CronHistory>>,
+    cron: SharedRW<Cron>,
+    cron_history: SharedRW<CronHistory>,
     resources: Resources,
     router: Router<()>,
 ) {
@@ -195,8 +195,7 @@ fn start_cron(
         let mut router = router.call(()).await.unwrap_infallible();
         loop {
             let ready = cron
-                .lock()
-                .await
+                .lock_write()
                 .tick(&resources.config().cron.jobs, Instant::now());
 
             // Sleep if no tasks are available
@@ -231,7 +230,7 @@ fn start_cron(
                     }
                 };
 
-                cron_history.lock().await.insert(
+                cron_history.lock_write().insert(
                     resources.config().cron.history_age,
                     resources.config().cron.history_count,
                     ready_uri,
@@ -270,8 +269,8 @@ pub async fn start_server<P1: AsRef<std::path::Path>, P2: Into<std::path::PathBu
     let resources = Resources::start_watcher(resource_path).await?;
     index.refresh_hot_set(resources.story_evaluator()).await?;
 
-    let cron = Arc::new(Mutex::new(Cron::new_with_jitter(-20..=20)));
-    let cron_history = Arc::new(Mutex::new(CronHistory::default()));
+    let cron = SharedRW::new(Cron::new_with_jitter(-20..=20));
+    let cron_history = SharedRW::new(CronHistory::default());
 
     // build our application with a route
     let app = create_feeds(index.clone(), resources.clone())
@@ -496,8 +495,8 @@ async fn admin_cron(
         context!(
             user,
             config = resources.config(),
-            cron = cron.lock().await.inspect(),
-            history = cron_history.lock().await.entries()
+            cron = cron.lock_read().inspect(),
+            history = cron_history.lock_read().entries()
         ),
     )
 }
@@ -512,7 +511,7 @@ async fn admin_cron_post(
     State(AdminState { cron, .. }): State<AdminState>,
     Json(params): Json<AdminCronRunParams>,
 ) -> Result<Json<bool>, WebError> {
-    let success = cron.lock().await.trigger(params.cron);
+    let success = cron.lock_write().trigger(params.cron);
     Ok(success.into())
 }
 

@@ -1,8 +1,4 @@
-use std::{
-    collections::HashMap,
-    path::Path,
-    sync::{Arc, RwLock},
-};
+use std::{collections::HashMap, path::Path};
 
 use itertools::Itertools;
 use progscrape_application::{
@@ -12,7 +8,10 @@ use progscrape_application::{
 };
 use progscrape_scrapers::{StoryDate, TypedScrape};
 
-use crate::web::WebError;
+use crate::{
+    types::{Shared, SharedRW},
+    web::WebError,
+};
 
 pub struct HotSet {
     stories: Vec<Story<Shard>>,
@@ -20,8 +19,8 @@ pub struct HotSet {
 }
 
 pub struct Index<S: StorageWriter> {
-    pub storage: Arc<RwLock<S>>,
-    pub hot_set: Arc<RwLock<HotSet>>,
+    pub storage: SharedRW<S>,
+    pub hot_set: SharedRW<HotSet>,
 }
 
 impl<S: StorageWriter> Clone for Index<S> {
@@ -37,7 +36,7 @@ macro_rules! async_run {
     ($storage:expr, $block:expr) => {{
         let storage = $storage.clone();
         tokio::task::spawn_blocking(move || {
-            let storage = storage.read().expect("Failed to lock storage for read");
+            let storage = storage.lock_read();
             $block(&storage)
         })
         .await
@@ -49,7 +48,7 @@ macro_rules! async_run_write {
     ($storage:expr, $block:expr) => {{
         let storage = $storage.clone();
         tokio::task::spawn_blocking(move || {
-            let mut storage = storage.write().expect("Failed to lock storage for write");
+            let mut storage = storage.lock_write();
             $block(&mut storage)
         })
         .await
@@ -63,18 +62,18 @@ impl Index<StoryIndex> {
     ) -> Result<Index<StoryIndex>, WebError> {
         let index = StoryIndex::new(PersistLocation::Path(path.as_ref().to_owned()))?;
         Ok(Index {
-            storage: Arc::new(RwLock::new(index)),
-            hot_set: Arc::new(RwLock::new(HotSet {
+            storage: SharedRW::new(index),
+            hot_set: SharedRW::new(HotSet {
                 stories: vec![],
                 top_tags: vec![],
-            })),
+            }),
         })
     }
 
     fn compute_hot_set(
         mut stories: Vec<Story<Shard>>,
         now: StoryDate,
-        eval: Arc<StoryEvaluator>,
+        eval: Shared<StoryEvaluator>,
     ) -> HotSet {
         // First we'll sort these stories
         stories.sort_by_cached_key(|x| {
@@ -117,7 +116,7 @@ impl Index<StoryIndex> {
         backup_path: &Path,
     ) -> Result<Vec<(Shard, Result<BackupResult, PersistError>)>, PersistError> {
         let backup = BackerUpper::new(backup_path);
-        let storage = self.storage.read().expect("Poisoned");
+        let storage = self.storage.lock_read();
         let shard_range = storage.shard_range()?;
         let results = storage.with_scrapes(|scrapes| backup.backup_range(scrapes, shard_range));
         for (shard, result) in &results {
@@ -131,15 +130,10 @@ impl Index<StoryIndex> {
         Ok(results)
     }
 
-    pub async fn refresh_hot_set(&self, eval: Arc<StoryEvaluator>) -> Result<(), PersistError> {
-        let now = self
-            .storage
-            .read()
-            .expect("Failed to lock storage")
-            .most_recent_story()?;
+    pub async fn refresh_hot_set(&self, eval: Shared<StoryEvaluator>) -> Result<(), PersistError> {
+        let now = self.storage.lock_read().most_recent_story()?;
         let v = self.fetch(StoryQuery::FrontPage(), 500).await?;
-        *self.hot_set.write().expect("Failed to lock hot set") =
-            Self::compute_hot_set(v, now, eval);
+        *self.hot_set.lock_write() = Self::compute_hot_set(v, now, eval);
         Ok(())
     }
 
@@ -148,13 +142,13 @@ impl Index<StoryIndex> {
         &self,
         f: impl FnOnce(&Vec<Story<Shard>>) -> Result<T, PersistError>,
     ) -> Result<T, PersistError> {
-        f(&self.hot_set.read().expect("Failed to lock hot set").stories)
+        f(&self.hot_set.lock_read().stories)
     }
 
     /// Re-index and refresh the hot set using the most current configuration.
     pub async fn reindex_hot_set(
         &self,
-        eval: Arc<StoryEvaluator>,
+        eval: Shared<StoryEvaluator>,
     ) -> Result<Vec<ScrapePersistResult>, PersistError> {
         // Get the hot set story IDs
         let story_ids = self.with_hot_set(|hot_set| {
@@ -200,17 +194,12 @@ impl Index<StoryIndex> {
     }
 
     pub async fn top_tags(&self) -> Result<Vec<String>, PersistError> {
-        Ok(self
-            .hot_set
-            .read()
-            .expect("Failed to lock hot set")
-            .top_tags
-            .clone())
+        Ok(self.hot_set.lock_read().top_tags.clone())
     }
 
     pub async fn insert_scrapes<I: IntoIterator<Item = TypedScrape> + Send + 'static>(
         &self,
-        eval: Arc<StoryEvaluator>,
+        eval: Shared<StoryEvaluator>,
         scrapes: I,
     ) -> Result<Vec<ScrapePersistResult>, PersistError> {
         async_run_write!(self.storage, move |storage: &mut StoryIndex| {

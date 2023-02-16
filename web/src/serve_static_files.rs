@@ -1,16 +1,9 @@
 use lazy_static::lazy_static;
 
-use std::sync::Arc;
-
-use axum::{
-    body::Bytes,
-    http::HeaderValue,
-    response::IntoResponse,
-    {self},
-};
+use axum::{body::Bytes, http::HeaderValue, response::IntoResponse};
 use hyper::{header::*, HeaderMap, StatusCode};
 
-use crate::{static_files::StaticFileRegistry, web::WebError};
+use crate::{static_files::StaticFileRegistry, types::Shared, web::WebError};
 
 lazy_static! {
     /// Immutable caching header, for files that never, ever, ever change.
@@ -51,7 +44,7 @@ fn ok(bytes: Bytes, headers: HeaderMap) -> StaticResponse {
 pub async fn immutable(
     headers_in: HeaderMap,
     key: String,
-    static_files: Arc<StaticFileRegistry>,
+    static_files: Shared<StaticFileRegistry>,
 ) -> Result<impl IntoResponse, WebError> {
     let mut headers = HeaderMap::new();
     headers.append(ETAG, key.parse()?);
@@ -82,7 +75,7 @@ pub async fn immutable(
 pub async fn well_known(
     headers_in: HeaderMap,
     file: String,
-    static_files: Arc<StaticFileRegistry>,
+    static_files: Shared<StaticFileRegistry>,
 ) -> Result<impl IntoResponse, WebError> {
     let mut headers = HeaderMap::new();
     headers.append(SERVER, SERVER_HEADER.clone());

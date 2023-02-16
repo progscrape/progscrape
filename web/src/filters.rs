@@ -1,8 +1,8 @@
-use std::sync::Arc;
-
 use num_format::ToFormattedString;
 use progscrape_scrapers::{ScrapeId, StoryDate, StoryDuration};
 use serde_json::Value;
+
+use crate::types::Shared;
 
 use super::static_files::StaticFileRegistry;
 
@@ -168,11 +168,11 @@ impl tera::Filter for CommentLinkFilter {
 }
 
 pub struct StaticFileFilter {
-    static_files: Arc<StaticFileRegistry>,
+    static_files: Shared<StaticFileRegistry>,
 }
 
 impl StaticFileFilter {
-    pub fn new(static_files: Arc<StaticFileRegistry>) -> Self {
+    pub fn new(static_files: Shared<StaticFileRegistry>) -> Self {
         Self { static_files }
     }
 }

@@ -6,7 +6,6 @@ use std::fs::File;
 use std::io::BufReader;
 
 use std::path::Path;
-use std::sync::Arc;
 use std::time::Duration;
 use tera::Tera;
 use tokio::sync::watch;
@@ -16,41 +15,42 @@ use progscrape_application::StoryEvaluator;
 use crate::config::Config;
 use crate::filters::*;
 use crate::static_files::StaticFileRegistry;
+use crate::types::Shared;
 use crate::web::WebError;
 
-#[derive(Clone)]
 struct ResourceHolder {
-    templates: Arc<Tera>,
-    static_files: Arc<StaticFileRegistry>,
-    static_files_root: Arc<StaticFileRegistry>,
-    config: Arc<Config>,
-    story_evaluator: Arc<StoryEvaluator>,
-    scrapers: Arc<Scrapers>,
+    templates: Tera,
+    static_files: Shared<StaticFileRegistry>,
+    static_files_root: StaticFileRegistry,
+    config: Config,
+    story_evaluator: StoryEvaluator,
+    scrapers: Scrapers,
 }
 
 #[derive(Clone)]
 pub struct Resources {
-    rx: watch::Receiver<ResourceHolder>,
+    rx: watch::Receiver<Shared<ResourceHolder>>,
 }
 
 impl Resources {
-    pub fn templates(&self) -> Arc<Tera> {
-        self.rx.borrow().templates.clone()
+    pub fn templates(&self) -> Shared<Tera> {
+        self.rx.borrow().project_fn(|x| &x.templates)
     }
-    pub fn static_files(&self) -> Arc<StaticFileRegistry> {
-        self.rx.borrow().static_files.clone()
+    pub fn static_files(&self) -> Shared<StaticFileRegistry> {
+        use std::ops::Deref;
+        self.rx.borrow().project_fn(|x| x.static_files.deref())
     }
-    pub fn static_files_root(&self) -> Arc<StaticFileRegistry> {
-        self.rx.borrow().static_files_root.clone()
+    pub fn static_files_root(&self) -> Shared<StaticFileRegistry> {
+        self.rx.borrow().project_fn(|x| &x.static_files_root)
     }
-    pub fn config(&self) -> Arc<Config> {
-        self.rx.borrow().config.clone()
+    pub fn config(&self) -> Shared<Config> {
+        self.rx.borrow().project_fn(|x| &x.config)
     }
-    pub fn story_evaluator(&self) -> Arc<StoryEvaluator> {
-        self.rx.borrow().story_evaluator.clone()
+    pub fn story_evaluator(&self) -> Shared<StoryEvaluator> {
+        self.rx.borrow().project_fn(|x| &x.story_evaluator)
     }
-    pub fn scrapers(&self) -> Arc<Scrapers> {
-        self.rx.borrow().scrapers.clone()
+    pub fn scrapers(&self) -> Shared<Scrapers> {
+        self.rx.borrow().project_fn(|x| &x.scrapers)
     }
 }
 
@@ -80,7 +80,7 @@ fn create_static_files_root(resource_path: &Path) -> Result<StaticFileRegistry, 
 
 fn create_templates(
     resource_path: &Path,
-    static_files: Arc<StaticFileRegistry>,
+    static_files: Shared<StaticFileRegistry>,
 ) -> Result<Tera, WebError> {
     let mut tera = Tera::new(
         resource_path
@@ -126,7 +126,7 @@ fn create_config(resource_path: &Path) -> Result<Config, WebError> {
     Ok(serde_json::from_reader(reader)?)
 }
 
-fn generate<T: AsRef<Path>>(resource_path: T) -> Result<ResourceHolder, WebError> {
+fn generate<T: AsRef<Path>>(resource_path: T) -> Result<Shared<ResourceHolder>, WebError> {
     let resource_path = resource_path.as_ref();
     if !resource_path.exists() {
         tracing::error!(
@@ -142,24 +142,20 @@ fn generate<T: AsRef<Path>>(resource_path: T) -> Result<ResourceHolder, WebError
     let resource_path = &resource_path.canonicalize()?;
     let css = create_css(resource_path)?;
     let admin_css = create_admin_css(resource_path)?;
-    let static_files = Arc::new(create_static_files(resource_path, css, admin_css)?);
-    let static_files_root = Arc::new(create_static_files_root(resource_path)?);
-    let templates = Arc::new(create_templates(resource_path, static_files.clone())?);
-    let config = Arc::new(create_config(resource_path)?);
-    let story_evaluator = Arc::new(StoryEvaluator::new(
-        &config.tagger,
-        &config.score,
-        &config.scrape,
-    ));
-    let scrapers = Arc::new(Scrapers::new(&config.scrape));
-    Ok(ResourceHolder {
+    let static_files = Shared::new(create_static_files(resource_path, css, admin_css)?);
+    let static_files_root = create_static_files_root(resource_path)?;
+    let templates = create_templates(resource_path, static_files.clone())?;
+    let config = create_config(resource_path)?;
+    let story_evaluator = StoryEvaluator::new(&config.tagger, &config.score, &config.scrape);
+    let scrapers = Scrapers::new(&config.scrape);
+    Ok(Shared::new(ResourceHolder {
         templates,
         static_files,
         static_files_root,
         config,
         story_evaluator,
         scrapers,
-    })
+    }))
 }
 
 impl Resources {
