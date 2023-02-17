@@ -8,7 +8,6 @@
  - [ ] Configure RPi4 for reliable hosting
  - [ ] Confirm that Reddit/HN/Slashdot times are actually correct
  - [ ] Implement restore from backup-style JSON
- - [ ] Tags w/internal representation from sites (ie: lobsters) should be reverse-lookup'd (ie: go -> golang)
  - [ ] Single-step release-to-deploy pipeline
 
 ## Non-blockers
@@ -48,3 +47,4 @@
  - [X] Reddit flair tags with spaces should be skipped
  - [X] Atom feed
  - [X] Web interface validation (feed.json, frontpage + search at minimum)
+ - [X] Tags w/internal representation from sites (ie: lobsters) should be reverse-lookup'd (ie: go -> golang)
