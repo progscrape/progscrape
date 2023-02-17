@@ -118,11 +118,11 @@ impl StoryIndexShard {
 
     /// Provides a valid searcher and schema temporarily for the callback function.
     #[inline(always)]
-    pub fn with_searcher<F: FnMut(&Searcher, &StorySchema) -> T, T>(
+    pub fn with_searcher<F: FnMut(&Searcher, &StorySchema) -> Result<T, PersistError>, T>(
         &self,
         mut f: F,
     ) -> Result<T, PersistError> {
-        Ok(f(&self.searcher, &self.schema))
+        f(&self.searcher, &self.schema)
     }
 
     /// Provides a valid writer and schema temporarily for the callback function.
@@ -176,7 +176,8 @@ impl StoryIndexShard {
         doc: StoryInsert,
     ) -> Result<ScrapePersistResult, PersistError> {
         writer.delete_term(Term::from_field_text(self.schema.id_field, &doc.id));
-        self.insert_story_document(writer, doc)
+        self.insert_story_document(writer, doc)?;
+        Ok(ScrapePersistResult::MergedWithExistingStory)
     }
 
     /// Insert a brand-new story document.
@@ -375,7 +376,6 @@ impl StoryIndexShard {
     /// Given a set of `StoryLookupId`s, computes the documents that match them.
     pub fn lookup_stories(
         &self,
-
         mut stories: HashSet<StoryLookupId>,
         date_range: impl RangeBounds<i64>,
     ) -> Result<Vec<StoryLookup>, PersistError> {

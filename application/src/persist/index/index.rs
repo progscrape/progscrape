@@ -85,7 +85,6 @@ impl WriterProvider {
 
 impl StoryIndex {
     pub fn new(location: PersistLocation) -> Result<Self, PersistError> {
-        // TODO: This start date needs to be dynamic
         let scrape_db = ScrapeStore::new(location.clone())?;
         tracing::info!("Initialized StoryIndex at {:?}", location);
 
@@ -127,13 +126,15 @@ impl StoryIndex {
         lock.get_shard(shard)
     }
 
-    /// Borrow the scrape database for a period of time.
+    /// Borrow the `ScrapeStore` for a period of time.
+    #[inline(always)]
     pub fn with_scrapes<F: FnOnce(&ScrapeStore) -> T, T>(&self, f: F) -> T {
         f(&self.scrape_db)
     }
 
+    /// Borrow the underlying `Searcher` for a period of time.
     #[inline(always)]
-    fn with_searcher<F: FnMut(Shard, &Searcher, &StorySchema) -> T, T>(
+    fn with_searcher<F: FnMut(Shard, &Searcher, &StorySchema) -> Result<T, PersistError>, T>(
         &self,
         shard: Shard,
         mut f: F,
@@ -143,15 +144,16 @@ impl StoryIndex {
         shard_index.with_searcher(|searcher, schema| f(shard, searcher, schema))
     }
 
+    /// Borrow the `StoryIndexShard` for a period of time.
     #[inline(always)]
-    fn with_index<F: FnMut(Shard, &StoryIndexShard) -> T, T>(
+    fn with_index<F: FnMut(Shard, &StoryIndexShard) -> Result<T, PersistError>, T>(
         &self,
         shard: Shard,
         mut f: F,
     ) -> Result<T, PersistError> {
         let shard_index = self.get_shard(shard)?;
         let shard_index = shard_index.read().expect("Poisoned");
-        Ok(f(shard, &shard_index))
+        f(shard, &shard_index)
     }
 
     /// This is a complicated function that gives you access to a function that gives you access
@@ -240,51 +242,83 @@ impl StoryIndex {
         doc
     }
 
-    fn insert_scrape_batch<'a, I: IntoIterator<Item = TypedScrape> + 'a>(
-        &mut self,
-        eval: &StoryEvaluator,
+    /// Given a stream of `ScrapeCollection`s, returns the insert position in the index for each. If
+    /// the `DocAddress` is present, the scrapes must be merged with the document at that address. We want to check
+    /// one shard back if we don't find a document in the current shard, so that we can merge scrapes across a month
+    /// boundary, for example.
+    fn find_insert_position<'a, I: IntoIterator<Item = ScrapeCollection> + 'a>(
+        &self,
         scrapes: I,
-    ) -> Result<Vec<ScrapePersistResult>, PersistError> {
+    ) -> Result<Vec<(ScrapeCollection, Shard, Option<DocAddress>)>, PersistError> {
         let one_month = Duration::from_secs(60 * 60 * 24 * 30).as_secs() as i64;
+        let mut res = vec![];
 
-        let mut memindex = MemIndex::default();
-        memindex.insert_scrapes(scrapes)?;
-
-        self.with_writers(|provider| {
-            let mut res = vec![];
-            for story in memindex.get_all_stories() {
-                let shard = Shard::from_date_time(story.earliest);
-                // TODO: Should be searching multiple shards
-                provider.provide(shard, |_, index, writer| {
+        // TODO: We could easily be batching the lookups here, though managing that batching
+        // could be somewhat complicated.
+        for story in scrapes {
+            let current_shard = Shard::from_date_time(story.earliest);
+            let mut shard = current_shard;
+            let mut i = 0;
+            let (shard, doc_address) = loop {
+                // Look this document up in the current shard.
+                let doc_address = self.with_index(shard, |_, index| {
                     let lookup = StoryLookupId {
                         url_norm_hash: story.url().normalization().hash(),
                         date: story.earliest.timestamp(),
                     };
                     let lookup = HashSet::from_iter([lookup]);
-                    // TODO: Should be batching
                     let result = index.lookup_stories(lookup, (-one_month)..one_month)?;
-                    let lookup = result.into_iter().next().expect("TODO");
-                    let _insert_type = match lookup {
-                        StoryLookup::Found(_id, doc) => {
-                            let doc = index.with_searcher(|searcher, _| searcher.doc(doc))??;
-                            let ids = index.extract_scrape_ids_from_doc(&doc);
-                            let scrapes = self.scrape_db.fetch_scrape_batch(ids)?;
-                            let mut orig_story =
-                                ScrapeCollection::new_from_iter(scrapes.into_values().flatten());
-                            orig_story.merge_all(story);
-                            let doc = Self::create_story_insert(eval, &orig_story);
-                            res.push(ScrapePersistResult::MergedWithExistingStory);
-                            index.reinsert_story_document(writer, doc)?
-                        }
-                        StoryLookup::Unfound(_id) => {
-                            let doc = Self::create_story_insert(eval, &story);
-                            res.push(ScrapePersistResult::NewStory);
-                            index.insert_story_document(writer, doc)?
-                        }
-                    };
-
-                    Ok(())
+                    Ok(match result.into_iter().next() {
+                        Some(StoryLookup::Found(_, doc)) => Some(doc),
+                        _ => None,
+                    })
                 })?;
+
+                // We break out of the loop if we find a document, _or_ if we're not searching shard w/offset zero
+                break if doc_address.is_some() {
+                    (shard, doc_address)
+                } else if i == 0 {
+                    // Not found, and we're looking at the current shard. Let's go back one month and look there instead.
+                    i -= 1;
+                    shard = shard.sub_months(1);
+                    continue;
+                } else {
+                    // Not found one shard back either, so insert in current shard.
+                    (current_shard, None)
+                };
+            };
+            res.push((story, shard, doc_address));
+        }
+        Ok(res)
+    }
+
+    fn insert_scrape_batch<'a, I: IntoIterator<Item = TypedScrape> + 'a>(
+        &mut self,
+        eval: &StoryEvaluator,
+        scrapes: I,
+    ) -> Result<Vec<ScrapePersistResult>, PersistError> {
+        let mut memindex = MemIndex::default();
+        memindex.insert_scrapes(scrapes)?;
+        let positions = self.find_insert_position(memindex.get_all_stories())?;
+
+        self.with_writers(|provider| {
+            let mut res = vec![];
+            for (story, shard, doc_address) in positions {
+                res.push(provider.provide(shard, |_, index, writer| {
+                    if let Some(doc) = doc_address {
+                        let doc = index.with_searcher(|searcher, _| Ok(searcher.doc(doc)?))?;
+                        let ids = index.extract_scrape_ids_from_doc(&doc);
+                        let scrapes = self.scrape_db.fetch_scrape_batch(ids)?;
+                        let mut orig_story =
+                            ScrapeCollection::new_from_iter(scrapes.into_values().flatten());
+                        orig_story.merge_all(story);
+                        let doc = Self::create_story_insert(eval, &orig_story);
+                        index.reinsert_story_document(writer, doc)
+                    } else {
+                        let doc = Self::create_story_insert(eval, &story);
+                        index.insert_story_document(writer, doc)
+                    }
+                })?);
             }
             Ok(res)
         })
@@ -361,10 +395,10 @@ impl StoryIndex {
             let mut res = vec![];
             for id in stories {
                 let searcher = self.fetch_by_id(&id);
-                let docs = self.with_searcher(id.shard(), searcher)??;
+                let docs = self.with_searcher(id.shard(), searcher)?;
                 if let Some((shard, doc)) = docs.first() {
                     provider.provide(*shard, |_, index, writer| {
-                        let doc = index.with_searcher(|searcher, _| searcher.doc(*doc))??;
+                        let doc = index.with_searcher(|searcher, _| Ok(searcher.doc(*doc)?))?;
                         let ids = index.extract_scrape_ids_from_doc(&doc);
                         let scrapes = self.scrape_db.fetch_scrape_batch(ids)?;
                         let orig_story =
@@ -384,7 +418,8 @@ impl StoryIndex {
 
     fn fetch_by_segment(
         &self,
-    ) -> impl FnMut(Shard, &Searcher, &StorySchema) -> Vec<(Shard, DocAddress)> {
+    ) -> impl FnMut(Shard, &Searcher, &StorySchema) -> Result<Vec<(Shard, DocAddress)>, PersistError>
+    {
         move |shard, searcher, _schema| {
             let mut v = vec![];
             let now = timer_start!();
@@ -395,7 +430,7 @@ impl StoryIndex {
                 }
             }
             timer_end!(now, "Loaded {} stories from shard {:?}", v.len(), shard);
-            v
+            Ok(v)
         }
     }
 
@@ -432,8 +467,8 @@ impl StoryIndex {
             }
             let docs = self.with_searcher(shard, |shard, searcher, _schema| {
                 let docs = searcher.search(&query, &TopDocs::with_limit(remaining))?;
-                Result::<_, PersistError>::Ok(docs.into_iter().map(move |x| (shard, x.1)))
-            })??;
+                Ok(docs.into_iter().map(move |x| (shard, x.1)))
+            })?;
             vec.extend(docs);
             remaining = max.saturating_sub(vec.len());
         }
@@ -520,8 +555,8 @@ impl StoryIndex {
                     }
                 }
 
-                Result::<_, PersistError>::Ok(())
-            })??;
+                Ok(())
+            })?;
         }
         tracing::info!(
             "Got {}/{} docs for front page (processed {})",
@@ -538,8 +573,8 @@ impl StoryIndex {
         max: usize,
     ) -> Result<Vec<(Shard, DocAddress)>, PersistError> {
         match query {
-            StoryQuery::ById(id) => self.with_searcher(id.shard(), self.fetch_by_id(&id))?,
-            StoryQuery::ByShard(shard) => Ok(self.with_searcher(shard, self.fetch_by_segment())?),
+            StoryQuery::ById(id) => self.with_searcher(id.shard(), self.fetch_by_id(&id)),
+            StoryQuery::ByShard(shard) => self.with_searcher(shard, self.fetch_by_segment()),
             StoryQuery::FrontPage() => self.fetch_front_page(max),
             StoryQuery::TagSearch(tag) => self.fetch_tag_search(&tag, max),
             StoryQuery::DomainSearch(domain) => self.fetch_domain_search(&domain, max),
@@ -590,7 +625,7 @@ impl StorageFetch<Shard> for StoryIndex {
                 let url = StoryUrl::parse(story.url).expect("Failed to parse URL");
                 let date = StoryDate::from_seconds(story.date).expect("Failed to re-parse date");
                 let score = story.score as f32;
-                Result::<_, PersistError>::Ok(Story::new_from_parts(
+                Ok(Story::new_from_parts(
                     story.title,
                     url,
                     date,
@@ -598,7 +633,7 @@ impl StorageFetch<Shard> for StoryIndex {
                     story.tags,
                     story.scrape_ids,
                 ))
-            })??;
+            })?;
 
             v.push(doc);
         }
@@ -632,8 +667,8 @@ impl StorageFetch<TypedScrape> for StoryIndex {
                     scrapes.into_values().flatten(),
                 );
 
-                Result::<_, PersistError>::Ok(story)
-            })??;
+                Ok(story)
+            })?;
 
             v.push(doc);
         }
@@ -707,8 +742,8 @@ impl Storage for StoryIndex {
                             .collect_vec(),
                     );
                 }
-                Ok::<_, PersistError>(map)
-            })??;
+                Ok(map)
+            })?;
             Ok(Some(res))
         } else {
             Ok(None)
@@ -784,6 +819,12 @@ mod test {
         hn_story("story1", date, "I love Rust", &url)
     }
 
+    fn rust_story_hn_prev_year() -> TypedScrape {
+        let url = StoryUrl::parse("http://example.com").expect("URL");
+        let date = StoryDate::year_month_day(2019, 12, 31).expect("Date failed");
+        hn_story("story1", date, "I love Rust", &url)
+    }
+
     fn rust_story_reddit() -> TypedScrape {
         let url = StoryUrl::parse("http://example.com").expect("URL");
         let date = StoryDate::year_month_day(2020, 1, 1).expect("Date failed");
@@ -842,6 +883,41 @@ mod test {
         let mut index = StoryIndex::new(PersistLocation::Memory)?;
         let eval = StoryEvaluator::new_for_test();
         index.insert_scrapes(&eval, [rust_story_hn()])?;
+
+        let counts = index.story_count()?;
+        assert_eq!(counts.total.story_count, 1);
+
+        index.insert_scrapes(&eval, [rust_story_reddit()])?;
+
+        let counts = index.story_count()?;
+        assert_eq!(counts.total.story_count, 1);
+
+        let search = index.fetch::<Shard>(StoryQuery::from_search(&eval.tagger, "rust"), 10)?;
+        assert_eq!(search.len(), 1);
+
+        let story = &search[0];
+        assert_eq!("I love Rust", story.title);
+        assert!(itertools::equal(
+            [
+                &HackerNews.id("story1"),
+                &Reddit.subsource_id("rust", "story1")
+            ],
+            story.scrapes.keys().sorted()
+        ),);
+        assert_eq!(TagSet::from_iter(["rust"]), story.tags);
+
+        Ok(())
+    }
+
+    #[rstest]
+    fn test_index_scrapes_across_shard(
+        _enable_tracing: &bool,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        use ScrapeSource::*;
+
+        let mut index = StoryIndex::new(PersistLocation::Memory)?;
+        let eval = StoryEvaluator::new_for_test();
+        index.insert_scrapes(&eval, [rust_story_hn_prev_year()])?;
 
         let counts = index.story_count()?;
         assert_eq!(counts.total.story_count, 1);

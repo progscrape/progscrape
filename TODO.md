@@ -3,7 +3,6 @@
 ## Launch blockers
 
  - [ ] Dump existing index plus old docs to backups
- - [ ] Ensure we check one shard back for clustering if not found in current shard (should be based on scrape date, however, mostly for inactive subreddits)
  - [ ] Configure RPi4 for reliable hosting
  - [ ] Implement restore from backup-style JSON
  - [ ] Single-step release-to-deploy pipeline
@@ -49,3 +48,4 @@
  - [X] Tags w/internal representation from sites (ie: lobsters) should be reverse-lookup'd (ie: go -> golang)
  - [X] Slashdot tags should use URL not title
  - [X] Confirm that Reddit/HN/Slashdot times are actually correct
+ - [X] Ensure we check one shard back for clustering if not found in current shard (should be based on scrape date, however, mostly for inactive subreddits)
