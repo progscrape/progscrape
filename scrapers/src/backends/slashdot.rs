@@ -8,6 +8,7 @@ use chrono::{DateTime, TimeZone, Utc};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use tl::{HTMLTag, Parser, ParserOptions};
+use url::Url;
 
 use crate::types::*;
 
@@ -104,6 +105,17 @@ impl SlashdotScraper {
         Err(format!("Failed to parse date: {}", date))
     }
 
+    fn parse_topic(href: &str) -> Option<String> {
+        let base = Url::parse("https://slashdot.org").expect("Failed to parse base URL");
+        let url = base.join(href);
+        if let Ok(url) = url {
+            if let Some((_, value)) = url.query_pairs().find(|(k, _)| k == "fhfilter") {
+                return Some(value.into());
+            }
+        }
+        None
+    }
+
     fn map_story(
         p: &Parser,
         article: &HTMLTag,
@@ -144,12 +156,12 @@ impl SlashdotScraper {
 
         let topics = find_first(p, article, ".topic").ok_or_else(|| "Mising topics".to_string())?;
         let mut tags = vec![];
-        for topic in html_tag_iterator(p, topics.query_selector(p, "img")) {
-            tags.push(
-                get_attribute(p, topic, "title")
-                    .ok_or("Missing title on topic")?
-                    .to_ascii_lowercase(),
-            );
+        for topic in html_tag_iterator(p, topics.query_selector(p, "a")) {
+            if let Some(topic_href) = get_attribute(p, topic, "href") {
+                if let Some(topic) = Self::parse_topic(&topic_href) {
+                    tags.push(topic);
+                }
+            }
         }
 
         let date =
@@ -227,5 +239,17 @@ pub mod test {
     #[case("on January 1, 2020 @12:30PM")]
     fn test_date_parse(#[case] s: &str) {
         SlashdotScraper::parse_time(s).expect("Expected this to parse");
+    }
+
+    /// Test that we can extract the fhfilter tag in all cases.
+    #[rstest]
+    #[case("https://slashdot.org/index2.pl?fhfilter=business", Some("business"))]
+    #[case("//slashdot.org/index2.pl?fhfilter=business", Some("business"))]
+    #[case(
+        "//web.archive.org/web/20180313000356/https://slashdot.org/index2.pl?fhfilter=business",
+        Some("business")
+    )]
+    fn test_extract_topic(#[case] a: &str, #[case] b: Option<&str>) {
+        assert_eq!(b.map(String::from), SlashdotScraper::parse_topic(a));
     }
 }

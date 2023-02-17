@@ -2,7 +2,6 @@
 
 ## Launch blockers
 
- - [ ] Slashdot tags should use URL not title
  - [ ] Dump existing index plus old docs to backups
  - [ ] Ensure we check one shard back for clustering if not found in current shard (should be based on scrape date, however, mostly for inactive subreddits)
  - [ ] Configure RPi4 for reliable hosting
@@ -48,3 +47,4 @@
  - [X] Atom feed
  - [X] Web interface validation (feed.json, frontpage + search at minimum)
  - [X] Tags w/internal representation from sites (ie: lobsters) should be reverse-lookup'd (ie: go -> golang)
+ - [X] Slashdot tags should use URL not title
