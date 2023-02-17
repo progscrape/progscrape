@@ -7,6 +7,7 @@
  - [ ] Configure RPi4 for reliable hosting
  - [ ] Implement restore from backup-style JSON
  - [ ] Single-step release-to-deploy pipeline
+ - [ ] Aggressive cache headers on frontpage, feed, feed.json
 
 ## Non-blockers
 
