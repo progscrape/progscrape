@@ -217,7 +217,11 @@ impl StoryIndex {
         let mut tags = TagSet::new();
         eval.tagger.tag(&title, &mut tags);
         for tag in extracted.tags() {
-            tags.add(tag);
+            if let Some(tag) = eval.tagger.check_tag_search(&tag) {
+                tags.add(tag);
+            } else {
+                tags.add(tag);
+            }
         }
         let url = extracted.url();
         let id = StoryIdentifier::new(story.earliest, extracted.url().normalization()).to_base64();
@@ -794,7 +798,7 @@ mod test {
             date,
             "Type inference in Rust",
             &url,
-            vec!["plt".to_string()],
+            vec!["plt".to_string(), "c++".to_string()],
         )
     }
 
@@ -968,20 +972,29 @@ mod test {
     fn test_findable_by_extracted_tag() -> Result<(), Box<dyn std::error::Error>> {
         let mut index = StoryIndex::new(PersistLocation::Memory)?;
         let eval = StoryEvaluator::new_for_test();
-        let story = rust_story_lobsters();
-        let id = StoryIdentifier::new(story.date, story.url.normalization());
-        index.insert_scrapes(&eval, [story.clone()])?;
+        let scrape = rust_story_lobsters();
+        let id = StoryIdentifier::new(scrape.date, scrape.url.normalization());
+        index.insert_scrapes(&eval, [scrape.clone()])?;
 
         let counts = index.story_count()?;
         assert_eq!(counts.total.story_count, 1);
 
-        for term in ["plt", "type", "inference"] {
+        // Title is "Type inference in rust". Site tags are "plt"/"c++" from scrape.
+        let story = index
+            .fetch_one::<Shard>(StoryQuery::ById(id.clone()))?
+            .expect("Expected one story");
+        assert_eq!(
+            story.tags.into_iter().sorted().collect_vec(),
+            vec!["cplusplus", "plt", "rust"]
+        );
+
+        for term in ["plt", "c++", "cplusplus", "type", "inference"] {
             let search = index.fetch_count(StoryQuery::from_search(&eval.tagger, term), 10)?;
             let doc = index.fetch_detail_one(StoryQuery::ById(id.clone()))?;
             assert_eq!(
                 1, search,
                 "Expected one search result when querying '{}' for title={} url={} doc={:?}",
-                term, story.raw_title, story.url, doc
+                term, scrape.raw_title, scrape.url, doc
             );
         }
         Ok(())
