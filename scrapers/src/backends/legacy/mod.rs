@@ -10,7 +10,10 @@ use serde_json::Value;
 use super::export::*;
 use super::utils::html::unescape_entities;
 use super::{GenericScrape, TypedScrape};
-use crate::types::*;
+use crate::{
+    hacker_news::HackerNewsStory, lobsters::LobstersStory, reddit::RedditStory,
+    slashdot::SlashdotStory, types::*,
+};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -162,6 +165,121 @@ fn import_legacy_2(root: &Path) -> Result<impl Iterator<Item = TypedScrape>, Leg
     Ok(out.into_iter())
 }
 
+pub fn import_legacy_3(root: &Path) -> Result<impl Iterator<Item = TypedScrape>, LegacyError> {
+    let f = BufReader::new(File::open(root.join("scrapers/import/allstories.json.gz"))?);
+    let mut decoder = BufReader::new(GzDecoder::new(f));
+    let mut out: Vec<TypedScrape> = vec![];
+    'outer: loop {
+        let mut buf = vec![];
+        while !buf.ends_with("}\n".as_bytes()) {
+            let read = decoder.read_until(b'\n', &mut buf)?;
+            if read == 0 {
+                break 'outer;
+            }
+        }
+        let json = String::from_utf8(buf)?;
+        let root: Value = serde_json::from_str(&json)?;
+        let date = StoryDate::from_millis(
+            root["date"]
+                .as_i64()
+                .ok_or(LegacyError::InvalidField("date", None))?,
+        )
+        .ok_or(LegacyError::InvalidField("date", None))?;
+        let mut url = unescape_entities(
+            root["url"]
+                .as_str()
+                .ok_or(LegacyError::InvalidField("url", None))?,
+        );
+        if url.contains("Guix to GNU/Hurd") {
+            // https://news.ycombinator.com/item?id=10090379
+            // http://[GSoC update] Porting Guix to GNU/Hurd
+            tracing::info!("Fixed up: {}", url);
+            url = "https://lists.gnu.org/archive/html/guix-devel/2015-08/msg00379.html".into();
+        }
+        if url.ends_with("&amp") {
+            tracing::info!("Fixed up: {}", url);
+            url = url.strip_suffix("&amp").expect("Missing suffix").into();
+        }
+        if url.contains("&amp") {
+            url = url
+                .split_once('?')
+                .ok_or(LegacyError::MissingField)?
+                .0
+                .to_owned();
+            tracing::info!("Fixed up: {}", url);
+        }
+        if url.ends_with(" /") {
+            let old = url.clone();
+            url = url.replace(' ', "");
+            tracing::info!("Fixed up (removed spaces): {}->{}", old, url);
+        }
+        let url = StoryUrl::parse(&url).ok_or(LegacyError::InvalidField("url", Some(url)))?;
+        let scrapes = root["scrapes"]
+            .as_array()
+            .ok_or(LegacyError::InvalidField("scrapes", None))?;
+        for scrape in scrapes {
+            let scrape: Value = serde_json::from_str(
+                scrape
+                    .as_str()
+                    .ok_or(LegacyError::InvalidField("scrapes", None))?,
+            )?;
+            let source = scrape
+                .get("source")
+                .ok_or(LegacyError::InvalidField("source", None))?
+                .as_str()
+                .ok_or(LegacyError::InvalidField("source", None))?;
+            let index = scrape
+                .get("index")
+                .ok_or(LegacyError::InvalidField("index", None))?
+                .as_i64()
+                .ok_or(LegacyError::InvalidField("index", None))?;
+            let title = scrape
+                .get("title")
+                .ok_or(LegacyError::InvalidField("title", None))?
+                .as_str()
+                .ok_or(LegacyError::InvalidField("title", None))?;
+            let id = scrape
+                .get("id")
+                .ok_or(LegacyError::InvalidField("id", None))?
+                .as_str()
+                .ok_or(LegacyError::InvalidField("id", None))?;
+            let subcategory = if let Some(subcategory) = scrape.get("subcategory") {
+                subcategory.as_str()
+            } else {
+                None
+            };
+
+            let story: TypedScrape = match source {
+                "hackernews" => {
+                    assert!(subcategory.is_none());
+                    HackerNewsStory::new_with_defaults(id, date, title, url.clone()).into()
+                }
+                "lobsters" => {
+                    assert!(subcategory.is_none());
+                    LobstersStory::new_with_defaults(id, date, title, url.clone()).into()
+                }
+                "reddit.prog" | "reddit.tech" => {
+                    if let Some(sub) = subcategory {
+                        RedditStory::new_subsource_with_defaults(id, sub, date, title, url.clone())
+                            .into()
+                    } else {
+                        RedditStory::new_with_defaults(id, date, title, url.clone()).into()
+                    }
+                }
+                "slashdot" => {
+                    assert!(subcategory.is_none());
+                    SlashdotStory::new_with_defaults(id, date, title, url.clone()).into()
+                }
+                _ => {
+                    return Err(LegacyError::InvalidField("source", Some(source.into())));
+                }
+            };
+            out.push(story);
+        }
+    }
+    Ok(out.into_iter())
+}
+
 pub fn import_legacy(root: &Path) -> Result<Vec<TypedScrape>, LegacyError> {
     let cache_file = root.to_owned().join("target/legacycache.bin");
     tracing::info!("Reading cache '{:?}'...", cache_file);
@@ -175,6 +293,7 @@ pub fn import_legacy(root: &Path) -> Result<Vec<TypedScrape>, LegacyError> {
     let _ = std::fs::remove_file(&cache_file);
     let v: Vec<_> = import_legacy_1(root)?
         .chain(import_legacy_2(root)?)
+        .chain(import_legacy_3(root)?)
         .collect::<Vec<_>>();
     let f = File::create(&cache_file)?;
     serde_cbor::to_writer(BufWriter::new(f), &v)?;
@@ -184,6 +303,7 @@ pub fn import_legacy(root: &Path) -> Result<Vec<TypedScrape>, LegacyError> {
 #[cfg(test)]
 mod test {
     use super::*;
+    use rstest::*;
 
     #[test]
     fn test_read_legacy_1() -> Result<(), Box<dyn std::error::Error>> {
@@ -194,6 +314,12 @@ mod test {
     #[test]
     fn test_read_legacy_2() -> Result<(), Box<dyn std::error::Error>> {
         assert!(import_legacy_2(Path::new(".."))?.count() > 0);
+        Ok(())
+    }
+
+    #[test]
+    fn test_read_legacy_3() -> Result<(), Box<dyn std::error::Error>> {
+        assert!(import_legacy_3(Path::new(".."))?.count() > 0);
         Ok(())
     }
 
