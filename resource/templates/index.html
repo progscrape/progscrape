@@ -31,8 +31,12 @@
     </div>
     {% endfor %}
 
-    {% if offset == 0 %}
-    <p><a href="?offset={{ offset + 30 }}">More &rarr;</a></p>
+    {% if offset <= 30 %}
+    {% if search %}
+    <p class="more"><a href="?search={{ search }}&offset={{ offset + 30 }}">More &rarr;</a></p>
+    {% else %}
+    <p class="more"><a href="?offset={{ offset + 30 }}">More &rarr;</a></p>
+    {% endif %}
     {% endif %}
     </div>
     </div>
