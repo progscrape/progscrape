@@ -9,7 +9,7 @@
  - [ ] Search box should update on search pages
  - [ ] Feed link should update on search pages
  - [ ] Hook up offset parameter
- - [ ] Search page is in backwards order
+ - [ ] Test "add to homepage" functionality on iOS/Android
 
 ## Non-blockers
 
@@ -53,3 +53,4 @@
  - [X] Confirm that Reddit/HN/Slashdot times are actually correct
  - [X] Ensure we check one shard back for clustering if not found in current shard (should be based on scrape date, however, mostly for inactive subreddits)
  - [X] Aggressive cache headers on frontpage, feed, feed.json
+ - [X] Search page is in backwards order

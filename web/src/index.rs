@@ -177,6 +177,7 @@ impl Index<StoryIndex> {
             self.fetch::<Shard>(StoryQuery::from_search(&eval.tagger, search.as_ref()), 30)
                 .await?
                 .iter()
+                .sorted_by(|a, b| a.date.cmp(&b.date).reverse())
                 .enumerate()
                 .map(|(index, story)| story.render(eval, index).into())
                 .collect_vec()
