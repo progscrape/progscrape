@@ -360,7 +360,7 @@ fn render(
 ) -> Result<Html<String>, WebError> {
     // Add git information to all the templates
     use git_version::git_version;
-    const GIT_VERSION: &str = git_version!();
+    const GIT_VERSION: &str = "git version"; //git_version!();
     context.insert("git", GIT_VERSION);
 
     Ok(resources
