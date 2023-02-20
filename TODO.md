@@ -7,7 +7,6 @@
  - [ ] Implement restore from backup-style JSON
  - [ ] Single-step release-to-deploy pipeline
  - [ ] Test "add to homepage" functionality on iOS/Android
- - [ ] Add social media banner image for better sharing support (test w/facebook + twitter + masto)
 
 ## Non-blockers
 
@@ -55,3 +54,4 @@
  - [X] Search box should update on search pages
  - [X] Feed link should update on search pages
  - [X] Hook up offset parameter
+ - [X] Add social media banner image for better sharing support (test w/facebook + twitter + masto)

@@ -371,6 +371,7 @@ fn render(
 
 // basic handler that responds with a static string
 async fn root(
+    Host(host): Host,
     State((index, resources)): State<(Index<StoryIndex>, Resources)>,
     query: Query<HashMap<String, String>>,
 ) -> Result<impl IntoResponse, WebError> {
@@ -396,7 +397,7 @@ async fn root(
             "public, max-age=300, s-max-age=300, stale-while-revalidate=60, stale-if-error=86400",
         ),
     )],
-    render(&resources, "index.html", context!(top_tags, stories, now, search, offset))))
+    render(&resources, "index.html", context!(top_tags, stories, now, search, offset, host))))
 }
 
 #[derive(Serialize, Deserialize)]
