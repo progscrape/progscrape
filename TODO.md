@@ -7,7 +7,11 @@
  - [ ] Implement restore from backup-style JSON
  - [ ] Single-step release-to-deploy pipeline
  - [ ] Aggressive cache headers on frontpage, feed, feed.json
-
+ - [ ] Search box should update on search pages
+ - [ ] Feed link should update on search pages
+ - [ ] Hook up offset parameter
+ - [ ] Search page is in backwards order
+ 
 ## Non-blockers
 
  - [ ] Announcements source
