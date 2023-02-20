@@ -360,7 +360,7 @@ fn render(
 ) -> Result<Html<String>, WebError> {
     // Add git information to all the templates
     use git_version::git_version;
-    const GIT_VERSION: &str = "git version"; //git_version!();
+    const GIT_VERSION: &str = git_version!();
     context.insert("git", GIT_VERSION);
 
     Ok(resources
@@ -376,7 +376,10 @@ async fn root(
 ) -> Result<impl IntoResponse, WebError> {
     let now = now(&index).await?;
     let search = query.get("search");
-    let offset: usize = query.get("offset").map(|x| x.parse().unwrap_or_default()).unwrap_or_default();
+    let offset: usize = query
+        .get("offset")
+        .map(|x| x.parse().unwrap_or_default())
+        .unwrap_or_default();
     let stories = index
         .stories::<StoryRender>(search, &resources.story_evaluator(), offset, 30)
         .await?;
