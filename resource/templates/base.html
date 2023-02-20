@@ -12,9 +12,13 @@
     <div id="header">
         <h1><a href="/">&gt;progscrape &#x2592;</a></h1>
         <h2>All the news that's fit to scrape</h2>
+        {% if search %}
+        <a class="subscribe" href="/feed?search={{ search }}"><img src="{{ 'feed-icon-14x14.png' | static }}" /> Subscribe to search feed</a>
+        {% else %}
         <a class="subscribe" href="/feed"><img src="{{ 'feed-icon-14x14.png' | static }}" /> Subscribe to feed</a>
+        {% endif %}
         <form class="search" method="GET" action="/">
-            <input type="search" name="search" results="5" value="" placeholder="Search" />
+            <input type="search" name="search" results="5" value="{{ search }}" placeholder="Search" />
         </form>
     </div>
     

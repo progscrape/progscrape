@@ -31,7 +31,9 @@
     </div>
     {% endfor %}
 
-    <p><a href="?offset=30">More &rarr;</a></p>
+    {% if offset == 0 %}
+    <p><a href="?offset={{ offset + 30 }}">More &rarr;</a></p>
+    {% endif %}
     </div>
     </div>
 {% endblock content %}

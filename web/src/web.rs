@@ -375,8 +375,10 @@ async fn root(
     query: Query<HashMap<String, String>>,
 ) -> Result<impl IntoResponse, WebError> {
     let now = now(&index).await?;
+    let search = query.get("search");
+    let offset: usize = query.get("offset").map(|x| x.parse().unwrap_or_default()).unwrap_or_default();
     let stories = index
-        .stories::<StoryRender>(query.get("search"), &resources.story_evaluator(), 30)
+        .stories::<StoryRender>(search, &resources.story_evaluator(), offset, 30)
         .await?;
     let mut top_tags = index.top_tags().await?;
     top_tags.truncate(20);
@@ -391,7 +393,7 @@ async fn root(
             "public, max-age=300, s-max-age=300, stale-while-revalidate=60, stale-if-error=86400",
         ),
     )],
-    render(&resources, "index.html", context!(top_tags, stories, now))))
+    render(&resources, "index.html", context!(top_tags, stories, now, search, offset))))
 }
 
 #[derive(Serialize, Deserialize)]
@@ -443,7 +445,7 @@ async fn root_feed_json(
     query: Query<HashMap<String, String>>,
 ) -> Result<impl IntoResponse, WebError> {
     let stories = index
-        .stories::<FeedStory>(query.get("search"), &resources.story_evaluator(), 150)
+        .stories::<FeedStory>(query.get("search"), &resources.story_evaluator(), 0, 150)
         .await?;
     let top_tags = resources
         .story_evaluator()
@@ -473,7 +475,7 @@ async fn root_feed_xml(
 ) -> Result<impl IntoResponse, WebError> {
     let now = now(&index).await?;
     let stories = index
-        .stories::<StoryRender>(query.get("search"), &resources.story_evaluator(), 30)
+        .stories::<StoryRender>(query.get("search"), &resources.story_evaluator(), 0, 30)
         .await?;
 
     let xml = resources
@@ -747,12 +749,12 @@ async fn admin_status_frontpage(
     let now = now(&index).await?;
     let sort = sort.get("sort").cloned().unwrap_or_default();
     let stories = index
-        .stories::<StoryRender>(Option::<String>::None, &resources.story_evaluator(), 500)
+        .stories::<StoryRender>(Option::<String>::None, &resources.story_evaluator(), 0, 500)
         .await?;
     render(
         &resources,
         "admin/frontpage.html",
-        context!(now, user, stories, sort,),
+        context!(now, user, stories, sort),
     )
 }
 

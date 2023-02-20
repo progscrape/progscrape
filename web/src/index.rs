@@ -171,13 +171,16 @@ impl Index<StoryIndex> {
         &self,
         search: Option<impl AsRef<str>>,
         eval: &StoryEvaluator,
+        offset: usize,
         count: usize,
     ) -> Result<Vec<S>, PersistError> {
         let stories = if let Some(search) = search {
-            self.fetch::<Shard>(StoryQuery::from_search(&eval.tagger, search.as_ref()), 30)
+            self.fetch::<Shard>(StoryQuery::from_search(&eval.tagger, search.as_ref()), 100)
                 .await?
                 .iter()
                 .sorted_by(|a, b| a.date.cmp(&b.date).reverse())
+                .skip(offset)
+                .take(count)
                 .enumerate()
                 .map(|(index, story)| story.render(eval, index).into())
                 .collect_vec()
@@ -185,6 +188,7 @@ impl Index<StoryIndex> {
             self.with_hot_set(|hot_set| {
                 Ok(hot_set
                     .iter()
+                    .skip(offset)
                     .take(count)
                     .enumerate()
                     .map(|(index, story)| story.render(eval, index).into())

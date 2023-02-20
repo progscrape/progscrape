@@ -6,9 +6,6 @@
  - [ ] Configure RPi4 for reliable hosting
  - [ ] Implement restore from backup-style JSON
  - [ ] Single-step release-to-deploy pipeline
- - [ ] Search box should update on search pages
- - [ ] Feed link should update on search pages
- - [ ] Hook up offset parameter
  - [ ] Test "add to homepage" functionality on iOS/Android
 
 ## Non-blockers
@@ -54,3 +51,6 @@
  - [X] Ensure we check one shard back for clustering if not found in current shard (should be based on scrape date, however, mostly for inactive subreddits)
  - [X] Aggressive cache headers on frontpage, feed, feed.json
  - [X] Search page is in backwards order
+ - [X] Search box should update on search pages
+ - [X] Feed link should update on search pages
+ - [X] Hook up offset parameter
