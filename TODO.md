@@ -7,6 +7,7 @@
  - [ ] Implement restore from backup-style JSON
  - [ ] Single-step release-to-deploy pipeline
  - [ ] Test "add to homepage" functionality on iOS/Android
+ - [ ] Add social media banner image for better sharing support (test w/facebook + twitter + masto)
 
 ## Non-blockers
 
