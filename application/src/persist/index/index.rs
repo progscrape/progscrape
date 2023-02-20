@@ -3,7 +3,7 @@ use itertools::Itertools;
 use tantivy::collector::TopDocs;
 use tantivy::query::{AllQuery, PhraseQuery, Query, QueryParser, TermQuery};
 use tantivy::tokenizer::TokenizerManager;
-use tantivy::{schema::*, DocAddress, IndexWriter, Searcher};
+use tantivy::{schema::*, DocAddress, IndexWriter, Searcher, SegmentReader};
 
 use progscrape_scrapers::{ScrapeCollection, StoryDate, StoryUrl, TypedScrape};
 
@@ -461,12 +461,32 @@ impl StoryIndex {
     ) -> Result<Vec<(Shard, DocAddress)>, PersistError> {
         let mut vec = vec![];
         let mut remaining = max;
+        let now = self.most_recent_story()?.timestamp();
         for shard in self.shards().iterate(ShardOrder::NewestFirst) {
             if remaining == 0 {
                 break;
             }
-            let docs = self.with_searcher(shard, |shard, searcher, _schema| {
-                let docs = searcher.search(&query, &TopDocs::with_limit(remaining))?;
+            let docs = self.with_searcher(shard, |shard, searcher, schema| {
+                let schema = schema.clone();
+                // We're going to tweak the score using the internal score
+                let docs =
+                    TopDocs::with_limit(remaining).tweak_score(move |reader: &SegmentReader| {
+                        let score_field = reader
+                            .fast_fields()
+                            .f64(schema.score_field)
+                            .expect("Failed to get fast fields");
+                        let date_field = reader
+                            .fast_fields()
+                            .i64(schema.date_field)
+                            .expect("Failed to get fast fields");
+                        move |doc, score| {
+                            let doc_score = score_field.get_val(doc);
+                            let doc_date = date_field.get_val(doc);
+                            let age = now - doc_date;
+                            score + doc_score as f32 + (age as f32) * -0.00001
+                        }
+                    });
+                let docs = searcher.search(&query, &docs)?;
                 Ok(docs.into_iter().map(move |x| (shard, x.1)))
             })?;
             vec.extend(docs);
