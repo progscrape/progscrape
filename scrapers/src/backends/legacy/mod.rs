@@ -166,7 +166,11 @@ fn import_legacy_2(root: &Path) -> Result<impl Iterator<Item = TypedScrape>, Leg
 }
 
 pub fn import_legacy_3(root: &Path) -> Result<impl Iterator<Item = TypedScrape>, LegacyError> {
-    let f = BufReader::new(File::open(root.join("scrapers/import/allstories.json.gz"))?);
+    let file = root.join("scrapers/import/allstories.json.gz");
+    if !file.exists() {
+        return Ok(vec![].into_iter());
+    }
+    let f = BufReader::new(File::open(file)?);
     let mut decoder = BufReader::new(GzDecoder::new(f));
     let mut out: Vec<TypedScrape> = vec![];
     'outer: loop {
@@ -293,7 +297,7 @@ pub fn import_legacy(root: &Path) -> Result<Vec<TypedScrape>, LegacyError> {
     let _ = std::fs::remove_file(&cache_file);
     let v: Vec<_> = import_legacy_1(root)?
         .chain(import_legacy_2(root)?)
-        // .chain(import_legacy_3(root)?)
+        .chain(import_legacy_3(root)?)
         .collect::<Vec<_>>();
     let f = File::create(&cache_file)?;
     serde_cbor::to_writer(BufWriter::new(f), &v)?;
