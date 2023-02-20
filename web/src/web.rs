@@ -373,7 +373,7 @@ fn render(
 async fn root(
     State((index, resources)): State<(Index<StoryIndex>, Resources)>,
     query: Query<HashMap<String, String>>,
-) -> Result<Html<String>, WebError> {
+) -> Result<impl IntoResponse, WebError> {
     let now = now(&index).await?;
     let stories = index
         .stories::<StoryRender>(query.get("search"), &resources.story_evaluator(), 30)
@@ -385,7 +385,13 @@ async fn root(
         .tagger
         .make_display_tags(top_tags)
         .collect_vec();
-    render(&resources, "index.html", context!(top_tags, stories, now))
+    Ok(([(
+        header::CACHE_CONTROL,
+        HeaderValue::from_static(
+            "public, max-age=300, s-max-age=300, stale-while-revalidate=60, stale-if-error=86400",
+        ),
+    )],
+    render(&resources, "index.html", context!(top_tags, stories, now))))
 }
 
 #[derive(Serialize, Deserialize)]
@@ -445,11 +451,19 @@ async fn root_feed_json(
         .make_display_tags(index.top_tags().await?)
         .collect_vec();
 
-    Ok(Json(json!({
-        "v": 1,
-        "tags": top_tags,
-        "stories": stories
-    })))
+    Ok((
+        [(
+            header::CACHE_CONTROL,
+            HeaderValue::from_static(
+                "public, max-age=300, s-max-age=300, stale-while-revalidate=60, stale-if-error=86400",
+            ),
+        )],
+        Json(json!({
+            "v": 1,
+            "tags": top_tags,
+            "stories": stories
+        })),
+    ))
 }
 
 async fn root_feed_xml(
@@ -469,6 +483,11 @@ async fn root_feed_xml(
         [(
             header::CONTENT_TYPE,
             HeaderValue::from_static("application/atom+xml"),
+        ), (
+            header::CACHE_CONTROL,
+            HeaderValue::from_static(
+                "public, max-age=300, s-max-age=300, stale-while-revalidate=60, stale-if-error=86400",
+            ),
         )],
         xml,
     ))

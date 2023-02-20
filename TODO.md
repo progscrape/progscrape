@@ -6,12 +6,11 @@
  - [ ] Configure RPi4 for reliable hosting
  - [ ] Implement restore from backup-style JSON
  - [ ] Single-step release-to-deploy pipeline
- - [ ] Aggressive cache headers on frontpage, feed, feed.json
  - [ ] Search box should update on search pages
  - [ ] Feed link should update on search pages
  - [ ] Hook up offset parameter
  - [ ] Search page is in backwards order
- 
+
 ## Non-blockers
 
  - [ ] Announcements source
@@ -53,3 +52,4 @@
  - [X] Slashdot tags should use URL not title
  - [X] Confirm that Reddit/HN/Slashdot times are actually correct
  - [X] Ensure we check one shard back for clustering if not found in current shard (should be based on scrape date, however, mostly for inactive subreddits)
+ - [X] Aggressive cache headers on frontpage, feed, feed.json
