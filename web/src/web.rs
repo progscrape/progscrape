@@ -356,8 +356,13 @@ macro_rules! context {
 fn render(
     resources: &Resources,
     template_name: &str,
-    context: Context,
+    mut context: Context,
 ) -> Result<Html<String>, WebError> {
+    // Add git information to all the templates
+    use git_version::git_version;
+    const GIT_VERSION: &str = git_version!();
+    context.insert("git", GIT_VERSION);
+
     Ok(resources
         .templates()
         .render(template_name, &context)?
