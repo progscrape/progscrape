@@ -4,16 +4,28 @@
 <head>
     {%- block head -%}
     <link rel="stylesheet" href="{{ 'style.css' | static }}" />
-    <title>{% block title %}{% endblock title %}</title>
 	<meta name="viewport" content="user-scalable=no, width=device-width, initial-scale=1.0" />
+    {% if search %}
+    <title>{% block title %}{% endblock title %}: {{ search }}</title>
+    <meta property="og:title" content="progscrape: &quot;{{ search }}&quot; search results">
+    <meta property="og:description" content="Technology news about &quot;{{ search }}&quot; from Hacker News, Reddit, and other programming sites.">
+    <meta property="og:url" content="https://{{ host }}/?search={{ search }}">
+    {% else %}
+    <title>{% block title %}{% endblock title %}</title>
     <meta property="og:title" content="progscrape: all the news that's fit to scrape">
+    <meta property="og:description" content="Technology news from Hacker News, Reddit, and other programming sites.">
+    <meta property="og:url" content="https://{{ host }}/">
+    {% endif %}
     <meta property="og:type" content="article" />
     <meta property="og:image" content="https://{{ host }}{{ 'opengraph_image.png' | static | safe }}">
     <meta property="og:image:alt" content="progscrape logo and tagline: all the news that's fit to scrape">
-    <meta property="og:url" content="https://{{ host }}/">
-    <meta property="og:description" content="Technology news from Hacker News, Reddit, and other programming sites.">
     <meta property="og:site_name" content="progscrape">
     <meta name="twitter:card" content="summary_large_image">
+    {% if search %}
+    <link rel="alternate" type="application/rss+xml" title="progscrape.com" href="/feed?search={{ search }}" />
+    {% else %}
+    <link rel="alternate" type="application/rss+xml" title="progscrape.com" href="/feed" />
+    {% endif %}
     {%- endblock head -%}
 </head>
 <body>
