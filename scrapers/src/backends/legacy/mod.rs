@@ -293,7 +293,7 @@ pub fn import_legacy(root: &Path) -> Result<Vec<TypedScrape>, LegacyError> {
     let _ = std::fs::remove_file(&cache_file);
     let v: Vec<_> = import_legacy_1(root)?
         .chain(import_legacy_2(root)?)
-        .chain(import_legacy_3(root)?)
+        // .chain(import_legacy_3(root)?)
         .collect::<Vec<_>>();
     let f = File::create(&cache_file)?;
     serde_cbor::to_writer(BufWriter::new(f), &v)?;
