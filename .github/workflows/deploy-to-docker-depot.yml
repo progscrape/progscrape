@@ -1,0 +1,29 @@
+name: Deploy to Docker Hub
+
+on:
+  workflow_dispatch:
+    inputs:
+      logLevel:
+        description: 'Log level'     
+        required: true
+        default: 'warning'
+      tags:
+        description: 'Test scenario tags'  
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+    # Permissions to use OIDC token authentication
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v3
+      - uses: depot/setup-action@v1
+      - uses: depot/build-push-action@v1
+        with:
+          project: 67j2rjpvvw
+          context: .
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: mmastrac/progscrape:latest
