@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::BufReader;
 use std::net::SocketAddr;
@@ -96,6 +96,9 @@ pub enum Command {
         #[arg(long, value_name = "DIR", value_hint = clap::ValueHint::DirPath, help = "Root path")]
         root: Option<PathBuf>,
 
+        #[arg(long, help = "Import only these year(s)")]
+        year: Vec<usize>,
+
         input: Vec<PathBuf>,
     },
 }
@@ -171,7 +174,11 @@ async fn go() -> Result<(), WebError> {
             };
             web::start_server(&root_path, backup_path, listen_port, index, auth).await?;
         }
-        Command::Initialize { root, persist_path, input } => {
+        Command::Initialize {
+            root,
+            persist_path,
+            input,
+        } => {
             if persist_path.exists() {
                 return Err(WebError::ArgumentsInvalid(format!(
                     "Path {} must not exist",
@@ -224,16 +231,26 @@ async fn go() -> Result<(), WebError> {
             persist_path,
             root,
             input,
+            year,
         } => {
             let resource_path = root.unwrap_or(".".into()).canonicalize()?.join("resource");
             let reader = BufReader::new(File::open(resource_path.join("config/config.json"))?);
             let config: Config = serde_json::from_reader(reader)?;
             let eval = StoryEvaluator::new(&config.tagger, &config.score, &config.scrape);
             let mut index = StoryIndex::new(PersistLocation::Path(persist_path))?;
+            let years: HashSet<usize> = HashSet::from_iter(year);
 
             for input in input {
                 tracing::info!("Importing from {}...", input.to_string_lossy());
-                let scrapes = progscrape_scrapers::import_backup(&input)?;
+                let mut scrapes = progscrape_scrapers::import_backup(&input)?;
+                if !years.is_empty() {
+                    let size_before = scrapes.len();
+                    scrapes.retain(|story| years.contains(&(story.date.year() as usize)));
+                    tracing::info!(
+                        "Filtered out {} stories not matching the specified years",
+                        size_before - scrapes.len()
+                    );
+                }
                 let res = index.insert_scrapes(&eval, scrapes)?;
                 let mut result_count = HashMap::<_, usize>::new();
                 for res in &res {
