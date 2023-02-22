@@ -32,13 +32,27 @@ impl<'de> Deserialize<'de> for StoryUrl {
     where
         D: serde::Deserializer<'de>,
     {
-        let res: Result<(String, String, String), D::Error> =
+        // The StoryUrl can be either a tuple with the underlying bits, or a raw URL that we need to parse
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum StoryUrlSerializationOptions {
+            Raw(String),
+            Bits((String, String, String)),
+        }
+
+        let res: Result<StoryUrlSerializationOptions, D::Error> =
             Deserialize::deserialize(deserializer);
-        res.map(|(url, host, norm)| StoryUrl {
-            url,
-            host,
-            norm_str: StoryUrlNorm { norm },
-        })
+        match res {
+            Ok(StoryUrlSerializationOptions::Raw(raw)) => StoryUrl::parse(&raw).ok_or(
+                serde::de::Error::custom(format!("Failed to parse URL '{}'", raw)),
+            ),
+            Ok(StoryUrlSerializationOptions::Bits((url, host, norm))) => Ok(StoryUrl {
+                url,
+                host,
+                norm_str: StoryUrlNorm { norm },
+            }),
+            Err(e) => Err(e),
+        }
     }
 }
 

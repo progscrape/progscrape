@@ -777,7 +777,7 @@ mod test {
 
     use super::*;
     use progscrape_scrapers::{
-        hacker_news::*, lobsters::LobstersStory, reddit::*, ScrapeSource, StoryUrl,
+        hacker_news::*, lobsters::LobstersStory, reddit::*, ScrapeConfig, ScrapeSource, StoryUrl,
     };
 
     use crate::{story::TagSet, test::*, MemIndex};
@@ -1139,19 +1139,12 @@ mod test {
     }
 
     #[rstest]
-    fn test_index_lots(
-        _enable_tracing: &bool,
-        enable_slow_tests: &bool,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        if !enable_slow_tests {
-            tracing::error!("Ignoring test because enable_slow_tests is not set");
-            return Ok(());
-        }
+    fn test_index_lots(_enable_tracing: &bool) -> Result<(), Box<dyn std::error::Error>> {
         let path = "/tmp/indextest";
         std::fs::create_dir_all(path)?;
         let mut index = StoryIndex::new(PersistLocation::Path(path.into()))?;
 
-        let scrapes = progscrape_scrapers::import_legacy(Path::new(".."))?;
+        let scrapes = progscrape_scrapers::load_sample_scrapes(&ScrapeConfig::default());
         let eval = StoryEvaluator::new_for_test();
         let mut memindex = MemIndex::default();
 

@@ -137,6 +137,7 @@ mod tests {
     use super::*;
     use crate::test::enable_tracing;
     use crate::PersistLocation;
+    use progscrape_scrapers::ScrapeConfig;
     use rstest::*;
 
     #[ignore]
@@ -144,8 +145,8 @@ mod tests {
     fn test_insert(_enable_tracing: &bool) -> Result<(), Box<dyn std::error::Error>> {
         let store = ScrapeStore::new(PersistLocation::Memory)?;
 
-        let legacy = progscrape_scrapers::import_legacy(Path::new(".."))?;
-        let first = &legacy[0..100];
+        let samples = progscrape_scrapers::load_sample_scrapes(&ScrapeConfig::default());
+        let first = &samples[0..100];
 
         for scrape in first {
             store.insert_scrape(scrape)?;

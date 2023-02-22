@@ -1,7 +1,8 @@
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::BufReader;
 use std::net::SocketAddr;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::time::Instant;
 
 use clap::{Parser, Subcommand};
@@ -85,6 +86,17 @@ pub enum Command {
 
         #[arg(long, value_name = "DIR", value_hint = clap::ValueHint::DirPath, help = "Root path")]
         root: Option<PathBuf>,
+
+        input: Vec<PathBuf>,
+    },
+    Load {
+        #[arg(long, value_name = "DIR", value_hint = clap::ValueHint::DirPath, help = "Persistence path")]
+        persist_path: PathBuf,
+
+        #[arg(long, value_name = "DIR", value_hint = clap::ValueHint::DirPath, help = "Root path")]
+        root: Option<PathBuf>,
+
+        input: Vec<PathBuf>,
     },
 }
 
@@ -159,7 +171,7 @@ async fn go() -> Result<(), WebError> {
             };
             web::start_server(&root_path, backup_path, listen_port, index, auth).await?;
         }
-        Command::Initialize { root, persist_path } => {
+        Command::Initialize { root, persist_path, input } => {
             if persist_path.exists() {
                 return Err(WebError::ArgumentsInvalid(format!(
                     "Path {} must not exist",
@@ -175,13 +187,17 @@ async fn go() -> Result<(), WebError> {
             let start = Instant::now();
 
             let import_start = Instant::now();
-            let scrapes = progscrape_scrapers::import_legacy(Path::new("."))?;
             let import_time = import_start.elapsed();
 
             // First, build an in-memory index quickly
             let memindex_start = Instant::now();
             let mut memindex = MemIndex::default();
-            memindex.insert_scrapes(scrapes)?;
+
+            for input in input {
+                tracing::info!("Importing from {}...", input.to_string_lossy());
+                let scrapes = progscrape_scrapers::import_backup(&input)?;
+                memindex.insert_scrapes(scrapes)?;
+            }
             let memindex_time = memindex_start.elapsed();
 
             // Now, import those stories
@@ -203,6 +219,28 @@ async fn go() -> Result<(), WebError> {
                 memindex_time.as_secs(),
                 story_index_time.as_secs()
             );
+        }
+        Command::Load {
+            persist_path,
+            root,
+            input,
+        } => {
+            let resource_path = root.unwrap_or(".".into()).canonicalize()?.join("resource");
+            let reader = BufReader::new(File::open(resource_path.join("config/config.json"))?);
+            let config: Config = serde_json::from_reader(reader)?;
+            let eval = StoryEvaluator::new(&config.tagger, &config.score, &config.scrape);
+            let mut index = StoryIndex::new(PersistLocation::Path(persist_path))?;
+
+            for input in input {
+                tracing::info!("Importing from {}...", input.to_string_lossy());
+                let scrapes = progscrape_scrapers::import_backup(&input)?;
+                let res = index.insert_scrapes(&eval, scrapes)?;
+                let mut result_count = HashMap::<_, usize>::new();
+                for res in &res {
+                    result_count.entry(res).and_modify(|x| *x += 1).or_default();
+                }
+                tracing::info!("Results: total={} {:?}", res.len(), result_count);
+            }
         }
     };
     Ok(())

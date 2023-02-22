@@ -161,7 +161,7 @@ pub trait StorageWriter: Storage {
     ) -> Result<Vec<ScrapePersistResult>, PersistError>;
 }
 
-#[derive(Debug, Serialize, PartialEq, Eq)]
+#[derive(Debug, Serialize, PartialEq, Eq, Ord, PartialOrd, Hash)]
 pub enum ScrapePersistResult {
     MergedWithExistingStory,
     AlreadyPartOfExistingStory,

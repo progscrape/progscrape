@@ -168,8 +168,7 @@ impl ScrapeStore {
 
 #[cfg(test)]
 mod test {
-    use std::path::Path;
-
+    use progscrape_scrapers::ScrapeConfig;
     use rstest::rstest;
 
     use crate::test::enable_tracing;
@@ -180,8 +179,8 @@ mod test {
     fn test_insert(_enable_tracing: &bool) -> Result<(), Box<dyn std::error::Error>> {
         let store = ScrapeStore::new(PersistLocation::Memory)?;
 
-        let legacy = progscrape_scrapers::import_legacy(Path::new(".."))?;
-        let first = &legacy[0..100];
+        let samples = progscrape_scrapers::load_sample_scrapes(&ScrapeConfig::default());
+        let first = &samples[0..100];
 
         // No items
         let stats = store.stats(Shard::from_date_time(first[0].date))?;
