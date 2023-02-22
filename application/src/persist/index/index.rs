@@ -176,7 +176,8 @@ impl StoryIndex {
         if res.is_ok() {
             tracing::info!("Commiting {} writer(s)", writer_count);
             let commit_start = timer_start!();
-            for (shard, writer) in writers.into_iter() {
+            for (shard, writer) in writers.into_iter().sorted_by_key(|(shard, _)| *shard) {
+                tracing::info!("Committing shard {:?}...", shard);
                 let shard = self.get_shard(shard)?;
                 let mut shard = shard.write().expect("Poisoned");
                 shard.commit_writer(writer)?;
