@@ -369,6 +369,19 @@ fn render(
         .into())
 }
 
+/// Render an admin context with a given template name, adding the headers to
+/// avoid any caching whatsoever.
+fn render_admin(
+    resources: &Resources,
+    template_name: &str,
+    context: Context,
+) -> Result<impl IntoResponse, WebError> {
+    Ok((
+        [(header::CACHE_CONTROL, HeaderValue::from_static("no-store"))],
+        render(resources, template_name, context),
+    ))
+}
+
 // basic handler that responds with a static string
 async fn root(
     Host(host): Host,
@@ -502,8 +515,8 @@ async fn root_feed_xml(
 async fn admin(
     Extension(user): Extension<CurrentUser>,
     State(AdminState { resources, .. }): State<AdminState>,
-) -> Result<Html<String>, WebError> {
-    render(
+) -> Result<impl IntoResponse, WebError> {
+    render_admin(
         &resources,
         "admin/admin.html",
         context!(user, config = resources.config()),
@@ -518,8 +531,8 @@ async fn admin_cron(
         resources,
         ..
     }): State<AdminState>,
-) -> Result<Html<String>, WebError> {
-    render(
+) -> Result<impl IntoResponse, WebError> {
+    render_admin(
         &resources,
         "admin/cron.html",
         context!(
@@ -566,9 +579,9 @@ async fn admin_cron_refresh(
     State(AdminState {
         resources, index, ..
     }): State<AdminState>,
-) -> Result<Html<String>, WebError> {
+) -> Result<impl IntoResponse, WebError> {
     index.refresh_hot_set(resources.story_evaluator()).await?;
-    render(
+    render_admin(
         &resources,
         "admin/cron_refresh.html",
         context!(config = resources.config()),
@@ -579,9 +592,9 @@ async fn admin_cron_reindex(
     State(AdminState {
         resources, index, ..
     }): State<AdminState>,
-) -> Result<Html<String>, WebError> {
+) -> Result<impl IntoResponse, WebError> {
     let results = index.reindex_hot_set(resources.story_evaluator()).await?;
-    render(
+    render_admin(
         &resources,
         "admin/cron_reindex.html",
         context!(config = resources.config(), results),
@@ -593,7 +606,7 @@ async fn admin_cron_scrape(
         resources, index, ..
     }): State<AdminState>,
     Path(source): Path<ScrapeSource>,
-) -> Result<Html<String>, WebError> {
+) -> Result<impl IntoResponse, WebError> {
     let subsources = resources.scrapers().compute_scrape_subsources(source);
     let urls = resources
         .scrapers()
@@ -632,7 +645,7 @@ async fn admin_cron_scrape(
         }
     }
 
-    render(
+    render_admin(
         &resources,
         "admin/cron_scrape_run.html",
         context!(
@@ -648,7 +661,7 @@ async fn admin_headers(
     State(AdminState { resources, .. }): State<AdminState>,
     Query(query): Query<HashMap<String, String>>,
     raw_headers: HeaderMap,
-) -> Result<Html<String>, WebError> {
+) -> Result<impl IntoResponse, WebError> {
     let mut headers: HashMap<_, Vec<String>> = HashMap::new();
     for (header, value) in raw_headers {
         let name = header.map(|h| h.to_string()).unwrap_or("(missing)".into());
@@ -657,7 +670,7 @@ async fn admin_headers(
             .or_default()
             .push(String::from_utf8_lossy(value.as_bytes()).to_string());
     }
-    render(
+    render_admin(
         &resources,
         "admin/headers.html",
         context!(user, query, headers),
@@ -667,9 +680,9 @@ async fn admin_headers(
 async fn admin_scrape(
     Extension(user): Extension<CurrentUser>,
     State(AdminState { resources, .. }): State<AdminState>,
-) -> Result<Html<String>, WebError> {
+) -> Result<impl IntoResponse, WebError> {
     let config = resources.config();
-    render(
+    render_admin(
         &resources,
         "admin/scrape.html",
         context!(
@@ -692,7 +705,7 @@ async fn admin_scrape_test(
     Extension(user): Extension<CurrentUser>,
     State(AdminState { resources, .. }): State<AdminState>,
     Json(params): Json<AdminScrapeTestParams>,
-) -> Result<Html<String>, WebError> {
+) -> Result<impl IntoResponse, WebError> {
     let urls = resources
         .scrapers()
         .compute_scrape_url_demands(params.source, params.subsources);
@@ -719,7 +732,7 @@ async fn admin_scrape_test(
             .map(|(k, v)| (k, resources.scrapers().scrape_http_result(params.source, v))),
     );
 
-    render(
+    render_admin(
         &resources,
         "admin/scrape_test.html",
         context!(user, scrapes: HashMap<String, ScraperHttpResult>),
@@ -731,8 +744,8 @@ async fn admin_index_status(
     State(AdminState {
         index, resources, ..
     }): State<AdminState>,
-) -> Result<Html<String>, WebError> {
-    render(
+) -> Result<impl IntoResponse, WebError> {
+    render_admin(
         &resources,
         "admin/status.html",
         context!(
@@ -749,13 +762,13 @@ async fn admin_status_frontpage(
         index, resources, ..
     }): State<AdminState>,
     sort: Query<HashMap<String, String>>,
-) -> Result<Html<String>, WebError> {
+) -> Result<impl IntoResponse, WebError> {
     let now = now(&index).await?;
     let sort = sort.get("sort").cloned().unwrap_or_default();
     let stories = index
         .stories::<StoryRender>(Option::<String>::None, &resources.story_evaluator(), 0, 500)
         .await?;
-    render(
+    render_admin(
         &resources,
         "admin/frontpage.html",
         context!(now, user, stories, sort),
@@ -767,7 +780,7 @@ async fn admin_index_frontpage_scoretuner(
     State(AdminState {
         index, resources, ..
     }): State<AdminState>,
-) -> Result<Html<String>, WebError> {
+) -> Result<impl IntoResponse, WebError> {
     let now = now(&index).await?;
 
     #[derive(Serialize)]
@@ -796,7 +809,7 @@ async fn admin_index_frontpage_scoretuner(
     // Quick-and-dirty float sort
     story_details.sort_by_cached_key(|x| (x.story.score * -1000.0) as i32);
 
-    render(
+    render_admin(
         &resources,
         "admin/scoretuner.html",
         context!(now, user, story_details,),
@@ -810,10 +823,10 @@ async fn admin_status_shard(
     }): State<AdminState>,
     Path(shard): Path<String>,
     sort: Query<HashMap<String, String>>,
-) -> Result<Html<String>, WebError> {
+) -> Result<impl IntoResponse, WebError> {
     let sort = sort.get("sort").cloned().unwrap_or_default();
     let shard = Shard::from_string(&shard).expect("Failed to parse shard");
-    render(
+    render_admin(
         &resources,
         "admin/shard.html",
         context!(
@@ -837,7 +850,7 @@ async fn admin_status_story(
         index, resources, ..
     }): State<AdminState>,
     Path(id): Path<String>,
-) -> Result<Html<String>, WebError> {
+) -> Result<impl IntoResponse, WebError> {
     let id = StoryIdentifier::from_base64(id).ok_or(WebError::NotFound)?;
     let now = now(&index).await?;
     tracing::info!("Loading story = {:?}", id);
@@ -852,7 +865,7 @@ async fn admin_status_story(
     let tags = Default::default(); // _details = resources.story_evaluator().tagger.tag_detail(&story);
     let doc = index.fetch_detail_one(id).await?.unwrap_or_default();
 
-    render(
+    render_admin(
         &resources,
         "admin/story.html",
         context!(
