@@ -1,4 +1,4 @@
-name: Deploy to Docker Hub
+name: Deploy to Docker Hub (depot)
 
 on:
   workflow_dispatch:
