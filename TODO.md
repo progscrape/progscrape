@@ -2,7 +2,6 @@
 
 ## Launch blockers
 
- - [ ] Dump existing index plus old docs to backups
  - [ ] Configure RPi4 for reliable hosting
  - [ ] Single-step release-to-deploy pipeline
  - [ ] Test "add to homepage" functionality on iOS/Android
@@ -55,3 +54,4 @@
  - [X] Hook up offset parameter
  - [X] Add social media banner image for better sharing support (test w/facebook + twitter + masto)
  - [X] Implement restore from backup-style JSON
+ - [X] Dump existing index plus old docs to backups
