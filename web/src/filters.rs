@@ -78,7 +78,9 @@ impl tera::Filter for RelativeTimeFilter {
             .and_then(StoryDate::from_seconds);
         if let (Some(date), Some(now)) = (date, now) {
             let relative = now - date;
-            if relative > StoryDuration::days(60) {
+            if relative > StoryDuration::days(750) {
+                Ok(format!("{} years ago", relative.num_days() / 365).into())
+            } else if relative > StoryDuration::days(60) {
                 Ok(format!("{} months ago", relative.num_days() / 30).into())
             } else if relative > StoryDuration::days(2) {
                 Ok(format!("{} days ago", relative.num_days()).into())
