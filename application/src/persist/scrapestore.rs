@@ -10,6 +10,8 @@ use crate::{story::StoryScrapeId, PersistError};
 
 use super::{db::DB, shard::Shard, PersistLocation};
 
+pub const SCRAPE_STORE_VERSION: usize = 1;
+
 /// Long-term persistence for raw scrape data.
 pub struct ScrapeStore {
     location: PersistLocation,
@@ -19,6 +21,10 @@ pub struct ScrapeStore {
 /// Summary information for a given scrape store, useful for debugging and determining if a scrape store has been modified.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ScrapeStoreStats {
+    /// The backup version, defaulting to zero
+    #[serde(default)]
+    pub version: usize,
+
     pub earliest: StoryDate,
     pub latest: StoryDate,
     pub count: usize,
@@ -153,7 +159,8 @@ impl ScrapeStore {
         let db = self.open_shard(shard)?;
         // Fetch the stats object from a virtual view of that table
         let sql = format!(
-            "select count(*) count, coalesce(min(date), 0) as earliest, coalesce(max(date), 0) as latest from {}",
+            "select {} version, count(*) count, coalesce(min(date), 0) as earliest, coalesce(max(date), 0) as latest from {}",
+            SCRAPE_STORE_VERSION,
             DB::table_for::<ScrapeCacheEntry>()
         );
         if let Some(stats) = db.query_raw::<ScrapeStoreStats>(&sql)?.into_iter().next() {

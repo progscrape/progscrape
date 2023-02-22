@@ -1904,6 +1904,7 @@ dependencies = [
  "serde_json",
  "serde_rusqlite",
  "tantivy",
+ "tempfile",
  "thiserror",
  "tracing",
  "tracing-subscriber",

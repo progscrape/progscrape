@@ -21,3 +21,4 @@ progscrape-scrapers = { path = "../scrapers" }
 rstest = "0.16.0"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 progscrape-scrapers = { path = "../scrapers", features=["scrape_test"] }
+tempfile = "3.3"

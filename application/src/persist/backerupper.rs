@@ -6,7 +6,10 @@ use std::{
 use progscrape_scrapers::StoryDate;
 use serde::{Deserialize, Serialize};
 
-use crate::{persist::scrapestore::ScrapeStoreStats, timer_end, timer_start, PersistError, Shard};
+use crate::{
+    persist::scrapestore::{ScrapeStoreStats, SCRAPE_STORE_VERSION},
+    timer_end, timer_start, PersistError, Shard,
+};
 
 use super::{
     scrapestore::ScrapeStore,
@@ -89,6 +92,7 @@ impl BackerUpper {
         )?;
 
         let computed_stats = ScrapeStoreStats {
+            version: SCRAPE_STORE_VERSION,
             count,
             earliest,
             latest,
@@ -140,7 +144,6 @@ mod tests {
     use progscrape_scrapers::ScrapeConfig;
     use rstest::*;
 
-    #[ignore]
     #[rstest]
     fn test_insert(_enable_tracing: &bool) -> Result<(), Box<dyn std::error::Error>> {
         let store = ScrapeStore::new(PersistLocation::Memory)?;
@@ -152,7 +155,8 @@ mod tests {
             store.insert_scrape(scrape)?;
         }
 
-        let backup = BackerUpper::new("/tmp/backup");
+        let tempdir = tempfile::tempdir()?;
+        let backup = BackerUpper::new(tempdir);
         backup.backup("2015-01", Shard::from_year_month(2015, 1), &store)?;
 
         Ok(())
