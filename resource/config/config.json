@@ -279,7 +279,7 @@
                 "diabetes": {"alts": ["diabetic", "prediabetic", "prediabetes"]},
                 "disease": {},
                 "epilepsy": {},
-                "autism": {},
+                "autism": {"alts": ["autistic", "autist"]},
                 "malaria": {},
                 "mrna": {},
                 "vaccine": {}
@@ -326,7 +326,8 @@
                 "c#": {"internal": "csharp", "symbol": true},
                 "f#": {"internal": "fsharp", "symbol": true},
                 "swift": {},
-                "graphql": {}
+                "graphql": {},
+                "toml": {}
             },
             "product": {
                 "minecraft": {},
@@ -444,7 +445,9 @@
                 "smb": {},
                 "gpt": {"alt": "chatgpt"},
                 "wasm": {},
-                "llvm": {}
+                "wasi": {"implies": "wasm"},
+                "llvm": {},
+                "risc": {"alts": ["risc-v", "riscv", "risc v"]}
             }
         }
     }
