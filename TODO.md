@@ -4,16 +4,12 @@
 
  - [ ] Configure RPi4 for reliable hosting
  - [ ] Single-step release-to-deploy pipeline
- - [ ] Test "add to homepage" functionality on iOS/Android
 
 ## Non-blockers
 
  - [ ] Announcements source
  - [ ] Restore warnings to scrape test page
- - [ ] Swap Chrono for time
- - [ ] Host implies tag (ie: YouTube)
  - [ ] Rework indexing so writes don't hold a long lock 
- - [ ] Long Reddit titles should split on '|' or '.'O
 
 ## Maybe
 
