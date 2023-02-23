@@ -798,7 +798,7 @@ async fn admin_index_frontpage_scoretuner(
         let extracted = scrapes.extract(&eval.extractor);
         story.score = eval.scorer.score(&extracted) + eval.scorer.score_age(now - story.date);
         let mut tags = TagSet::from_iter(extracted.tags());
-        eval.tagger.tag(extracted.title, &mut tags);
+        eval.tagger.tag(extracted.title(), &mut tags);
         story.tags = tags;
         story_details.push(StoryDetail {
             story: story.render(&eval, 0),

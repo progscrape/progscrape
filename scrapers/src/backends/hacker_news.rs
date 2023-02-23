@@ -256,7 +256,7 @@ impl Scraper for HackerNewsScraper {
             .collect();
         ScrapeCore {
             source: &input.shared.id,
-            title: &input.shared.raw_title,
+            title: Cow::Borrowed(&input.shared.raw_title),
             url: &input.shared.url,
             date: input.shared.date,
             rank: (input.data.position as usize).checked_sub(1),

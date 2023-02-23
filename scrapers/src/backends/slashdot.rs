@@ -218,7 +218,7 @@ impl Scraper for SlashdotScraper {
         ScrapeCore {
             source: &input.shared.id,
             date: input.shared.date,
-            title: &input.shared.raw_title,
+            title: Cow::Borrowed(&input.shared.raw_title),
             url: &input.shared.url,
             rank: None,
             tags,

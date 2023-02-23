@@ -1,5 +1,5 @@
 use std::{
-    borrow::Cow,
+    borrow::{Borrow, Cow},
     collections::{hash_map::Entry, HashMap, HashSet},
 };
 
@@ -85,19 +85,23 @@ impl ScrapeCollection {
             .iter()
             .map(|(k, v)| (k, (extractor.extract(v), v)));
         let scrapes = HashMap::from_iter(iter);
-        let mut title = "";
+        let mut title_story = *scrapes
+            .iter()
+            .next()
+            .expect("Expected at least one scrape")
+            .0;
         let mut max_title_score = i32::MAX;
-        for (id, (scrape, _)) in &scrapes {
+        for (id, (_, _)) in &scrapes {
             let this_score = title_score(&id.source);
             if this_score < max_title_score {
                 max_title_score = this_score;
-                title = scrape.title;
+                title_story = *id;
             }
         }
 
         ExtractedScrapeCollection {
             earliest: self.earliest,
-            title,
+            title_story,
             scrapes,
         }
     }
@@ -106,11 +110,20 @@ impl ScrapeCollection {
 /// Collection of scrape data that has been extracted from a `ScrapeCollection`.
 pub struct ExtractedScrapeCollection<'a> {
     pub earliest: StoryDate,
-    pub title: &'a str,
+    title_story: &'a ScrapeId,
     pub scrapes: HashMap<&'a ScrapeId, (ScrapeCore<'a>, &'a TypedScrape)>,
 }
 
 impl<'a> ExtractedScrapeCollection<'a> {
+    pub fn title(&'a self) -> &'a str {
+        &self
+            .scrapes
+            .get(self.title_story)
+            .expect("Expected the title story to be in the scrape collection")
+            .0
+            .title
+    }
+
     pub fn url(&'a self) -> &'a StoryUrl {
         self.scrapes
             .iter()

@@ -1,0 +1,22 @@
+# Long titles
+Research suggests that school-based physical activity intervention, by way of increasing physical exercise classes to daily during school, is successful in reducing childhood obesity
+In study of 1.9 million patients, those who were vaccinated had 41% lower chance of heart attack or stroke compared to unvaccinated after COVID-19 infection
+Insulin resistance after a 3-day fast is associated with an increased capacity of skeletal muscle to oxidize lipids
+Researchers call for health warning labels on ultra-processed foods
+Researchers have studied more than six million genetic variants in 38,691 people with ADHD and 186,843 people without ADHD
+An estimated 622 extra deaths occurred among U.S. doctors aged 45 and over from the pandemic's onset in March 2020 through December 2021
+Electric cars really do reduce air pollution and boost public health
+
+# Titles that don't get trimmed
+A study of 92000 participants showed that physical exercise in the midday-afternoon period, or spread through the day have lower risks of all-cause and cardiovascular disease mortality
+The planets are absolutely brilliant in the sky right now. Look up.
+In rural America, right-to-repair laws are the leading edge of a pushback against growing corporate power
+Metformin use history and genome-wide DNA methylation profile: potential molecular mechanism for aging and longevity (Feb 2023)
+A review concluded that "cannabinoids in the correct doses and ratio as to the content of individual subgroups can bring relief to people suffering from lack of proper sleep."
+New research showing high infant mortality rates are contributing to an incessant rise of the global human population supports arguments for greater access to contraception and family planning in low- and middle-income nations
+Researchers looked at health outcomes for a population of more than 400,000 middle-aged and older adults, and found both social isolation and loneliness increased the risk of hospitalization or death from heart failure by 15% to 20%.
+Insufficient pollination has been linked to more than 400,000 annual excess deaths by scientists with Harvard calling the scientific investigation “the first study to quantify the human health toll of insufficient wild (animal) pollinators on human health.”
+Doctors who are either liberal or centrist/moderate in their political beliefs evaluate evidence for effectiveness of treatments more objectively than liberal leaning laypeople, while conservative leaning doctors demonstrate the same degree of bias as conservative laypeople.
+
+# Trimmed at a comma
+Study of nearly 200,000 ex-felons in Florida found ones who resettled in communities with a large number of immigrants had 21% lower rates of recidivism, suggesting that immigrant communities could reduce crime and improve safety…

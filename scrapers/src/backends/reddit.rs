@@ -7,7 +7,10 @@ use super::{
     scrape_story, utils::html::unescape_entities, GenericScrape, ScrapeConfigSource, ScrapeCore,
     ScrapeShared, ScrapeSource, ScrapeSourceDef, ScrapeStory, Scraper,
 };
-use crate::types::*;
+use crate::{
+    datasci::titletrimmer::{trim_title, AWKWARD_LENGTH, IDEAL_LENGTH},
+    types::*,
+};
 
 pub struct Reddit {}
 
@@ -269,9 +272,11 @@ impl Scraper for RedditScraper {
             }
         }
 
+        let title = trim_title(&input.shared.raw_title, IDEAL_LENGTH, AWKWARD_LENGTH);
+
         ScrapeCore {
             source: &input.shared.id,
-            title: &input.shared.raw_title,
+            title,
             url: &input.shared.url,
             date: input.shared.date,
             rank: (input.data.position as usize).checked_sub(1),

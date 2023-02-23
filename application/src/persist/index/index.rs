@@ -216,7 +216,7 @@ impl StoryIndex {
             .map(|x| x.1)
             .map(Self::create_scrape_id_from_scrape)
             .collect_vec();
-        let title = extracted.title.to_owned();
+        let title = extracted.title().to_owned();
         let mut tags = TagSet::new();
         eval.tagger.tag(&title, &mut tags);
         for tag in extracted.tags() {
