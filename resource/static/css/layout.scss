@@ -1,6 +1,6 @@
 @use "breakpoints";
 
-@media only screen and (max-width: 480px) {
+@media only screen and (max-width: breakpoints.$mobilewidth) {
     #header {
         .subscribe {
             float: right;
@@ -16,7 +16,7 @@
     }
 }
 
-@media only screen and (min-width: 480px) {
+@media only screen and (min-width: breakpoints.$mobilewidth) {
     /* HTML centers the body horizontally */
     html {
         display: flex;
