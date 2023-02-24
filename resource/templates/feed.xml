@@ -13,7 +13,7 @@
 		<author>
 			<name>{{ story.domain }}</name>
 		</author>
-		<published>2023-02-11T15:50:00+00:00</published>
+		<published>{{ story.date | rfc_3339 }}</published>
 		<updated>{{ story.date | rfc_3339 }}</updated>
 		<summary type="html">
 			{% for source, id in story.sources -%}
