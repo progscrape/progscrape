@@ -1930,6 +1930,7 @@ dependencies = [
  "tl",
  "tracing",
  "url",
+ "urlnorm",
 ]
 
 [[package]]
@@ -3005,6 +3006,16 @@ dependencies = [
  "form_urlencoded",
  "idna",
  "percent-encoding",
+]
+
+[[package]]
+name = "urlnorm"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4ad2143e51d312ae6ceb079e5e713d3cea1210c4f0500b709b805b913661c46c"
+dependencies = [
+ "regex",
+ "url",
 ]
 
 [[package]]
