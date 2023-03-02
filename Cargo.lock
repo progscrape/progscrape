@@ -1196,6 +1196,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "keepcalm"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ac2864805ce1d4e29012822919fb0f9a9f276bdca97469ffd5a7bdcb16a1a608"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "kqueue"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1856,6 +1865,7 @@ dependencies = [
  "hyper",
  "infer",
  "itertools",
+ "keepcalm",
  "lazy_static",
  "notify",
  "num-format",

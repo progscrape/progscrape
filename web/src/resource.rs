@@ -5,6 +5,7 @@ use std::borrow::Borrow;
 use std::fs::File;
 use std::io::BufReader;
 
+use keepcalm::{Shared, SharedRW};
 use std::path::Path;
 use std::time::Duration;
 use tera::Tera;
@@ -15,7 +16,6 @@ use progscrape_application::StoryEvaluator;
 use crate::config::Config;
 use crate::filters::*;
 use crate::static_files::StaticFileRegistry;
-use crate::types::{Shared, SharedRW};
 use crate::web::WebError;
 
 struct ResourceHolder {

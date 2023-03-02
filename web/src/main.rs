@@ -26,7 +26,6 @@ mod resource;
 mod serve_static_files;
 mod smoketest;
 mod static_files;
-mod types;
 mod web;
 
 pub enum Engine {}

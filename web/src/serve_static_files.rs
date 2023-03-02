@@ -3,7 +3,8 @@ use lazy_static::lazy_static;
 use axum::{body::Bytes, http::HeaderValue, response::IntoResponse};
 use hyper::{header::*, HeaderMap, StatusCode};
 
-use crate::{static_files::StaticFileRegistry, types::Shared, web::WebError};
+use crate::{static_files::StaticFileRegistry, web::WebError};
+use keepcalm::Shared;
 
 lazy_static! {
     /// Immutable caching header, for files that never, ever, ever change.

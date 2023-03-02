@@ -11,6 +11,7 @@ use axum::{
 };
 use hyper::{header, service::Service, Body, HeaderMap, Method, Request, StatusCode};
 use itertools::Itertools;
+use keepcalm::SharedRW;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tera::Context;
@@ -23,7 +24,6 @@ use crate::{
     index::Index,
     resource::Resources,
     serve_static_files,
-    types::SharedRW,
 };
 use progscrape_application::{
     PersistError, Shard, Story, StoryEvaluator, StoryIdentifier, StoryIndex, StoryQuery,

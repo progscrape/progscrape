@@ -1,17 +1,14 @@
 use std::{collections::HashMap, path::Path};
 
+use crate::web::WebError;
 use itertools::Itertools;
+use keepcalm::{Shared, SharedRW};
 use progscrape_application::{
     BackerUpper, BackupResult, PersistError, PersistLocation, ScrapePersistResult, Shard, Storage,
     StorageFetch, StorageSummary, StorageWriter, Story, StoryEvaluator, StoryIdentifier,
     StoryIndex, StoryQuery, StoryRender, StoryScrapePayload,
 };
 use progscrape_scrapers::{StoryDate, TypedScrape};
-
-use crate::{
-    types::{Shared, SharedRW},
-    web::WebError,
-};
 
 pub struct HotSet {
     stories: Vec<Story<Shard>>,
