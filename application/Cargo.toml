@@ -9,6 +9,7 @@ thiserror = "1.0.38"
 serde = { version = "1.0", features = ["derive", "rc"] }
 serde_rusqlite = "0.31.0"
 serde_json = "1.0"
+keepcalm = "0.1.0"
 
 rusqlite = "0.28.0"
 tantivy = "0.19.1"
