@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use keepcalm::{SharedRW, Shared};
+use keepcalm::{Shared, SharedMut};
 
 use tantivy::collector::TopDocs;
 use tantivy::query::{AllQuery, PhraseQuery, Query, QueryParser, TermQuery};
@@ -28,7 +28,7 @@ const STORY_INDEXING_CHUNK_SIZE: usize = 10000;
 const SCRAPE_PROCESSING_CHUNK_SIZE: usize = 1000;
 
 struct IndexCache {
-    cache: HashMap<Shard, SharedRW<StoryIndexShard>>,
+    cache: HashMap<Shard, SharedMut<StoryIndexShard>>,
     location: PersistLocation,
     range: ShardRange,
     schema: StorySchema,
@@ -36,7 +36,7 @@ struct IndexCache {
 }
 
 impl IndexCache {
-    fn get_shard(&mut self, shard: Shard) -> Result<SharedRW<StoryIndexShard>, PersistError> {
+    fn get_shard(&mut self, shard: Shard) -> Result<SharedMut<StoryIndexShard>, PersistError> {
         if let Some(shard) = self.cache.get(&shard) {
             Ok(shard.clone())
         } else {
@@ -47,21 +47,21 @@ impl IndexCache {
             Ok(self
                 .cache
                 .entry(shard)
-                .or_insert(SharedRW::new(new_shard))
+                .or_insert(SharedMut::new(new_shard))
                 .clone())
         }
     }
 }
 
 pub struct StoryIndex {
-    index_cache: SharedRW<IndexCache>,
+    index_cache: SharedMut<IndexCache>,
     scrape_db: ScrapeStore,
     schema: StorySchema,
 }
 
 struct WriterProvider {
     writers: HashMap<Shard, IndexWriter>,
-    index: SharedRW<IndexCache>,
+    index: SharedMut<IndexCache>,
 }
 
 impl WriterProvider {
@@ -70,8 +70,8 @@ impl WriterProvider {
         shard: Shard,
         f: impl FnOnce(Shard, &StoryIndexShard, &'_ mut IndexWriter) -> Result<T, PersistError>,
     ) -> Result<T, PersistError> {
-        let shard_index = self.index.lock_write().get_shard(shard)?;
-        let shard_index = shard_index.lock_write();
+        let shard_index = self.index.write().get_shard(shard)?;
+        let shard_index = shard_index.write();
         let writer = if let Some(writer) = self.writers.get_mut(&shard) {
             writer
         } else {
@@ -103,7 +103,7 @@ impl StoryIndex {
         tracing::info!("Found shards {:?}", range);
         let schema = StorySchema::instantiate_global_schema();
         let new = Self {
-            index_cache: SharedRW::new(IndexCache {
+            index_cache: SharedMut::new(IndexCache {
                 cache: HashMap::new(),
                 location,
                 range,
@@ -118,11 +118,11 @@ impl StoryIndex {
     }
 
     pub fn shards(&self) -> ShardRange {
-        self.index_cache.lock_read().range
+        self.index_cache.read().range
     }
 
-    fn get_shard(&self, shard: Shard) -> Result<SharedRW<StoryIndexShard>, PersistError> {
-        let mut lock = self.index_cache.lock_write();
+    fn get_shard(&self, shard: Shard) -> Result<SharedMut<StoryIndexShard>, PersistError> {
+        let mut lock = self.index_cache.write();
         lock.get_shard(shard)
     }
 
@@ -140,7 +140,7 @@ impl StoryIndex {
         mut f: F,
     ) -> Result<T, PersistError> {
         let shard_index = self.get_shard(shard)?;
-        let shard_index = shard_index.lock_read();
+        let shard_index = shard_index.read();
         shard_index.with_searcher(|searcher, schema| f(shard, searcher, schema))
     }
 
@@ -152,7 +152,7 @@ impl StoryIndex {
         mut f: F,
     ) -> Result<T, PersistError> {
         let shard_index = self.get_shard(shard)?;
-        let shard_index = shard_index.lock_read();
+        let shard_index = shard_index.read();
         f(shard, &shard_index)
     }
 
@@ -179,13 +179,11 @@ impl StoryIndex {
             for (shard, writer) in writers.into_iter().sorted_by_key(|(shard, _)| *shard) {
                 tracing::info!("Committing shard {:?}...", shard);
                 let shard = self.get_shard(shard)?;
-                let mut shard = shard.lock_write();
+                let mut shard = shard.write();
                 shard.commit_writer(writer)?;
             }
             timer_end!(commit_start, "Committed {} writer(s).", writer_count);
-            self.index_cache
-                .lock_write()
-                .most_recent_story = None;
+            self.index_cache.write().most_recent_story = None;
         } else {
             // We'll just have to do our best here...
             for mut writer in writers.into_values() {
@@ -698,19 +696,15 @@ impl StorageFetch<TypedScrape> for StoryIndex {
 
 impl Storage for StoryIndex {
     fn most_recent_story(&self) -> Result<StoryDate, PersistError> {
-        if let Some(most_recent_story) =
-            self.index_cache.lock_read().most_recent_story
-        {
+        if let Some(most_recent_story) = self.index_cache.read().most_recent_story {
             return Ok(most_recent_story);
         }
 
         if let Some(max) = self.shards().iterate(ShardOrder::NewestFirst).next() {
             let shard = self.get_shard(max)?;
-            let index = shard.lock_read();
+            let index = shard.read();
             let result = index.most_recent_story()?;
-            self.index_cache
-                .lock_write()
-                .most_recent_story = Some(result);
+            self.index_cache.write().most_recent_story = Some(result);
             Ok(result)
         } else {
             Ok(StoryDate::MIN)
@@ -725,7 +719,7 @@ impl Storage for StoryIndex {
         let mut summary = StorageSummary::default();
         for shard in self.shards().iterate(ShardOrder::OldestFirst) {
             let index = self.get_shard(shard)?;
-            let subtotal = index.lock_read().total_docs()?;
+            let subtotal = index.read().total_docs()?;
             let scrape_subtotal = self.scrape_db.stats(shard)?.count;
             summary.by_shard.push((
                 shard.to_string(),

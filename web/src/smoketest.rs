@@ -68,7 +68,7 @@ mod test {
         let resources = Resources::get_resources("../resource/")?;
 
         // Load sample scrapes, and one scrape we can use for testing search
-        let mut scrapes = progscrape_scrapers::load_sample_scrapes(&resources.config().scrape);
+        let mut scrapes = progscrape_scrapers::load_sample_scrapes(&resources.config.read().scrape);
         let date = scrapes.last().expect("No scrapes").date;
         // This should match four search terms: Cobsteme, whooperchia, buwheal, saskimplaid
         scrapes.push(progscrape_scrapers::TypedScrape::HackerNews(
@@ -81,11 +81,12 @@ mod test {
         ));
 
         let tempdir = tempfile::tempdir()?;
-        let index = Index::<StoryIndex>::initialize_with_persistence(tempdir)?;
-        index
-            .insert_scrapes(resources.story_evaluator(), scrapes)
-            .await?;
-        index.refresh_hot_set(resources.story_evaluator()).await?;
+        let index = Index::<StoryIndex>::initialize_with_persistence(
+            tempdir,
+            resources.story_evaluator.clone(),
+        )?;
+        index.insert_scrapes(scrapes).await?;
+        index.refresh_hot_set().await?;
 
         // Create a router that we can send mock requests to
         let router = create_feeds::<()>(index, resources);

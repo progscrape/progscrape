@@ -1,17 +1,17 @@
 use std::{path::Path, sync::Mutex};
 
 use super::*;
-use itertools::Itertools;
+use keepcalm::Shared;
 use serde::{de::DeserializeOwned, Serialize};
 
 pub struct DB {
-    connection: Mutex<rusqlite::Connection>,
+    connection: Shared<rusqlite::Connection>,
 }
 
 impl DB {
     pub fn open<P: AsRef<Path>>(location: P) -> Result<Self, PersistError> {
         let db = rusqlite::Connection::open(location)?;
-        let connection = Mutex::new(db);
+        let connection = Shared::new_unsync(db);
         Ok(Self { connection })
     }
 
@@ -68,10 +68,7 @@ impl DB {
             Self::table_for::<T>(),
             types.join(",")
         );
-        self.connection
-            .lock()
-            .expect("Poisoned")
-            .execute(&sql, ())?;
+        self.connection.read().execute(&sql, ())?;
         Ok(())
     }
 
@@ -98,10 +95,7 @@ impl DB {
             Self::table_for::<T>(),
             keys.join(",")
         );
-        self.connection
-            .lock()
-            .expect("Poisoned")
-            .execute(&sql, ())?;
+        self.connection.read().execute(&sql, ())?;
         Ok(())
     }
 
@@ -135,7 +129,7 @@ impl DB {
                 values
             );
 
-            let conn = self.connection.lock().expect("Poisoned");
+            let conn = self.connection.read();
             let mut prep = conn.prepare(&sql)?;
             for t in t {
                 let params = serde_rusqlite::to_params_named(t)?;
@@ -175,8 +169,7 @@ impl DB {
             values
         );
         self.connection
-            .lock()
-            .expect("Poisoned")
+            .read()
             .execute(&sql, params_slice.as_slice())?;
         Ok(())
     }
@@ -200,8 +193,7 @@ impl DB {
         );
         match self
             .connection
-            .lock()
-            .expect("Poisoned")
+            .read()
             .query_row_and_then(&sql, [id], |row| serde_rusqlite::from_row::<T>(row))
         {
             Err(serde_rusqlite::Error::Rusqlite(rusqlite::Error::QueryReturnedNoRows)) => Ok(None),
@@ -211,10 +203,7 @@ impl DB {
     }
 
     pub fn execute_raw(&self, sql: &str) -> Result<(), PersistError> {
-        self.connection
-            .lock()
-            .expect("Poisoned")
-            .execute_batch(sql)?;
+        self.connection.read().execute_batch(sql)?;
         Ok(())
     }
 
@@ -238,7 +227,7 @@ impl DB {
         sql: &str,
         mut f: F,
     ) -> Result<(), PersistError> {
-        let db = self.connection.lock().expect("Poisoned");
+        let db = self.connection.read();
         let mut stmt = db.prepare(sql)?;
         let mut res = stmt.query([])?;
         loop {

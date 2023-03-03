@@ -5,7 +5,7 @@ use std::borrow::Borrow;
 use std::fs::File;
 use std::io::BufReader;
 
-use keepcalm::{Shared, SharedRW};
+use keepcalm::{Shared, SharedMut};
 use std::path::Path;
 use std::time::Duration;
 use tera::Tera;
@@ -20,7 +20,7 @@ use crate::web::WebError;
 
 struct ResourceHolder {
     templates: Tera,
-    static_files: Shared<StaticFileRegistry>,
+    static_files: StaticFileRegistry,
     static_files_root: StaticFileRegistry,
     config: Config,
     story_evaluator: StoryEvaluator,
@@ -29,27 +29,25 @@ struct ResourceHolder {
 
 #[derive(Clone)]
 pub struct Resources {
-    r: SharedRW<Shared<ResourceHolder>>,
+    pub templates: Shared<Tera>,
+    pub static_files: Shared<StaticFileRegistry>,
+    pub static_files_root: Shared<StaticFileRegistry>,
+    pub config: Shared<Config>,
+    pub story_evaluator: Shared<StoryEvaluator>,
+    pub scrapers: Shared<Scrapers>,
 }
 
 impl Resources {
-    pub fn templates(&self) -> Shared<Tera> {
-        self.r.lock_read().project_fn(|x| &x.templates)
-    }
-    pub fn static_files(&self) -> Shared<StaticFileRegistry> {
-        self.r.lock_read().project_fn(|x| &*x.static_files)
-    }
-    pub fn static_files_root(&self) -> Shared<StaticFileRegistry> {
-        self.r.lock_read().project_fn(|x| &x.static_files_root)
-    }
-    pub fn config(&self) -> Shared<Config> {
-        self.r.lock_read().project_fn(|x| &x.config)
-    }
-    pub fn story_evaluator(&self) -> Shared<StoryEvaluator> {
-        self.r.lock_read().project_fn(|x| &x.story_evaluator)
-    }
-    pub fn scrapers(&self) -> Shared<Scrapers> {
-        self.r.lock_read().project_fn(|x| &x.scrapers)
+    fn new(r: SharedMut<ResourceHolder>) -> Self {
+        let new = Resources {
+            templates: r.shared_copy().project_fn(|x| &x.templates),
+            static_files: r.shared_copy().project_fn(|x| &x.static_files),
+            static_files_root: r.shared_copy().project_fn(|x| &x.static_files_root),
+            config: r.shared_copy().project_fn(|x| &x.config),
+            story_evaluator: r.shared_copy().project_fn(|x| &x.story_evaluator),
+            scrapers: r.shared_copy().project_fn(|x| &x.scrapers),
+        };
+        new
     }
 }
 
@@ -79,7 +77,7 @@ fn create_static_files_root(resource_path: &Path) -> Result<StaticFileRegistry, 
 
 fn create_templates(
     resource_path: &Path,
-    static_files: Shared<StaticFileRegistry>,
+    static_files: StaticFileRegistry,
 ) -> Result<Tera, WebError> {
     let mut tera = Tera::new(
         resource_path
@@ -125,7 +123,7 @@ fn create_config(resource_path: &Path) -> Result<Config, WebError> {
     Ok(serde_json::from_reader(reader)?)
 }
 
-fn generate<T: AsRef<Path>>(resource_path: T) -> Result<Shared<ResourceHolder>, WebError> {
+fn generate<T: AsRef<Path>>(resource_path: T) -> Result<ResourceHolder, WebError> {
     let resource_path = resource_path.as_ref();
     if !resource_path.exists() {
         tracing::error!(
@@ -141,35 +139,32 @@ fn generate<T: AsRef<Path>>(resource_path: T) -> Result<Shared<ResourceHolder>, 
     let resource_path = &resource_path.canonicalize()?;
     let css = create_css(resource_path)?;
     let admin_css = create_admin_css(resource_path)?;
-    let static_files = Shared::new(create_static_files(resource_path, css, admin_css)?);
+    let static_files = create_static_files(resource_path, css, admin_css)?;
     let static_files_root = create_static_files_root(resource_path)?;
     let templates = create_templates(resource_path, static_files.clone())?;
     let config = create_config(resource_path)?;
     let story_evaluator = StoryEvaluator::new(&config.tagger, &config.score, &config.scrape);
     let scrapers = Scrapers::new(&config.scrape);
-    Ok(Shared::new(ResourceHolder {
+    Ok(ResourceHolder {
         templates,
         static_files,
         static_files_root,
         config,
         story_evaluator,
         scrapers,
-    }))
+    })
 }
 
 impl Resources {
     /// Returns a `Resources` object that doesn't watch a file path.
-    #[cfg(test)]
     pub fn get_resources<T: AsRef<Path>>(resource_path: T) -> Result<Resources, WebError> {
-        Ok(Resources {
-            r: SharedRW::new(generate(resource_path)?),
-        })
+        Ok(Resources::new(SharedMut::new(generate(resource_path)?)))
     }
 
     /// Starts a process to watch all the templates/static data and regenerates everything if something changes.
     pub async fn start_watcher<T: AsRef<Path>>(resource_path: T) -> Result<Resources, WebError> {
         let resource_path = resource_path.as_ref();
-        let r = SharedRW::new(generate(resource_path)?);
+        let r = SharedMut::new(generate(resource_path)?);
         let (tx_dirty, mut rx_dirty) = watch::channel(false);
         let mut watcher = notify::recommended_watcher(move |res| {
             if let Ok(event) = res {
@@ -195,7 +190,7 @@ impl Resources {
                 tracing::info!("Regenerating...");
                 let res = tokio::task::spawn_blocking(move || generate(resource_path)).await;
                 match res {
-                    Ok(Ok(v)) => *r_set.lock_write() = v,
+                    Ok(Ok(v)) => *r_set.write() = v,
                     Ok(Err(e)) => tracing::error!("Failed to regenerate data: {:?}", e),
                     _ => {}
                 };
@@ -204,6 +199,6 @@ impl Resources {
             // Keep the watcher alive in this task
             drop(watcher);
         });
-        Ok(Resources { r })
+        Ok(Resources::new(r))
     }
 }

@@ -16,6 +16,7 @@ use web::WebError;
 
 use crate::auth::Auth;
 use crate::index::Index;
+use crate::resource::Resources;
 
 mod auth;
 mod config;
@@ -51,6 +52,9 @@ pub enum Command {
 
         #[arg(long, value_name = "DIR", value_hint = clap::ValueHint::DirPath, help = "Backup output path")]
         backup_path: PathBuf,
+
+        #[arg(long, value_name = "DIR", value_hint = clap::ValueHint::DirPath, help = "Root path")]
+        root: Option<PathBuf>,
     },
     Serve {
         #[arg(long, value_name = "DIR", value_hint = clap::ValueHint::DirPath, help = "Persistence path")]
@@ -138,8 +142,16 @@ async fn go() -> Result<(), WebError> {
         Command::Backup {
             persist_path,
             backup_path,
+            root,
         } => {
-            let index = Index::initialize_with_persistence(persist_path)?;
+            let root_path = root.unwrap_or(".".into()).canonicalize()?;
+            tracing::info!("Root path: {}", root_path.to_string_lossy());
+            let resource_path = root_path.join("resource");
+            let resources = Resources::get_resources(resource_path)?;
+            let index = Index::initialize_with_persistence(
+                persist_path,
+                resources.story_evaluator.clone(),
+            )?;
             index.backup(&backup_path)?;
         }
         Command::Serve {
@@ -150,13 +162,21 @@ async fn go() -> Result<(), WebError> {
             listen_port,
             backup_path,
         } => {
+            let root_path = root.unwrap_or(".".into()).canonicalize()?;
+            tracing::info!("Root path: {}", root_path.to_string_lossy());
+
+            let resource_path = root_path.join("resource");
+
+            let resources = Resources::start_watcher(resource_path).await?;
+
             let persist_path = persist_path
                 .unwrap_or("target/index".into())
                 .canonicalize()?;
             tracing::info!("Persist path: {}", persist_path.to_string_lossy());
-            let index = Index::initialize_with_persistence(persist_path)?;
-            let root_path = root.unwrap_or(".".into()).canonicalize()?;
-            tracing::info!("Root path: {}", root_path.to_string_lossy());
+            let index = Index::initialize_with_persistence(
+                persist_path,
+                resources.story_evaluator.clone(),
+            )?;
             let listen_port = listen_port
                 .map(|s| s.parse().expect("Failed to parse socket address"))
                 .unwrap_or(SocketAddr::from(([127, 0, 0, 1], 3000)));
@@ -171,7 +191,7 @@ async fn go() -> Result<(), WebError> {
                     ));
                 }
             };
-            web::start_server(&root_path, backup_path, listen_port, index, auth).await?;
+            web::start_server(resources, backup_path, listen_port, index, auth).await?;
         }
         Command::Initialize {
             root,

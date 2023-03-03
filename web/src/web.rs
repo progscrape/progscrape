@@ -11,7 +11,7 @@ use axum::{
 };
 use hyper::{header, service::Service, Body, HeaderMap, Method, Request, StatusCode};
 use itertools::Itertools;
-use keepcalm::SharedRW;
+use keepcalm::SharedMut;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tera::Context;
@@ -81,8 +81,8 @@ impl IntoResponse for WebError {
 struct AdminState {
     resources: Resources,
     index: Index<StoryIndex>,
-    cron: SharedRW<Cron>,
-    cron_history: SharedRW<CronHistory>,
+    cron: SharedMut<Cron>,
+    cron_history: SharedMut<CronHistory>,
     backup_path: Option<std::path::PathBuf>,
 }
 
@@ -147,8 +147,8 @@ async fn handle_404() -> impl IntoResponse {
 pub fn admin_routes<S: Clone + Send + Sync + 'static>(
     resources: Resources,
     index: Index<StoryIndex>,
-    cron: SharedRW<Cron>,
-    cron_history: SharedRW<CronHistory>,
+    cron: SharedMut<Cron>,
+    cron_history: SharedMut<CronHistory>,
     backup_path: Option<std::path::PathBuf>,
     auth: Auth,
 ) -> Router<S> {
@@ -184,8 +184,8 @@ pub fn admin_routes<S: Clone + Send + Sync + 'static>(
 
 /// Feed the `Cron` request list into the `Router`.
 fn start_cron(
-    cron: SharedRW<Cron>,
-    cron_history: SharedRW<CronHistory>,
+    cron: SharedMut<Cron>,
+    cron_history: SharedMut<CronHistory>,
     resources: Resources,
     router: Router<()>,
 ) {
@@ -195,8 +195,8 @@ fn start_cron(
         let mut router = router.call(()).await.unwrap_infallible();
         loop {
             let ready = cron
-                .lock_write()
-                .tick(&resources.config().cron.jobs, Instant::now());
+                .write()
+                .tick(&resources.config.read().cron.jobs, Instant::now());
 
             // Sleep if no tasks are available
             if ready.is_empty() {
@@ -230,9 +230,9 @@ fn start_cron(
                     }
                 };
 
-                cron_history.lock_write().insert(
-                    resources.config().cron.history_age,
-                    resources.config().cron.history_count,
+                cron_history.write().insert(
+                    resources.config.read().cron.history_age,
+                    resources.config.read().cron.history_count,
                     ready_uri,
                     status.as_u16(),
                     body,
@@ -254,23 +254,17 @@ pub fn create_feeds<S: Clone + Send + Sync + 'static>(
         .with_state((index, resources))
 }
 
-pub async fn start_server<P1: AsRef<std::path::Path>, P2: Into<std::path::PathBuf>>(
-    root_path: P1,
+pub async fn start_server<P2: Into<std::path::PathBuf>>(
+    resources: Resources,
     backup_path: Option<P2>,
     address: SocketAddr,
     index: Index<StoryIndex>,
     auth: Auth,
 ) -> Result<(), WebError> {
-    let root_path = root_path.as_ref();
-    tracing::info!("Root path: {:?}", root_path);
+    index.refresh_hot_set().await?;
 
-    let resource_path = root_path.join("resource");
-
-    let resources = Resources::start_watcher(resource_path).await?;
-    index.refresh_hot_set(resources.story_evaluator()).await?;
-
-    let cron = SharedRW::new(Cron::new_with_jitter(-20..=20));
-    let cron_history = SharedRW::new(CronHistory::default());
+    let cron = SharedMut::new(Cron::new_with_jitter(-20..=20));
+    let cron_history = SharedMut::new(CronHistory::default());
 
     // build our application with a route
     let app = create_feeds(index.clone(), resources.clone())
@@ -339,6 +333,7 @@ macro_rules! context_assign {
 macro_rules! context {
     ( $($id:ident $(: $typ:ty)? $(= $expr:expr)? ),* $(,)? ) => {
         {
+            #[allow(unused_mut)]
             let mut context = Context::new();
 
             // Create a local variable for each item of the context, with a type if specified.
@@ -364,7 +359,8 @@ fn render(
     context.insert("git", GIT_VERSION);
 
     Ok(resources
-        .templates()
+        .templates
+        .read()
         .render(template_name, &context)?
         .into())
 }
@@ -374,8 +370,9 @@ fn render(
 fn render_admin(
     resources: &Resources,
     template_name: &str,
-    context: Context,
+    mut context: Context,
 ) -> Result<impl IntoResponse, WebError> {
+    context.insert("config", &resources.config);
     Ok((
         [(header::CACHE_CONTROL, HeaderValue::from_static("no-store"))],
         render(resources, template_name, context),
@@ -394,16 +391,8 @@ async fn root(
         .get("offset")
         .map(|x| x.parse().unwrap_or_default())
         .unwrap_or_default();
-    let stories = index
-        .stories::<StoryRender>(search, &resources.story_evaluator(), offset, 30)
-        .await?;
-    let mut top_tags = index.top_tags().await?;
-    top_tags.truncate(20);
-    let top_tags = resources
-        .story_evaluator()
-        .tagger
-        .make_display_tags(top_tags)
-        .collect_vec();
+    let stories = index.stories::<StoryRender>(search, offset, 30).await?;
+    let top_tags = index.top_tags(20)?;
     Ok(([(
         header::CACHE_CONTROL,
         HeaderValue::from_static(
@@ -462,13 +451,9 @@ async fn root_feed_json(
     query: Query<HashMap<String, String>>,
 ) -> Result<impl IntoResponse, WebError> {
     let stories = index
-        .stories::<FeedStory>(query.get("search"), &resources.story_evaluator(), 0, 150)
+        .stories::<FeedStory>(query.get("search"), 0, 150)
         .await?;
-    let top_tags = resources
-        .story_evaluator()
-        .tagger
-        .make_display_tags(index.top_tags().await?)
-        .collect_vec();
+    let top_tags = index.top_tags(usize::MAX)?;
 
     Ok((
         [(
@@ -492,11 +477,12 @@ async fn root_feed_xml(
 ) -> Result<impl IntoResponse, WebError> {
     let now = now(&index).await?;
     let stories = index
-        .stories::<StoryRender>(query.get("search"), &resources.story_evaluator(), 0, 30)
+        .stories::<StoryRender>(query.get("search"), 0, 30)
         .await?;
 
     let xml = resources
-        .templates()
+        .templates
+        .read()
         .render("feed.xml", &context!(stories, now, host))?;
     Ok((
         [(
@@ -516,11 +502,7 @@ async fn admin(
     Extension(user): Extension<CurrentUser>,
     State(AdminState { resources, .. }): State<AdminState>,
 ) -> Result<impl IntoResponse, WebError> {
-    render_admin(
-        &resources,
-        "admin/admin.html",
-        context!(user, config = resources.config()),
-    )
+    render_admin(&resources, "admin/admin.html", context!(user))
 }
 
 async fn admin_cron(
@@ -537,9 +519,8 @@ async fn admin_cron(
         "admin/cron.html",
         context!(
             user,
-            config = resources.config(),
-            cron = cron.lock_read().inspect(),
-            history = cron_history.lock_read().entries()
+            cron = cron.read().inspect(),
+            history = cron_history.read().entries()
         ),
     )
 }
@@ -554,7 +535,7 @@ async fn admin_cron_post(
     State(AdminState { cron, .. }): State<AdminState>,
     Json(params): Json<AdminCronRunParams>,
 ) -> Result<Json<bool>, WebError> {
-    let success = cron.lock_write().trigger(params.cron);
+    let success = cron.write().trigger(params.cron);
     Ok(success.into())
 }
 
@@ -580,12 +561,8 @@ async fn admin_cron_refresh(
         resources, index, ..
     }): State<AdminState>,
 ) -> Result<impl IntoResponse, WebError> {
-    index.refresh_hot_set(resources.story_evaluator()).await?;
-    render_admin(
-        &resources,
-        "admin/cron_refresh.html",
-        context!(config = resources.config()),
-    )
+    index.refresh_hot_set().await?;
+    render_admin(&resources, "admin/cron_refresh.html", context!())
 }
 
 async fn admin_cron_reindex(
@@ -593,12 +570,8 @@ async fn admin_cron_reindex(
         resources, index, ..
     }): State<AdminState>,
 ) -> Result<impl IntoResponse, WebError> {
-    let results = index.reindex_hot_set(resources.story_evaluator()).await?;
-    render_admin(
-        &resources,
-        "admin/cron_reindex.html",
-        context!(config = resources.config(), results),
-    )
+    let results = index.reindex_hot_set().await?;
+    render_admin(&resources, "admin/cron_reindex.html", context!(results))
 }
 
 async fn admin_cron_scrape(
@@ -607,9 +580,10 @@ async fn admin_cron_scrape(
     }): State<AdminState>,
     Path(source): Path<ScrapeSource>,
 ) -> Result<impl IntoResponse, WebError> {
-    let subsources = resources.scrapers().compute_scrape_subsources(source);
+    let subsources = resources.scrapers.read().compute_scrape_subsources(source);
     let urls = resources
-        .scrapers()
+        .scrapers
+        .read()
         .compute_scrape_url_demands(source, subsources);
     let mut map = HashMap::new();
     for url in urls {
@@ -631,15 +605,13 @@ async fn admin_cron_scrape(
 
     let scrapes = HashMap::from_iter(
         map.into_iter()
-            .map(|(k, v)| (k, resources.scrapers().scrape_http_result(source, v))),
+            .map(|(k, v)| (k, resources.scrapers.read().scrape_http_result(source, v))),
     );
 
     for result in scrapes.values() {
         match result {
             ScraperHttpResult::Ok(_, scrapes) => {
-                index
-                    .insert_scrapes(resources.story_evaluator(), scrapes.clone())
-                    .await?;
+                index.insert_scrapes(scrapes.clone()).await?;
             }
             ScraperHttpResult::Err(..) => {}
         }
@@ -648,11 +620,7 @@ async fn admin_cron_scrape(
     render_admin(
         &resources,
         "admin/cron_scrape_run.html",
-        context!(
-            source,
-            config = resources.config(),
-            scrapes: HashMap<String, ScraperHttpResult>,
-        ),
+        context!(source, scrapes: HashMap<String, ScraperHttpResult>,),
     )
 }
 
@@ -681,14 +649,12 @@ async fn admin_scrape(
     Extension(user): Extension<CurrentUser>,
     State(AdminState { resources, .. }): State<AdminState>,
 ) -> Result<impl IntoResponse, WebError> {
-    let config = resources.config();
     render_admin(
         &resources,
         "admin/scrape.html",
         context!(
             user,
-            config,
-            scrapes = resources.scrapers().compute_scrape_possibilities(),
+            scrapes = resources.scrapers.read().compute_scrape_possibilities(),
             endpoint = "/admin/scrape/test"
         ),
     )
@@ -707,7 +673,8 @@ async fn admin_scrape_test(
     Json(params): Json<AdminScrapeTestParams>,
 ) -> Result<impl IntoResponse, WebError> {
     let urls = resources
-        .scrapers()
+        .scrapers
+        .read()
         .compute_scrape_url_demands(params.source, params.subsources);
     let mut map = HashMap::new();
     for url in urls {
@@ -727,10 +694,15 @@ async fn admin_scrape_test(
         }
     }
 
-    let scrapes = HashMap::from_iter(
-        map.into_iter()
-            .map(|(k, v)| (k, resources.scrapers().scrape_http_result(params.source, v))),
-    );
+    let scrapes = HashMap::from_iter(map.into_iter().map(|(k, v)| {
+        (
+            k,
+            resources
+                .scrapers
+                .read()
+                .scrape_http_result(params.source, v),
+        )
+    }));
 
     render_admin(
         &resources,
@@ -748,11 +720,7 @@ async fn admin_index_status(
     render_admin(
         &resources,
         "admin/status.html",
-        context!(
-            user,
-            storage = index.story_count().await?,
-            config = resources.config()
-        ),
+        context!(user, storage = index.story_count().await?,),
     )
 }
 
@@ -766,7 +734,7 @@ async fn admin_status_frontpage(
     let now = now(&index).await?;
     let sort = sort.get("sort").cloned().unwrap_or_default();
     let stories = index
-        .stories::<StoryRender>(Option::<String>::None, &resources.story_evaluator(), 0, 500)
+        .stories::<StoryRender>(Option::<String>::None, 0, 500)
         .await?;
     render_admin(
         &resources,
@@ -791,7 +759,7 @@ async fn admin_index_frontpage_scoretuner(
 
     let stories: Vec<Story<TypedScrape>> = index.fetch(StoryQuery::FrontPage(), 500).await?;
     let mut story_details = vec![];
-    let eval = resources.story_evaluator();
+    let eval = resources.story_evaluator.read();
 
     for mut story in stories {
         let scrapes = ScrapeCollection::new_from_iter(story.scrapes.values().cloned());
@@ -826,21 +794,14 @@ async fn admin_status_shard(
 ) -> Result<impl IntoResponse, WebError> {
     let sort = sort.get("sort").cloned().unwrap_or_default();
     let shard = Shard::from_string(&shard).expect("Failed to parse shard");
+    let stories = index
+        .fetch::<Shard>(StoryQuery::ByShard(shard), usize::MAX)
+        .await?;
+    let stories = render_stories(&*resources.story_evaluator.read(), stories.iter());
     render_admin(
         &resources,
         "admin/shard.html",
-        context!(
-            user,
-            shard = shard,
-            stories = render_stories(
-                &resources.story_evaluator(),
-                index
-                    .fetch::<Shard>(StoryQuery::ByShard(shard), usize::MAX)
-                    .await?
-                    .iter()
-            ),
-            sort: String = sort
-        ),
+        context!(user, shard = shard, stories, sort: String = sort),
     )
 }
 
@@ -859,11 +820,13 @@ async fn admin_status_story(
         .await?
         .ok_or(WebError::NotFound)?;
     let scrapes = ScrapeCollection::new_from_iter(story.scrapes.clone().into_values());
-    let eval = resources.story_evaluator();
-    let extract = scrapes.extract(&eval.extractor);
-    let score_details = eval.scorer.score_detail(&extract, now);
-    let tags = Default::default(); // _details = resources.story_evaluator().tagger.tag_detail(&story);
+
+    let eval = resources.story_evaluator.clone();
+    let extract = scrapes.extract(&eval.read().extractor);
+    let score_details = eval.read().scorer.score_detail(&extract, now);
+    let tags = Default::default(); // _details = resources.story_evaluator.tagger.tag_detail(&story);
     let doc = index.fetch_detail_one(id).await?.unwrap_or_default();
+    let story = story.render(&*eval.read(), 0);
 
     render_admin(
         &resources,
@@ -871,7 +834,6 @@ async fn admin_status_story(
         context!(
             now,
             user,
-            story = story.render(&eval, 0),
             scrapes = scrapes.scrapes,
             tags: HashMap<String, Vec<String>>,
             score = score_details,
@@ -885,7 +847,7 @@ pub async fn serve_static_files_immutable(
     Path(key): Path<String>,
     State(resources): State<Resources>,
 ) -> Result<impl IntoResponse, WebError> {
-    serve_static_files::immutable(headers_in, key, resources.static_files()).await
+    serve_static_files::immutable(headers_in, key, &*resources.static_files.read())
 }
 
 pub async fn serve_static_files_well_known(
@@ -893,5 +855,5 @@ pub async fn serve_static_files_well_known(
     Path(file): Path<String>,
     State(resources): State<Resources>,
 ) -> Result<impl IntoResponse, WebError> {
-    serve_static_files::well_known(headers_in, file, resources.static_files_root()).await
+    serve_static_files::well_known(headers_in, file, &*resources.static_files_root.read())
 }

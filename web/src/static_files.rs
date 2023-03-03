@@ -8,7 +8,7 @@ use std::{
     path::Path,
 };
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct StaticFileRegistry {
     by_key: HashMap<String, String>,
     files: HashMap<String, (Bytes, &'static str)>,

@@ -170,11 +170,11 @@ impl tera::Filter for CommentLinkFilter {
 }
 
 pub struct StaticFileFilter {
-    static_files: Shared<StaticFileRegistry>,
+    static_files: StaticFileRegistry,
 }
 
 impl StaticFileFilter {
-    pub fn new(static_files: Shared<StaticFileRegistry>) -> Self {
+    pub fn new(static_files: StaticFileRegistry) -> Self {
         Self { static_files }
     }
 }

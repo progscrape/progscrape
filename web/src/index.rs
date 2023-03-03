@@ -2,7 +2,7 @@ use std::{collections::HashMap, path::Path};
 
 use crate::web::WebError;
 use itertools::Itertools;
-use keepcalm::{Shared, SharedRW};
+use keepcalm::{Shared, SharedMut};
 use progscrape_application::{
     BackerUpper, BackupResult, PersistError, PersistLocation, ScrapePersistResult, Shard, Storage,
     StorageFetch, StorageSummary, StorageWriter, Story, StoryEvaluator, StoryIdentifier,
@@ -16,8 +16,9 @@ pub struct HotSet {
 }
 
 pub struct Index<S: StorageWriter> {
-    pub storage: SharedRW<S>,
-    pub hot_set: SharedRW<HotSet>,
+    pub storage: SharedMut<S>,
+    pub hot_set: SharedMut<HotSet>,
+    pub eval: Shared<StoryEvaluator>,
 }
 
 impl<S: StorageWriter> Clone for Index<S> {
@@ -25,6 +26,7 @@ impl<S: StorageWriter> Clone for Index<S> {
         Self {
             storage: self.storage.clone(),
             hot_set: self.hot_set.clone(),
+            eval: self.eval.clone(),
         }
     }
 }
@@ -33,7 +35,7 @@ macro_rules! async_run {
     ($storage:expr, $block:expr) => {{
         let storage = $storage.clone();
         tokio::task::spawn_blocking(move || {
-            let storage = storage.lock_read();
+            let storage = storage.read();
             $block(&storage)
         })
         .await
@@ -45,7 +47,7 @@ macro_rules! async_run_write {
     ($storage:expr, $block:expr) => {{
         let storage = $storage.clone();
         tokio::task::spawn_blocking(move || {
-            let mut storage = storage.lock_write();
+            let mut storage = storage.write();
             $block(&mut storage)
         })
         .await
@@ -56,26 +58,24 @@ macro_rules! async_run_write {
 impl Index<StoryIndex> {
     pub fn initialize_with_persistence<P: AsRef<Path>>(
         path: P,
+        eval: Shared<StoryEvaluator>,
     ) -> Result<Index<StoryIndex>, WebError> {
         let index = StoryIndex::new(PersistLocation::Path(path.as_ref().to_owned()))?;
         Ok(Index {
-            storage: SharedRW::new(index),
-            hot_set: SharedRW::new(HotSet {
+            storage: SharedMut::new(index),
+            hot_set: SharedMut::new(HotSet {
                 stories: vec![],
                 top_tags: vec![],
             }),
+            eval,
         })
     }
 
-    fn compute_hot_set(
-        mut stories: Vec<Story<Shard>>,
-        now: StoryDate,
-        eval: Shared<StoryEvaluator>,
-    ) -> HotSet {
+    fn compute_hot_set(&self, mut stories: Vec<Story<Shard>>, now: StoryDate) -> HotSet {
         // First we'll sort these stories
-        stories.sort_by_cached_key(|x| {
-            ((x.score + eval.scorer.score_age(now - x.date)) * -1000.0) as i32
-        });
+        let scorer = &self.eval.read().scorer;
+        stories
+            .sort_by_cached_key(|x| ((x.score + scorer.score_age(now - x.date)) * -1000.0) as i32);
 
         // Count each item
         let mut tag_counts = HashMap::new();
@@ -113,7 +113,7 @@ impl Index<StoryIndex> {
         backup_path: &Path,
     ) -> Result<Vec<(Shard, Result<BackupResult, PersistError>)>, PersistError> {
         let backup = BackerUpper::new(backup_path);
-        let storage = self.storage.lock_read();
+        let storage = self.storage.read();
         let shard_range = storage.shard_range()?;
         let results = storage.with_scrapes(|scrapes| backup.backup_range(scrapes, shard_range));
         for (shard, result) in &results {
@@ -127,10 +127,10 @@ impl Index<StoryIndex> {
         Ok(results)
     }
 
-    pub async fn refresh_hot_set(&self, eval: Shared<StoryEvaluator>) -> Result<(), PersistError> {
-        let now = self.storage.lock_read().most_recent_story()?;
+    pub async fn refresh_hot_set(&self) -> Result<(), PersistError> {
+        let now = self.storage.read().most_recent_story()?;
         let v = self.fetch(StoryQuery::FrontPage(), 500).await?;
-        *self.hot_set.lock_write() = Self::compute_hot_set(v, now, eval);
+        *self.hot_set.write() = self.compute_hot_set(v, now);
         Ok(())
     }
 
@@ -139,72 +139,77 @@ impl Index<StoryIndex> {
         &self,
         f: impl FnOnce(&Vec<Story<Shard>>) -> Result<T, PersistError>,
     ) -> Result<T, PersistError> {
-        f(&self.hot_set.lock_read().stories)
+        f(&self.hot_set.read().stories)
     }
 
     /// Re-index and refresh the hot set using the most current configuration.
-    pub async fn reindex_hot_set(
-        &self,
-        eval: Shared<StoryEvaluator>,
-    ) -> Result<Vec<ScrapePersistResult>, PersistError> {
+    pub async fn reindex_hot_set(&self) -> Result<Vec<ScrapePersistResult>, PersistError> {
         // Get the hot set story IDs
         let story_ids = self.with_hot_set(|hot_set| {
             Ok(hot_set.iter().map(|story| story.id.clone()).collect_vec())
         })?;
 
         // Reindex the stories
-        let eval_clone = eval.clone();
+        let eval_clone = self.eval.clone();
         let res = async_run_write!(self.storage, |storage: &mut StoryIndex| {
-            storage.reinsert_stories(&eval_clone, story_ids)
+            storage.reinsert_stories(&*eval_clone.read(), story_ids)
         })?;
 
         // Refresh the hot set from the index
-        self.refresh_hot_set(eval).await?;
+        self.refresh_hot_set().await?;
 
         Ok(res)
+    }
+
+    fn filter_and_render<'a, S: From<StoryRender>>(
+        &self,
+        raw_stories: impl Iterator<Item = &'a Story<Shard>>,
+        offset: usize,
+        count: usize,
+    ) -> Vec<S> {
+        raw_stories
+            .skip(offset)
+            .take(count)
+            .enumerate()
+            .map(|(index, story)| story.render(&*self.eval.read(), index).into())
+            .collect_vec()
     }
 
     pub async fn stories<S: From<StoryRender>>(
         &self,
         search: Option<impl AsRef<str>>,
-        eval: &StoryEvaluator,
         offset: usize,
         count: usize,
     ) -> Result<Vec<S>, PersistError> {
+        let eval = self.eval.clone();
         let stories = if let Some(search) = search {
-            self.fetch::<Shard>(StoryQuery::from_search(&eval.tagger, search.as_ref()), 100)
-                .await?
-                .iter()
-                .skip(offset)
-                .take(count)
-                .enumerate()
-                .map(|(index, story)| story.render(eval, index).into())
-                .collect_vec()
+            let query = StoryQuery::from_search(&eval.read().tagger, search.as_ref());
+            let stories = self.fetch::<Shard>(query, 100).await?;
+            self.filter_and_render(stories.iter(), offset, count)
         } else {
-            self.with_hot_set(|hot_set| {
-                Ok(hot_set
-                    .iter()
-                    .skip(offset)
-                    .take(count)
-                    .enumerate()
-                    .map(|(index, story)| story.render(eval, index).into())
-                    .collect_vec())
-            })?
+            self.filter_and_render(self.hot_set.read().stories.iter(), offset, count)
         };
+
         Ok(stories)
     }
 
-    pub async fn top_tags(&self) -> Result<Vec<String>, PersistError> {
-        Ok(self.hot_set.lock_read().top_tags.clone())
+    pub fn top_tags(&self, limit: usize) -> Result<Vec<String>, PersistError> {
+        let top_tags = &self.hot_set.read().top_tags;
+        Ok(self
+            .eval
+            .read()
+            .tagger
+            .make_display_tags(top_tags.iter().take(limit))
+            .collect_vec())
     }
 
     pub async fn insert_scrapes<I: IntoIterator<Item = TypedScrape> + Send + 'static>(
         &self,
-        eval: Shared<StoryEvaluator>,
         scrapes: I,
     ) -> Result<Vec<ScrapePersistResult>, PersistError> {
+        let eval = self.eval.clone();
         async_run_write!(self.storage, move |storage: &mut StoryIndex| {
-            storage.insert_scrapes(&eval, scrapes)
+            storage.insert_scrapes(&*eval.read(), scrapes)
         })
     }
 
