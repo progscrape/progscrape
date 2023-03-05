@@ -152,7 +152,7 @@ impl Index<StoryIndex> {
         // Reindex the stories
         let eval_clone = self.eval.clone();
         let res = async_run_write!(self.storage, |storage: &mut StoryIndex| {
-            storage.reinsert_stories(&*eval_clone.read(), story_ids)
+            storage.reinsert_stories(&eval_clone.read(), story_ids)
         })?;
 
         // Refresh the hot set from the index
@@ -171,7 +171,7 @@ impl Index<StoryIndex> {
             .skip(offset)
             .take(count)
             .enumerate()
-            .map(|(index, story)| story.render(&*self.eval.read(), index).into())
+            .map(|(index, story)| story.render(&self.eval.read(), index).into())
             .collect_vec()
     }
 
@@ -209,7 +209,7 @@ impl Index<StoryIndex> {
     ) -> Result<Vec<ScrapePersistResult>, PersistError> {
         let eval = self.eval.clone();
         async_run_write!(self.storage, move |storage: &mut StoryIndex| {
-            storage.insert_scrapes(&*eval.read(), scrapes)
+            storage.insert_scrapes(&eval.read(), scrapes)
         })
     }
 

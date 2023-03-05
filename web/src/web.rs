@@ -797,7 +797,7 @@ async fn admin_status_shard(
     let stories = index
         .fetch::<Shard>(StoryQuery::ByShard(shard), usize::MAX)
         .await?;
-    let stories = render_stories(&*resources.story_evaluator.read(), stories.iter());
+    let stories = render_stories(&resources.story_evaluator.read(), stories.iter());
     render_admin(
         &resources,
         "admin/shard.html",
@@ -826,7 +826,7 @@ async fn admin_status_story(
     let score_details = eval.read().scorer.score_detail(&extract, now);
     let tags = Default::default(); // _details = resources.story_evaluator.tagger.tag_detail(&story);
     let doc = index.fetch_detail_one(id).await?.unwrap_or_default();
-    let story = story.render(&*eval.read(), 0);
+    let story = story.render(&eval.read(), 0);
 
     render_admin(
         &resources,
@@ -847,7 +847,7 @@ pub async fn serve_static_files_immutable(
     Path(key): Path<String>,
     State(resources): State<Resources>,
 ) -> Result<impl IntoResponse, WebError> {
-    serve_static_files::immutable(headers_in, key, &*resources.static_files.read())
+    serve_static_files::immutable(headers_in, key, &resources.static_files.read())
 }
 
 pub async fn serve_static_files_well_known(
@@ -855,5 +855,5 @@ pub async fn serve_static_files_well_known(
     Path(file): Path<String>,
     State(resources): State<Resources>,
 ) -> Result<impl IntoResponse, WebError> {
-    serve_static_files::well_known(headers_in, file, &*resources.static_files_root.read())
+    serve_static_files::well_known(headers_in, file, &resources.static_files_root.read())
 }

@@ -1,4 +1,4 @@
-use std::{path::Path, sync::Mutex};
+use std::path::Path;
 
 use super::*;
 use keepcalm::Shared;
