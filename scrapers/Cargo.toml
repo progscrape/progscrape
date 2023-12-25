@@ -14,14 +14,14 @@ serde_cbor = "0.11"
 tl = "0.7"
 chrono = { version = "0.4", features = ["serde"] }
 chrono-tz = "0.8"
-roxmltree = "0.18"
+roxmltree = "0.19"
 url = "2.3"
-itertools = "0.10"
+itertools = "0"
 regex = "1.7"
 urlnorm = "0.1"
 
 [dev-dependencies]
-rstest = "0.16"
+rstest = "0"
 
 [features]
 default = []
