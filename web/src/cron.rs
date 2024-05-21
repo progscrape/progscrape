@@ -187,6 +187,7 @@ impl Cron {
     }
 
     /// Create a new `Cron` system. The system is empty until ticked once.
+    #[cfg(test)]
     pub fn new() -> Self {
         Self {
             queue: vec![],

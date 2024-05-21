@@ -34,6 +34,7 @@ impl<S: StorageWriter> Clone for Index<S> {
 macro_rules! async_run {
     ($storage:expr, $block:expr) => {{
         let storage = $storage.clone();
+        #[allow(clippy::redundant_closure_call)]
         tokio::task::spawn_blocking(move || {
             let storage = storage.read();
             $block(&storage)
