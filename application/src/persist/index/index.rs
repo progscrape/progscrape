@@ -512,19 +512,31 @@ impl StoryIndex {
         max: usize,
     ) -> Result<Vec<(Shard, DocAddress)>, PersistError> {
         let host_field = self.schema.host_field;
-        // TODO: We probably don't want to re-parse this as a URL, but it's the fastest way to normalize it
-        if let Some(url) = StoryUrl::parse(format!("http://{}", domain)) {
-            let phrase = url
-                .host()
-                .split(|c: char| !c.is_alphanumeric())
-                .map(|s| Term::from_field_text(host_field, s))
-                .collect_vec();
-            let query = PhraseQuery::new(phrase);
-            tracing::debug!("Domain phrase query = {:?}", query);
-            self.fetch_search_query(query, max)
+        // TODO: This could be de-dupliated
+        let phrase = if domain.contains(':') {
+            // If it looks URL-ish, just parse as a URL and toss everything that isn't a host
+            if let Some(url) = StoryUrl::parse(domain) {
+                url.host()
+                    .split(|c: char| !c.is_alphanumeric())
+                    .map(|s| Term::from_field_text(host_field, s))
+                    .collect_vec()
+            } else {
+                return Err(PersistError::UnexpectedError("Invalid domain".into()));
+            }
         } else {
-            Err(PersistError::UnexpectedError("Invalid domain".into()))
-        }
+            // TODO: We probably don't want to re-parse this as a URL, but it's the fastest way to normalize it
+            if let Some(url) = StoryUrl::parse(format!("http://{}", domain)) {
+                url.host()
+                    .split(|c: char| !c.is_alphanumeric())
+                    .map(|s| Term::from_field_text(host_field, s))
+                    .collect_vec()
+            } else {
+                return Err(PersistError::UnexpectedError("Invalid domain".into()));
+            }
+        };
+        let query = PhraseQuery::new(phrase);
+        tracing::debug!("Domain phrase query = {:?}", query);
+        self.fetch_search_query(query, max)
     }
 
     fn fetch_text_search(
@@ -1093,7 +1105,7 @@ mod test {
     #[rstest]
     #[case("http://example.com", "I love Rust", &["rust", "love", "example.com"])]
     #[case("http://medium.com", "The Pitfalls of C++", &["c++", "cplusplus", "pitfalls", "Pitfalls"])]
-    #[case("http://www.att.com", "New AT&T plans", &["at&t", "atandt", "att.com"])]
+    #[case("http://www.att.com", "New AT&T plans", &["at&t", "atandt", "att.com", "http://att.com"])]
     #[case("http://example.com", "I love Go", &["golang", "love"])]
     #[case("http://example.com", "I love C", &["clanguage", "love"])]
     #[case("http://www3.xyz.imperial.co.uk", "Why England is England", &["england", "www3.xyz.imperial.co.uk", "xyz.imperial.co.uk",  "co.uk"])]
