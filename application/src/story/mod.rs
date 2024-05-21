@@ -181,7 +181,7 @@ impl TagSet {
         self.set.iter().sorted().cloned()
     }
 
-    pub fn iter<'a>(&'a self) -> impl Iterator<Item = &String> + 'a {
+    pub fn iter(&self) -> impl Iterator<Item = &String> {
         self.set.iter()
     }
 }
