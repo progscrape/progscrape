@@ -2,8 +2,6 @@ use num_format::ToFormattedString;
 use progscrape_scrapers::{ScrapeId, StoryDate, StoryDuration};
 use serde_json::Value;
 
-
-
 use super::static_files::StaticFileRegistry;
 
 #[derive(Default)]

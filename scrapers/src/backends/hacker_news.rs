@@ -96,7 +96,7 @@ impl HackerNewsScraper {
         }
 
         fn extract_number(s: &str) -> Result<u32, String> {
-            str::parse(&s.replace(|c| !('0'..='9').contains(&c), ""))
+            str::parse(&s.replace(|c: char| !c.is_ascii_digit(), ""))
                 .map_err(|_| format!("Failed to parse number: '{}'", s))
         }
 
@@ -130,7 +130,7 @@ impl HackerNewsScraper {
                 url,
                 title,
             }))
-        } else if let Some(..) = find_first(p, node, ".subtext") {
+        } else if find_first(p, node, ".subtext").is_some() {
             let age_node =
                 find_first(p, node, ".age").ok_or_else(|| "Failed to query .age".to_string())?;
             let date = get_attribute(p, age_node, "title")

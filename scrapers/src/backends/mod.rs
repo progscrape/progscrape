@@ -233,12 +233,12 @@ macro_rules! scrapers {
             }
 
             /// Iterate over the underlying values.
-            pub fn values<'a>(&'a self) -> impl Iterator<Item = &'a V> {
+            pub fn values(&self) -> impl Iterator<Item = &'_ V> {
                 [$( &self.$package, )* &self.other ].into_iter()
             }
 
             /// Iterate over the underlying keys/values.
-            pub fn iter<'a>(&'a self) -> impl Iterator<Item = (ScrapeSource, &'a V)> {
+            pub fn iter(&self) -> impl Iterator<Item = (ScrapeSource, &'_ V)> {
                 [$( (ScrapeSource::$name, &self.$package), )* (ScrapeSource::Other, &self.other) ].into_iter()
             }
         }

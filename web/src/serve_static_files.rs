@@ -5,7 +5,6 @@ use hyper::{header::*, HeaderMap, StatusCode};
 
 use crate::{static_files::StaticFileRegistry, web::WebError};
 
-
 lazy_static! {
     /// Immutable caching header, for files that never, ever, ever change.
     pub static ref IMMUTABLE_CACHE_HEADER: HeaderValue = "public, max-age=31536000, immutable"

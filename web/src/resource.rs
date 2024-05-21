@@ -39,7 +39,6 @@ pub struct Resources {
 
 impl Resources {
     fn new(r: SharedMut<ResourceHolder>) -> Self {
-        
         Resources {
             templates: r.shared_copy().project_fn(|x| &x.templates),
             static_files: r.shared_copy().project_fn(|x| &x.static_files),

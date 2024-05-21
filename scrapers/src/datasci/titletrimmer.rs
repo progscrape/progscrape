@@ -18,14 +18,14 @@ pub fn trim_title(mut title: &str, ideal_length: usize, awkward_length: usize) -
         return Cow::Borrowed(title);
     }
 
-    while let Some((left, right)) = title.rsplit_once(" | ") {
+    while let Some((left, _right)) = title.rsplit_once(" | ") {
         title = left;
         if title.len() <= ideal_length {
             return Cow::Borrowed(title);
         }
     }
 
-    while let Some((left, right)) = title.rsplit_once(". ") {
+    while let Some((left, _right)) = title.rsplit_once(". ") {
         title = left;
         if title.len() <= ideal_length {
             return Cow::Borrowed(title);
@@ -67,9 +67,9 @@ mod test {
 
     fn split_test_data(s: &str) -> Vec<String> {
         let mut out = vec![];
-        for s in s.split("\n") {
+        for s in s.split('\n') {
             let s = s.trim();
-            if s.starts_with("#") {
+            if s.starts_with('#') {
                 continue;
             }
             out.push(s.to_owned());

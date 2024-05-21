@@ -131,12 +131,7 @@ mod test {
 
             // Test the Atom feed
             let s = assert_response(&mut router, "/feed", query, "application/atom+xml").await?;
-            compare!(
-                query,
-                s.matches(r#"<entry>"#).count(),
-                ordering,
-                expected
-            );
+            compare!(query, s.matches(r#"<entry>"#).count(), ordering, expected);
         }
 
         Ok(())
