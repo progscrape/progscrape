@@ -117,7 +117,7 @@ mod test {
             let s = assert_response(&mut router, "/", query, "text/html; charset=utf-8").await?;
             compare!(
                 query,
-                s.matches(r#"<div class="story">"#).into_iter().count(),
+                s.matches(r#"<div class="story">"#).count(),
                 ordering,
                 expected
             );
@@ -133,7 +133,7 @@ mod test {
             let s = assert_response(&mut router, "/feed", query, "application/atom+xml").await?;
             compare!(
                 query,
-                s.matches(r#"<entry>"#).into_iter().count(),
+                s.matches(r#"<entry>"#).count(),
                 ordering,
                 expected
             );

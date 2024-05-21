@@ -447,7 +447,7 @@ impl From<StoryRender> for FeedStory {
 
 // basic handler that responds with a static string
 async fn root_feed_json(
-    State((index, resources)): State<(Index<StoryIndex>, Resources)>,
+    State((index, _resources)): State<(Index<StoryIndex>, Resources)>,
     query: Query<HashMap<String, String>>,
 ) -> Result<impl IntoResponse, WebError> {
     let stories = index
@@ -826,7 +826,7 @@ async fn admin_status_story(
     let score_details = eval.read().scorer.score_detail(&extract, now);
     let tags = Default::default(); // _details = resources.story_evaluator.tagger.tag_detail(&story);
     let doc = index.fetch_detail_one(id).await?.unwrap_or_default();
-    let story = story.render(&eval.read(), 0);
+    let _story = story.render(&eval.read(), 0);
 
     render_admin(
         &resources,

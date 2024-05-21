@@ -39,15 +39,15 @@ pub struct Resources {
 
 impl Resources {
     fn new(r: SharedMut<ResourceHolder>) -> Self {
-        let new = Resources {
+        
+        Resources {
             templates: r.shared_copy().project_fn(|x| &x.templates),
             static_files: r.shared_copy().project_fn(|x| &x.static_files),
             static_files_root: r.shared_copy().project_fn(|x| &x.static_files_root),
             config: r.shared_copy().project_fn(|x| &x.config),
             story_evaluator: r.shared_copy().project_fn(|x| &x.story_evaluator),
             scrapers: r.shared_copy().project_fn(|x| &x.scrapers),
-        };
-        new
+        }
     }
 }
 
