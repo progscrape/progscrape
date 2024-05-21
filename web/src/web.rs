@@ -320,12 +320,15 @@ async fn now(global: &Index<StoryIndex>) -> Result<StoryDate, PersistError> {
 macro_rules! context_assign {
     ($id:ident , ,) => {};
     ($id:ident , , $typ:ty) => {
+        #[allow(clippy::redundant_locals)]
         let $id: $typ = $id;
     };
     ($id:ident , $expr:expr , $typ:ty) => {
+        #[allow(clippy::redundant_locals)]
         let $id: $typ = $expr;
     };
     ($id:ident , $expr:expr ,) => {
+        #[allow(clippy::redundant_locals)]
         let $id = $expr;
     };
 }
