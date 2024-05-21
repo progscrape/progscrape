@@ -11,27 +11,6 @@ pub use story::{
     TaggerConfig,
 };
 
-#[cfg(test)]
-mod test {
-    use rstest::*;
-    use tracing_subscriber::EnvFilter;
-
-    #[fixture]
-    #[once]
-    pub fn enable_tracing() -> bool {
-        tracing_subscriber::fmt()
-            .with_env_filter(EnvFilter::from_default_env())
-            .init();
-        true
-    }
-
-    #[fixture]
-    #[once]
-    pub fn enable_slow_tests() -> bool {
-        matches!(std::env::var("ENABLE_SLOW_TESTS"), Ok(_))
-    }
-}
-
 macro_rules! timer_start {
     () => {
         if ::tracing::event_enabled!(tracing::Level::DEBUG) {
@@ -56,3 +35,24 @@ macro_rules! timer_end {
     };
 }
 pub(crate) use timer_end;
+
+#[cfg(test)]
+mod test {
+    use rstest::*;
+    use tracing_subscriber::EnvFilter;
+
+    #[fixture]
+    #[once]
+    pub fn enable_tracing() -> bool {
+        tracing_subscriber::fmt()
+            .with_env_filter(EnvFilter::from_default_env())
+            .init();
+        true
+    }
+
+    #[fixture]
+    #[once]
+    pub fn enable_slow_tests() -> bool {
+        std::env::var("ENABLE_SLOW_TESTS").is_ok()
+    }
+}

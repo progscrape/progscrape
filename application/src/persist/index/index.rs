@@ -778,7 +778,6 @@ impl Storage for StoryIndex {
 
 #[cfg(test)]
 mod test {
-    use std::path::Path;
 
     use super::*;
     use progscrape_scrapers::{
@@ -870,8 +869,8 @@ mod test {
 
     #[rstest]
     fn test_index_shard(_enable_tracing: &bool) {
-        let ids1 = (0..100).into_iter().map(|x| (x, 0));
-        let ids2 = (100..200).into_iter().map(|x| (x, 10));
+        let ids1 = (0..100).map(|x| (x, 0));
+        let ids2 = (100..200).map(|x| (x, 10));
         let shard = populate_shard(ids1.chain(ids2)).expect("Failed to initialize shard");
         let count_found = |vec: Vec<StoryLookup>| {
             vec.iter()

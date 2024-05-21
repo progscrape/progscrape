@@ -66,7 +66,6 @@ impl MemIndex {
 
 #[cfg(test)]
 mod test {
-    use std::path::Path;
 
     use progscrape_scrapers::ScrapeConfig;
 
