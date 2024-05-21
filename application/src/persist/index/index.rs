@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use keepcalm::{Shared, SharedMut};
+use keepcalm::{SharedMut};
 
 use tantivy::collector::TopDocs;
 use tantivy::query::{AllQuery, PhraseQuery, Query, QueryParser, TermQuery};
@@ -203,7 +203,7 @@ impl StoryIndex {
         )
     }
 
-    fn create_story_insert<'a>(eval: &StoryEvaluator, story: &'a ScrapeCollection) -> StoryInsert {
+    fn create_story_insert(eval: &StoryEvaluator, story: &ScrapeCollection) -> StoryInsert {
         // TODO: We could be creating the doc directly here instead of allocating
         let extracted = story.extract(&eval.extractor);
         let score = eval.scorer.score(&extracted);

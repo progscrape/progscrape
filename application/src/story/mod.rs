@@ -19,7 +19,7 @@ use crate::persist::Shard;
 pub use self::{
     collector::StoryCollector,
     id::StoryIdentifier,
-    render::{StoryFullRender, StoryRender},
+    render::{StoryRender},
     scorer::{StoryScore, StoryScoreConfig, StoryScorer},
     tagger::{StoryTagger, TaggerConfig},
 };
@@ -85,7 +85,7 @@ impl<S> Story<S> {
     ) -> Self {
         Self {
             id: StoryIdentifier::new(date, url.normalization()),
-            tags: TagSet::from_iter(tags.into_iter()),
+            tags: TagSet::from_iter(tags),
             title,
             url,
             date,
@@ -177,7 +177,7 @@ impl TagSet {
         self.dump().collect()
     }
 
-    pub fn dump<'a>(&'a self) -> impl Iterator<Item = String> + 'a {
+    pub fn dump(&self) -> impl Iterator<Item = String> + '_ {
         self.set.iter().sorted().cloned()
     }
 

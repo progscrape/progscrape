@@ -46,7 +46,7 @@ impl ScrapeStore {
         })
     }
 
-    fn open_shard<'a>(&'a self, shard: Shard) -> Result<Arc<DB>, PersistError> {
+    fn open_shard(&self, shard: Shard) -> Result<Arc<DB>, PersistError> {
         let mut lock = self.shards.write().expect("Poisoned");
         let db = if let Some(db) = lock.get(&shard) {
             db
