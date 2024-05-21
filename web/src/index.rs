@@ -46,6 +46,7 @@ macro_rules! async_run {
 macro_rules! async_run_write {
     ($storage:expr, $block:expr) => {{
         let storage = $storage.clone();
+        #[allow(clippy::redundant_closure_call)]
         tokio::task::spawn_blocking(move || {
             let mut storage = storage.write();
             $block(&mut storage)
