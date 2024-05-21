@@ -1,4 +1,4 @@
-///! Public interface for the collection of scrapers.
+//! Public interface for the collection of scrapers.
 use std::collections::HashMap;
 
 use serde::Serialize;

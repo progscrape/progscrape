@@ -4,9 +4,7 @@ use std::{
     path::Path,
 };
 
-use super::export::*;
-use super::{GenericScrape, TypedScrape};
-use crate::types::*;
+use super::TypedScrape;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -23,33 +21,6 @@ pub enum LegacyError {
     InvalidField(&'static str, Option<String>),
     #[error("CBOR error")]
     CBORError(#[from] serde_cbor::Error),
-}
-
-fn make_hacker_news(
-    id: String,
-    raw_title: String,
-    url: StoryUrl,
-    date: StoryDate,
-) -> GenericScrape<hacker_news::HackerNewsStory> {
-    hacker_news::HackerNewsStory::new_with_defaults(id, date, raw_title, url)
-}
-
-fn make_reddit(
-    id: String,
-    raw_title: String,
-    url: StoryUrl,
-    date: StoryDate,
-) -> GenericScrape<reddit::RedditStory> {
-    reddit::RedditStory::new_with_defaults(id, date, raw_title, url)
-}
-
-fn make_lobsters(
-    id: String,
-    raw_title: String,
-    url: StoryUrl,
-    date: StoryDate,
-) -> GenericScrape<lobsters::LobstersStory> {
-    lobsters::LobstersStory::new_with_defaults(id, date, raw_title, url)
 }
 
 /// Import a backup-formatted JSON file, which is a JSON file of `TypedScrape` object, separated by newlines.

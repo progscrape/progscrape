@@ -136,7 +136,7 @@ impl<'a> ExtractedScrapeCollection<'a> {
 
     pub fn tags<'b>(&'b self) -> Vec<Cow<'a, str>> {
         let mut tags = HashSet::new();
-        for (_, (scrape, _)) in &self.scrapes {
+        for (scrape, _) in self.scrapes.values() {
             tags.extend(&scrape.tags);
         }
         tags.into_iter().cloned().collect_vec()

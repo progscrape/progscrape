@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use keepcalm::{SharedMut};
+use keepcalm::SharedMut;
 
 use tantivy::collector::TopDocs;
 use tantivy::query::{AllQuery, PhraseQuery, Query, QueryParser, TermQuery};

@@ -19,7 +19,7 @@ use crate::persist::Shard;
 pub use self::{
     collector::StoryCollector,
     id::StoryIdentifier,
-    render::{StoryRender},
+    render::StoryRender,
     scorer::{StoryScore, StoryScoreConfig, StoryScorer},
     tagger::{StoryTagger, TaggerConfig},
 };
