@@ -256,19 +256,22 @@ impl StoryTagger {
         None
     }
 
+    /// Given a raw, indexed tag, output a tag that is suitable for display purposes (ie: cplusplus -> c++).
+    pub fn make_display_tag<'a, S: AsRef<str> + 'a>(&'a self, s: S) -> String {
+        let lowercase = s.as_ref().to_lowercase();
+        if let Some(backward) = self.backward.get(&lowercase) {
+            backward.clone()
+        } else {
+            lowercase
+        }
+    }
+
     /// Given an iterator of raw, indexed tags, output an iterator that is suitable for display purposes (ie: cplusplus -> c++).
     pub fn make_display_tags<'a, S: AsRef<str>, I: IntoIterator<Item = S> + 'a>(
         &'a self,
         iter: I,
     ) -> impl Iterator<Item = String> + 'a {
-        iter.into_iter().map(|s| {
-            let lowercase = s.as_ref().to_lowercase();
-            if let Some(backward) = self.backward.get(&lowercase) {
-                backward.clone()
-            } else {
-                lowercase
-            }
-        })
+        iter.into_iter().map(|s| self.make_display_tag(s))
     }
 
     pub fn tag_details() -> Vec<(String, TagSet)> {

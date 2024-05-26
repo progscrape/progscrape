@@ -12,7 +12,7 @@ use progscrape_scrapers::{StoryDate, TypedScrape};
 
 pub struct HotSet {
     stories: Vec<Story<Shard>>,
-    top_tags: Vec<String>,
+    top_tags: Vec<(String, usize)>,
 }
 
 pub struct Index<S: StorageWriter> {
@@ -102,7 +102,6 @@ impl Index<StoryIndex> {
             .filter(|(_, count)| *count > 1)
             .sorted_by_cached_key(|(_, count)| -((*count) as i64))
             .take(50)
-            .map(|(tag, _)| tag)
             .collect_vec();
 
         HotSet { stories, top_tags }
@@ -195,13 +194,13 @@ impl Index<StoryIndex> {
         Ok(stories)
     }
 
-    pub fn top_tags(&self, limit: usize) -> Result<Vec<String>, PersistError> {
+    pub fn top_tags(&self, limit: usize) -> Result<Vec<(String, usize)>, PersistError> {
         let top_tags = &self.hot_set.read().top_tags;
-        Ok(self
-            .eval
-            .read()
-            .tagger
-            .make_display_tags(top_tags.iter().take(limit))
+        let tagger = &self.eval.read().tagger;
+        Ok(top_tags
+            .iter()
+            .take(limit)
+            .map(|(s, count)| (tagger.make_display_tag(s), *count))
             .collect_vec())
     }
 

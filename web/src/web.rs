@@ -258,6 +258,7 @@ pub fn create_feeds<S: Clone + Send + Sync + 'static>(
         .route("/", get(root))
         .route("/feed.json", get(root_feed_json))
         .route("/feed", get(root_feed_xml))
+        .route("/metrics/opentelemetry.txt", get(root_metrics_txt))
         .with_state((index, resources))
 }
 
@@ -464,7 +465,11 @@ async fn root_feed_json(
     let stories = index
         .stories::<FeedStory>(query.get("search"), 0, 150)
         .await?;
-    let top_tags = index.top_tags(usize::MAX)?;
+    let top_tags: Vec<_> = index
+        .top_tags(usize::MAX)?
+        .into_iter()
+        .map(|s| s.0)
+        .collect();
 
     Ok((
         [(
@@ -506,6 +511,37 @@ async fn root_feed_xml(
             ),
         )],
         xml,
+    ))
+}
+
+// basic handler that responds with a static string
+async fn root_metrics_txt(
+    State((index, resources)): State<(Index<StoryIndex>, Resources)>,
+) -> Result<impl IntoResponse, WebError> {
+    let stories = index
+        .stories::<FeedStory>(None::<String>, 0, usize::MAX)
+        .await?;
+    let now = now(&index).await?;
+    let top_tags = index.top_tags(usize::MAX)?;
+    let storage = index.story_count().await?;
+    let metrics = resources
+        .templates
+        .read()
+        .render("metrics.txt", &context!(stories, storage, top_tags, now))?;
+
+    Ok((
+        [
+        (
+            header::CONTENT_TYPE,
+            HeaderValue::from_static("application/openmetrics-text")
+        ),
+        (
+            header::CACHE_CONTROL,
+            HeaderValue::from_static(
+                "public, max-age=300, s-max-age=300",
+            ),
+        )],
+        metrics,
     ))
 }
 

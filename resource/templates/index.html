@@ -8,7 +8,7 @@
     <div class="container">
     <div class="popular-tags">Trending tags:
         {% for tag in top_tags %}
-        <span class="tag"><a href="/?search={{ tag }}">{{ tag }}</a></span>&nbsp;
+        <span class="tag"><a href="/?search={{ tag.0 }}">{{ tag.0 }}</a></span>&nbsp;
         {% endfor %}
     </div>
 
