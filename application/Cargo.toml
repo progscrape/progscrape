@@ -7,15 +7,15 @@ edition = "2021"
 tracing = "0.1"
 thiserror = "1.0.38"
 serde = { version = "1.0", features = ["derive", "rc"] }
-serde_rusqlite = "0.34"
+serde_rusqlite = "0.35"
 serde_json = "1.0"
 keepcalm = { version = "0", features = ["serde"] }
 
 # Do not bump
 tantivy = "=0.19.2"
 
-rusqlite = "0.30"
-base64 = "0.21"
+rusqlite = "0.31"
+base64 = "0.22"
 itertools = "0"
 
 progscrape-scrapers = { path = "../scrapers" }
