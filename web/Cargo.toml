@@ -13,10 +13,11 @@ lazy_static = "1.4"
 itertools = "0.13"
 unwrap-infallible = "0.1"
 keepcalm = { version = "0", features = ["serde"] }
-
+futures = "0.3"
 tera = "1.17.1"
-axum = { version = "0.6", features = ["ws"] }
-hyper = "0"
+axum = { version = "0.7", features = ["ws"] }
+tower = "0.4"
+hyper = "1"
 tokio = { version = "1.23.0", features = ["full"] }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 num-format = "0.4.4"
@@ -25,7 +26,7 @@ infer = "0.15"
 grass = "0.13"
 notify = "6"
 rand = "0.8.5"
-reqwest = "0.11"
+reqwest = "0.12"
 git-version = "0.3"
 clap = { version = "4.1", features = ["derive"] }
 

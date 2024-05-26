@@ -1,21 +1,23 @@
 use std::{collections::HashMap, net::SocketAddr, time::Instant};
 
 use axum::{
-    body::HttpBody,
-    extract::{Host, Path, Query, State},
+    body::Body,
+    extract::{Host, Path, Query, Request, State},
     http::HeaderValue,
     middleware::{self, Next},
     response::{Html, IntoResponse, Redirect, Response},
     routing::{get, post},
     Extension, Json, Router,
 };
-use hyper::{header, service::Service, Body, HeaderMap, Method, Request, StatusCode};
+use hyper::{header, HeaderMap, Method, StatusCode};
 use itertools::Itertools;
 use keepcalm::SharedMut;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tera::Context;
 use thiserror::Error;
+use tokio::net::TcpListener;
+use tower::Service;
 use unwrap_infallible::UnwrapInfallible;
 
 use crate::{
@@ -94,10 +96,10 @@ struct CurrentUser {
 #[derive(Clone, Serialize, Deserialize)]
 struct CronMarker {}
 
-async fn authorize<B>(
+async fn authorize(
     State(auth): State<Auth>,
-    mut req: Request<B>,
-    next: Next<B>,
+    mut req: Request,
+    next: Next,
 ) -> Result<Response, StatusCode> {
     // Allow cron requests to bypass authorization
     if req.extensions().get::<CronMarker>().is_some() {
@@ -129,7 +131,7 @@ async fn authorize<B>(
     }
 }
 
-async fn ensure_slash<B>(req: Request<B>, next: Next<B>) -> Result<Response, StatusCode> {
+async fn ensure_slash(req: Request, next: Next) -> Result<Response, StatusCode> {
     let test_uri = "/admin";
     let final_uri = "/admin/";
     if req.uri().path() == test_uri {
@@ -222,8 +224,9 @@ fn start_cron(
                 tracing::info!("Cron task '{}' ran with status {}", ready_uri, status);
 
                 // TODO: Do we need to read data() multiple times?
-                let body = match response.into_body().data().await {
-                    Some(Ok(b)) => String::from_utf8_lossy(&b).to_string(),
+                let body = axum::body::to_bytes(response.into_body(), 1_000_000).await;
+                let body = match body {
+                    Ok(b) => String::from_utf8_lossy(&b).into_owned(),
                     x => {
                         tracing::error!("Could not retrieve body from cron response: {:?}", x);
                         "(empty)".into()
@@ -297,9 +300,8 @@ pub async fn start_server<P2: Into<std::path::PathBuf>>(
         app.clone(),
     );
 
-    axum::Server::bind(&address)
-        .serve(app.into_make_service())
-        .await?;
+    let tcp = TcpListener::bind(&address).await?;
+    axum::serve(tcp, app.into_make_service()).await?;
 
     Ok(())
 }

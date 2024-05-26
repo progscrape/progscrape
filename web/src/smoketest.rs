@@ -2,11 +2,12 @@
 mod test {
     use std::cmp::Ordering;
 
-    use axum::{body::HttpBody, http::HeaderValue, routing::IntoMakeService, Router};
-    use hyper::{header::CONTENT_TYPE, service::Service, Body, Method, Request};
+    use axum::{http::HeaderValue, routing::IntoMakeService, Router};
+    use hyper::{header::CONTENT_TYPE, Method};
     use progscrape_application::StoryIndex;
     use progscrape_scrapers::{hacker_news::HackerNewsStory, StoryUrl};
     use serde::Deserialize;
+    use tower::Service;
     use tracing_subscriber::EnvFilter;
 
     use crate::{
@@ -18,9 +19,9 @@ mod test {
     fn create_request(
         path: &'static str,
         query: &'static str,
-    ) -> Result<Request<Body>, Box<dyn std::error::Error>> {
+    ) -> Result<axum::extract::Request, Box<dyn std::error::Error>> {
         let uri = format!("http://localhost{}{}", path, query).parse()?;
-        let mut req = Request::<Body>::default();
+        let mut req = axum::extract::Request::default();
         *req.method_mut() = Method::GET;
         *req.uri_mut() = uri;
         Ok(req)
@@ -43,7 +44,9 @@ mod test {
             path
         );
 
-        let body = resp.into_body().data().await.expect("No body")?;
+        let body = axum::body::to_bytes(resp.into_body(), 1_000_000)
+            .await
+            .expect("No body");
         let body = String::from_utf8_lossy(&body).to_string();
 
         Ok(body)
