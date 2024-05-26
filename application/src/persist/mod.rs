@@ -59,8 +59,8 @@ pub enum StoryQuery {
     ByShard(Shard),
     /// Front page stories.
     FrontPage(),
-    /// Stories matching a tag query.
-    TagSearch(String),
+    /// Stories matching a tag query (second item in tuple is the alternative).
+    TagSearch(String, Option<String>),
     /// Stories matching a domain query.
     DomainSearch(String),
     /// Stories matching a text search.
@@ -71,7 +71,12 @@ impl StoryQuery {
     pub fn from_search(tagger: &StoryTagger, search: &str) -> Self {
         // This isn't terribly smart, buuuuut it allows us to search either a tag or site
         if let Some(tag) = tagger.check_tag_search(search) {
-            StoryQuery::TagSearch(tag.to_string())
+            let alt = if tag.eq_ignore_ascii_case(search) {
+                None
+            } else {
+                Some(search.to_ascii_lowercase())
+            };
+            StoryQuery::TagSearch(tag.to_string(), alt)
         } else if search.contains('.') {
             StoryQuery::DomainSearch(search.to_string())
         } else {

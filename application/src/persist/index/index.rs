@@ -496,12 +496,33 @@ impl StoryIndex {
     fn fetch_tag_search(
         &self,
         tag: &str,
+        alt: Option<&str>,
         max: usize,
     ) -> Result<Vec<(Shard, DocAddress)>, PersistError> {
-        let query = TermQuery::new(
-            Term::from_field_text(self.schema.tags_field, tag),
-            IndexRecordOption::Basic,
+        // TODO: We use the query parser instead of a direct tags search because we want to ensure
+        // that non-tagged stories match, just with a much bigger boost to the tags field than a
+        // standard query search. We should be smarter about tags -- if something looks like a tag
+        // we should search the tags field for its internal representation, and the title field for
+        // its alts (but literally for things like C++).
+
+        // let query = TermQuery::new(
+        //     Term::from_field_text(self.schema.tags_field, tag),
+        //     IndexRecordOption::Basic,
+        // );
+
+        // Note that a tag is ASCII, so this is kind of overkill but works
+        let mut query_parser = QueryParser::new(
+            self.schema.schema.clone(),
+            vec![self.schema.title_field, self.schema.tags_field],
+            TokenizerManager::default(),
         );
+        // Boost search within tags
+        query_parser.set_field_boost(self.schema.tags_field, 10.0);
+        let query = if let Some(alt) = alt {
+            query_parser.parse_query(&format!("{tag} OR {alt}"))?
+        } else {
+            query_parser.parse_query(tag)?
+        };
         tracing::debug!("Tag symbol query = {:?}", query);
         self.fetch_search_query(query, max)
     }
@@ -512,7 +533,7 @@ impl StoryIndex {
         max: usize,
     ) -> Result<Vec<(Shard, DocAddress)>, PersistError> {
         let host_field = self.schema.host_field;
-        // TODO: This could be de-dupliated
+        // TODO: This could be de-duplicated
         let phrase = if domain.contains(':') {
             // If it looks URL-ish, just parse as a URL and toss everything that isn't a host
             if let Some(url) = StoryUrl::parse(domain) {
@@ -544,11 +565,13 @@ impl StoryIndex {
         search: &str,
         max: usize,
     ) -> Result<Vec<(Shard, DocAddress)>, PersistError> {
-        let query_parser = QueryParser::new(
+        let mut query_parser = QueryParser::new(
             self.schema.schema.clone(),
             vec![self.schema.title_field, self.schema.tags_field],
             TokenizerManager::default(),
         );
+        // Boost search within tags
+        query_parser.set_field_boost(self.schema.tags_field, 3.0);
         let query = query_parser.parse_query(search)?;
         tracing::debug!("Term query = {:?}", query);
         self.fetch_search_query(query, max)
@@ -606,7 +629,7 @@ impl StoryIndex {
             StoryQuery::ById(id) => self.with_searcher(id.shard(), self.fetch_by_id(&id)),
             StoryQuery::ByShard(shard) => self.with_searcher(shard, self.fetch_by_segment()),
             StoryQuery::FrontPage() => self.fetch_front_page(max),
-            StoryQuery::TagSearch(tag) => self.fetch_tag_search(&tag, max),
+            StoryQuery::TagSearch(tag, alt) => self.fetch_tag_search(&tag, alt.as_deref(), max),
             StoryQuery::DomainSearch(domain) => self.fetch_domain_search(&domain, max),
             StoryQuery::TextSearch(text) => self.fetch_text_search(&text, max),
         }
