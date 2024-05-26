@@ -837,7 +837,7 @@ async fn admin_status_story(
     let score_details = eval.read().scorer.score_detail(&extract, now);
     let tags = Default::default(); // _details = resources.story_evaluator.tagger.tag_detail(&story);
     let doc = index.fetch_detail_one(id).await?.unwrap_or_default();
-    let _story = story.render(&eval.read(), 0);
+    let story = story.render(&eval.read(), 0);
 
     render_admin(
         &resources,
@@ -849,6 +849,7 @@ async fn admin_status_story(
             tags: HashMap<String, Vec<String>>,
             score = score_details,
             doc,
+            story,
         ),
     )
 }

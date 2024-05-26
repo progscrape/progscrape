@@ -104,6 +104,7 @@
                 "compiler(s)": {},
                 "3d": {"alts": ["3(-)d", "3(-)dimension(s)", "three(-)d", "three(-)dimension(s)", "three(-)dimensional", "3(-)dimensional"]},
                 "ai": {"alts": ["artificial(-)intelligence"]},
+                "llm(s)": {},
                 "hash": {},
                 "web": {},
                 "api(s)": {},
@@ -161,7 +162,8 @@
                 "bosch": {},
                 "fiat": {},
                 "twilio": {},
-                "cloudflare": {}
+                "cloudflare": {},
+                "openai": {}
             },
             "org": {
                 "amd": {},
@@ -270,7 +272,12 @@
                 "canada": {"alt": "canadian"},
                 "earth": {},
                 "antarctica": {"alt": "antarctic"},
-                "arctic": {}
+                "arctic": {},
+                "california": {},
+                "texas": {},
+                "florida": {},
+                "washington": {},
+                "europe": {}
             },
             "biology": {
                 "genetics": {"alts": ["genetic"]},
@@ -282,7 +289,8 @@
                 "autism": {"alts": ["autistic", "autist"]},
                 "malaria": {},
                 "mrna": {},
-                "vaccine": {}
+                "vaccine": {},
+                "brain": {}
             },
             "language": {
                 "php": {},
@@ -350,7 +358,8 @@
                 "wannacry": {"implies": "malware"},
                 "signal": {},
                 "progscrape": {},
-                "azure": {}
+                "azure": {},
+                "chatgpt": {}
             },
             "technology": {
                 "kde": {},
