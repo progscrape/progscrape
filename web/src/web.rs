@@ -146,6 +146,10 @@ async fn handle_404() -> impl IntoResponse {
     (StatusCode::NOT_FOUND, ">progscrape: 404 ▒")
 }
 
+async fn handle_404_admin() -> impl IntoResponse {
+    (StatusCode::NOT_FOUND, "#progscrape: 404 ▒")
+}
+
 pub fn admin_routes<S: Clone + Send + Sync + 'static>(
     resources: Resources,
     index: Index<StoryIndex>,
@@ -173,7 +177,7 @@ pub fn admin_routes<S: Clone + Send + Sync + 'static>(
         )
         .route("/index/shard/:shard/", get(admin_status_shard))
         .route("/index/story/:story/", get(admin_status_story))
-        .fallback(handle_404)
+        .fallback(handle_404_admin)
         .with_state(AdminState {
             resources,
             index,
@@ -271,10 +275,8 @@ pub async fn start_server<P2: Into<std::path::PathBuf>>(
 
     // build our application with a route
     let app = create_feeds(index.clone(), resources.clone())
-        .route("/static/:file", get(serve_static_files_immutable))
-        .with_state(resources.clone())
         .nest(
-            "/admin",
+            "/admin/",
             admin_routes(
                 resources.clone(),
                 index.clone(),
@@ -284,11 +286,14 @@ pub async fn start_server<P2: Into<std::path::PathBuf>>(
                 auth,
             ),
         )
+        .route("/static/:file", get(serve_static_files_immutable))
+        .with_state(resources.clone())
         .route_layer(middleware::from_fn(ensure_slash))
         .route(
             "/:file",
             get(serve_static_files_well_known).with_state(resources.clone()),
-        );
+        )
+        .fallback(handle_404);
     // run our app with hyper
     // `axum::Server` is a re-export of `hyper::Server`
     tracing::info!("listening on http://{}", address);
@@ -377,6 +382,7 @@ fn render_admin(
     template_name: &str,
     mut context: Context,
 ) -> Result<impl IntoResponse, WebError> {
+    tracing::trace!("Rendering admin template {template_name}");
     context.insert("config", &resources.config);
     Ok((
         [(header::CACHE_CONTROL, HeaderValue::from_static("no-store"))],
