@@ -29,6 +29,8 @@
             </span>
         </div>
     </div>
+    {% else %}
+    <h2 class="error">No stories found!</h2>
     {% endfor %}
 
     {% if offset <= 30 %}
