@@ -22,7 +22,7 @@
             "tag_allowlist": [
                 "adobe", "ai", "arm", "att", "biotech", "bitcoin", "blizzard", "china", "cloud", "earth", "facebook", "fcc", "games", "google", "government", "health", "java", "javascript",
                 "mars", "media", "moon", "microsoft", "military", "nasa", "nintendo", "oracle", "php", "power", "programming", "python", "ransomware", "robot", "russia",
-                "samsung", "science", "security", "space", "symantec", "twitter", "usa"
+                "samsung", "science", "security", "space", "symantec", "transportation", "twitter", "usa", "windows"
             ]
         },
         "lobsters": {
@@ -46,6 +46,7 @@
                 "javascript": { "is_tag": true },
                 "python": { "is_tag": true },
                 "java": { "is_tag": true },
+                "zig": { "is_tag": true },
                 "technology": {},
                 "science": { "flair_is_tag": true }
             },
@@ -108,7 +109,7 @@
                 "hash": {},
                 "web": {},
                 "api(s)": {},
-                "spam": {}
+                "spam": {},
             },
             "concrete_concept": {
                 "drm": {},
@@ -153,7 +154,8 @@
                 "vpn(s)": {},
                 "malware": {},
                 "ransomware": {},
-                "refactor": {"alts": ["refactoring", "refactored"]}
+                "refactor": {"alts": ["refactoring", "refactored"]},
+                "serverless": {}
             },
             "company": {
                 "volkswagen(s)": {"alt": "volkswagon(s)"},
@@ -335,7 +337,8 @@
                 "f#": {"internal": "fsharp", "symbol": true},
                 "swift": {},
                 "graphql": {},
-                "toml": {}
+                "toml": {},
+                "zig": {}
             },
             "product": {
                 "minecraft": {},
@@ -371,8 +374,10 @@
                 "hadoop": {},
                 "android": {},
                 "node": {},
+                "deno": {},
                 "ec2": {},
                 "aws": {},
+                "lambda": {},
                 "firefox": {},
                 "safari": {},
                 "servo": {},
