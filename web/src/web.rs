@@ -542,17 +542,24 @@ async fn root_metrics_txt(
         Option<String>,
     )>,
 ) -> Result<impl IntoResponse, WebError> {
-    if !headers_in.contains_key(header::AUTHORIZATION) || metrics_auth_bearer_token.is_none() {
-        return Err(WebError::AuthError);
-    }
-    if headers_in.get(header::AUTHORIZATION).unwrap()
-        != format!("Bearer {}", metrics_auth_bearer_token.unwrap()).as_bytes()
-    {
-        tracing::error!(
-            "Invalid bearer token for metrics: {:?}",
-            headers_in.get(header::AUTHORIZATION).unwrap()
-        );
-        return Err(WebError::AuthError);
+    if metrics_auth_bearer_token.is_none() {
+        // Temporarily allow the old behaviour if the --metrics-auth-bearer-token flag isn't passed
+        if !headers_in.contains_key(header::AUTHORIZATION) {
+            return Err(WebError::AuthError);
+        }
+    } else {
+        if !headers_in.contains_key(header::AUTHORIZATION) || metrics_auth_bearer_token.is_none() {
+            return Err(WebError::AuthError);
+        }
+        if headers_in.get(header::AUTHORIZATION).unwrap()
+            != format!("Bearer {}", metrics_auth_bearer_token.unwrap()).as_bytes()
+        {
+            tracing::error!(
+                "Invalid bearer token for metrics: {:?}",
+                headers_in.get(header::AUTHORIZATION).unwrap()
+            );
+            return Err(WebError::AuthError);
+        }
     }
     let stories = index
         .stories::<FeedStory>(None::<String>, 0, usize::MAX)
