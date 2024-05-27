@@ -3,7 +3,7 @@ use std::{collections::HashMap, net::SocketAddr, time::Instant};
 use axum::{
     body::Body,
     extract::{Host, Path, Query, Request, State},
-    http::HeaderValue,
+    http::{HeaderName, HeaderValue},
     middleware::{self, Next},
     response::{Html, IntoResponse, Redirect, Response},
     routing::{get, post},
@@ -68,6 +68,8 @@ pub enum WebError {
     LogSetup2Error(#[from] tracing_subscriber::filter::FromEnvError),
     #[error("Item not found")]
     NotFound,
+    #[error("Authentication failed")]
+    AuthError,
     #[error("Invalid command-line arguments")]
     ArgumentsInvalid(String),
 }
@@ -516,8 +518,12 @@ async fn root_feed_xml(
 
 // basic handler that responds with a static string
 async fn root_metrics_txt(
+    headers_in: HeaderMap,
     State((index, resources)): State<(Index<StoryIndex>, Resources)>,
 ) -> Result<impl IntoResponse, WebError> {
+    if !headers_in.contains_key(header::AUTHORIZATION) {
+        return Err(WebError::AuthError);
+    }
     let stories = index
         .stories::<FeedStory>(None::<String>, 0, usize::MAX)
         .await?;
@@ -531,16 +537,15 @@ async fn root_metrics_txt(
 
     Ok((
         [
-        (
-            header::CONTENT_TYPE,
-            HeaderValue::from_static("application/openmetrics-text")
-        ),
-        (
-            header::CACHE_CONTROL,
-            HeaderValue::from_static(
-                "public, max-age=300, s-max-age=300",
+            (
+                header::CONTENT_TYPE,
+                HeaderValue::from_static("application/openmetrics-text"),
             ),
-        )],
+            (
+                header::CACHE_CONTROL,
+                HeaderValue::from_static("public, max-age=300, s-max-age=300"),
+            ),
+        ],
         metrics,
     ))
 }
