@@ -77,7 +77,13 @@ pub enum WebError {
 impl IntoResponse for WebError {
     fn into_response(self) -> Response {
         let body = format!("Error: {:?}", self);
-        (StatusCode::INTERNAL_SERVER_ERROR, body).into_response()
+        let code = match self {
+            Self::AuthError => StatusCode::UNAUTHORIZED,
+            Self::NotFound => StatusCode::NOT_FOUND,
+            Self::InvalidHeader(_) => StatusCode::BAD_REQUEST,
+            _ => StatusCode::INTERNAL_SERVER_ERROR,
+        };
+        (code, body).into_response()
     }
 }
 
