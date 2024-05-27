@@ -4,12 +4,18 @@
 stories_by_shard{shard="{{ shard.0 }}"} {{ shard.1.story_count }}
 {%- endfor %}
 
-# HELP stories_by_tag Number of stories by tag
+# HELP stories_by_tag Number of stories in the hot set by tag
 # TYPE stories_by_tag counter
 {%- for tag in top_tags %}
 stories_by_tag{tag="{{ tag.0 }}"} {{ tag.1 }}
 {%- endfor %}
 
-git_version={{ git }}
+version{git="{{ git }}"} 1
+
+# HELP stories_by_source Number of stories in the hot set by source
+# TYPE stories_by_source counter
+{%- for source in source_count %}
+stories_by_source{source="{{ source.0.0 }}"{% if source.0.1 %}, subsource="{{ source.0.1 }}"{% endif %}} {{ source.1 }}
+{%- endfor %}
 
 # EOF
