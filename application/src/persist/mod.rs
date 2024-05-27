@@ -51,6 +51,7 @@ pub struct StorageSummary {
     pub total: ShardSummary,
 }
 
+#[derive(Debug)]
 /// The type of story fetch to perform.
 pub enum StoryQuery {
     /// A single story.

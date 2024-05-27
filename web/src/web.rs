@@ -267,7 +267,6 @@ pub fn create_feeds<S: Clone + Send + Sync + 'static>(
         .route("/", get(root))
         .route("/feed.json", get(root_feed_json))
         .route("/feed", get(root_feed_xml))
-        .route("/metrics/opentelemetry.txt", get(root_metrics_txt))
         .with_state((index, resources))
 }
 
@@ -277,6 +276,7 @@ pub async fn start_server<P2: Into<std::path::PathBuf>>(
     address: SocketAddr,
     index: Index<StoryIndex>,
     auth: Auth,
+    metrics_auth_bearer_token: Option<String>,
 ) -> Result<(), WebError> {
     index.refresh_hot_set().await?;
 
@@ -285,6 +285,8 @@ pub async fn start_server<P2: Into<std::path::PathBuf>>(
 
     // build our application with a route
     let app = create_feeds(index.clone(), resources.clone())
+        .route("/metrics/opentelemetry.txt", get(root_metrics_txt))
+        .with_state((index.clone(), resources.clone(), metrics_auth_bearer_token))
         .nest(
             "/admin/",
             admin_routes(
@@ -523,12 +525,25 @@ async fn root_feed_xml(
     ))
 }
 
-// basic handler that responds with a static string
+/// Return the current metrics in Prometheus-compatible format.
 async fn root_metrics_txt(
     headers_in: HeaderMap,
-    State((index, resources)): State<(Index<StoryIndex>, Resources)>,
+    State((index, resources, metrics_auth_bearer_token)): State<(
+        Index<StoryIndex>,
+        Resources,
+        Option<String>,
+    )>,
 ) -> Result<impl IntoResponse, WebError> {
-    if !headers_in.contains_key(header::AUTHORIZATION) {
+    if !headers_in.contains_key(header::AUTHORIZATION) || metrics_auth_bearer_token.is_none() {
+        return Err(WebError::AuthError);
+    }
+    if headers_in.get(header::AUTHORIZATION).unwrap()
+        != format!("Bearer {}", metrics_auth_bearer_token.unwrap()).as_bytes()
+    {
+        tracing::error!(
+            "Invalid bearer token for metrics: {:?}",
+            headers_in.get(header::AUTHORIZATION).unwrap()
+        );
         return Err(WebError::AuthError);
     }
     let stories = index

@@ -1,4 +1,4 @@
-use std::{collections::HashMap, path::Path};
+use std::{collections::HashMap, path::Path, time::Instant};
 
 use crate::web::WebError;
 use itertools::Itertools;
@@ -9,6 +9,7 @@ use progscrape_application::{
     StoryIndex, StoryQuery, StoryRender, StoryScrapePayload,
 };
 use progscrape_scrapers::{StoryDate, TypedScrape};
+use tracing::Level;
 
 pub struct HotSet {
     stories: Vec<Story<Shard>>,
@@ -184,8 +185,20 @@ impl Index<StoryIndex> {
     ) -> Result<Vec<S>, PersistError> {
         let eval = self.eval.clone();
         let stories = if let Some(search) = search {
-            let query = StoryQuery::from_search(&eval.read().tagger, search.as_ref());
+            let search = search.as_ref();
+            let query = StoryQuery::from_search(&eval.read().tagger, search);
+            let start = Instant::now();
+            let query_log = if tracing::enabled!(Level::INFO) {
+                Some(format!("{query:?}"))
+            } else {
+                None
+            };
             let stories = self.fetch::<Shard>(query, 100).await?;
+            let elapsed_ms = start.elapsed().as_millis();
+            tracing::info!(
+                "Search query_text={search:?} search_time={elapsed_ms}ms query={}",
+                query_log.unwrap_or_default()
+            );
             self.filter_and_render(stories.iter(), offset, count)
         } else {
             self.filter_and_render(self.hot_set.read().stories.iter(), offset, count)

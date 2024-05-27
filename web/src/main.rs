@@ -82,6 +82,13 @@ pub enum Command {
             help = "Fixed authorization value for testing purposes"
         )]
         fixed_auth_value: Option<String>,
+
+        #[arg(
+            long,
+            value_name = "HEADER",
+            help = "Metrics authorization bearer token"
+        )]
+        metrics_auth_bearer_token: Option<String>,
     },
     Initialize {
         #[arg(long, value_name = "DIR", value_hint = clap::ValueHint::DirPath, help = "Persistence path")]
@@ -159,6 +166,7 @@ async fn go() -> Result<(), WebError> {
             persist_path,
             auth_header,
             fixed_auth_value,
+            metrics_auth_bearer_token,
             listen_port,
             backup_path,
         } => {
@@ -191,7 +199,15 @@ async fn go() -> Result<(), WebError> {
                     ));
                 }
             };
-            web::start_server(resources, backup_path, listen_port, index, auth).await?;
+            web::start_server(
+                resources,
+                backup_path,
+                listen_port,
+                index,
+                auth,
+                metrics_auth_bearer_token,
+            )
+            .await?;
         }
         Command::Initialize {
             root,
