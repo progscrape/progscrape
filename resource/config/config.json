@@ -7,6 +7,9 @@
             "reddit": 0.7,
             "lobsters": 1.2
         },
+        "service_boost": {
+            "slashdot": 5.0
+        },
         "multi_source": {
             "power": 1.2,
             "factor": 5.0
@@ -109,7 +112,7 @@
                 "hash": {},
                 "web": {},
                 "api(s)": {},
-                "spam": {},
+                "spam": {}
             },
             "concrete_concept": {
                 "drm": {},

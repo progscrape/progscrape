@@ -18,6 +18,7 @@ pub struct StoryScoreConfig {
     age_breakpoint_days: [u32; 2],
     hour_scores: [f32; 3],
     service_rank: TypedScrapeMap<f32>,
+    service_boost: TypedScrapeMap<f32>,
     multi_source: StoryScoreMultiSourceConfig,
 }
 
@@ -39,6 +40,7 @@ pub enum StoryScore {
     UpvoteCount,
     CommentCount,
     Position(ScrapeSource),
+    Source(ScrapeSource),
 }
 
 impl Serialize for StoryScore {
@@ -119,7 +121,10 @@ impl StoryScorer {
                 (30.0 - rank.clamp(0, 30) as f32) * self.config.service_rank.get(source),
             );
         }
-
+        let boost = *self.config.service_boost.get(source);
+        if boost > f32::EPSILON {
+            accum(Source(source), boost);
+        }
         if url.host().contains("gfycat")
             || url.host().contains("imgur")
             || url.host().contains("i.reddit.com")
@@ -264,6 +269,7 @@ mod test {
             age_breakpoint_days: [1, 30],
             hour_scores: [-5.0, -3.0, -0.1],
             service_rank: TypedScrapeMap::new_with_all(1.0),
+            service_boost: TypedScrapeMap::new_with_all(1.0),
             multi_source: StoryScoreMultiSourceConfig {
                 power: 2.0,
                 factor: 10.0,
