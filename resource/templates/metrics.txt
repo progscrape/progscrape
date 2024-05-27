@@ -10,4 +10,6 @@ stories_by_shard{shard="{{ shard.0 }}"} {{ shard.1.story_count }}
 stories_by_tag{tag="{{ tag.0 }}"} {{ tag.1 }}
 {%- endfor %}
 
+git_version={{ git }}
+
 # EOF
