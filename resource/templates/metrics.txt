@@ -1,13 +1,13 @@
 # HELP stories_by_shard Number of stories in each year/month bucket
 # TYPE stories_by_shard counter
 {%- for shard in storage.by_shard %}
-stories_by_shard{shard="{{ shard.0 }}"} {{ shard.1.story_count }} {{ now }}
+stories_by_shard{shard="{{ shard.0 }}"} {{ shard.1.story_count }}
 {%- endfor %}
 
 # HELP stories_by_tag Number of stories by tag
 # TYPE stories_by_tag counter
 {%- for tag in top_tags %}
-stories_by_tag{tag="{{ tag.0 }}"} {{ tag.1 }} {{ now }}
+stories_by_tag{tag="{{ tag.0 }}"} {{ tag.1 }}
 {%- endfor %}
 
 # EOF
