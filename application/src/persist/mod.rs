@@ -1,4 +1,4 @@
-use std::{collections::HashMap, path::PathBuf};
+use std::{collections::HashMap, ops::AddAssign, path::PathBuf};
 
 use crate::story::{Story, StoryEvaluator, StoryIdentifier, StoryTagger};
 use progscrape_scrapers::{ScrapeCollection, StoryDate, TypedScrape};
@@ -168,10 +168,50 @@ pub trait StorageWriter: Storage {
 
 #[derive(Debug, Serialize, PartialEq, Eq, Ord, PartialOrd, Hash)]
 pub enum ScrapePersistResult {
+    /// The story was merged with an existing story whilst we tried to re-insert it.
     MergedWithExistingStory,
+    /// The scrape has already been added.
     AlreadyPartOfExistingStory,
+    /// This is a new story.
     NewStory,
+    /// The story was not found whilst we tried to re-insert it.
     NotFound,
+}
+
+#[derive(Default, Debug, Serialize)]
+pub struct ScrapePersistResultSummary {
+    pub merged: usize,
+    pub existing: usize,
+    pub new: usize,
+    pub not_found: usize,
+}
+
+impl AddAssign for ScrapePersistResultSummary {
+    fn add_assign(&mut self, rhs: Self) {
+        self.merged += rhs.merged;
+        self.existing += rhs.existing;
+        self.new += rhs.new;
+        self.not_found += rhs.not_found;
+    }
+}
+
+pub trait ScrapePersistResultSummarizer {
+    fn summary(&self) -> ScrapePersistResultSummary;
+}
+
+impl ScrapePersistResultSummarizer for Vec<ScrapePersistResult> {
+    fn summary(&self) -> ScrapePersistResultSummary {
+        let mut summary = ScrapePersistResultSummary::default();
+        for x in self {
+            match x {
+                &ScrapePersistResult::MergedWithExistingStory => summary.merged += 1,
+                &ScrapePersistResult::AlreadyPartOfExistingStory => summary.existing += 1,
+                &ScrapePersistResult::NewStory => summary.new += 1,
+                &ScrapePersistResult::NotFound => summary.not_found += 1,
+            }
+        }
+        summary
+    }
 }
 
 #[derive(Clone, Debug)]

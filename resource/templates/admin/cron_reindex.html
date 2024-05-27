@@ -1,9 +1,8 @@
-<p>Success</p>
+<p>Success: {{ elapsed_ms }}ms</p>
 
-<table>
-    {% for result in results %}
-    <tr>
-        <td>{{ result }}</td>
-    </tr>
-    {% endfor %}
-</table>
+<ul>
+    <li>Merged: {{ summary.merged }}</li>
+    <li>New: {{ summary.new }}</li>
+    <li>Not Found: {{ summary.not_found }}</li>
+    <li>Existing: {{ summary.existing }}</li>
+</ul>

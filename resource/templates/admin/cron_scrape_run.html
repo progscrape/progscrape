@@ -1,1 +1,14 @@
-{{ source }}
+<h2>{{ source }}</h2>
+
+<ul>
+    <li>Fetch: {{ fetch_ms }}ms</li>
+    <li>Process: {{ process_ms }}ms</li>
+    <li>Insert: {{ insert_ms }}ms</li>
+</ul>
+
+<ul>
+    <li>Merged: {{ summary.merged }}</li>
+    <li>New: {{ summary.new }}</li>
+    <li>Not Found: {{ summary.not_found }}</li>
+    <li>Existing: {{ summary.existing }}</li>
+</ul>

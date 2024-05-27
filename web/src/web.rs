@@ -28,8 +28,9 @@ use crate::{
     serve_static_files,
 };
 use progscrape_application::{
-    PersistError, Shard, Story, StoryEvaluator, StoryIdentifier, StoryIndex, StoryQuery,
-    StoryRender, StoryScore, TagSet,
+    PersistError, ScrapePersistResult, ScrapePersistResultSummarizer, ScrapePersistResultSummary,
+    Shard, Story, StoryEvaluator, StoryIdentifier, StoryIndex, StoryQuery, StoryRender, StoryScore,
+    TagSet,
 };
 use progscrape_scrapers::{
     ScrapeCollection, ScrapeSource, ScraperHttpResponseInput, ScraperHttpResult, StoryDate,
@@ -616,8 +617,11 @@ async fn admin_cron_refresh(
         resources, index, ..
     }): State<AdminState>,
 ) -> Result<impl IntoResponse, WebError> {
+    let start = Instant::now();
     index.refresh_hot_set().await?;
-    render_admin(&resources, "admin/cron_refresh.html", context!())
+    let elapsed_ms = start.elapsed().as_millis();
+    tracing::info!("Hotset refresh: time={elapsed_ms}ms");
+    render_admin(&resources, "admin/cron_refresh.html", context!(elapsed_ms))
 }
 
 async fn admin_cron_reindex(
@@ -625,8 +629,16 @@ async fn admin_cron_reindex(
         resources, index, ..
     }): State<AdminState>,
 ) -> Result<impl IntoResponse, WebError> {
+    let start = Instant::now();
     let results = index.reindex_hot_set().await?;
-    render_admin(&resources, "admin/cron_reindex.html", context!(results))
+    let elapsed_ms = start.elapsed().as_millis();
+    let summary = results.summary();
+    tracing::info!("Hotset reindex: time={elapsed_ms}ms result={summary:?}");
+    render_admin(
+        &resources,
+        "admin/cron_reindex.html",
+        context!(results, elapsed_ms, summary),
+    )
 }
 
 async fn admin_cron_scrape(
@@ -635,6 +647,7 @@ async fn admin_cron_scrape(
     }): State<AdminState>,
     Path(source): Path<ScrapeSource>,
 ) -> Result<impl IntoResponse, WebError> {
+    let start = Instant::now();
     let subsources = resources.scrapers.read().compute_scrape_subsources(source);
     let urls = resources
         .scrapers
@@ -657,25 +670,37 @@ async fn admin_cron_scrape(
             );
         }
     }
+    let fetch_ms = start.elapsed().as_millis();
 
+    let start = Instant::now();
     let scrapes = HashMap::from_iter(
         map.into_iter()
             .map(|(k, v)| (k, resources.scrapers.read().scrape_http_result(source, v))),
     );
+    let process_ms = start.elapsed().as_millis();
 
+    let start = Instant::now();
+    let mut summary = ScrapePersistResultSummary::default();
+    let mut errors = 0;
     for result in scrapes.values() {
         match result {
             ScraperHttpResult::Ok(_, scrapes) => {
-                index.insert_scrapes(scrapes.clone()).await?;
+                let res = index.insert_scrapes(scrapes.clone()).await?;
+                summary += res.summary();
             }
-            ScraperHttpResult::Err(..) => {}
+            ScraperHttpResult::Err(..) => {
+                errors += 1;
+            }
         }
     }
+    let insert_ms = start.elapsed().as_millis();
+
+    tracing::info!("Scrape source={source:?} fetch_time={fetch_ms}ms process_time={process_ms}ms insert_time={insert_ms}ms errors={errors} result={summary:?}");
 
     render_admin(
         &resources,
         "admin/cron_scrape_run.html",
-        context!(source, scrapes: HashMap<String, ScraperHttpResult>,),
+        context!(source, scrapes: HashMap<String, ScraperHttpResult>, summary, fetch_ms, process_ms, insert_ms,),
     )
 }
 
