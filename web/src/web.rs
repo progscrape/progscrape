@@ -562,15 +562,27 @@ async fn root_metrics_txt(
         }
     }
     let stories = index
-        .stories::<FeedStory>(None::<String>, 0, usize::MAX)
+        .stories::<StoryRender>(None::<String>, 0, usize::MAX)
         .await?;
+    let mut source_count: HashMap<(ScrapeSource, Option<String>), usize> = Default::default();
+    for story in stories {
+        for source in story.sources {
+            if let Some(source) = source {
+                *source_count
+                    .entry((source.source, source.subsource))
+                    .or_default() += 1;
+            }
+        }
+    }
+    let source_count: Vec<_> = source_count.into_iter().collect();
     let now = now(&index).await?;
     let top_tags = index.top_tags(usize::MAX)?;
     let storage = index.story_count().await?;
-    let metrics = resources
-        .templates
-        .read()
-        .render("metrics.txt", &context!(stories, storage, top_tags, now))?;
+    let metrics = render(
+        &resources,
+        "metrics.txt",
+        context!(source_count, storage, top_tags, now),
+    )?;
 
     Ok((
         [
