@@ -525,6 +525,9 @@ async fn root_feed_xml(
             HeaderValue::from_static(
                 "public, max-age=300, s-max-age=300, stale-while-revalidate=60, stale-if-error=86400",
             ),
+        ), (
+            header::ACCESS_CONTROL_ALLOW_ORIGIN,
+            HeaderValue::from_static("*"),
         )],
         xml,
     ))
