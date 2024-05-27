@@ -28,9 +28,8 @@ use crate::{
     serve_static_files,
 };
 use progscrape_application::{
-    PersistError, ScrapePersistResult, ScrapePersistResultSummarizer, ScrapePersistResultSummary,
-    Shard, Story, StoryEvaluator, StoryIdentifier, StoryIndex, StoryQuery, StoryRender, StoryScore,
-    TagSet,
+    PersistError, ScrapePersistResultSummarizer, ScrapePersistResultSummary, Shard, Story,
+    StoryEvaluator, StoryIdentifier, StoryIndex, StoryQuery, StoryRender, StoryScore, TagSet,
 };
 use progscrape_scrapers::{
     ScrapeCollection, ScrapeSource, ScraperHttpResponseInput, ScraperHttpResult, StoryDate,
@@ -390,11 +389,17 @@ fn render(
 /// Render an admin context with a given template name, adding the headers to
 /// avoid any caching whatsoever.
 fn render_admin(
+    user: Option<&CurrentUser>,
     resources: &Resources,
     template_name: &str,
     mut context: Context,
 ) -> Result<impl IntoResponse, WebError> {
-    tracing::trace!("Rendering admin template {template_name}");
+    // If this is an authenticated page, log it with the user
+    if let Some(user) = user {
+        tracing::debug!("Admin page: template={template_name} user={}", user.user);
+    } else {
+        tracing::trace!("Admin page (internal):  template={template_name}");
+    }
     context.insert("config", &resources.config);
     Ok((
         [(header::CACHE_CONTROL, HeaderValue::from_static("no-store"))],
@@ -573,7 +578,7 @@ async fn admin(
     Extension(user): Extension<CurrentUser>,
     State(AdminState { resources, .. }): State<AdminState>,
 ) -> Result<impl IntoResponse, WebError> {
-    render_admin(&resources, "admin/admin.html", context!(user))
+    render_admin(Some(&user), &resources, "admin/admin.html", context!(user))
 }
 
 async fn admin_cron(
@@ -586,6 +591,7 @@ async fn admin_cron(
     }): State<AdminState>,
 ) -> Result<impl IntoResponse, WebError> {
     render_admin(
+        Some(&user),
         &resources,
         "admin/cron.html",
         context!(
@@ -636,7 +642,12 @@ async fn admin_cron_refresh(
     index.refresh_hot_set().await?;
     let elapsed_ms = start.elapsed().as_millis();
     tracing::info!("Hotset refresh: time={elapsed_ms}ms");
-    render_admin(&resources, "admin/cron_refresh.html", context!(elapsed_ms))
+    render_admin(
+        None,
+        &resources,
+        "admin/cron_refresh.html",
+        context!(elapsed_ms),
+    )
 }
 
 async fn admin_cron_reindex(
@@ -650,6 +661,7 @@ async fn admin_cron_reindex(
     let summary = results.summary();
     tracing::info!("Hotset reindex: time={elapsed_ms}ms result={summary:?}");
     render_admin(
+        None,
         &resources,
         "admin/cron_reindex.html",
         context!(results, elapsed_ms, summary),
@@ -713,6 +725,7 @@ async fn admin_cron_scrape(
     tracing::info!("Scrape source={source:?} fetch_time={fetch_ms}ms process_time={process_ms}ms insert_time={insert_ms}ms errors={errors} result={summary:?}");
 
     render_admin(
+        None,
         &resources,
         "admin/cron_scrape_run.html",
         context!(source, scrapes: HashMap<String, ScraperHttpResult>, summary, fetch_ms, process_ms, insert_ms,),
@@ -734,6 +747,7 @@ async fn admin_headers(
             .push(String::from_utf8_lossy(value.as_bytes()).to_string());
     }
     render_admin(
+        Some(&user),
         &resources,
         "admin/headers.html",
         context!(user, query, headers),
@@ -745,6 +759,7 @@ async fn admin_scrape(
     State(AdminState { resources, .. }): State<AdminState>,
 ) -> Result<impl IntoResponse, WebError> {
     render_admin(
+        Some(&user),
         &resources,
         "admin/scrape.html",
         context!(
@@ -800,6 +815,7 @@ async fn admin_scrape_test(
     }));
 
     render_admin(
+        Some(&user),
         &resources,
         "admin/scrape_test.html",
         context!(user, scrapes: HashMap<String, ScraperHttpResult>),
@@ -813,6 +829,7 @@ async fn admin_index_status(
     }): State<AdminState>,
 ) -> Result<impl IntoResponse, WebError> {
     render_admin(
+        Some(&user),
         &resources,
         "admin/status.html",
         context!(user, storage = index.story_count().await?,),
@@ -832,6 +849,7 @@ async fn admin_status_frontpage(
         .stories::<StoryRender>(Option::<String>::None, 0, 500)
         .await?;
     render_admin(
+        Some(&user),
         &resources,
         "admin/frontpage.html",
         context!(now, user, stories, sort),
@@ -873,6 +891,7 @@ async fn admin_index_frontpage_scoretuner(
     story_details.sort_by_cached_key(|x| (x.story.score * -1000.0) as i32);
 
     render_admin(
+        Some(&user),
         &resources,
         "admin/scoretuner.html",
         context!(now, user, story_details,),
@@ -894,6 +913,7 @@ async fn admin_status_shard(
         .await?;
     let stories = render_stories(&resources.story_evaluator.read(), stories.iter());
     render_admin(
+        Some(&user),
         &resources,
         "admin/shard.html",
         context!(user, shard = shard, stories, sort: String = sort),
@@ -924,6 +944,7 @@ async fn admin_status_story(
     let story = story.render(&eval.read(), 0);
 
     render_admin(
+        Some(&user),
         &resources,
         "admin/story.html",
         context!(
