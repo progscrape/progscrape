@@ -543,10 +543,7 @@ async fn root_metrics_txt(
 
     Ok((
         [
-            (
-                header::CONTENT_TYPE,
-                HeaderValue::from_static("application/openmetrics-text"),
-            ),
+            (header::CONTENT_TYPE, HeaderValue::from_static("text/plain")),
             (
                 header::CACHE_CONTROL,
                 HeaderValue::from_static("public, max-age=300, s-max-age=300"),
