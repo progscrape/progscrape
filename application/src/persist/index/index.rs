@@ -555,6 +555,10 @@ impl StoryIndex {
                 return Err(PersistError::UnexpectedError("Invalid domain".into()));
             }
         };
+        // Ensure it's a valid search
+        if phrase.len() < 2 {
+            return Err(PersistError::UnexpectedError("Invalid domain".into()));
+        }
         let query = PhraseQuery::new(phrase);
         tracing::debug!("Domain phrase query = {:?}", query);
         self.fetch_search_query(query, max)
