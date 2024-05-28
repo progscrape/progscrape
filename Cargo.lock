@@ -3007,9 +3007,9 @@ dependencies = [
 
 [[package]]
 name = "urlnorm"
-version = "0.1.5"
+version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7cf9ffa7951f5cef70876ecef1075b831a20b937093b8286e5af4445775a4999"
+checksum = "6f4ed8848fd98f8f982d7a98cea30c104aacccf8d5908a8f7a3c76b9897f741d"
 dependencies = [
  "regex",
  "url",
