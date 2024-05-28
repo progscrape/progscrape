@@ -558,10 +558,11 @@ async fn state_tracker(
             .and_then(|s| std::str::from_utf8(s).ok())
     }
 
+    let referrer = path.0.get("r").map(|s| s.as_str()).unwrap_or_default();
     let path = path.0.get("path").map(|s| s.as_str()).unwrap_or_default();
     let entry = TrackerEntry {
         p: path,
-        r: header(&headers_in, header::REFERER),
+        r: Some(referrer),
         ua: header(&headers_in, header::USER_AGENT),
         ip: header(&headers_in, HeaderName::from_static("x-forwarded-for")),
     };
