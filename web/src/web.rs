@@ -2,8 +2,8 @@ use std::{collections::HashMap, net::SocketAddr, time::Instant};
 
 use axum::{
     body::Body,
-    extract::{Host, Path, Query, Request, State},
-    http::HeaderValue,
+    extract::{Host, OriginalUri, Path, Query, Request, State},
+    http::{HeaderName, HeaderValue},
     middleware::{self, Next},
     response::{Html, IntoResponse, Redirect, Response},
     routing::{get, post},
@@ -286,6 +286,7 @@ pub async fn start_server<P2: Into<std::path::PathBuf>>(
     let app = create_feeds(index.clone(), resources.clone())
         .route("/metrics/opentelemetry.txt", get(root_metrics_txt))
         .with_state((index.clone(), resources.clone(), metrics_auth_bearer_token))
+        .route("/state", get(state_tracker))
         .nest(
             "/admin/",
             admin_routes(
@@ -409,6 +410,7 @@ fn render_admin(
 
 // basic handler that responds with a static string
 async fn root(
+    OriginalUri(original_uri): OriginalUri,
     Host(host): Host,
     State((index, resources)): State<(Index<StoryIndex>, Resources)>,
     query: Query<HashMap<String, String>>,
@@ -421,13 +423,17 @@ async fn root(
         .unwrap_or_default();
     let stories = index.stories::<StoryRender>(search, offset, 30).await?;
     let top_tags = index.top_tags(20)?;
+    let path = original_uri
+        .path_and_query()
+        .map(|s| s.as_str())
+        .unwrap_or_default();
     Ok(([(
         header::CACHE_CONTROL,
         HeaderValue::from_static(
             "public, max-age=300, s-max-age=300, stale-while-revalidate=60, stale-if-error=86400",
         ),
     )],
-    render(&resources, "index.html", context!(top_tags, stories, now, search, offset, host))))
+    render(&resources, "index.html", context!(top_tags, stories, now, search, offset, host, path))))
 }
 
 #[derive(Serialize, Deserialize)]
@@ -530,6 +536,58 @@ async fn root_feed_xml(
             HeaderValue::from_static("*"),
         )],
         xml,
+    ))
+}
+
+async fn state_tracker(
+    path: Query<HashMap<String, String>>,
+    headers_in: HeaderMap,
+) -> Result<impl IntoResponse, WebError> {
+    #[derive(Serialize)]
+    struct TrackerEntry<'a> {
+        p: &'a str,
+        r: Option<&'a str>,
+        ua: Option<&'a str>,
+        ip: Option<&'a str>,
+    }
+
+    fn header<'a>(headers_in: &'a HeaderMap, key: HeaderName) -> Option<&'a str> {
+        headers_in
+            .get(key)
+            .map(|s| s.as_bytes())
+            .and_then(|s| std::str::from_utf8(s).ok())
+    }
+
+    let path = path.0.get("path").map(|s| s.as_str()).unwrap_or_default();
+    let entry = TrackerEntry {
+        p: path,
+        r: header(&headers_in, header::REFERER),
+        ua: header(&headers_in, header::USER_AGENT),
+        ip: header(&headers_in, HeaderName::from_static("x-forwarded-for")),
+    };
+
+    tracing::info!(
+        "pageload data={}",
+        serde_json::to_string(&entry).unwrap_or_default()
+    );
+
+    Ok((
+        [
+            (
+                header::CONTENT_TYPE,
+                HeaderValue::from_static("application/javascript"),
+            ),
+            (
+                header::CACHE_CONTROL,
+                HeaderValue::from_static("private, no-store, no-cache, must-revalidate, max-age=0"),
+            ),
+            (header::PRAGMA, HeaderValue::from_static("no-cache")),
+            (
+                HeaderName::from_static("surrogate-control"),
+                HeaderValue::from_static("no-store, max-age=0"),
+            ),
+        ],
+        "void 0;",
     ))
 }
 
