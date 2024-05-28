@@ -8,7 +8,9 @@ use tantivy::{schema::*, DocAddress, IndexWriter, Searcher, SegmentReader};
 
 use progscrape_scrapers::{ScrapeCollection, StoryDate, StoryUrl, TypedScrape};
 
+use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
+use std::panic::catch_unwind;
 use std::time::Duration;
 
 use crate::persist::index::indexshard::{StoryIndexShard, StoryLookup, StoryLookupId};
@@ -533,35 +535,28 @@ impl StoryIndex {
         max: usize,
     ) -> Result<Vec<(Shard, DocAddress)>, PersistError> {
         let host_field = self.schema.host_field;
-        // TODO: This could be de-duplicated
-        let phrase = if domain.contains(':') {
-            // If it looks URL-ish, just parse as a URL and toss everything that isn't a host
-            if let Some(url) = StoryUrl::parse(domain) {
-                url.host()
-                    .split(|c: char| !c.is_alphanumeric())
-                    .map(|s| Term::from_field_text(host_field, s))
-                    .collect_vec()
-            } else {
-                return Err(PersistError::UnexpectedError("Invalid domain".into()));
-            }
-        } else {
-            // TODO: We probably don't want to re-parse this as a URL, but it's the fastest way to normalize it
-            if let Some(url) = StoryUrl::parse(format!("http://{}", domain)) {
-                url.host()
-                    .split(|c: char| !c.is_alphanumeric())
-                    .map(|s| Term::from_field_text(host_field, s))
-                    .collect_vec()
-            } else {
-                return Err(PersistError::UnexpectedError("Invalid domain".into()));
-            }
-        };
-        // Ensure it's a valid search
-        if phrase.len() < 2 {
-            return Err(PersistError::UnexpectedError("Invalid domain".into()));
+        let phrase = domain
+            .split('.')
+            .filter(|s| !s.is_empty())
+            .map(|s| Term::from_field_text(host_field, s))
+            .collect_vec();
+
+        // This shouldn't be possible
+        if phrase.len() == 0 {
+            return Err(PersistError::UnexpectedError("Empty domain".to_string()));
         }
-        let query = PhraseQuery::new(phrase);
-        tracing::debug!("Domain phrase query = {:?}", query);
-        self.fetch_search_query(query, max)
+
+        // The PhraseQuery asserts if only a single term is passed, so convert those into term queries
+        if phrase.len() == 1 {
+            let query =
+                TermQuery::new(phrase.into_iter().next().unwrap(), IndexRecordOption::Basic);
+            tracing::debug!("Domain term query = {:?}", query);
+            self.fetch_search_query(query, max)
+        } else {
+            let query = PhraseQuery::new(phrase);
+            tracing::debug!("Domain phrase query = {:?}", query);
+            self.fetch_search_query(query, max)
+        }
     }
 
     fn fetch_text_search(
@@ -576,7 +571,20 @@ impl StoryIndex {
         );
         // Boost search within tags
         query_parser.set_field_boost(self.schema.tags_field, 3.0);
-        let query = query_parser.parse_query(search)?;
+
+        // "Escape" http: and https: because they look like field searches
+        let search = if search.contains("http:") {
+            search.replace("http:", "http ").into()
+        } else {
+            Cow::Borrowed(search)
+        };
+        let search = if search.contains("https:") {
+            search.replace("https:", "https ").into()
+        } else {
+            search
+        };
+
+        let query = query_parser.parse_query(&search)?;
         tracing::debug!("Term query = {:?}", query);
         self.fetch_search_query(query, max)
     }
@@ -629,14 +637,21 @@ impl StoryIndex {
         query: StoryQuery,
         max: usize,
     ) -> Result<Vec<(Shard, DocAddress)>, PersistError> {
-        match query {
+        catch_unwind(|| match query {
             StoryQuery::ById(id) => self.with_searcher(id.shard(), self.fetch_by_id(&id)),
             StoryQuery::ByShard(shard) => self.with_searcher(shard, self.fetch_by_segment()),
             StoryQuery::FrontPage() => self.fetch_front_page(max),
             StoryQuery::TagSearch(tag, alt) => self.fetch_tag_search(&tag, alt.as_deref(), max),
             StoryQuery::DomainSearch(domain) => self.fetch_domain_search(&domain, max),
             StoryQuery::TextSearch(text) => self.fetch_text_search(&text, max),
-        }
+        })
+        .map_err(|e|
+            // We don't have as much control over the underlying search library as we'd like, so we try to
+            // recover from any possibly panics here.
+            match e.downcast::<&'static str>() {
+                Ok(v) => PersistError::UnexpectedError(format!("Storage fetch panic: {v}")),
+                Err(_) => PersistError::UnexpectedError("Storage fetch panic".to_owned())
+            })?
     }
 }
 
@@ -1127,6 +1142,32 @@ mod test {
         Ok(())
     }
 
+    /// Ensure that none of these cases crashes the query engine
+    #[test]
+    fn test_torture() -> Result<(), Box<dyn std::error::Error>> {
+        let mut index = StoryIndex::new(PersistLocation::Memory)?;
+        let eval = StoryEvaluator::new_for_test();
+        let url = StoryUrl::parse("http://example.com").expect("URL");
+        let date = StoryDate::year_month_day(2020, 1, 1).expect("Date failed");
+        let id = StoryIdentifier::new(date, url.normalization());
+        index.insert_scrapes(&eval, [hn_story("story1", date, "title", &url)])?;
+        for a in ["http://", "http:", ""] {
+            for b in ["x", "2", ".", ""] {
+                for c in [".1", ".x", ".", "x", "2", ""] {
+                    for d in ["/", "/x", "/x.", "?", ""] {
+                        let s = format!("{a}{b}{c}{d}");
+                        eprintln!("{s}");
+                        // Result is ignored for this test
+                        let res =
+                            index.fetch_count(StoryQuery::from_search(&eval.tagger, &s), 10)?;
+                        assert_eq!(res, 0, "Expected zero results for '{s}'");
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
     /// Ensure that a story is searchable by various terms.
     #[rstest]
     #[case("http://example.com", "I love Rust", &["rust", "love", "example.com"])]
@@ -1134,6 +1175,8 @@ mod test {
     #[case("http://www.att.com", "New AT&T plans", &["at&t", "atandt", "att.com", "http://att.com"])]
     #[case("http://example.com", "I love Go", &["golang", "love"])]
     #[case("http://example.com", "I love C", &["clanguage", "love"])]
+    // Special case: we allow for domain searches like this
+    #[case("http://localhost", "About that special host", &["http://localhost", "localhost."])]
     #[case("http://www3.xyz.imperial.co.uk", "Why England is England", &["england", "www3.xyz.imperial.co.uk", "xyz.imperial.co.uk",  "co.uk"])]
     // TODO: This case doesn't work yet
     // #[case("http://youtube.com/?v=123", "A tutorial", &["video", "youtube", "tutorial"])]

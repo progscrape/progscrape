@@ -319,7 +319,8 @@ pub(crate) mod test {
                     "d": {"internal": "dlanguage", "excludes": ["vitamin d", "d wave", "d waves"]},
                     "c++": {"internal": "cplusplus", "symbol": true},
                     "c#": {"internal": "csharp", "symbol": true},
-                    "f#": {"internal": "fsharp", "symbol": true}
+                    "f#": {"internal": "fsharp", "symbol": true},
+                    ".net": {"internal": "dotnet", "symbol": true},
                 }
             }
         })).expect("Failed to parse test config")
@@ -349,6 +350,7 @@ pub(crate) mod test {
     #[case("atandt", &["at&t", "atandt"])]
     #[case("angular", &["angular", "angularjs"])]
     #[case("golang", &["go", "golang"])]
+    #[case("dotnet", &[".net", "dotnet"])]
     fn test_search_mapping(tagger: StoryTagger, #[case] a: &str, #[case] b: &[&str]) {
         for b in b {
             assert_eq!(

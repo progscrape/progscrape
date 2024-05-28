@@ -1,7 +1,8 @@
 use std::{collections::HashMap, ops::AddAssign, path::PathBuf};
 
 use crate::story::{Story, StoryEvaluator, StoryIdentifier, StoryTagger};
-use progscrape_scrapers::{ScrapeCollection, StoryDate, TypedScrape};
+use itertools::Itertools;
+use progscrape_scrapers::{ScrapeCollection, StoryDate, StoryUrl, TypedScrape};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -70,6 +71,9 @@ pub enum StoryQuery {
 
 impl StoryQuery {
     pub fn from_search(tagger: &StoryTagger, search: &str) -> Self {
+        // Always trim whitespace
+        let search = search.trim();
+
         // This isn't terribly smart, buuuuut it allows us to search either a tag or site
         if let Some(tag) = tagger.check_tag_search(search) {
             let alt = if tag.eq_ignore_ascii_case(search) {
@@ -78,10 +82,36 @@ impl StoryQuery {
                 Some(search.to_ascii_lowercase())
             };
             StoryQuery::TagSearch(tag.to_string(), alt)
-        } else if search.contains('.') {
-            StoryQuery::DomainSearch(search.to_string())
+        } else if let Some(domain) = Self::try_domain(search) {
+            StoryQuery::DomainSearch(domain)
         } else {
             StoryQuery::TextSearch(search.to_string())
+        }
+    }
+
+    fn try_domain(search: &str) -> Option<String> {
+        // Only test a domain search if the search contains a domain-like char
+        if search.contains('.') || search.contains(':') {
+            let url = if search.contains(':') {
+                StoryUrl::parse(search)
+            } else {
+                // TODO: We probably don't want to re-parse this as a URL, but it's the fastest way to normalize it
+                StoryUrl::parse(format!("http://{}", search))
+            };
+            if let Some(url) = url {
+                let host = url.host();
+                if host.contains(|c: char| !c.is_alphanumeric() && c != '.' && c != '-')
+                    || !host.contains(|c: char| c.is_alphanumeric() || c == '-')
+                {
+                    None
+                } else {
+                    Some(url.host().to_owned())
+                }
+            } else {
+                None
+            }
+        } else {
+            None
         }
     }
 }

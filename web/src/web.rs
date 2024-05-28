@@ -3,7 +3,7 @@ use std::{collections::HashMap, net::SocketAddr, time::Instant};
 use axum::{
     body::Body,
     extract::{Host, Path, Query, Request, State},
-    http::{HeaderName, HeaderValue},
+    http::HeaderValue,
     middleware::{self, Next},
     response::{Html, IntoResponse, Redirect, Response},
     routing::{get, post},

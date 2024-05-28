@@ -23,7 +23,7 @@
         "slashdot": {
             "homepage": "https://slashdot.org/",
             "tag_allowlist": [
-                "adobe", "ai", "arm", "att", "biotech", "bitcoin", "blizzard", "china", "cloud", "earth", "facebook", "fcc", "games", "google", "government", "health", "java", "javascript",
+                "adobe", "ai", "arm", "att", "biotech", "bitcoin", "blizzard", "china", "cloud", "dotnet", "earth", "facebook", "fcc", "games", "google", "government", "health", "java", "javascript",
                 "mars", "media", "moon", "microsoft", "military", "nasa", "nintendo", "oracle", "php", "power", "programming", "python", "ransomware", "robot", "russia",
                 "samsung", "science", "security", "space", "symantec", "transportation", "twitter", "usa", "windows"
             ]
@@ -338,6 +338,7 @@
                 "c++": {"internal": "cplusplus", "symbol": true},
                 "c#": {"internal": "csharp", "symbol": true},
                 "f#": {"internal": "fsharp", "symbol": true},
+                ".net": {"internal": "dotnet", "symbol": true},
                 "swift": {},
                 "graphql": {},
                 "toml": {},
