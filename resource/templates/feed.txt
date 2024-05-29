@@ -1,0 +1,8 @@
+{% for story in stories %}
+id: story-{{ story.order }}
+date: {{ story.date | relative_time(now=now) }}
+title: {{ story.title }}
+url: {{ story.url }}
+domain: {{ story.domain }}
+tags:{% for tag in story.tags %}{% if tag is not containing('.') %} {{ tag }}{% endif %}{% endfor %}
+{% endfor %}

@@ -265,6 +265,7 @@ pub fn create_feeds<S: Clone + Send + Sync + 'static>(
     Router::new()
         .route("/", get(root))
         .route("/feed.json", get(root_feed_json))
+        .route("/feed.txt", get(root_feed_text))
         .route("/feed", get(root_feed_xml))
         .with_state((index, resources))
 }
@@ -526,6 +527,37 @@ async fn root_feed_xml(
         [(
             header::CONTENT_TYPE,
             HeaderValue::from_static("application/atom+xml"),
+        ), (
+            header::CACHE_CONTROL,
+            HeaderValue::from_static(
+                "public, max-age=300, s-max-age=300, stale-while-revalidate=60, stale-if-error=86400",
+            ),
+        ), (
+            header::ACCESS_CONTROL_ALLOW_ORIGIN,
+            HeaderValue::from_static("*"),
+        )],
+        xml,
+    ))
+}
+
+async fn root_feed_text(
+    Host(host): Host,
+    State((index, resources)): State<(Index<StoryIndex>, Resources)>,
+    query: Query<HashMap<String, String>>,
+) -> Result<impl IntoResponse, WebError> {
+    let now = now(&index).await?;
+    let stories = index
+        .stories::<StoryRender>(query.get("search"), 0, 100)
+        .await?;
+
+    let xml = resources
+        .templates
+        .read()
+        .render("feed.txt", &context!(stories, now, host))?;
+    Ok((
+        [(
+            header::CONTENT_TYPE,
+            HeaderValue::from_static("text/plain; charset=utf-8"),
         ), (
             header::CACHE_CONTROL,
             HeaderValue::from_static(
