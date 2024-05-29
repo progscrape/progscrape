@@ -57,12 +57,12 @@
         </div>
     </div>
     <noscript>
-        <img src="/state?path={{ path }}" width="1" height="1">
+        <img src="/state?path={{ path | urlencode | safe }}" width="1" height="1">
     </noscript>
     <script>
         (function() {
             var referrer = encodeURIComponent(document.referrer);
-            var path = encodeURIComponent('{{ path }}');
+            var path = encodeURIComponent({{ path | json_encode() | safe }});
             var scriptUrl = '/state?path=' + path + '&r=' + referrer;
 
             var script = document.createElement('script');
