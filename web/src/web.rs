@@ -487,7 +487,7 @@ async fn root(
         .get("offset")
         .map(|x| x.parse().unwrap_or_default())
         .unwrap_or_default();
-    let query = index.parse_query(&search)?;
+    let query = index.parse_query(search)?;
     if let StoryQuery::UrlSearch(url) = query {
         return Err(WebError::WrongUrl(format!("/s/{url}")));
     }
@@ -534,13 +534,13 @@ async fn story(
     let StoryQuery::UrlSearch(url) = query.clone() else {
         tracing::info!("Invalid story URL: {search}");
         // Send them to the root page for everything that doesn't match
-        return Err(WebError::WrongUrl(format!("/")));
+        return Err(WebError::WrongUrl("/".to_string()));
     };
     let offset = 0;
     let stories = index.stories::<StoryRender>(query, offset, 10).await?;
     // Get the related stories for the first story
     let mut related = vec![];
-    if let Some(story) = stories.get(0) {
+    if let Some(story) = stories.first() {
         let related_query = StoryQuery::Related(story.title.clone(), story.tags.clone());
         for story in index
             .stories::<StoryRender>(related_query, offset, 30)
@@ -674,7 +674,7 @@ async fn state_tracker(
         ip: Option<&'a str>,
     }
 
-    fn header<'a>(headers_in: &'a HeaderMap, key: HeaderName) -> Option<&'a str> {
+    fn header(headers_in: &HeaderMap, key: HeaderName) -> Option<&str> {
         headers_in
             .get(key)
             .map(|s| s.as_bytes())

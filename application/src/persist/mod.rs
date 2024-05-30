@@ -160,12 +160,10 @@ impl StoryQuery {
                     || !host.contains(|c: char| c.is_alphanumeric() || c == '-')
                 {
                     None
+                } else if search.contains('/') {
+                    Some(StoryQuery::UrlSearch(url))
                 } else {
-                    if search.contains('/') {
-                        Some(StoryQuery::UrlSearch(url))
-                    } else {
-                        Some(StoryQuery::DomainSearch(url.host().to_owned()))
-                    }
+                    Some(StoryQuery::DomainSearch(url.host().to_owned()))
                 }
             } else {
                 None

@@ -1,7 +1,6 @@
 use itertools::Itertools;
 use notify::RecursiveMode;
 use notify::Watcher;
-use progscrape_application::StoryRender;
 use progscrape_scrapers::Scrapers;
 use progscrape_scrapers::StoryDate;
 use serde::Serialize;
@@ -106,7 +105,6 @@ fn blog_posts(resource_path: &Path) -> Result<Vec<BlogPost>, WebError> {
         let contents = std::fs::read_to_string(entry.path().canonicalize()?)?;
         let title = contents
             .split('\n')
-            .into_iter()
             .find(|line| line.starts_with("title:"))
             .unwrap_or_default()
             .trim_start_matches("title:")
@@ -114,7 +112,6 @@ fn blog_posts(resource_path: &Path) -> Result<Vec<BlogPost>, WebError> {
             .to_owned();
         let mut tags = contents
             .split('\n')
-            .into_iter()
             .find(|line| line.starts_with("tags:"))
             .unwrap_or_default()
             .trim_start_matches("tags:")
@@ -125,8 +122,8 @@ fn blog_posts(resource_path: &Path) -> Result<Vec<BlogPost>, WebError> {
         tags.push("blog".to_owned());
         tags.insert(0, "progscrape.com".to_owned());
         // Workaround for a markdown-rs bug
-        let html = markdown::to_html_with_options(&contents, &opts)
-            .map_err(|e| WebError::MarkdownError(e))?;
+        let html =
+            markdown::to_html_with_options(&contents, &opts).map_err(WebError::MarkdownError)?;
         posts.push(BlogPost {
             title,
             date,

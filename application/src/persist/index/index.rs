@@ -555,7 +555,7 @@ impl StoryIndex {
             .collect_vec();
 
         // This shouldn't be possible
-        if phrase.len() == 0 {
+        if phrase.is_empty() {
             return Err(PersistError::UnexpectedError("Empty domain".to_string()));
         }
 
