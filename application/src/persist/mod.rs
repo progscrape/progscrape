@@ -68,6 +68,8 @@ pub enum StoryQuery {
     UrlSearch(StoryUrl),
     /// Stories matching a text search.
     TextSearch(String),
+    /// Related stories (title, tags)
+    Related(String, Vec<String>),
 }
 
 /// A string that may be turned into a [`StoryQuery`].
@@ -114,6 +116,8 @@ impl StoryQuery {
             Self::UrlSearch(url) => url.to_string().into(),
             Self::TagSearch(tag, _) => tag.into(),
             Self::TextSearch(text) => text.into(),
+            // TODO: This probably won't work
+            Self::Related(title, tags) => format!("title:{title:?} tags:{tags:?}").into(),
         }
     }
 

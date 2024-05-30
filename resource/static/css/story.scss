@@ -1,5 +1,10 @@
 @use "breakpoints";
 
+h1.related {
+    padding: 1em 0 1em 0;
+    font-size: 20px;
+}
+
 h2.error {
     font-weight: bold;
     padding: 1em 0 1em 0;
@@ -65,6 +70,58 @@ h2.error {
         }
     }
     
+    &.detail {
+        h2.story-title a:visited {
+            color: #5555cc;
+        }
+        div.metadata {
+            padding-top: 0em;
+            display: flex;
+            flex-direction: column;
+            span.tags {
+                span.tag {
+                    background-color: #555;
+                }
+                order: 1;
+            }
+            span.sites {
+                order: 3;
+            }
+            > span {
+                opacity: 1 !important;
+                padding: 0.25em;
+            }
+            span.sites a {
+                display: block;
+                width: auto;
+                padding-left: 20px;
+                margin-top: 4px;
+                border-width: 0;
+            }
+            span.age::before {
+                content: "from ";
+            }
+            span.tags::before {
+                content: "🏷️";
+                font-size: 18px;
+                vertical-align: middle;
+            }
+
+            a.reddit::before {
+                content: "Reddit discussion";
+            }
+            a.hacker_news::before {
+                content: "Hacker News discussion";
+            }
+            a.lobsters::before {
+                content: "Lobste.rs discussion";
+            }
+            a.slashdot::before {
+                content: "Slashdot discussion";
+            }
+        }
+    }
+
     div.metadata {
         display: table;
         padding-left: 1em;
@@ -85,7 +142,7 @@ h2.error {
         }
     }
 
-    a.feed, a.reddit, a.delicious, a.hnews, a.lobsters, a.slashdot {
+    a.feed, a.reddit, a.delicious, a.hacker_news, a.lobsters, a.slashdot {
         display: inline-block;
         width: 16px;
         height: 16px;
@@ -95,7 +152,7 @@ h2.error {
         border-left: 1px solid rgba(255, 255, 255, .1);
         border-right: 1px solid rgba(0, 0, 0, .1);
         border-bottom: 1px solid rgba(0, 0, 0, .1);
-        background-size: 100%;
+        background-size: 16px;
         background-origin: border-box;
         background-repeat: no-repeat;
     
@@ -112,8 +169,8 @@ h2.error {
         background-image: var(--url-slashdot-png);
     }
     
-    a.hnews {
-        background-image: var(--url-hnews-png);
+    a.hacker_news {
+        background-image: var(--url-hacker_news-png);
     }
     
     a.lobsters {

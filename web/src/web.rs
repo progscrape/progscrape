@@ -432,9 +432,7 @@ async fn root(
     if let StoryQuery::UrlSearch(url) = query {
         return Err(WebError::WrongUrl(format!("/s/{url}")));
     }
-    let stories = index
-        .stories::<StoryRender>(query, offset, 30)
-        .await?;
+    let stories = index.stories::<StoryRender>(query, offset, 30).await?;
     let top_tags = index.top_tags(20)?;
     let path = original_uri
         .path_and_query()
@@ -480,7 +478,21 @@ async fn story(
         return Err(WebError::WrongUrl(format!("/")));
     }
     let offset = 0;
-    let stories = index.stories::<StoryRender>(query, offset, 30).await?;
+    let stories = index.stories::<StoryRender>(query, offset, 10).await?;
+    // Get the related stories for the first story
+    let mut related = vec![];
+    if let Some(story) = stories.get(0) {
+        let related_query = StoryQuery::Related(story.title.clone(), story.tags.clone());
+        for story in index
+            .stories::<StoryRender>(related_query, offset, 30)
+            .await?
+        {
+            if story.url == stories[0].url && story.date == stories[0].date {
+                continue;
+            }
+            related.push(story);
+        }
+    }
     let top_tags = index.top_tags(20)?;
     let path = original_uri
         .path_and_query()
@@ -492,7 +504,7 @@ async fn story(
             "public, max-age=300, s-max-age=300, stale-while-revalidate=60, stale-if-error=86400",
         ),
     )],
-    render(&resources, "story.html", context!(top_tags, stories, now, search, offset, host, path))))
+    render(&resources, "story.html", context!(top_tags, stories, related, now, search, offset, host, path))))
 }
 
 // basic handler that responds with a static string

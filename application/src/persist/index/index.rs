@@ -2,7 +2,9 @@ use itertools::Itertools;
 use keepcalm::SharedMut;
 
 use tantivy::collector::TopDocs;
-use tantivy::query::{AllQuery, PhraseQuery, Query, QueryParser, TermQuery};
+use tantivy::query::{
+    AllQuery, BooleanQuery, BoostQuery, Occur, PhraseQuery, Query, QueryParser, TermQuery,
+};
 use tantivy::tokenizer::TokenizerManager;
 use tantivy::{schema::*, DocAddress, IndexWriter, Searcher, SegmentReader};
 
@@ -83,6 +85,12 @@ impl WriterProvider {
 
         f(shard, &shard_index, writer)
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ScoreAlgo {
+    Default,
+    Related,
 }
 
 impl StoryIndex {
@@ -458,6 +466,7 @@ impl StoryIndex {
         &self,
         query: Q,
         max: usize,
+        score_algo: ScoreAlgo,
     ) -> Result<Vec<(Shard, DocAddress)>, PersistError> {
         let mut vec = vec![];
         let mut remaining = max;
@@ -480,10 +489,14 @@ impl StoryIndex {
                             .i64(schema.date_field)
                             .expect("Failed to get fast fields");
                         move |doc, score| {
-                            let doc_score = score_field.get_val(doc);
-                            let doc_date = date_field.get_val(doc);
-                            let age = now - doc_date;
-                            score + doc_score as f32 + (age as f32) * -0.00001
+                            if score_algo == ScoreAlgo::Related {
+                                score
+                            } else {
+                                let doc_score = score_field.get_val(doc);
+                                let doc_date = date_field.get_val(doc);
+                                let age = now - doc_date;
+                                score + doc_score as f32 + (age as f32) * -0.00001
+                            }
                         }
                     });
                 let docs = searcher.search(&query, &docs)?;
@@ -526,7 +539,7 @@ impl StoryIndex {
             query_parser.parse_query(tag)?
         };
         tracing::debug!("Tag symbol query = {:?}", query);
-        self.fetch_search_query(query, max)
+        self.fetch_search_query(query, max, ScoreAlgo::Default)
     }
 
     fn fetch_domain_search(
@@ -551,11 +564,11 @@ impl StoryIndex {
             let query =
                 TermQuery::new(phrase.into_iter().next().unwrap(), IndexRecordOption::Basic);
             tracing::debug!("Domain term query = {:?}", query);
-            self.fetch_search_query(query, max)
+            self.fetch_search_query(query, max, ScoreAlgo::Default)
         } else {
             let query = PhraseQuery::new(phrase);
             tracing::debug!("Domain phrase query = {:?}", query);
-            self.fetch_search_query(query, max)
+            self.fetch_search_query(query, max, ScoreAlgo::Default)
         }
     }
 
@@ -564,30 +577,15 @@ impl StoryIndex {
         url: &StoryUrl,
         max: usize,
     ) -> Result<Vec<(Shard, DocAddress)>, PersistError> {
-        let host_field = self.schema.host_field;
-        let phrase = url
-            .host()
-            .split('.')
-            .filter(|s| !s.is_empty())
-            .map(|s| Term::from_field_text(host_field, s))
-            .collect_vec();
+        let hash = url.normalization().hash();
+        let hash_field = self.schema.url_norm_hash_field;
+        let query = TermQuery::new(
+            Term::from_field_i64(hash_field, hash),
+            IndexRecordOption::Basic,
+        );
 
-        // This shouldn't be possible
-        if phrase.len() == 0 {
-            return Err(PersistError::UnexpectedError("Empty domain".to_string()));
-        }
-
-        // The PhraseQuery asserts if only a single term is passed, so convert those into term queries
-        if phrase.len() == 1 {
-            let query =
-                TermQuery::new(phrase.into_iter().next().unwrap(), IndexRecordOption::Basic);
-            tracing::debug!("Domain term query = {:?}", query);
-            self.fetch_search_query(query, max)
-        } else {
-            let query = PhraseQuery::new(phrase);
-            tracing::debug!("Domain phrase query = {:?}", query);
-            self.fetch_search_query(query, max)
-        }
+        tracing::debug!("URL hash query = {:?} (for {url})", query);
+        self.fetch_search_query(query, max, ScoreAlgo::Default)
     }
 
     fn fetch_text_search(
@@ -617,7 +615,55 @@ impl StoryIndex {
 
         let query = query_parser.parse_query(&search)?;
         tracing::debug!("Term query = {:?}", query);
-        self.fetch_search_query(query, max)
+        self.fetch_search_query(query, max, ScoreAlgo::Related)
+    }
+
+    fn fetch_related(
+        &self,
+        title: &str,
+        tags: &[String],
+        max: usize,
+    ) -> Result<Vec<(Shard, DocAddress)>, PersistError> {
+        let mut query_parser = QueryParser::new(
+            self.schema.schema.clone(),
+            vec![self.schema.title_field, self.schema.tags_field],
+            TokenizerManager::default(),
+        );
+        query_parser.set_field_boost(self.schema.title_field, 2.0);
+
+        // Parse the alphanumeric bits of a title with some manual stop-word removal
+        // TODO: we need to index everything with stemming and stop-word removal!
+        let title = title.to_lowercase().replace(" the ", " ");
+        let title = title.replace(" a ", " ");
+        let title = title.trim_start_matches("the ");
+        let title = title.trim_start_matches("a ");
+        let title_query = query_parser
+            .parse_query(&title.replace(|c: char| c != ' ' && !c.is_alphanumeric(), " "))?;
+
+        let mut subqueries = vec![(Occur::Should, title_query)];
+        for tag in tags {
+            let query: Box<dyn Query> = if tag.contains('.') {
+                let phrase = tag
+                    .split('.')
+                    .filter(|s| !s.is_empty())
+                    .map(|s| Term::from_field_text(self.schema.host_field, s))
+                    .collect_vec();
+                Box::new(BoostQuery::new(Box::new(PhraseQuery::new(phrase)), 10.0))
+            } else {
+                Box::new(BoostQuery::new(
+                    Box::new(TermQuery::new(
+                        Term::from_field_text(self.schema.tags_field, tag),
+                        IndexRecordOption::Basic,
+                    )),
+                    0.2,
+                ))
+            };
+            subqueries.push((Occur::Should, query));
+        }
+
+        let query = BooleanQuery::new(subqueries);
+        tracing::debug!("Related query = {:?}", query);
+        self.fetch_search_query(query, max, ScoreAlgo::Related)
     }
 
     fn fetch_front_page(&self, max_count: usize) -> Result<Vec<(Shard, DocAddress)>, PersistError> {
@@ -676,6 +722,7 @@ impl StoryIndex {
             StoryQuery::DomainSearch(domain) => self.fetch_domain_search(&domain, max),
             StoryQuery::UrlSearch(url) => self.fetch_url_search(&url, max),
             StoryQuery::TextSearch(text) => self.fetch_text_search(&text, max),
+            StoryQuery::Related(title, tags) => self.fetch_related(&title, tags.as_slice(), max),
         })
         .map_err(|e|
             // We don't have as much control over the underlying search library as we'd like, so we try to
