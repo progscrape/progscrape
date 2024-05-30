@@ -16,6 +16,11 @@ impl ScrapeSourceDef for Lobsters {
         format!("https://lobste.rs/s/{}/", id)
     }
 
+    fn id_from_comments_url(url: &str) -> Option<(&str, Option<&str>)> {
+        let url = url.trim_end_matches('/');
+        Some((url.strip_prefix("https://lobste.rs/s/")?, None))
+    }
+
     fn is_comments_host(host: &str) -> bool {
         host.ends_with("lobste.rs")
     }

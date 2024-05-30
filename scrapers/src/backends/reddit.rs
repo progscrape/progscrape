@@ -27,6 +27,24 @@ impl ScrapeSourceDef for Reddit {
         }
     }
 
+    fn id_from_comments_url(url: &str) -> Option<(&str, Option<&str>)> {
+        let url = url.trim_end_matches('/');
+        if let Some(url) = url.strip_prefix("https://www.reddit.com/comments/") {
+            Some((url, None))
+        } else {
+            let url = url.strip_prefix("https://www.reddit.com/r/")?;
+            if let Some((subreddit, rest)) = url.split_once('/') {
+                if let Some((_, id)) = rest.split_once('/') {
+                    Some((id, Some(subreddit)))
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        }
+    }
+
     fn is_comments_host(host: &str) -> bool {
         host.ends_with("reddit.com")
     }

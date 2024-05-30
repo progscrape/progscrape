@@ -28,6 +28,11 @@ impl ScrapeSourceDef for Slashdot {
         format!("https://tech.slashdot.org/story/{}/", id)
     }
 
+    fn id_from_comments_url(url: &str) -> Option<(&str, Option<&str>)> {
+        let url = url.trim_end_matches('/');
+        Some((url.strip_prefix("https://tech.slashdot.org/story/")?, None))
+    }
+
     fn is_comments_host(host: &str) -> bool {
         host.ends_with("slashdot.org")
     }

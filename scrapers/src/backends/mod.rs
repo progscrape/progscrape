@@ -89,6 +89,16 @@ macro_rules! scrapers {
                 }
             }
 
+            pub fn id_from_comments_url<'a, 'b>(&'a self, url: &'b str) -> Option<ScrapeId> {
+                match self {
+                    $(Self::$name => {
+                        let (source, subsource) = $package :: $name :: id_from_comments_url(url)?;
+                        Some(ScrapeId :: new( *self, subsource.map(|s| s.to_owned()), source.to_owned() ))
+                    },)*
+                    _ => unimplemented!()
+                }
+            }
+
             pub fn is_comments_host(&self, host: &str) -> bool {
                 match self {
                     $(Self::$name => $package :: $name :: is_comments_host(host),)*

@@ -9,6 +9,7 @@ pub trait ScrapeSourceDef {
     type Scraper: Scraper<Config = Self::Config, Output = Self::Scrape>;
 
     fn comments_url(id: &str, subsource: Option<&str>) -> String;
+    fn id_from_comments_url(url: &str) -> Option<(&str, Option<&str>)>;
     fn is_comments_host(host: &str) -> bool;
 }
 
