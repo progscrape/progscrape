@@ -121,7 +121,6 @@ fn blog_posts(resource_path: &Path) -> Result<Vec<BlogPost>, WebError> {
         tags.push("progscrape".to_owned());
         tags.push("blog".to_owned());
         tags.insert(0, "progscrape.com".to_owned());
-        // Workaround for a markdown-rs bug
         let html =
             markdown::to_html_with_options(&contents, &opts).map_err(WebError::MarkdownError)?;
         posts.push(BlogPost {
@@ -131,6 +130,8 @@ fn blog_posts(resource_path: &Path) -> Result<Vec<BlogPost>, WebError> {
             tags,
         });
     }
+    // Sort oldest last
+    posts.sort_by(|a, b| b.date.cmp(&a.date));
     Ok(posts)
 }
 

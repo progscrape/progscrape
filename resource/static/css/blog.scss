@@ -23,6 +23,9 @@
         }
 
         h2:first-of-type {
+            border-top: 1px solid #eee;
+            background-color: #fafafa;
+            margin-top: 1em;
             &::before {
                 content: ">";
             }
@@ -30,13 +33,16 @@
             text-shadow: 1px 1px #ddd;
             font-size: 25px;
             font-weight: bold;
-            padding: 1em 0 0 0;
+            padding: 0.2em 0 0 0.1em;
             text-decoration: underline;
         }
 
         .metadata {
+            border-bottom: 1px solid #eee;
+            background-color: #fafafa;
             display: block;
-            padding: 0.75em 0 1.5em 0;
+            padding: 0.75em 0 0.6em 0.1em;
+            margin-bottom: 1.3em;
             color: #888;
             .date {
                 font-size: 12px;
