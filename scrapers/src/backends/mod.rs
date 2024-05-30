@@ -180,6 +180,7 @@ macro_rules! scrapers {
         )*
 
         /// A strongly-typed scrape map that can be used to collect values by scrape source without allocations.
+        #[derive(Debug, Eq, PartialEq)]
         pub struct TypedScrapeMap<V> {
             $( pub $package: V, )*
             pub other: V
@@ -250,6 +251,20 @@ macro_rules! scrapers {
             /// Iterate over the underlying keys/values.
             pub fn iter(&self) -> impl Iterator<Item = (ScrapeSource, &'_ V)> {
                 [$( (ScrapeSource::$name, &self.$package), )* (ScrapeSource::Other, &self.other) ].into_iter()
+            }
+
+            pub fn into_with_map<T>(self, f: impl Fn(ScrapeSource, V) -> T) -> TypedScrapeMap<T> {
+                TypedScrapeMap {
+                    $( $package: f(ScrapeSource::$name, self.$package), )*
+                    other: f(ScrapeSource::Other, self.other),
+                }
+            }
+
+            pub fn into_with_map_fallible<T, E>(self, f: impl Fn(ScrapeSource, V) -> Result<T, E>) -> Result<TypedScrapeMap<T>, E> {
+                Ok(TypedScrapeMap {
+                    $( $package: f(ScrapeSource::$name, self.$package)?, )*
+                    other: f(ScrapeSource::Other, self.other)?,
+                })
             }
         }
 

@@ -4,7 +4,7 @@ use progscrape_scrapers::{ScrapeId, StoryDate, TypedScrape, TypedScrapeMap};
 use serde::{Deserialize, Serialize};
 
 /// Rendered story with all properties hydrated from the underlying scrapes. Extraneous data is removed at this point.
-#[derive(Clone, Default, Deserialize, Serialize)]
+#[derive(Clone, Default, Debug, Deserialize, Serialize)]
 pub struct StoryRender {
     /// Natural story order in its container list.
     pub order: usize,

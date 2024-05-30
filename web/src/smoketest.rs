@@ -10,11 +10,7 @@ mod test {
     use tower::Service;
     use tracing_subscriber::EnvFilter;
 
-    use crate::{
-        index::Index,
-        resource::Resources,
-        web::{create_feeds, FeedStory},
-    };
+    use crate::{index::Index, resource::Resources, story::FeedStory, web::create_feeds};
 
     fn create_request(
         path: &'static str,

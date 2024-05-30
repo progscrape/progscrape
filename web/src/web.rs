@@ -26,13 +26,15 @@ use crate::{
     index::Index,
     resource::Resources,
     serve_static_files,
+    story::FeedStory,
 };
 use progscrape_application::{
     PersistError, ScrapePersistResultSummarizer, ScrapePersistResultSummary, Shard, Story,
     StoryEvaluator, StoryIdentifier, StoryIndex, StoryQuery, StoryRender, StoryScore, TagSet,
 };
 use progscrape_scrapers::{
-    ScrapeCollection, ScrapeSource, ScraperHttpResponseInput, ScraperHttpResult, StoryDate, StoryUrl, TypedScrape, TypedScrapeMap
+    ScrapeCollection, ScrapeSource, ScraperHttpResponseInput, ScraperHttpResult, StoryDate,
+    TypedScrape,
 };
 
 #[derive(Debug, Error)]
@@ -434,96 +436,6 @@ async fn root(
         ),
     )],
     render(&resources, "index.html", context!(top_tags, stories, now, search, offset, host, path))))
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct FeedStory {
-    date: String,
-    href: String,
-    title: String,
-    tags: Vec<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    reddit: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    hnews: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    lobsters: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    slashdot: Option<String>,
-}
-
-impl From<StoryRender> for FeedStory {
-    fn from(mut story: StoryRender) -> Self {
-        FeedStory {
-            date: story.date.to_rfc3339(),
-            href: story.url,
-            title: story.title,
-            tags: story.tags,
-            reddit: story
-                .sources
-                .remove(ScrapeSource::Reddit)
-                .map(|id| id.comments_url()),
-            hnews: story
-                .sources
-                .remove(ScrapeSource::HackerNews)
-                .map(|id| id.comments_url()),
-            lobsters: story
-                .sources
-                .remove(ScrapeSource::Lobsters)
-                .map(|id| id.comments_url()),
-            slashdot: story
-                .sources
-                .remove(ScrapeSource::Slashdot)
-                .map(|id| id.comments_url()),
-        }
-    }
-}
-
-impl TryInto<StoryRender> for FeedStory {
-    type Error = String;
-    fn try_into(self) -> Result<StoryRender, Self::Error> {
-        let url = StoryUrl::parse(self.href).ok_or("Invalid url")?;
-        let mut sources = TypedScrapeMap::new();
-        if let Some(hnews) = self.hnews {
-            sources.hacker_news = Some(
-                ScrapeSource::HackerNews
-                    .id_from_comments_url(&hnews)
-                    .ok_or("Invalid hnews URL")?,
-            );
-        }
-        if let Some(lobsters) = self.lobsters {
-            sources.lobsters = Some(
-                ScrapeSource::Lobsters
-                    .id_from_comments_url(&lobsters)
-                    .ok_or("Invalid lobsters URL")?,
-            );
-        }
-        if let Some(reddit) = self.reddit {
-            sources.reddit = Some(
-                ScrapeSource::Reddit
-                    .id_from_comments_url(&reddit)
-                    .ok_or("Invalid reddit URL")?,
-            );
-        }
-        if let Some(slashdot) = self.slashdot {
-            sources.slashdot = Some(
-                ScrapeSource::Slashdot
-                    .id_from_comments_url(&slashdot)
-                    .ok_or("Invalid slashdot URL")?,
-            );
-        }
-        Ok(StoryRender {
-            date: StoryDate::parse_from_rfc3339(&self.date).ok_or("Invalid date")?,
-            url: url.to_string(),
-            title: self.title,
-            tags: self.tags,
-            domain: url.host().to_string(),
-            id: "".to_owned(),
-            order: 0,
-            score: 0.0,
-            sources,
-        })
-    }
 }
 
 // basic handler that responds with a static string
