@@ -559,6 +559,37 @@ impl StoryIndex {
         }
     }
 
+    fn fetch_url_search(
+        &self,
+        url: &StoryUrl,
+        max: usize,
+    ) -> Result<Vec<(Shard, DocAddress)>, PersistError> {
+        let host_field = self.schema.host_field;
+        let phrase = url
+            .host()
+            .split('.')
+            .filter(|s| !s.is_empty())
+            .map(|s| Term::from_field_text(host_field, s))
+            .collect_vec();
+
+        // This shouldn't be possible
+        if phrase.len() == 0 {
+            return Err(PersistError::UnexpectedError("Empty domain".to_string()));
+        }
+
+        // The PhraseQuery asserts if only a single term is passed, so convert those into term queries
+        if phrase.len() == 1 {
+            let query =
+                TermQuery::new(phrase.into_iter().next().unwrap(), IndexRecordOption::Basic);
+            tracing::debug!("Domain term query = {:?}", query);
+            self.fetch_search_query(query, max)
+        } else {
+            let query = PhraseQuery::new(phrase);
+            tracing::debug!("Domain phrase query = {:?}", query);
+            self.fetch_search_query(query, max)
+        }
+    }
+
     fn fetch_text_search(
         &self,
         search: &str,
@@ -640,9 +671,10 @@ impl StoryIndex {
         catch_unwind(|| match query {
             StoryQuery::ById(id) => self.with_searcher(id.shard(), self.fetch_by_id(&id)),
             StoryQuery::ByShard(shard) => self.with_searcher(shard, self.fetch_by_segment()),
-            StoryQuery::FrontPage() => self.fetch_front_page(max),
+            StoryQuery::FrontPage => self.fetch_front_page(max),
             StoryQuery::TagSearch(tag, alt) => self.fetch_tag_search(&tag, alt.as_deref(), max),
             StoryQuery::DomainSearch(domain) => self.fetch_domain_search(&domain, max),
+            StoryQuery::UrlSearch(url) => self.fetch_url_search(&url, max),
             StoryQuery::TextSearch(text) => self.fetch_text_search(&text, max),
         })
         .map_err(|e|
@@ -1104,7 +1136,7 @@ mod test {
 
         index.insert_scrapes(&eval, batch.clone())?;
 
-        let front_page = index.fetch_count(StoryQuery::FrontPage(), 100)?;
+        let front_page = index.fetch_count(StoryQuery::FrontPage, 100)?;
         assert_eq!(30, front_page);
 
         Ok(())
@@ -1149,13 +1181,16 @@ mod test {
         let eval = StoryEvaluator::new_for_test();
         let url = StoryUrl::parse("http://example.com").expect("URL");
         let date = StoryDate::year_month_day(2020, 1, 1).expect("Date failed");
-        let id = StoryIdentifier::new(date, url.normalization());
         index.insert_scrapes(&eval, [hn_story("story1", date, "title", &url)])?;
-        for a in ["http://", "http:", ""] {
-            for b in ["x", "2", ".", ""] {
-                for c in [".1", ".x", ".", "x", "2", ""] {
-                    for d in ["/", "/x", "/x.", "?", ""] {
+        for a in ["http://", "http:", " ", ""] {
+            for b in ["x", "2", ".", " ", ""] {
+                for c in [".1", ".x", ".", "x", "2", " ", ""] {
+                    for d in ["/", "/x", "/x.", "?", " ", ""] {
                         let s = format!("{a}{b}{c}{d}");
+                        // Any empty search is the frontpage
+                        if s.trim().is_empty() || !s.contains(|c: char| c.is_alphanumeric()) {
+                            continue;
+                        }
                         eprintln!("{s}");
                         // Result is ignored for this test
                         let res =

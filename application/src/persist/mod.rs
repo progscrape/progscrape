@@ -1,7 +1,6 @@
-use std::{collections::HashMap, ops::AddAssign, path::PathBuf};
+use std::{borrow::Cow, collections::HashMap, ops::AddAssign, path::PathBuf};
 
 use crate::story::{Story, StoryEvaluator, StoryIdentifier, StoryTagger};
-use itertools::Itertools;
 use progscrape_scrapers::{ScrapeCollection, StoryDate, StoryUrl, TypedScrape};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -60,19 +59,72 @@ pub enum StoryQuery {
     /// All stories from a given shard.
     ByShard(Shard),
     /// Front page stories.
-    FrontPage(),
+    FrontPage,
     /// Stories matching a tag query (second item in tuple is the alternative).
     TagSearch(String, Option<String>),
     /// Stories matching a domain query.
     DomainSearch(String),
+    /// Stories matching a specific URL.
+    UrlSearch(StoryUrl),
     /// Stories matching a text search.
     TextSearch(String),
 }
 
+/// A string that may be turned into a [`StoryQuery`].
+pub trait IntoStoryQuery {
+    fn into_story_query(self, tagger: &StoryTagger) -> StoryQuery;
+}
+
+trait StoryQueryString: AsRef<str> {}
+
+impl<'a> StoryQueryString for &'a str {}
+impl StoryQueryString for String {}
+impl<'a> StoryQueryString for &String {}
+impl<'a> StoryQueryString for Cow<'a, str> {}
+
+impl<S: StoryQueryString> IntoStoryQuery for S {
+    fn into_story_query(self, tagger: &StoryTagger) -> StoryQuery {
+        StoryQuery::from_search(tagger, self.as_ref())
+    }
+}
+
+impl<S: StoryQueryString> IntoStoryQuery for &Option<S> {
+    fn into_story_query(self, tagger: &StoryTagger) -> StoryQuery {
+        let Some(s) = self else {
+            return StoryQuery::FrontPage;
+        };
+        s.as_ref().into_story_query(tagger)
+    }
+}
+
+impl<S: StoryQueryString> IntoStoryQuery for Option<S> {
+    fn into_story_query(self, tagger: &StoryTagger) -> StoryQuery {
+        (&self).into_story_query(tagger)
+    }
+}
+
 impl StoryQuery {
+    /// Reconstructs the query text for the given query.
+    pub fn query_text(&self) -> Cow<str> {
+        match self {
+            Self::FrontPage => "".into(),
+            Self::ById(id) => format!("id={id}").into(),
+            Self::ByShard(shard) => format!("shard={shard:?}").into(),
+            Self::DomainSearch(domain) => domain.into(),
+            Self::UrlSearch(url) => url.to_string().into(),
+            Self::TagSearch(tag, _) => tag.into(),
+            Self::TextSearch(text) => text.into(),
+        }
+    }
+
     pub fn from_search(tagger: &StoryTagger, search: &str) -> Self {
         // Always trim whitespace
         let search = search.trim();
+
+        // An empty search or a search containing no alphanumeric chars is shunted to the frontpage
+        if search.is_empty() || !search.contains(|c: char| c.is_alphanumeric()) {
+            return Self::FrontPage;
+        }
 
         // This isn't terribly smart, buuuuut it allows us to search either a tag or site
         if let Some(tag) = tagger.check_tag_search(search) {
@@ -82,14 +134,14 @@ impl StoryQuery {
                 Some(search.to_ascii_lowercase())
             };
             StoryQuery::TagSearch(tag.to_string(), alt)
-        } else if let Some(domain) = Self::try_domain(search) {
-            StoryQuery::DomainSearch(domain)
+        } else if let Some(domain_or_url) = Self::try_domain_or_url(search) {
+            domain_or_url
         } else {
             StoryQuery::TextSearch(search.to_string())
         }
     }
 
-    fn try_domain(search: &str) -> Option<String> {
+    fn try_domain_or_url(search: &str) -> Option<StoryQuery> {
         // Only test a domain search if the search contains a domain-like char
         if search.contains('.') || search.contains(':') {
             let url = if search.contains(':') {
@@ -105,7 +157,11 @@ impl StoryQuery {
                 {
                     None
                 } else {
-                    Some(url.host().to_owned())
+                    if search.contains('/') {
+                        Some(StoryQuery::UrlSearch(url))
+                    } else {
+                        Some(StoryQuery::DomainSearch(url.host().to_owned()))
+                    }
                 }
             } else {
                 None

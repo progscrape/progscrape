@@ -4,9 +4,9 @@ use crate::web::WebError;
 use itertools::Itertools;
 use keepcalm::{Shared, SharedMut};
 use progscrape_application::{
-    BackerUpper, BackupResult, PersistError, PersistLocation, ScrapePersistResult, Shard, Storage,
-    StorageFetch, StorageSummary, StorageWriter, Story, StoryEvaluator, StoryIdentifier,
-    StoryIndex, StoryQuery, StoryRender, StoryScrapePayload,
+    BackerUpper, BackupResult, IntoStoryQuery, PersistError, PersistLocation, ScrapePersistResult,
+    Shard, Storage, StorageFetch, StorageSummary, StorageWriter, Story, StoryEvaluator,
+    StoryIdentifier, StoryIndex, StoryQuery, StoryRender, StoryScrapePayload,
 };
 use progscrape_scrapers::{StoryDate, TypedScrape};
 use tracing::Level;
@@ -131,7 +131,7 @@ impl Index<StoryIndex> {
 
     pub async fn refresh_hot_set(&self) -> Result<(), PersistError> {
         let now = self.storage.read().most_recent_story()?;
-        let v = self.fetch(StoryQuery::FrontPage(), 500).await?;
+        let v = self.fetch(StoryQuery::FrontPage, 500).await?;
         *self.hot_set.write() = self.compute_hot_set(v, now);
         Ok(())
     }
@@ -177,31 +177,36 @@ impl Index<StoryIndex> {
             .collect_vec()
     }
 
+    pub fn parse_query(&self, query: impl IntoStoryQuery) -> Result<StoryQuery, PersistError> {
+        Ok(query.into_story_query(&self.eval.read().tagger))
+    }
+
     pub async fn stories<S: From<StoryRender>>(
         &self,
-        search: Option<impl AsRef<str>>,
+        query: StoryQuery,
         offset: usize,
         count: usize,
     ) -> Result<Vec<S>, PersistError> {
-        let eval = self.eval.clone();
-        let stories = if let Some(search) = search {
-            let search = search.as_ref();
-            let query = StoryQuery::from_search(&eval.read().tagger, search);
+        let stories = if let StoryQuery::FrontPage = query {
+            self.filter_and_render(self.hot_set.read().stories.iter(), offset, count)
+        } else {
             let start = Instant::now();
-            let query_log = if tracing::enabled!(Level::INFO) {
-                Some(format!("{query:?}"))
+            let (query_log, query_text) = if tracing::enabled!(Level::INFO) {
+                (
+                    Some(format!("{query:?}")),
+                    Some(query.query_text().to_string()),
+                )
             } else {
-                None
+                (None, None)
             };
             let stories = self.fetch::<Shard>(query, 100).await?;
             let elapsed_ms = start.elapsed().as_millis();
             tracing::info!(
-                "Search query_text={search:?} search_time={elapsed_ms}ms query={}",
+                "Search query_text={} search_time={elapsed_ms}ms query={}",
+                query_text.unwrap_or_default(),
                 query_log.unwrap_or_default()
             );
             self.filter_and_render(stories.iter(), offset, count)
-        } else {
-            self.filter_and_render(self.hot_set.read().stories.iter(), offset, count)
         };
 
         Ok(stories)

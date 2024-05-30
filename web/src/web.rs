@@ -71,12 +71,17 @@ pub enum WebError {
     NotFound,
     #[error("Authentication failed")]
     AuthError,
+    #[error("Wrong URL, redirecting")]
+    WrongUrl(String),
     #[error("Invalid command-line arguments")]
     ArgumentsInvalid(String),
 }
 
 impl IntoResponse for WebError {
     fn into_response(self) -> Response {
+        if let Self::WrongUrl(url) = self {
+            return Redirect::permanent(&url).into_response();
+        }
         let body = format!("Error: {:?}", self);
         let code = match self {
             Self::AuthError => StatusCode::UNAUTHORIZED,
@@ -265,6 +270,7 @@ pub fn create_feeds<S: Clone + Send + Sync + 'static>(
 ) -> Router<S> {
     Router::new()
         .route("/", get(root))
+        .nest("/s/", Router::new().fallback(story))
         .route("/feed.json", get(root_feed_json))
         .route("/feed.txt", get(root_feed_text))
         .route("/feed", get(root_feed_xml))
@@ -410,7 +416,6 @@ fn render_admin(
     ))
 }
 
-// basic handler that responds with a static string
 async fn root(
     OriginalUri(original_uri): OriginalUri,
     Host(host): Host,
@@ -423,7 +428,13 @@ async fn root(
         .get("offset")
         .map(|x| x.parse().unwrap_or_default())
         .unwrap_or_default();
-    let stories = index.stories::<StoryRender>(search, offset, 30).await?;
+    let query = index.parse_query(&search)?;
+    if let StoryQuery::UrlSearch(url) = query {
+        return Err(WebError::WrongUrl(format!("/s/{url}")));
+    }
+    let stories = index
+        .stories::<StoryRender>(query, offset, 30)
+        .await?;
     let top_tags = index.top_tags(20)?;
     let path = original_uri
         .path_and_query()
@@ -438,14 +449,59 @@ async fn root(
     render(&resources, "index.html", context!(top_tags, stories, now, search, offset, host, path))))
 }
 
+async fn story(
+    OriginalUri(original_uri): OriginalUri,
+    Host(host): Host,
+    State((index, resources)): State<(Index<StoryIndex>, Resources)>,
+) -> Result<impl IntoResponse, WebError> {
+    let now = now(&index).await?;
+    let mut search = original_uri
+        .path_and_query()
+        .map(|p| p.as_str())
+        .unwrap_or_default()
+        .trim_start_matches("/s/");
+    let mut did_trim = false;
+    for prefix in ["http:", "https:", "/"] {
+        if let Some(trimmed) = search.strip_prefix(prefix) {
+            did_trim = true;
+            search = trimmed;
+        }
+    }
+    if did_trim {
+        return Err(WebError::WrongUrl(format!("/s/{search}")));
+    }
+    let query = index.parse_query(search)?;
+    if let StoryQuery::DomainSearch(domain) = query {
+        return Err(WebError::WrongUrl(format!("/s/{domain}/")));
+    }
+    if !matches!(query, StoryQuery::UrlSearch(_)) {
+        tracing::info!("Invalid story URL: {search}");
+        // Send them to the root page for everything that doesn't match
+        return Err(WebError::WrongUrl(format!("/")));
+    }
+    let offset = 0;
+    let stories = index.stories::<StoryRender>(query, offset, 30).await?;
+    let top_tags = index.top_tags(20)?;
+    let path = original_uri
+        .path_and_query()
+        .map(|s| s.as_str())
+        .unwrap_or_default();
+    Ok(([(
+        header::CACHE_CONTROL,
+        HeaderValue::from_static(
+            "public, max-age=300, s-max-age=300, stale-while-revalidate=60, stale-if-error=86400",
+        ),
+    )],
+    render(&resources, "story.html", context!(top_tags, stories, now, search, offset, host, path))))
+}
+
 // basic handler that responds with a static string
 async fn root_feed_json(
     State((index, _resources)): State<(Index<StoryIndex>, Resources)>,
     query: Query<HashMap<String, String>>,
 ) -> Result<impl IntoResponse, WebError> {
-    let stories = index
-        .stories::<FeedStory>(query.get("search"), 0, 150)
-        .await?;
+    let query = index.parse_query(query.get("search"))?;
+    let stories = index.stories::<FeedStory>(query, 0, 150).await?;
     let top_tags: Vec<_> = index
         .top_tags(usize::MAX)?
         .into_iter()
@@ -473,9 +529,8 @@ async fn root_feed_xml(
     query: Query<HashMap<String, String>>,
 ) -> Result<impl IntoResponse, WebError> {
     let now = now(&index).await?;
-    let stories = index
-        .stories::<StoryRender>(query.get("search"), 0, 30)
-        .await?;
+    let query = index.parse_query(query.get("search"))?;
+    let stories = index.stories::<StoryRender>(query, 0, 30).await?;
 
     let xml = resources
         .templates
@@ -504,9 +559,8 @@ async fn root_feed_text(
     query: Query<HashMap<String, String>>,
 ) -> Result<impl IntoResponse, WebError> {
     let now = now(&index).await?;
-    let stories = index
-        .stories::<StoryRender>(query.get("search"), 0, 100)
-        .await?;
+    let query = index.parse_query(query.get("search"))?;
+    let stories = index.stories::<StoryRender>(query, 0, 100).await?;
 
     let xml = resources
         .templates
@@ -611,7 +665,7 @@ async fn root_metrics_txt(
         }
     }
     let stories = index
-        .stories::<StoryRender>(None::<String>, 0, usize::MAX)
+        .stories::<StoryRender>(StoryQuery::FrontPage, 0, usize::MAX)
         .await?;
     let mut source_count: HashMap<(ScrapeSource, Option<String>), usize> = Default::default();
     for story in stories {
@@ -917,7 +971,7 @@ async fn admin_status_frontpage(
     let now = now(&index).await?;
     let sort = sort.get("sort").cloned().unwrap_or_default();
     let stories = index
-        .stories::<StoryRender>(Option::<String>::None, 0, 500)
+        .stories::<StoryRender>(StoryQuery::FrontPage, 0, 500)
         .await?;
     render_admin(
         Some(&user),
@@ -941,7 +995,7 @@ async fn admin_index_frontpage_scoretuner(
         score_detail: Vec<(StoryScore, f32)>,
     }
 
-    let stories: Vec<Story<TypedScrape>> = index.fetch(StoryQuery::FrontPage(), 500).await?;
+    let stories: Vec<Story<TypedScrape>> = index.fetch(StoryQuery::FrontPage, 500).await?;
     let mut story_details = vec![];
     let eval = resources.story_evaluator.read();
 
