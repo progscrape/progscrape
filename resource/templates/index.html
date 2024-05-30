@@ -11,6 +11,40 @@
         <span class="tag"><a href="/?search={{ tag.0 }}">{{ tag.0 }}</a></span>&nbsp;
         {% endfor %}
     </div>
+    <div class="clusters">
+    {% for cluster in clusters %}
+    {% if loop.index0 <=3 %}
+    <div class="cluster">
+        <h1>{{ cluster.title }}</h1>
+
+        {% for cluster_story in cluster.stories %}
+        {% if loop.index0 <=2 %}
+        {% for story in cluster_story.stories %}
+        {% if loop.first %}
+        <div class="story">
+            <h2 class="story-title"><a href="{{ story.url }}">{{ cluster_story.title }}</a></h2>
+            <div class="metadata">
+                <span class="sites">
+                    {{ macros_story::comment_links(story=story) }}
+                </span>
+                <span class="age" title="{{ story.date | absolute_time }}">
+                    {{ story.date | relative_time(now=now) }}
+                </span>
+                <span class="tags">
+                    {% for tag in story.tags %}
+                    <span class="tag"><a href="/?search={{ tag|urlencode }}">{{ tag }}</a></span>
+                    {% endfor %}
+                </span>
+            </div>
+        </div>
+        {% endif %}
+        {% endfor %}
+        {% endif %}
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endfor %}
+    </div>
 
     {% for story in stories %}
     <div class="story">

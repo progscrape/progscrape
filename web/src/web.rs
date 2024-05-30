@@ -24,7 +24,7 @@ use crate::{
     auth::Auth,
     cron::{Cron, CronHistory},
     index::Index,
-    resource::Resources,
+    resource::{Resources, CLUSTER_JSON},
     serve_static_files,
     story::FeedStory,
 };
@@ -429,13 +429,46 @@ async fn root(
         .path_and_query()
         .map(|s| s.as_str())
         .unwrap_or_default();
+
+    #[derive(Serialize, Deserialize)]
+    struct Cluster<S: Serialize> {
+        pub title: String,
+        pub stories: Vec<ClusterStory<S>>,
+    }
+
+    #[derive(Serialize, Deserialize)]
+    struct ClusterStory<S: Serialize> {
+        pub title: String,
+        pub stories: Vec<S>,
+    }
+
+    let clusters = serde_json::from_str::<Vec<Cluster<FeedStory>>>(CLUSTER_JSON).unwrap();
+    let clusters: Vec<Cluster<StoryRender>> = clusters
+        .into_iter()
+        .map(|c| Cluster {
+            title: c.title,
+            stories: c
+                .stories
+                .into_iter()
+                .map(|s| ClusterStory {
+                    title: s.title,
+                    stories: s
+                        .stories
+                        .into_iter()
+                        .map(|s| s.try_into().unwrap())
+                        .collect_vec(),
+                })
+                .collect_vec(),
+        })
+        .collect_vec();
+
     Ok(([(
         header::CACHE_CONTROL,
         HeaderValue::from_static(
             "public, max-age=300, s-max-age=300, stale-while-revalidate=60, stale-if-error=86400",
         ),
     )],
-    render(&resources, "index.html", context!(top_tags, stories, now, search, offset, host, path))))
+    render(&resources, "index.html", context!(top_tags, stories, clusters, now, search, offset, host, path))))
 }
 
 // basic handler that responds with a static string

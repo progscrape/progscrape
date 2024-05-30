@@ -1,0 +1,438 @@
+[
+    {
+      "title": "Science & Technology",
+      "stories": [
+        {
+          "title": "Everything About Fast Inverse Square Root Algorithm",
+          "ids": [
+            0,
+            47
+          ],
+          "stories": [
+            {
+              "date": "2024-05-29T14:04:35+00:00",
+              "href": "https://github.com/francisrstokes/githublog/blob/main/2024/5/29/fast-inverse-sqrt.md",
+              "lobsters": "https://lobste.rs/s/kdkhxm/",
+              "reddit": "https://www.reddit.com/r/programming/comments/1d3d0yx/",
+              "tags": [
+                "github.com",
+                "algorithm",
+                "c",
+                "compsci",
+                "math",
+                "square"
+              ],
+              "title": "Everything I Know About The Fast Inverse Square Root Algorithm"
+            },
+            {
+              "date": "2024-05-29T18:40:46+00:00",
+              "href": "https://cbloomrants.blogspot.com/2010/11/11-20-10-function-approximation-by_20.html",
+              "lobsters": "https://lobste.rs/s/p3cgdg/",
+              "tags": [
+                "cbloomrants.blogspot.com",
+                "compsci",
+                "square"
+              ],
+              "title": "Function approximation by iteration: Reciprocal Square Root"
+            }
+          ]
+        },
+        {
+          "title": "MIT Study on GPT-4 Bar Exam Performance",
+          "ids": [
+            1
+          ],
+          "stories": [
+            {
+              "date": "2024-05-29T19:14:49+00:00",
+              "href": "https://link.springer.com/article/10.1007/s10506-024-09396-9",
+              "reddit": "https://www.reddit.com/r/science/comments/1d3ka9a/",
+              "tags": [
+                "link.springer.com",
+                "mit"
+              ],
+              "title": "GPT-4 didn't really score 90th percentile on the bar exam, MIT study finds"
+            }
+          ]
+        },
+        {
+          "title": "High-Resolution Multiview Diffusion with Row-Wise Attention",
+          "ids": [
+            6
+          ],
+          "stories": [
+            {
+              "date": "2024-05-29T18:40:06+00:00",
+              "hnews": "https://news.ycombinator.com/item?id=40515269",
+              "href": "https://penghtyx.github.io/Era3D/",
+              "tags": [
+                "penghtyx.github.io"
+              ],
+              "title": "Era3D: High-Resolution Multiview Diffusion Using Efficient Row-Wise Attention"
+            }
+          ]
+        },
+        {
+          "title": "New Attention Mechanisms Surpass Standard Multi-Head Attention",
+          "ids": [
+            5
+          ],
+          "stories": [
+            {
+              "date": "2024-05-29T19:33:12+00:00",
+              "hnews": "https://news.ycombinator.com/item?id=40515957",
+              "href": "https://arxiv.org/abs/2403.01643",
+              "tags": [
+                "arxiv.org"
+              ],
+              "title": "New attention mechanisms that outperform standard multi-head attention"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Programming & Development",
+      "stories": [
+        {
+          "title": "Running Go on Val Town",
+          "ids": [
+            16
+          ],
+          "stories": [
+            {
+              "date": "2024-05-29T16:31:37+00:00",
+              "href": "https://maxmcd.com/posts/running-go-on-val-town/",
+              "lobsters": "https://lobste.rs/s/6jxas7/",
+              "tags": [
+                "maxmcd.com",
+                "go",
+                "wasm",
+                "web"
+              ],
+              "title": "Running Go on Val Town"
+            }
+          ]
+        },
+        {
+          "title": "Show HN: Serverless Postgres",
+          "ids": [
+            29
+          ],
+          "stories": [
+            {
+              "date": "2024-05-29T16:54:19+00:00",
+              "hnews": "https://news.ycombinator.com/item?id=40514089",
+              "href": "https://github.com/kiwicopple/serverless-postgres",
+              "tags": [
+                "github.com",
+                "postgresql",
+                "serverless",
+                "show"
+              ],
+              "title": "Show HN: Serverless Postgres"
+            }
+          ]
+        },
+        {
+          "title": "Meta Shuts Down Network Using AI-Generated Propaganda",
+          "ids": [
+            37
+          ],
+          "stories": [
+            {
+              "date": "2024-05-29T19:10:50+00:00",
+              "hnews": "https://news.ycombinator.com/item?id=40515671",
+              "href": "https://www.calcalistech.com/ctechnews/article/rjqswxh4r",
+              "tags": [
+                "calcalistech.com",
+                "meta"
+              ],
+              "title": "Meta shuts down Israeli network pushing AI-generated propaganda in U.S."
+            }
+          ]
+        },
+        {
+          "title": "HeavyIQ: Understanding 220M Flights with AI",
+          "ids": [
+            73
+          ],
+          "stories": [
+            {
+              "date": "2024-05-29T14:53:11+00:00",
+              "href": "https://tech.marksblogg.com/heavyiq-faa-ai-llm-gpu-database.html",
+              "lobsters": "https://lobste.rs/s/7dtbl9/",
+              "tags": [
+                "tech.marksblogg.com",
+                "ai",
+                "database",
+                "visualization"
+              ],
+              "title": "HeavyIQ: Understanding 220M Flights with AI"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Hardware & Electronics",
+      "stories": [
+        {
+          "title": "New Framework Laptop with Intel Core Ultra Series 1",
+          "ids": [
+            3
+          ],
+          "stories": [
+            {
+              "date": "2024-05-29T17:59:29+00:00",
+              "hnews": "https://news.ycombinator.com/item?id=40514807",
+              "href": "https://frame.work/fr/fr/blog/introducing-the-new-framework-laptop-13-with-intel-core-ultra-series-1-processors",
+              "lobsters": "https://lobste.rs/s/kxk0io/",
+              "tags": [
+                "frame.work",
+                "hardware",
+                "intel"
+              ],
+              "title": "The new Framework Laptop 13 with Intel Core Ultra Series 1 processors"
+            }
+          ]
+        },
+        {
+          "title": "Adding a USB Port to ThinkPad X1 Nano",
+          "ids": [
+            4
+          ],
+          "stories": [
+            {
+              "date": "2024-05-29T21:42:22+00:00",
+              "href": "https://jcs.org/2024/05/29/x1usb",
+              "lobsters": "https://lobste.rs/s/qsws7e/",
+              "tags": [
+                "jcs.org",
+                "hardware"
+              ],
+              "title": "Adding a USB Port to the ThinkPad X1 Nano (the Hard Way)"
+            }
+          ]
+        },
+        {
+          "title": "Google Releases Smart Watch for Kids",
+          "ids": [
+            12
+          ],
+          "stories": [
+            {
+              "date": "2024-05-29T18:14:34+00:00",
+              "hnews": "https://news.ycombinator.com/item?id=40514983",
+              "href": "https://store.google.com/US/product/fitbit_ace_lte?hl=en-US",
+              "tags": [
+                "store.google.com",
+                "google",
+                "release"
+              ],
+              "title": "Google releases smart watch for kids"
+            }
+          ]
+        },
+        {
+          "title": "Nvidia Market Cap Nears Apple, Insiders Reveal Jensen Huang’s Email Style",
+          "ids": [
+            45,
+            46
+          ],
+          "stories": [
+            {
+              "date": "2024-05-29T18:59:11+00:00",
+              "hnews": "https://news.ycombinator.com/item?id=40515515",
+              "href": "https://www.reuters.com/technology/ai-darling-nvidias-market-value-surges-closer-apple-2024-05-28/",
+              "tags": [
+                "reuters.com",
+                "apple",
+                "nvidia"
+              ],
+              "title": "Nvidia is about to pass Apple in market cap"
+            },
+            {
+              "date": "2024-05-29T16:04:20+00:00",
+              "href": "https://www.businessinsider.com/nvidia-jensen-huang-email-style-concise-key-points-insiders-2024-5#:~:text=Jensen%20Huang's%20emails%20run%20to,be%20challenging%2C%20the%20people%20said.",
+              "reddit": "https://www.reddit.com/r/technology/comments/1d3fsh6/",
+              "tags": [
+                "businessinsider.com",
+                "nvidia"
+              ],
+              "title": "Nvidia insiders reveal how Jensen Huang wants emails to be written"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Privacy & Security",
+      "stories": [
+        {
+          "title": "Free Software Foundation Privacy Policy",
+          "ids": [
+            25
+          ],
+          "stories": [
+            {
+              "date": "2024-05-29T21:19:13+00:00",
+              "hnews": "https://news.ycombinator.com/item?id=40517146",
+              "href": "https://www.fsf.org/about/free-software-foundation-privacy-policy/free-software-foundation-privacy-policy-v1.1",
+              "tags": [
+                "fsf.org",
+                "privacy"
+              ],
+              "title": "Free Software Foundation Privacy Policy"
+            }
+          ]
+        },
+        {
+          "title": "String Comparison Timing Attacks in Security",
+          "ids": [
+            33
+          ],
+          "stories": [
+            {
+              "date": "2024-05-29T18:54:43+00:00",
+              "href": "https://www.sjoerdlangkemper.nl/2024/05/29/string-comparison-timing-attacks/",
+              "lobsters": "https://lobste.rs/s/dak82f/",
+              "tags": [
+                "sjoerdlangkemper.nl",
+                "security"
+              ],
+              "title": "String comparison timing attacks"
+            }
+          ]
+        },
+        {
+          "title": "Christie's Auction House Hacked, Data Stolen",
+          "ids": [
+            39
+          ],
+          "stories": [
+            {
+              "date": "2024-05-29T18:13:40+00:00",
+              "href": "https://securityboulevard.com/2024/05/christies-auction-house-hacked-sensitive-data-from-500000-customers-stolen/",
+              "reddit": "https://www.reddit.com/r/technology/comments/1d3iupg/",
+              "tags": [
+                "securityboulevard.com"
+              ],
+              "title": "Christie's Auction House Hacked, Sensitive Data from 500,000 Customers Stolen"
+            }
+          ]
+        },
+        {
+          "title": "Secure Your Tailscale Infrastructure with Mutual TLS",
+          "ids": [
+            53
+          ],
+          "stories": [
+            {
+              "date": "2024-05-29T13:42:22+00:00",
+              "href": "https://blog.viktorpetersson.com/2024/05/29/tailscale-and-mutual-tls.html",
+              "lobsters": "https://lobste.rs/s/zsx17l/",
+              "tags": [
+                "blog.viktorpetersson.com",
+                "https",
+                "linux",
+                "security",
+                "tls"
+              ],
+              "title": "Secure your Tailscale infra further with Mutual TLS (mTLS)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "World News & Politics",
+      "stories": [
+        {
+          "title": "Texas Hit by Massive Hail and Storms",
+          "ids": [
+            11,
+            113
+          ],
+          "stories": [
+            {
+              "date": "2024-05-29T21:30:44+00:00",
+              "hnews": "https://news.ycombinator.com/item?id=40517254",
+              "href": "https://www.washingtonpost.com/weather/2024/05/29/texas-hail-dvd-size-record-nwws/",
+              "tags": [
+                "washingtonpost.com",
+                "texas"
+              ],
+              "title": "The hail in Texas was so big Tuesday that it required a new description"
+            },
+            {
+              "date": "2024-05-29T10:46:27+00:00",
+              "href": "https://www.cbsnews.com/news/storms-outages-texas-deadly-weekend-weather-across-us/",
+              "reddit": "https://www.reddit.com/r/technology/comments/1d397kg/",
+              "tags": [
+                "cbsnews.com",
+                "texas"
+              ],
+              "title": "Storms leave widespread outages across Texas, cleanup continues after deadly weekend across U.S."
+            }
+          ]
+        },
+        {
+          "title": "Russian Emotions on Invasion Driving Antiwar Actions",
+          "ids": [
+            18
+          ],
+          "stories": [
+            {
+              "date": "2024-05-29T18:03:13+00:00",
+              "href": "https://www.psypost.org/moral-shame-drives-antiwar-actions-in-russia-study-reveals/",
+              "reddit": "https://www.reddit.com/r/science/comments/1d3ilfo/",
+              "tags": [
+                "psypost.org",
+                "psychology",
+                "ukraine"
+              ],
+              "title": "A recent study explored the emotions of guilt and shame among Russians regarding their country’s invasion of Ukraine and how these emotions influence antiwar actions"
+            }
+          ]
+        },
+        {
+          "title": "Canada Taking Action Against Space Debris",
+          "ids": [
+            51
+          ],
+          "stories": [
+            {
+              "date": "2024-05-29T18:44:54+00:00",
+              "href": "https://globalnews.ca/news/10527141/space-debris-risk-to-earth-csa/",
+              "reddit": "https://www.reddit.com/r/technology/comments/1d3jld3/",
+              "tags": [
+                "globalnews.ca",
+                "canada",
+                "earth"
+              ],
+              "title": "Space debris is an ‘increasing issue’ for Earth. What Canada is doing now  | Globalnews.ca"
+            }
+          ]
+        },
+        {
+          "title": "Kids Sickened by Decades-Old Chemical Weapons During Police Training",
+          "ids": [
+            60
+          ],
+          "stories": [
+            {
+              "date": "2024-05-29T17:57:02+00:00",
+              "hnews": "https://news.ycombinator.com/item?id=40514783",
+              "href": "https://www.sfchronicle.com/crime/article/sf-jail-chemical-weapons-19476975.php",
+              "tags": [
+                "sfchronicle.com"
+              ],
+              "title": "Kids sickened by police training may have ingested decades old chemical weapons"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+  

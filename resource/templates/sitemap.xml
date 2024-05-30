@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
    <url>
-      <loc>http://www.progscrape.com/</loc>
+      <loc>http://progscrape.com/</loc>
       <lastmod>{{ now }}</lastmod>
       <changefreq>hourly</changefreq>
       <priority>1</priority>
    </url>
    {% for search in searches %}
    <url>
-      <loc>http://www.progscrape.com/?search={{ search|escape }}</loc>
+      <loc>http://progscrape.com/?search={{ search|escape }}</loc>
       <lastmod>{{ now }}</lastmod>
       <changefreq>weekly</changefreq>
       <priority>0.9</priority>
