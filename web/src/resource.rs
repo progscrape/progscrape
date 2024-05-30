@@ -37,6 +37,9 @@ pub struct Resources {
     pub scrapers: Shared<Scrapers>,
 }
 
+// TODO: This needs to be dynamically fetched
+pub const CLUSTER_JSON: &str = include_str!("../../resource/config/cluster.json");
+
 impl Resources {
     fn new(r: SharedMut<ResourceHolder>) -> Self {
         Resources {
