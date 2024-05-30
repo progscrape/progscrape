@@ -472,11 +472,11 @@ async fn story(
     if let StoryQuery::DomainSearch(domain) = query {
         return Err(WebError::WrongUrl(format!("/s/{domain}/")));
     }
-    if !matches!(query, StoryQuery::UrlSearch(_)) {
+    let StoryQuery::UrlSearch(url) = query.clone() else {
         tracing::info!("Invalid story URL: {search}");
         // Send them to the root page for everything that doesn't match
         return Err(WebError::WrongUrl(format!("/")));
-    }
+    };
     let offset = 0;
     let stories = index.stories::<StoryRender>(query, offset, 10).await?;
     // Get the related stories for the first story
@@ -492,6 +492,14 @@ async fn story(
             }
             related.push(story);
         }
+    } else {
+        // No URL matching this in the index, so just run a domain search
+        let related_query = StoryQuery::DomainSearch(url.host().to_string());
+        related.append(
+            &mut index
+                .stories::<StoryRender>(related_query, offset, 30)
+                .await?,
+        );
     }
     let top_tags = index.top_tags(20)?;
     let path = original_uri
