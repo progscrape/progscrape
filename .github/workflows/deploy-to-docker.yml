@@ -33,7 +33,7 @@ jobs:
           tags: mmastrac/progscrape:latest
       - name: Smoketest
         run:
-          docker run -it --rm mmastrac/progscrape:latest /usr/local/bin/progscrape-web help
+          docker run --rm mmastrac/progscrape:latest /usr/local/bin/progscrape-web help
       - name: Push
         uses: docker/build-push-action@v3
         with:
