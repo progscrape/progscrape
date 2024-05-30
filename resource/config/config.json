@@ -162,7 +162,8 @@
                 "malware": {},
                 "ransomware": {},
                 "refactor": {"alts": ["refactoring", "refactored"]},
-                "serverless": {}
+                "serverless": {},
+                "networking": {}
             },
             "company": {
                 "volkswagen(s)": {"alt": "volkswagon(s)"},
@@ -233,6 +234,7 @@
                 "nsa": {},
                 "cia": {},
                 "fbi": {},
+                "irs": {},
                 "csis": {},
                 "wikileaks": {},
 
@@ -244,6 +246,8 @@
                 "lyft": {},
                 "hbo": {},
                 "sony": {},
+                "nintendo": {},
+                "spotify": {},
                 "fdic": {},
                 "ucla": {},
                 "tor": {},
@@ -291,6 +295,8 @@
             "biology": {
                 "genetics": {"alts": ["genetic"]},
                 "biology": {},
+                "cancer": {},
+                "coronavirus": {},
                 "covid": {"alts": ["covid 19", "covid19"]},
                 "diabetes": {"alts": ["diabetic", "prediabetic", "prediabetes"]},
                 "disease": {},
@@ -299,7 +305,8 @@
                 "malaria": {},
                 "mrna": {},
                 "vaccine": {},
-                "brain": {}
+                "brain": {},
+                "cannabis": {}
             },
             "language": {
                 "php": {},
