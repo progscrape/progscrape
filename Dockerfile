@@ -30,7 +30,7 @@ RUN mkdir -p /output/linux/amd64
 RUN mv /build/target/release/progscrape /output/linux/amd64/progscrape-web
 RUN mv /build/target/aarch64-unknown-linux-gnu/release/progscrape /output/linux/arm64/progscrape-web
 
-FROM rust:1.67.0
+FROM rust:1.78.0
 ARG TARGETPLATFORM
 COPY --from=builder /output/$TARGETPLATFORM/progscrape-web /usr/local/bin/
 COPY --from=builder /build/resource/ /var/progscrape/resource/
