@@ -277,6 +277,7 @@ pub fn create_feeds<S: Clone + Send + Sync + 'static>(
         .route("/feed.json", get(root_feed_json))
         .route("/feed.txt", get(root_feed_text))
         .route("/feed", get(root_feed_xml))
+        .route("/blog", get(blog_posts))
         .route("/blog/", get(blog_posts))
         .route("/blog/:slug/:title", get(blog_post))
         .with_state((index, resources))
@@ -426,6 +427,10 @@ async fn blog_posts(
     Host(host): Host,
     State((index, resources)): State<(Index<StoryIndex>, Resources)>,
 ) -> Result<impl IntoResponse, WebError> {
+    // TODO: This should be middleware
+    if original_uri.path() == "/blog" {
+        return Err(WebError::WrongUrl("/blog/".to_string()));
+    }
     let posts = &*resources.blog_posts.read();
     let now = now(&index).await?;
     let top_tags = index.top_tags(20)?;
