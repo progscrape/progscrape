@@ -70,6 +70,10 @@
                 "url": "/admin/cron/reindex",
                 "interval": [1, "Day"]
             },
+            "update_blog": {
+                "url": "/admin/cron/blog",
+                "interval": [1, "Day"]
+            },
             "scrape_hackernews": {
                 "url": "/admin/cron/scrape/hacker_news",
                 "interval": [22, "Minute"]

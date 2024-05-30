@@ -1,6 +1,10 @@
+use itertools::Itertools;
 use notify::RecursiveMode;
 use notify::Watcher;
+use progscrape_application::StoryRender;
 use progscrape_scrapers::Scrapers;
+use progscrape_scrapers::StoryDate;
+use serde::Serialize;
 use std::borrow::Borrow;
 use std::fs::File;
 use std::io::BufReader;
@@ -22,6 +26,7 @@ struct ResourceHolder {
     templates: Tera,
     static_files: StaticFileRegistry,
     static_files_root: StaticFileRegistry,
+    blog_posts: Vec<BlogPost>,
     config: Config,
     story_evaluator: StoryEvaluator,
     scrapers: Scrapers,
@@ -32,6 +37,7 @@ pub struct Resources {
     pub templates: Shared<Tera>,
     pub static_files: Shared<StaticFileRegistry>,
     pub static_files_root: Shared<StaticFileRegistry>,
+    pub blog_posts: Shared<Vec<BlogPost>>,
     pub config: Shared<Config>,
     pub story_evaluator: Shared<StoryEvaluator>,
     pub scrapers: Shared<Scrapers>,
@@ -43,6 +49,7 @@ impl Resources {
             templates: r.shared_copy().project_fn(|x| &x.templates),
             static_files: r.shared_copy().project_fn(|x| &x.static_files),
             static_files_root: r.shared_copy().project_fn(|x| &x.static_files_root),
+            blog_posts: r.shared_copy().project_fn(|x| &x.blog_posts),
             config: r.shared_copy().project_fn(|x| &x.config),
             story_evaluator: r.shared_copy().project_fn(|x| &x.story_evaluator),
             scrapers: r.shared_copy().project_fn(|x| &x.scrapers),
@@ -72,6 +79,62 @@ fn create_static_files_root(resource_path: &Path) -> Result<StaticFileRegistry, 
     let mut static_files = StaticFileRegistry::default();
     static_files.register_files(resource_path.join("static/root/"))?;
     Ok(static_files)
+}
+
+#[derive(Serialize, Clone)]
+pub struct BlogPost {
+    pub title: String,
+    pub date: StoryDate,
+    pub html: String,
+    pub tags: Vec<String>,
+}
+
+fn blog_posts(resource_path: &Path) -> Result<Vec<BlogPost>, WebError> {
+    let blog = resource_path.join("blog");
+    let mut opts = markdown::Options::gfm();
+    opts.parse.constructs.frontmatter = true;
+    opts.parse.constructs.html_flow = true;
+    opts.parse.constructs.html_text = true;
+    let mut posts = vec![];
+    for entry in std::fs::read_dir(blog)? {
+        let entry = entry?;
+        let date = StoryDate::parse_from_rfc3339(&format!(
+            "{}T00:00:00Z",
+            entry.file_name().to_string_lossy().trim_end_matches(".md")
+        ))
+        .ok_or(WebError::IOError(std::io::ErrorKind::InvalidData.into()))?;
+        let contents = std::fs::read_to_string(entry.path().canonicalize()?)?;
+        let title = contents
+            .split('\n')
+            .into_iter()
+            .find(|line| line.starts_with("title:"))
+            .unwrap_or_default()
+            .trim_start_matches("title:")
+            .trim()
+            .to_owned();
+        let mut tags = contents
+            .split('\n')
+            .into_iter()
+            .find(|line| line.starts_with("tags:"))
+            .unwrap_or_default()
+            .trim_start_matches("tags:")
+            .split(',')
+            .map(|s| s.trim().to_owned())
+            .collect_vec();
+        tags.push("progscrape".to_owned());
+        tags.push("blog".to_owned());
+        tags.insert(0, "progscrape.com".to_owned());
+        // Workaround for a markdown-rs bug
+        let html = markdown::to_html_with_options(&contents, &opts)
+            .map_err(|e| WebError::MarkdownError(e))?;
+        posts.push(BlogPost {
+            title,
+            date,
+            html,
+            tags,
+        });
+    }
+    Ok(posts)
 }
 
 fn create_templates(
@@ -144,6 +207,7 @@ fn generate<T: AsRef<Path>>(resource_path: T) -> Result<ResourceHolder, WebError
     let config = create_config(resource_path)?;
     let story_evaluator = StoryEvaluator::new(&config.tagger, &config.score, &config.scrape);
     let scrapers = Scrapers::new(&config.scrape);
+    let blog_posts = blog_posts(resource_path)?;
     Ok(ResourceHolder {
         templates,
         static_files,
@@ -151,6 +215,7 @@ fn generate<T: AsRef<Path>>(resource_path: T) -> Result<ResourceHolder, WebError
         config,
         story_evaluator,
         scrapers,
+        blog_posts,
     })
 }
 

@@ -1416,6 +1416,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1a8cbbb2831780bc3b9c15a41f5b49222ef756b6730a95f3decfdd15903eb5a3"
 
 [[package]]
+name = "markdown"
+version = "1.0.0-alpha.17"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "21e27d6220ce21f80ce5c4201f23a37c6f1ad037c72c9d1ff215c2919605a5d6"
+dependencies = [
+ "unicode-id",
+]
+
+[[package]]
 name = "matchers"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1879,6 +1888,7 @@ dependencies = [
  "itertools 0.13.0",
  "keepcalm",
  "lazy_static",
+ "markdown",
  "notify",
  "num-format",
  "progscrape-application",
@@ -1905,7 +1915,7 @@ name = "progscrape-application"
 version = "0.0.1"
 dependencies = [
  "base64 0.22.1",
- "itertools 0.10.5",
+ "itertools 0.13.0",
  "keepcalm",
  "progscrape-scrapers",
  "rstest",
@@ -1926,7 +1936,7 @@ version = "0.0.1"
 dependencies = [
  "chrono",
  "chrono-tz 0.9.0",
- "itertools 0.10.5",
+ "itertools 0.13.0",
  "lazy_static",
  "regex",
  "roxmltree",
@@ -2966,6 +2976,12 @@ name = "unicode-bidi"
 version = "0.3.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d54675592c1dbefd78cbd98db9bacd89886e1ca50692a0692baefffdeb92dd58"
+
+[[package]]
+name = "unicode-id"
+version = "0.3.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b1b6def86329695390197b82c1e244a54a131ceb66c996f2088a3876e2ae083f"
 
 [[package]]
 name = "unicode-ident"

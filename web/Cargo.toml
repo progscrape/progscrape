@@ -33,6 +33,7 @@ rand = "0.8.5"
 reqwest = "0.12"
 git-version = "0.3"
 clap = { version = "4.1", features = ["derive"] }
+markdown = "1.0.0-alpha.17"
 
 progscrape-scrapers = { version = "0.0.1", path = "../scrapers" }
 progscrape-application = { version = "0.0.1", path = "../application" }

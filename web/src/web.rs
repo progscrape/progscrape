@@ -41,6 +41,8 @@ use progscrape_scrapers::{
 pub enum WebError {
     #[error("Template error")]
     TeraTemplateError(#[from] tera::Error),
+    #[error("Markdown error {0}")]
+    MarkdownError(markdown::message::Message),
     #[error("Web error")]
     HyperError(#[from] hyper::Error),
     #[error("Persistence error")]
@@ -176,6 +178,7 @@ pub fn admin_routes<S: Clone + Send + Sync + 'static>(
         .route("/", get(admin))
         .route("/cron/", get(admin_cron))
         .route("/cron/", post(admin_cron_post))
+        .route("/cron/blog", post(admin_update_blog))
         .route("/cron/backup", post(admin_cron_backup))
         .route("/cron/refresh", post(admin_cron_refresh))
         .route("/cron/reindex", post(admin_cron_reindex))
@@ -274,6 +277,8 @@ pub fn create_feeds<S: Clone + Send + Sync + 'static>(
         .route("/feed.json", get(root_feed_json))
         .route("/feed.txt", get(root_feed_text))
         .route("/feed", get(root_feed_xml))
+        .route("/blog/", get(blog_posts))
+        .route("/blog/:slug/:title", get(blog_post))
         .with_state((index, resources))
 }
 
@@ -414,6 +419,55 @@ fn render_admin(
         [(header::CACHE_CONTROL, HeaderValue::from_static("no-store"))],
         render(resources, template_name, context),
     ))
+}
+
+async fn blog_posts(
+    OriginalUri(original_uri): OriginalUri,
+    Host(host): Host,
+    State((index, resources)): State<(Index<StoryIndex>, Resources)>,
+) -> Result<impl IntoResponse, WebError> {
+    let posts = &*resources.blog_posts.read();
+    let now = now(&index).await?;
+    let top_tags = index.top_tags(20)?;
+    let path = original_uri
+        .path_and_query()
+        .map(|s| s.as_str())
+        .unwrap_or_default();
+
+    Ok(([(
+        header::CACHE_CONTROL,
+        HeaderValue::from_static(
+            "public, max-age=300, s-max-age=300, stale-while-revalidate=60, stale-if-error=86400",
+        ),
+    )], render(&resources, "blog.html", context!(posts, top_tags, now, path, host, search = ""))))
+}
+
+async fn blog_post(
+    OriginalUri(original_uri): OriginalUri,
+    Host(host): Host,
+    State((index, resources)): State<(Index<StoryIndex>, Resources)>,
+    Path((date, _title)): Path<(String, String)>,
+) -> Result<impl IntoResponse, WebError> {
+    let posts = &*resources
+        .blog_posts
+        .read()
+        .iter()
+        .filter(|s| s.date.to_rfc3339().starts_with(&date))
+        .cloned()
+        .collect_vec();
+    let now = now(&index).await?;
+    let top_tags = index.top_tags(20)?;
+    let path = original_uri
+        .path_and_query()
+        .map(|s| s.as_str())
+        .unwrap_or_default();
+
+    Ok(([(
+        header::CACHE_CONTROL,
+        HeaderValue::from_static(
+            "public, max-age=300, s-max-age=300, stale-while-revalidate=60, stale-if-error=86400",
+        ),
+    )], render(&resources, "blog.html", context!(posts, top_tags, now, path, host, search = ""))))
 }
 
 async fn root(
@@ -811,6 +865,15 @@ async fn admin_cron_reindex(
         "admin/cron_reindex.html",
         context!(results, elapsed_ms, summary),
     )
+}
+
+async fn admin_update_blog(
+    State(AdminState {
+        resources, index, ..
+    }): State<AdminState>,
+) -> Result<impl IntoResponse, WebError> {
+    for post in &*resources.blog_posts.read() {}
+    render_admin(None, &resources, "admin/cron_blog.html", context!())
 }
 
 async fn admin_cron_scrape(

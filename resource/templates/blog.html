@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}progscrape{% endblock title %}
+{% block head %}
+    {{ super() }}
+{% endblock head %}
+{% block content %}
+    <div id="main">
+    <div class="container">
+    <div class="popular-tags">Trending tags:
+        {% for tag in top_tags %}
+        <span class="tag"><a href="/?search={{ tag.0 }}">{{ tag.0 }}</a></span>&nbsp;
+        {% endfor %}
+    </div>
+
+    <div class="blog">
+    {% if posts | length == 1 %}
+    <a class="back" href="/blog/">⮐ back to the progscrape blog</a>
+    {% endif %}
+    {% for post in posts %}
+    <div class="post">
+        <h2><a href="/blog/{% for bit in post.date | rfc_3339 | split(pat='T') %}{% if loop.first %}{{ bit }}{% endif %}{% endfor %}/{{ post.title | replace(from=' ', to='-') | lower }}">{{ post.title }}</a></h2>
+        <span class="metadata">
+            <span class="date">{{ post.date | relative_time(now=now) }}</span>
+            <span class="tags">{% for tag in post.tags %}<span class="tag">{{ tag }}</span> {% endfor %}</span>
+        </span>
+        {{ post.html | safe }}
+    </div>
+    {% endfor %}
+    </div>
+    
+    </div>
+    </div>
+{% endblock content %}
