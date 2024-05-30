@@ -14,7 +14,7 @@
 
     {% for story in stories %}
     <div class="story detail">
-        <h2 class="story-title"><a href="{{ story.url }}">{{ story.title }}</a></h2>
+        <h2 class="story-title"><a class="url" href="{{ story.url }}">{{ story.title }}</a></h2>
         <div class="metadata">
             <span class="sites">
                 {{ macros_story::comment_links(story=story) }}
@@ -37,7 +37,7 @@
 
     {% for story in related %}
     <div class="story">
-        <h2 class="story-title"><a href="{{ story.url }}">{{ story.title }}</a></h2>
+        <h2 class="story-title"><a class="url" href="{{ story.url }}">{{ story.title }}</a><a class="detail" title="Story details" href="/s/{{ story.url | trim_start_matches(pat='http://') | trim_start_matches(pat='https://') }}"></a></h2>
         <div class="metadata">
             <span class="sites">
                 {{ macros_story::comment_links(story=story) }}
