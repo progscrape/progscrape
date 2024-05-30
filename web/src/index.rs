@@ -194,7 +194,7 @@ impl Index<StoryIndex> {
             let (query_log, query_text) = if tracing::enabled!(Level::INFO) {
                 (
                     Some(format!("{query:?}")),
-                    Some(query.query_text().to_string()),
+                    Some(format!("{:?}", query.query_text().to_string())),
                 )
             } else {
                 (None, None)
