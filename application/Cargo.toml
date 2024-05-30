@@ -1,7 +1,11 @@
 [package]
 name = "progscrape-application"
-version = "0.1.0"
+version = "0.0.1"
 edition = "2021"
+license = "MIT"
+homepage = "https://progscrape.com"
+description = "progscrape.com application logic"
+repository = "https://github.com/progscrape/progscrape"
 
 [dependencies]
 tracing = "0.1"
@@ -18,7 +22,7 @@ rusqlite = "0.31"
 base64 = "0.22"
 itertools = "0"
 
-progscrape-scrapers = { path = "../scrapers" }
+progscrape-scrapers = { version = "0.0.1", path = "../scrapers" }
 
 [dev-dependencies]
 rstest = "0"

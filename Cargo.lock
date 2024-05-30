@@ -1866,49 +1866,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "progscrape-application"
-version = "0.1.0"
-dependencies = [
- "base64 0.22.1",
- "itertools 0.13.0",
- "keepcalm",
- "progscrape-scrapers",
- "rstest",
- "rusqlite",
- "serde",
- "serde_json",
- "serde_rusqlite",
- "tantivy",
- "tempfile",
- "thiserror",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
-name = "progscrape-scrapers"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "chrono-tz 0.9.0",
- "itertools 0.13.0",
- "lazy_static",
- "regex",
- "roxmltree",
- "rstest",
- "serde",
- "serde_cbor",
- "serde_json",
- "thiserror",
- "tl",
- "tracing",
- "url",
- "urlnorm",
-]
-
-[[package]]
-name = "progscrape-web"
-version = "0.1.0"
+name = "progscrape"
+version = "0.0.1"
 dependencies = [
  "axum",
  "clap",
@@ -1939,6 +1898,47 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "unwrap-infallible",
+]
+
+[[package]]
+name = "progscrape-application"
+version = "0.0.1"
+dependencies = [
+ "base64 0.22.1",
+ "itertools 0.10.5",
+ "keepcalm",
+ "progscrape-scrapers",
+ "rstest",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "serde_rusqlite",
+ "tantivy",
+ "tempfile",
+ "thiserror",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "progscrape-scrapers"
+version = "0.0.1"
+dependencies = [
+ "chrono",
+ "chrono-tz 0.9.0",
+ "itertools 0.10.5",
+ "lazy_static",
+ "regex",
+ "roxmltree",
+ "rstest",
+ "serde",
+ "serde_cbor",
+ "serde_json",
+ "thiserror",
+ "tl",
+ "tracing",
+ "url",
+ "urlnorm",
 ]
 
 [[package]]

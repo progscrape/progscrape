@@ -1,7 +1,11 @@
 [package]
 name = "progscrape-scrapers"
-version = "0.1.0"
+version = "0.0.1"
 edition = "2021"
+license = "MIT"
+homepage = "https://progscrape.com"
+description = "progscrape.com service scrapers"
+repository = "https://github.com/progscrape/progscrape"
 
 [dependencies]
 tracing = "0.1"
