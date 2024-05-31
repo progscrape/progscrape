@@ -168,37 +168,40 @@ async fn rate_limit(
     req: Request,
     next: Next,
 ) -> Result<Response, StatusCode> {
-    // Detect bots using substrings
-    let bot_ua = req.headers().get(header::USER_AGENT).and_then(|ua| {
-        let s = String::from_utf8_lossy(ua.as_bytes()).to_ascii_lowercase();
-        if s.contains("bot")
-            || s.contains("http:")
-            || s.contains("https:")
-            || s.contains("python")
-            || s.contains("curl")
-        {
-            Some(ua)
-        } else {
-            None
-        }
-    });
+    let enabled = rate_limits.read().enabled;
+    if enabled {
+        // Detect bots using substrings
+        let bot_ua = req.headers().get(header::USER_AGENT).and_then(|ua| {
+            let s = String::from_utf8_lossy(ua.as_bytes()).to_ascii_lowercase();
+            if s.contains("bot")
+                || s.contains("http:")
+                || s.contains("https:")
+                || s.contains("python")
+                || s.contains("curl")
+            {
+                Some(ua)
+            } else {
+                None
+            }
+        });
 
-    // Extract the IP
-    let ip = req.headers().get("x-forwarded-for");
-    if let Some(ip) = ip {
-        tracing::trace!("Checking rate limit: ip={ip:?} browser={bot_ua:?}");
-        let res = rate_limits.write().accumulate(Instant::now(), ip, bot_ua);
-        match res {
-            LimitState::None => {
-                tracing::trace!("No rate limit: ip={ip:?} browser={bot_ua:?}");
-            }
-            LimitState::Soft => {
-                tracing::warn!("User hit soft rate limit: ip={ip:?} browser={bot_ua:?}");
-                tokio::time::sleep(Duration::from_secs(1)).await;
-            }
-            LimitState::Hard => {
-                tracing::warn!("User hit hard rate limit: ip={ip:?} browser={bot_ua:?}");
-                return Err(StatusCode::SERVICE_UNAVAILABLE);
+        // Extract the IP
+        let ip = req.headers().get("x-forwarded-for");
+        if let Some(ip) = ip {
+            tracing::trace!("Checking rate limit: ip={ip:?} browser={bot_ua:?}");
+            let res = rate_limits.write().accumulate(Instant::now(), ip, bot_ua);
+            match res {
+                LimitState::None => {
+                    tracing::trace!("No rate limit: ip={ip:?} browser={bot_ua:?}");
+                }
+                LimitState::Soft => {
+                    tracing::warn!("User hit soft rate limit: ip={ip:?} browser={bot_ua:?}");
+                    tokio::time::sleep(Duration::from_secs(1)).await;
+                }
+                LimitState::Hard => {
+                    tracing::warn!("User hit hard rate limit: ip={ip:?} browser={bot_ua:?}");
+                    return Err(StatusCode::SERVICE_UNAVAILABLE);
+                }
             }
         }
     }

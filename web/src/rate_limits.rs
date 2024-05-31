@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct RateLimitsConfig {
+    pub enabled: bool,
     pub ip: BucketConfig,
     pub bot: BucketConfig,
 }
@@ -17,7 +18,7 @@ pub struct BucketConfig {
     pub hard: f32,
     pub hash: HashConfig,
     pub minute: u32,
-    pub hour: u32,
+    pub ten_minute: u32,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default)]
@@ -88,10 +89,11 @@ impl Blooms {
             self.start = now;
         }
 
-        let count = self.curr.estimate_count(h);
-        if count >= self.hard {
+        // Use curr + prev and double limits
+        let count = self.curr.estimate_count(h) + self.prev.estimate_count(h);
+        if count >= self.hard * 2 {
             LimitState::Hard
-        } else if count >= self.soft {
+        } else if count >= self.soft * 2 {
             self.curr.insert_get_count(h);
             LimitState::Soft
         } else {
@@ -102,15 +104,17 @@ impl Blooms {
 }
 
 pub struct RateLimits {
+    pub enabled: bool,
     ip_minute: Blooms,
-    ip_hour: Blooms,
+    ip_ten_minute: Blooms,
     bot_minute: Blooms,
-    bot_hour: Blooms,
+    bot_ten_minute: Blooms,
 }
 
 impl RateLimits {
     pub fn new(config: &RateLimitsConfig) -> Self {
         Self {
+            enabled: config.enabled,
             ip_minute: Blooms::new(
                 Duration::from_secs(60),
                 config.ip.hash.item_count,
@@ -118,26 +122,26 @@ impl RateLimits {
                 config.ip.minute,
                 (config.ip.minute as f32 * config.ip.hard) as u32,
             ),
-            ip_hour: Blooms::new(
-                Duration::from_secs(60 * 60),
+            ip_ten_minute: Blooms::new(
+                Duration::from_secs(10 * 60),
                 config.ip.hash.item_count,
                 config.ip.hash.false_positive_rate,
-                config.ip.hour,
-                (config.ip.hour as f32 * config.ip.hard) as u32,
+                config.ip.ten_minute,
+                (config.ip.ten_minute as f32 * config.ip.hard) as u32,
             ),
             bot_minute: Blooms::new(
                 Duration::from_secs(60),
                 config.bot.hash.item_count,
                 config.bot.hash.false_positive_rate,
-                config.bot.hour,
-                (config.bot.hour as f32 * config.bot.hard) as u32,
+                config.bot.ten_minute,
+                (config.bot.ten_minute as f32 * config.bot.hard) as u32,
             ),
-            bot_hour: Blooms::new(
-                Duration::from_secs(60 * 60),
+            bot_ten_minute: Blooms::new(
+                Duration::from_secs(10 * 60),
                 config.bot.hash.item_count,
                 config.bot.hash.false_positive_rate,
-                config.bot.hour,
-                (config.bot.hour as f32 * config.bot.hard) as u32,
+                config.bot.ten_minute,
+                (config.bot.ten_minute as f32 * config.bot.hard) as u32,
             ),
         }
     }
@@ -153,7 +157,7 @@ impl RateLimits {
         if state == LimitState::Hard {
             return state;
         }
-        state = state.max(self.ip_hour.accumulate(now, &ip));
+        state = state.max(self.ip_ten_minute.accumulate(now, &ip));
         if state == LimitState::Hard {
             return state;
         }
@@ -162,7 +166,7 @@ impl RateLimits {
             if state == LimitState::Hard {
                 return state;
             }
-            state = state.max(self.bot_hour.accumulate(now, &bot_ua));
+            state = state.max(self.bot_ten_minute.accumulate(now, &bot_ua));
         }
         state
     }
@@ -183,7 +187,7 @@ mod tests {
                     item_count: 1000,
                     false_positive_rate: 0.01,
                 },
-                hour: 100,
+                ten_minute: 100,
                 minute: 10,
             },
             ip: BucketConfig {
@@ -192,7 +196,7 @@ mod tests {
                     item_count: 1000,
                     false_positive_rate: 0.01,
                 },
-                hour: 100,
+                ten_minute: 100,
                 minute: 10,
             },
         });

@@ -16,6 +16,7 @@
         }
     },
     "rate_limits": {
+        "enabled": true,
         "ip": {
             "hard": 2.0,
             "hash": {
@@ -23,7 +24,7 @@
                 "false_positive_rate": 0.01
             },
             "minute": 20,
-            "hour": 60
+            "ten_minute": 60
         },
         "bot": {
             "hard": 2.0,
@@ -32,7 +33,7 @@
                 "false_positive_rate": 0.01
             },
             "minute": 10,
-            "hour": 30
+            "ten_minute": 30
         }
     },
     "scrape": {
