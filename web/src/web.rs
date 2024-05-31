@@ -196,13 +196,13 @@ async fn rate_limit(
                 }
                 LimitState::Soft => {
                     tracing::warn!(
-                        "User hit soft rate limit: ratelimit=soft ip={ip:?} browser={bot_ua:?}"
+                        "User hit soft rate limit: ratelimit=soft ip={ip:?} browser={bot_ua:?} method={} uri={}", req.method(), req.uri()
                     );
                     tokio::time::sleep(Duration::from_secs(1)).await;
                 }
                 LimitState::Hard => {
                     tracing::warn!(
-                        "User hit hard rate limit: ratelimit=hard ip={ip:?} browser={bot_ua:?}"
+                        "User hit hard rate limit: ratelimit=hard ip={ip:?} browser={bot_ua:?} method={} uri={}", req.method(), req.uri()
                     );
                     return Err(StatusCode::SERVICE_UNAVAILABLE);
                 }

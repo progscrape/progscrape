@@ -91,7 +91,6 @@ impl Blooms {
 
         // Use curr + prev and double limits
         let count = self.curr.estimate_count(h) + self.prev.estimate_count(h);
-        eprintln!("{count}");
         if count >= self.hard * 2 {
             LimitState::Hard
         } else if count >= self.soft * 2 {

@@ -16,7 +16,7 @@
         }
     },
     "rate_limits": {
-        "enabled": false,
+        "enabled": true,
         "ip": {
             "hard": 2.0,
             "hash": {
