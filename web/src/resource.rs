@@ -3,6 +3,7 @@ use notify::RecursiveMode;
 use notify::Watcher;
 use progscrape_scrapers::Scrapers;
 use progscrape_scrapers::StoryDate;
+use progscrape_scrapers::StoryUrl;
 use serde::Serialize;
 use std::borrow::Borrow;
 use std::fs::File;
@@ -82,7 +83,10 @@ fn create_static_files_root(resource_path: &Path) -> Result<StaticFileRegistry, 
 
 #[derive(Serialize, Clone)]
 pub struct BlogPost {
+    pub id: String,
     pub title: String,
+    pub url: StoryUrl,
+    pub slug: String,
     pub date: StoryDate,
     pub html: String,
     pub tags: Vec<String>,
@@ -95,36 +99,44 @@ fn blog_posts(resource_path: &Path) -> Result<Vec<BlogPost>, WebError> {
     opts.parse.constructs.html_flow = true;
     opts.parse.constructs.html_text = true;
     let mut posts = vec![];
+    let err = || WebError::IOError(std::io::ErrorKind::InvalidData.into());
     for entry in std::fs::read_dir(blog)? {
         let entry = entry?;
-        let date = StoryDate::parse_from_rfc3339(&format!(
-            "{}T00:00:00Z",
-            entry.file_name().to_string_lossy().trim_end_matches(".md")
-        ))
-        .ok_or(WebError::IOError(std::io::ErrorKind::InvalidData.into()))?;
+        let id = entry
+            .file_name()
+            .to_string_lossy()
+            .trim_end_matches(".md")
+            .to_owned();
+        let date = StoryDate::parse_from_rfc3339(&format!("{}T00:00:00Z", id)).ok_or_else(err)?;
         let contents = std::fs::read_to_string(entry.path().canonicalize()?)?;
         let title = contents
             .split('\n')
             .find(|line| line.starts_with("title:"))
-            .unwrap_or_default()
+            .ok_or_else(err)?
             .trim_start_matches("title:")
             .trim()
             .to_owned();
         let mut tags = contents
             .split('\n')
             .find(|line| line.starts_with("tags:"))
-            .unwrap_or_default()
+            .ok_or_else(err)?
             .trim_start_matches("tags:")
             .split(',')
             .map(|s| s.trim().to_owned())
             .collect_vec();
-        tags.push("progscrape".to_owned());
         tags.push("blog".to_owned());
-        tags.insert(0, "progscrape.com".to_owned());
         let html =
             markdown::to_html_with_options(&contents, &opts).map_err(WebError::MarkdownError)?;
+        let slug = title
+            .to_ascii_lowercase()
+            .replace(' ', "-")
+            .replace(|c: char| !c.is_alphanumeric() && c != '-' && c != '_', "");
+        let url = StoryUrl::parse(format!("http://progscrape/blog/{id}")).ok_or_else(err)?;
         posts.push(BlogPost {
+            id,
             title,
+            url,
+            slug,
             date,
             html,
             tags,
