@@ -28,6 +28,7 @@ impl FeedStory {
             slashdot: self.slashdot.as_deref(),
             lobsters: self.lobsters.as_deref(),
             reddit: self.reddit.as_deref(),
+            feed: None,
             other: None,
         }
     }
