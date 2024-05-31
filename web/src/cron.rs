@@ -39,10 +39,20 @@ impl CronInterval {
     }
 }
 
+fn default_cron_job_enabled() -> bool {
+    true
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct CronJob {
     url: String,
     interval: (usize, CronInterval),
+    /// Eagerly queue this cron job's first run regardless of interval.
+    #[serde(default)]
+    eager: bool,
+    /// Set to `false` to disable a job without removing it from the config.
+    #[serde(default = "default_cron_job_enabled")]
+    enabled: bool,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -222,9 +232,12 @@ impl Cron {
         // Drain the queue of any ready items
         let mut ready = HashSet::new();
         let mut ret = vec![];
-        let mut remaining = HashMap::<_, _>::from_iter(jobs.iter());
+        let mut remaining = HashMap::<_, _>::from_iter(jobs.iter().filter(|job| job.1.enabled));
         self.queue.retain(|task| {
-            if task.next <= now {
+            let entry = remaining.get(&task.name);
+            if entry.is_none() {
+                false
+            } else if task.next <= now {
                 ready.insert(task.name.clone());
                 ret.push(task.url.clone());
                 false
@@ -236,15 +249,23 @@ impl Cron {
 
         // If we find a job in the config and it isn't already in the queue, add it in
         for (name, job) in remaining {
+            if !job.enabled {
+                continue;
+            }
             let last = if ready.contains(name) {
                 Some(now)
             } else {
                 None
             };
+            let jitter = if job.eager && last.is_none() {
+                Duration::from_secs(1)
+            } else {
+                self.jitter(job.interval)
+            };
             self.queue.push(CronTask {
                 name: name.clone(),
                 url: job.url.clone(),
-                next: now + self.jitter(job.interval),
+                next: now + jitter,
                 last,
             });
         }
@@ -269,6 +290,8 @@ mod test {
             CronJob {
                 url: "/1".into(),
                 interval: (1, CronInterval::Minute),
+                eager: false,
+                enabled: true,
             },
         );
         let mut cron = Cron::new();
