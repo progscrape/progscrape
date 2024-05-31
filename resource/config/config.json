@@ -15,6 +15,26 @@
             "factor": 5.0
         }
     },
+    "rate_limits": {
+        "ip": {
+            "hard": 2.0,
+            "hash": {
+                "item_count": 1000,
+                "false_positive_rate": 0.01
+            },
+            "minute": 20,
+            "hour": 60
+        },
+        "bot": {
+            "hard": 2.0,
+            "hash": {
+                "item_count": 1000,
+                "false_positive_rate": 0.01
+            },
+            "minute": 10,
+            "hour": 30
+        }
+    },
     "scrape": {
         "hacker_news": {
             "homepage": "https://news.ycombinator.com/",

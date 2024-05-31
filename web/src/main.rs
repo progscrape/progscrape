@@ -23,6 +23,7 @@ mod config;
 mod cron;
 mod filters;
 mod index;
+mod rate_limits;
 mod resource;
 mod serve_static_files;
 mod smoketest;

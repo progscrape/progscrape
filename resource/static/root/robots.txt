@@ -1,13 +1,10 @@
 User-agent: *
-Disallow: /feed
-Disallow: /feed/
-Disallow: /s/
-Disallow: /*?
+Disallow: /s/*
+Disallow: /feed*
 Crawl-Delay: 600
 
 User-agent: Googlebot
-Allow: /*?
-Disallow: /s/
+Disallow: /s/*
 Disallow: /feed.json
 
-Sitemap: http://www.progscrape.com/sitemap.xml
+# Sitemap: http://www.progscrape.com/sitemap.xml

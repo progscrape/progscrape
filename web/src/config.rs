@@ -7,4 +7,5 @@ pub struct Config {
     pub tagger: progscrape_application::TaggerConfig,
     pub scrape: progscrape_scrapers::ScrapeConfig,
     pub cron: crate::cron::CronConfig,
+    pub rate_limits: crate::rate_limits::RateLimitsConfig,
 }

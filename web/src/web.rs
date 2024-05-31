@@ -1,4 +1,8 @@
-use std::{collections::HashMap, net::SocketAddr, time::Instant};
+use std::{
+    collections::HashMap,
+    net::{IpAddr, Ipv4Addr, SocketAddr},
+    time::{Duration, Instant},
+};
 
 use axum::{
     body::Body,
@@ -24,6 +28,7 @@ use crate::{
     auth::Auth,
     cron::{Cron, CronHistory},
     index::Index,
+    rate_limits::LimitState,
     resource::Resources,
     serve_static_files,
     story::FeedStory,
@@ -158,6 +163,48 @@ async fn ensure_slash(req: Request, next: Next) -> Result<Response, StatusCode> 
     Ok(next.run(req).await)
 }
 
+async fn rate_limit(
+    State(Resources { rate_limits, .. }): State<Resources>,
+    req: Request,
+    next: Next,
+) -> Result<Response, StatusCode> {
+    // Detect bots using substrings
+    let bot_ua = req.headers().get(header::USER_AGENT).and_then(|ua| {
+        let s = String::from_utf8_lossy(ua.as_bytes()).to_ascii_lowercase();
+        if s.contains("bot")
+            || s.contains("http:")
+            || s.contains("https:")
+            || s.contains("python")
+            || s.contains("curl")
+        {
+            Some(ua)
+        } else {
+            None
+        }
+    });
+
+    // Extract the IP
+    let ip = req.headers().get("x-forwarded-for");
+    if let Some(ip) = ip {
+        tracing::trace!("Checking rate limit: ip={ip:?} browser={bot_ua:?}");
+        let res = rate_limits.write().accumulate(Instant::now(), ip, bot_ua);
+        match res {
+            LimitState::None => {
+                tracing::trace!("No rate limit: ip={ip:?} browser={bot_ua:?}");
+            }
+            LimitState::Soft => {
+                tracing::warn!("User hit soft rate limit: ip={ip:?} browser={bot_ua:?}");
+                tokio::time::sleep(Duration::from_secs(1)).await;
+            }
+            LimitState::Hard => {
+                tracing::warn!("User hit hard rate limit: ip={ip:?} browser={bot_ua:?}");
+                return Err(StatusCode::SERVICE_UNAVAILABLE);
+            }
+        }
+    }
+    Ok(next.run(req).await)
+}
+
 async fn handle_404() -> impl IntoResponse {
     (StatusCode::NOT_FOUND, ">progscrape: 404 ▒")
 }
@@ -282,7 +329,11 @@ pub fn create_feeds<S: Clone + Send + Sync + 'static>(
         .route("/blog/:date", get(blog_post))
         .route("/blog/:date/", get(blog_post))
         .route("/blog/:date/:title", get(blog_post))
-        .with_state((index, resources))
+        .with_state((index, resources.clone()))
+        .route_layer(middleware::from_fn_with_state(
+            resources.clone(),
+            rate_limit,
+        ))
 }
 
 pub async fn start_server<P2: Into<std::path::PathBuf>>(

@@ -19,6 +19,7 @@ use progscrape_application::StoryEvaluator;
 
 use crate::config::Config;
 use crate::filters::*;
+use crate::rate_limits::RateLimits;
 use crate::static_files::StaticFileRegistry;
 use crate::web::WebError;
 
@@ -30,6 +31,7 @@ struct ResourceHolder {
     config: Config,
     story_evaluator: StoryEvaluator,
     scrapers: Scrapers,
+    rate_limits: RateLimits,
 }
 
 #[derive(Clone)]
@@ -41,6 +43,7 @@ pub struct Resources {
     pub config: Shared<Config>,
     pub story_evaluator: Shared<StoryEvaluator>,
     pub scrapers: Shared<Scrapers>,
+    pub rate_limits: SharedMut<RateLimits>,
 }
 
 impl Resources {
@@ -53,6 +56,7 @@ impl Resources {
             config: r.shared_copy().project_fn(|x| &x.config),
             story_evaluator: r.shared_copy().project_fn(|x| &x.story_evaluator),
             scrapers: r.shared_copy().project_fn(|x| &x.scrapers),
+            rate_limits: r.project_fn(|x| &x.rate_limits, |x| &mut x.rate_limits),
         }
     }
 }
@@ -218,6 +222,7 @@ fn generate<T: AsRef<Path>>(resource_path: T) -> Result<ResourceHolder, WebError
     let story_evaluator = StoryEvaluator::new(&config.tagger, &config.score, &config.scrape);
     let scrapers = Scrapers::new(&config.scrape);
     let blog_posts = blog_posts(resource_path)?;
+    let rate_limits = RateLimits::new(&config.rate_limits);
     Ok(ResourceHolder {
         templates,
         static_files,
@@ -226,6 +231,7 @@ fn generate<T: AsRef<Path>>(resource_path: T) -> Result<ResourceHolder, WebError
         story_evaluator,
         scrapers,
         blog_posts,
+        rate_limits,
     })
 }
 
