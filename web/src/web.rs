@@ -279,7 +279,9 @@ pub fn create_feeds<S: Clone + Send + Sync + 'static>(
         .route("/feed", get(root_feed_xml))
         .route("/blog", get(blog_posts))
         .route("/blog/", get(blog_posts))
-        .route("/blog/:slug/:title", get(blog_post))
+        .route("/blog/:date", get(blog_post))
+        .route("/blog/:date/", get(blog_post))
+        .route("/blog/:date/:title", get(blog_post))
         .with_state((index, resources))
 }
 
@@ -447,19 +449,34 @@ async fn blog_posts(
     )], render(&resources, "blog.html", context!(posts, top_tags, now, path, host, search = ""))))
 }
 
+#[derive(Deserialize)]
+struct BlogPath {
+    date: String,
+    title: Option<String>,
+}
+
 async fn blog_post(
     OriginalUri(original_uri): OriginalUri,
     Host(host): Host,
     State((index, resources)): State<(Index<StoryIndex>, Resources)>,
-    Path((date, _title)): Path<(String, String)>,
+    Path(path): Path<BlogPath>,
 ) -> Result<impl IntoResponse, WebError> {
     let posts = &*resources
         .blog_posts
         .read()
         .iter()
-        .filter(|s| s.date.to_rfc3339().starts_with(&date))
+        .filter(|s| s.id == path.date)
         .cloned()
         .collect_vec();
+    if posts.is_empty() {
+        return Err(WebError::NotFound);
+    }
+    if Some(&posts[0].slug) != path.title.as_ref() {
+        return Err(WebError::WrongUrl(format!(
+            "/blog/{}/{}",
+            posts[0].id, posts[0].slug
+        )));
+    }
     let now = now(&index).await?;
     let top_tags = index.top_tags(20)?;
     let path = original_uri
