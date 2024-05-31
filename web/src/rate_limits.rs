@@ -67,12 +67,12 @@ impl Blooms {
             start: Instant::now(),
             size,
             prev: CountingBloomFilter::with_rate(
-                CountingBloomFilter::bits_for_max(hard),
+                CountingBloomFilter::bits_for_max(hard * 2),
                 false_positive_rate,
                 expected_num_items,
             ),
             curr: CountingBloomFilter::with_rate(
-                CountingBloomFilter::bits_for_max(hard),
+                CountingBloomFilter::bits_for_max(hard * 2),
                 false_positive_rate,
                 expected_num_items,
             ),
@@ -91,6 +91,7 @@ impl Blooms {
 
         // Use curr + prev and double limits
         let count = self.curr.estimate_count(h) + self.prev.estimate_count(h);
+        eprintln!("{count}");
         if count >= self.hard * 2 {
             LimitState::Hard
         } else if count >= self.soft * 2 {
@@ -181,6 +182,7 @@ mod tests {
     #[test]
     pub fn test_rate_limits() {
         let mut limits = RateLimits::new(&RateLimitsConfig {
+            enabled: true,
             bot: BucketConfig {
                 hard: 2.0,
                 hash: HashConfig {
@@ -202,7 +204,7 @@ mod tests {
         });
 
         let ip = "127.0.0.1";
-        for i in 0..10 {
+        for i in 0..20 {
             assert_eq!(
                 limits.accumulate(Instant::now(), ip, None::<String>),
                 LimitState::None,
@@ -210,7 +212,7 @@ mod tests {
             );
         }
 
-        for i in 10..20 {
+        for i in 20..40 {
             assert_eq!(
                 limits.accumulate(Instant::now(), ip, None::<String>),
                 LimitState::Soft,
@@ -218,7 +220,7 @@ mod tests {
             );
         }
 
-        for i in 20..30 {
+        for i in 40..50 {
             assert_eq!(
                 limits.accumulate(Instant::now(), ip, None::<String>),
                 LimitState::Hard,
