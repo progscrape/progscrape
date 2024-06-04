@@ -1,7 +1,6 @@
 use itertools::Itertools;
 
 use tantivy::directory::{MmapDirectory, RamDirectory};
-use tantivy::query::{BooleanQuery, Occur, Query, RangeQuery, TermQuery};
 use tantivy::tokenizer::{PreTokenizedString, SimpleTokenizer, Tokenizer};
 use tantivy::{doc, Index, IndexReader};
 use tantivy::{
@@ -13,6 +12,8 @@ use progscrape_scrapers::{ScrapeId, StoryDate};
 use std::collections::HashSet;
 use std::hash::Hash;
 use std::ops::RangeBounds;
+use std::sync::RwLock;
+use std::time::Instant;
 
 use crate::persist::{ScrapePersistResult, Shard};
 use crate::story::{StoryScrapeId, TagSet};
@@ -58,9 +59,9 @@ pub struct StoryFetch {
 
 /// For performance, we shard stories by time period to allow for more efficient lookup of normalized URLs.
 pub struct StoryIndexShard {
+    shard: Shard,
     index: Index,
-    reader: IndexReader,
-    searcher: Searcher,
+    maybe_searcher: RwLock<Option<(IndexReader, Searcher)>>,
     schema: StorySchema,
 }
 
@@ -68,7 +69,7 @@ const MEMORY_ARENA_SIZE: usize = 50_000_000;
 
 /// The `StoryIndexShard` manages a single shard of the index.
 impl StoryIndexShard {
-    pub fn initialize(
+    pub(crate) fn initialize(
         location: PersistLocation,
         shard: Shard,
         schema: StorySchema,
@@ -98,48 +99,50 @@ impl StoryIndexShard {
         if exists {
             let meta = index.load_metas()?;
             tracing::info!(
-                "Loaded existing index with {} doc(s)",
+                "Loaded existing index for {shard:?} with {} doc(s)",
                 meta.segments.iter().fold(0, |a, b| a + b.num_docs())
             );
         } else {
-            tracing::info!("Created and initialized new index");
+            tracing::info!("Created and initialized new index for {shard:?}");
         }
 
-        let reader = index.reader()?;
-        let searcher = reader.searcher();
-
         Ok(Self {
+            shard,
             index,
-            reader,
-            searcher,
+            maybe_searcher: Default::default(),
             schema,
         })
     }
 
     /// Provides a valid searcher and schema temporarily for the callback function.
     #[inline(always)]
-    pub fn with_searcher<F: FnMut(&Searcher, &StorySchema) -> Result<T, PersistError>, T>(
+    pub fn with_searcher<F: FnOnce(&Searcher, &StorySchema) -> Result<T, PersistError>, T>(
         &self,
-        mut f: F,
-    ) -> Result<T, PersistError> {
-        f(&self.searcher, &self.schema)
-    }
-
-    /// Provides a valid writer and schema temporarily for the callback function.
-    #[inline(always)]
-    pub fn with_writer<
-        F: FnOnce(&Self, &mut IndexWriter, &StorySchema) -> Result<T, PersistError>,
-        T,
-    >(
-        &mut self,
         f: F,
     ) -> Result<T, PersistError> {
-        let mut writer = self.writer()?;
-        let res = f(self, &mut writer, &self.schema)?;
-        writer.commit()?;
-        self.reader.reload()?;
-        self.searcher = self.reader.searcher();
-        Ok(res)
+        // We only ever transition from None -> Some so this never deadlocks
+        loop {
+            if let Some((_, searcher)) = &*self.maybe_searcher.read().expect("Poisoned") {
+                break f(searcher, &self.schema);
+            }
+            // Check to see if we won the write race
+            let mut lock = self.maybe_searcher.write().expect("Poisoned");
+            if lock.is_none() {
+                *lock = {
+                    let now = Instant::now();
+                    let reader = self.index.reader()?;
+                    let searcher = reader.searcher();
+                    tracing::info!(
+                        "Created reader and searcher for {:?} in {}ms",
+                        self.shard,
+                        now.elapsed().as_millis()
+                    );
+                    Some((reader, searcher))
+                }
+                // TODO: if we switch to parking lot, we get downgrading for free, otherwise loop around and take just the
+                // read lock
+            }
+        }
     }
 
     pub fn writer(&self) -> Result<IndexWriter, PersistError> {
@@ -148,8 +151,11 @@ impl StoryIndexShard {
 
     pub fn commit_writer(&mut self, mut writer: IndexWriter) -> Result<(), PersistError> {
         writer.commit()?;
-        self.reader.reload()?;
-        self.searcher = self.reader.searcher();
+        // Reload reader and search iff they were loaded
+        if let Some((reader, searcher)) = &mut *self.maybe_searcher.write().expect("Poisoned") {
+            reader.reload()?;
+            *searcher = reader.searcher();
+        }
         writer.wait_merging_threads()?;
         Ok(())
     }
@@ -221,83 +227,6 @@ impl StoryIndexShard {
         Ok(ScrapePersistResult::NewStory)
     }
 
-    pub fn add_scrape_id(
-        &self,
-        writer: &mut IndexWriter,
-
-        doc_address: DocAddress,
-        mut scrape_ids: HashSet<String>,
-    ) -> Result<ScrapePersistResult, PersistError> {
-        let mut doc = self.searcher.doc(doc_address)?;
-
-        // Fast exit if these scrapes have already been added
-        for value in doc.get_all(self.schema.scrape_field) {
-            if let Some(id) = value.as_text() {
-                scrape_ids.remove(id);
-                if scrape_ids.is_empty() {
-                    return Ok(ScrapePersistResult::AlreadyPartOfExistingStory);
-                }
-            }
-        }
-
-        let id = doc
-            .get_first(self.schema.id_field)
-            .ok_or(PersistError::UnexpectedError(
-                "No ID field in document".into(),
-            ))?;
-        let id = id
-            .as_text()
-            .ok_or(PersistError::UnexpectedError(
-                "Unable to convert ID field to string".into(),
-            ))?
-            .to_string();
-        writer.delete_term(Term::from_field_text(self.schema.id_field, &id));
-        for id in scrape_ids {
-            doc.add_text(self.schema.scrape_field, id);
-        }
-
-        // Re-add the norm hash
-        let norm = self
-            .searcher
-            .segment_reader(doc_address.segment_ord)
-            .fast_fields()
-            .i64(self.schema.url_norm_hash_field)?;
-        doc.add_i64(
-            self.schema.url_norm_hash_field,
-            norm.get_val(doc_address.doc_id),
-        );
-
-        writer.add_document(doc)?;
-        Ok(ScrapePersistResult::MergedWithExistingStory)
-    }
-
-    pub fn create_norm_query(
-        &self,
-        _url_norm: &str,
-        url_norm_hash: i64,
-        date: StoryDate,
-    ) -> Result<impl Query, PersistError> {
-        if let (Some(start), Some(end)) = (date.checked_sub_months(1), date.checked_add_months(1)) {
-            let url_query = Box::new(TermQuery::new(
-                Term::from_field_i64(self.schema.url_norm_hash_field, url_norm_hash),
-                IndexRecordOption::Basic,
-            ));
-            let date_range_query = Box::new(RangeQuery::new_i64(
-                self.schema.date_field,
-                start.timestamp()..end.timestamp(),
-            ));
-            Ok(BooleanQuery::new(vec![
-                (Occur::Must, url_query),
-                (Occur::Must, date_range_query),
-            ]))
-        } else {
-            // Extremely unlikely
-            Err(PersistError::UnexpectedError(
-                "Could not map date range".into(),
-            ))
-        }
-    }
-
     fn text_value(&self, doc: &Document, field: Field) -> String {
         if let Some(val) = doc.get_first(field) {
             val.as_text().unwrap_or_default().to_owned()
@@ -350,7 +279,7 @@ impl StoryIndexShard {
     }
 
     pub fn lookup_story(&self, doc_address: DocAddress) -> Result<StoryFetch, PersistError> {
-        let doc = self.searcher.doc(doc_address)?;
+        let doc = self.doc(doc_address)?;
         let url = self.text_value(&doc, self.schema.url_field);
         let title = self.text_value(&doc, self.schema.title_field);
         let date = self.i64_value(&doc, self.schema.date_field);
@@ -367,8 +296,12 @@ impl StoryIndexShard {
         })
     }
 
+    pub fn doc(&self, doc_address: DocAddress) -> Result<Document, PersistError> {
+        self.with_searcher(|searcher, _| Ok(searcher.doc(doc_address)?))
+    }
+
     pub fn doc_fields(&self, doc_address: DocAddress) -> Result<NamedFieldDocument, PersistError> {
-        let doc = self.searcher.doc(doc_address)?;
+        let doc = self.doc(doc_address)?;
         let named_doc = self.schema.schema.to_named_doc(&doc);
         Ok(named_doc)
     }
@@ -379,37 +312,39 @@ impl StoryIndexShard {
         mut stories: HashSet<StoryLookupId>,
         date_range: impl RangeBounds<i64>,
     ) -> Result<Vec<StoryLookup>, PersistError> {
-        let mut result = vec![];
-        for (segment_ord, segment_reader) in self.searcher.segment_readers().iter().enumerate() {
-            let index = segment_reader
-                .fast_fields()
-                .i64(self.schema.url_norm_hash_field)?;
-            let date = segment_reader.fast_fields().i64(self.schema.date_field)?;
-            let (min, max) = (index.min_value(), index.max_value());
-            stories.retain(|story| {
-                if min <= story.url_norm_hash && max >= story.url_norm_hash {
-                    for i in segment_reader.doc_ids_alive() {
-                        if index.get_val(i) == story.url_norm_hash {
-                            let date = date.get_val(i) - story.date;
-                            if !date_range.contains(&date) {
-                                return true;
+        self.with_searcher(move |searcher, _| {
+            let mut result = vec![];
+            for (segment_ord, segment_reader) in searcher.segment_readers().iter().enumerate() {
+                let index = segment_reader
+                    .fast_fields()
+                    .i64(self.schema.url_norm_hash_field)?;
+                let date = segment_reader.fast_fields().i64(self.schema.date_field)?;
+                let (min, max) = (index.min_value(), index.max_value());
+                stories.retain(|story| {
+                    if min <= story.url_norm_hash && max >= story.url_norm_hash {
+                        for i in segment_reader.doc_ids_alive() {
+                            if index.get_val(i) == story.url_norm_hash {
+                                let date = date.get_val(i) - story.date;
+                                if !date_range.contains(&date) {
+                                    return true;
+                                }
+                                result.push(StoryLookup::Found(
+                                    *story,
+                                    DocAddress::new(segment_ord as u32, i),
+                                ));
+                                return false;
                             }
-                            result.push(StoryLookup::Found(
-                                *story,
-                                DocAddress::new(segment_ord as u32, i),
-                            ));
-                            return false;
                         }
                     }
+                    true
+                });
+                // Early exit optimization
+                if stories.is_empty() {
+                    break;
                 }
-                true
-            });
-            // Early exit optimization
-            if stories.is_empty() {
-                break;
             }
-        }
-        result.extend(stories.into_iter().map(StoryLookup::Unfound));
-        Ok(result)
+            result.extend(stories.into_iter().map(StoryLookup::Unfound));
+            Ok(result)
+        })
     }
 }
