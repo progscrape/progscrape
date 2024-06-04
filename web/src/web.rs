@@ -1,7 +1,5 @@
 use std::{
-    collections::HashMap,
-    net::{IpAddr, Ipv4Addr, SocketAddr},
-    time::{Duration, Instant},
+    collections::HashMap, net::{IpAddr, Ipv4Addr, SocketAddr}, sync::OnceLock, time::{Duration, Instant}
 };
 
 use axum::{
@@ -20,7 +18,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tera::Context;
 use thiserror::Error;
-use tokio::net::TcpListener;
+use tokio::{net::TcpListener, select, sync::Semaphore};
 use tower::Service;
 use unwrap_infallible::UnwrapInfallible;
 
@@ -74,6 +72,10 @@ pub enum WebError {
     LogSetupError(#[from] tracing_subscriber::filter::ParseError),
     #[error("Log setup error")]
     LogSetup2Error(#[from] tracing_subscriber::filter::FromEnvError),
+    #[error("Semaphore acquisition error")]
+    SemaphoreError(#[from] tokio::sync::AcquireError),
+    #[error("Server too busy")]
+    ServerTooBusy,
     #[error("Item not found")]
     NotFound,
     #[error("Authentication failed")]
@@ -94,6 +96,7 @@ impl IntoResponse for WebError {
             Self::AuthError => StatusCode::UNAUTHORIZED,
             Self::NotFound => StatusCode::NOT_FOUND,
             Self::InvalidHeader(_) => StatusCode::BAD_REQUEST,
+            Self::ServerTooBusy => StatusCode::REQUEST_TIMEOUT,
             _ => StatusCode::INTERNAL_SERVER_ERROR,
         };
         (code, body).into_response()
@@ -328,6 +331,7 @@ pub fn create_feeds<S: Clone + Send + Sync + 'static>(
     Router::new()
         .route("/", get(root))
         .nest("/s/", Router::new().fallback(story))
+        .route("/zeitgeist.json", get(zeitgeist_json))
         .route("/feed.json", get(root_feed_json))
         .route("/feed.txt", get(root_feed_text))
         .route("/feed", get(root_feed_xml))
@@ -649,7 +653,36 @@ async fn story(
     render(&resources, "story.html", context!(top_tags, stories, related, now, search, offset, host, path))))
 }
 
-// basic handler that responds with a static string
+async fn zeitgeist_json(
+    State((index, _resources)): State<(Index<StoryIndex>, Resources)>,
+    query: Query<HashMap<String, String>>,
+) -> Result<impl IntoResponse, WebError> {
+    // Ensure that we don't allow more than four zeitgeist requests at any time, and time out if we wait
+    // longer than 10 seconds to get a permit.
+    static SEMAPHORE: OnceLock<Semaphore> = OnceLock::new();
+    let semaphore = SEMAPHORE.get_or_init(|| Semaphore::new(4));
+    let _lock = match tokio::time::timeout(Duration::from_secs(10), semaphore.acquire()).await {
+        Ok(lock) => lock?,
+        Err(_) => return Err(WebError::ServerTooBusy),
+    };
+
+    let query = index.parse_query(query.get("search"))?;
+    let stories = index.stories_by_shard(query).await?;
+
+    Ok((
+        [(
+            header::CACHE_CONTROL,
+            HeaderValue::from_static(
+                "public, max-age=3600, s-max-age=3600, stale-while-revalidate=3600, stale-if-error=86400",
+            ),
+        )],
+        Json(json!({
+            "v": 1,
+            "stories": stories
+        })),
+    ))
+}
+
 async fn root_feed_json(
     State((index, _resources)): State<(Index<StoryIndex>, Resources)>,
     query: Query<HashMap<String, String>>,
