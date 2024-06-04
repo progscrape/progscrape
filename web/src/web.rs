@@ -1,5 +1,8 @@
 use std::{
-    collections::HashMap, net::{IpAddr, Ipv4Addr, SocketAddr}, sync::OnceLock, time::{Duration, Instant}
+    collections::HashMap,
+    net::{IpAddr, Ipv4Addr, SocketAddr},
+    sync::OnceLock,
+    time::{Duration, Instant},
 };
 
 use axum::{

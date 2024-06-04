@@ -882,13 +882,22 @@ impl Storage for StoryIndex {
 
     fn fetch_count_by_shard(&self, query: StoryQuery) -> Result<SearchSummary, PersistError> {
         let mut summary = SearchSummary::default();
+        if let StoryQuery::FrontPage = query {
+            for shard in self.shards().iterate(ShardOrder::OldestFirst) {
+                let docs = self.get_shard(shard)?.read().total_docs()?;
+                summary.by_shard.push((shard.to_string(), docs));
+                summary.total += docs;
+            }
+            return Ok(summary);
+        }
+
         let Ok(query) = self.try_parse_query(query)? else {
             return Err(PersistError::UnexpectedError(format!(
                 "Unable to summarize query by shards"
             )));
         };
 
-        for shard in self.shards().iterate(ShardOrder::NewestFirst) {
+        for shard in self.shards().iterate(ShardOrder::OldestFirst) {
             let docs = self.with_searcher(shard, |_, searcher, _| {
                 let docs = searcher.search(&query, &tantivy::collector::Count)?;
                 Ok(docs)
