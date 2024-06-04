@@ -514,6 +514,10 @@ impl StoryIndex {
         alt: Option<&str>,
         max: usize,
     ) -> Result<Vec<(Shard, DocAddress)>, PersistError> {
+        self.fetch_search_query(self.parse_tag_search(tag, alt)?, max, ScoreAlgo::Default)
+    }
+
+    fn parse_tag_search(&self, tag: &str, alt: Option<&str>) -> Result<impl Query, PersistError> {
         // TODO: We use the query parser instead of a direct tags search because we want to ensure
         // that non-tagged stories match, just with a much bigger boost to the tags field than a
         // standard query search. We should be smarter about tags -- if something looks like a tag
@@ -539,7 +543,7 @@ impl StoryIndex {
             query_parser.parse_query(tag)?
         };
         tracing::debug!("Tag symbol query = {:?}", query);
-        self.fetch_search_query(query, max, ScoreAlgo::Default)
+        Ok(query)
     }
 
     fn fetch_domain_search(
@@ -547,6 +551,10 @@ impl StoryIndex {
         domain: &str,
         max: usize,
     ) -> Result<Vec<(Shard, DocAddress)>, PersistError> {
+        self.fetch_search_query(self.parse_domain_search(domain)?, max, ScoreAlgo::Default)
+    }
+
+    fn parse_domain_search(&self, domain: &str) -> Result<Box<dyn Query>, PersistError> {
         let host_field = self.schema.host_field;
         let phrase = domain
             .split('.')
@@ -560,16 +568,16 @@ impl StoryIndex {
         }
 
         // The PhraseQuery asserts if only a single term is passed, so convert those into term queries
-        if phrase.len() == 1 {
+        Ok(if phrase.len() == 1 {
             let query =
                 TermQuery::new(phrase.into_iter().next().unwrap(), IndexRecordOption::Basic);
             tracing::debug!("Domain term query = {:?}", query);
-            self.fetch_search_query(query, max, ScoreAlgo::Default)
+            Box::new(query)
         } else {
             let query = PhraseQuery::new(phrase);
             tracing::debug!("Domain phrase query = {:?}", query);
-            self.fetch_search_query(query, max, ScoreAlgo::Default)
-        }
+            Box::new(query)
+        })
     }
 
     fn fetch_url_search(
@@ -577,6 +585,10 @@ impl StoryIndex {
         url: &StoryUrl,
         max: usize,
     ) -> Result<Vec<(Shard, DocAddress)>, PersistError> {
+        self.fetch_search_query(self.parse_url_search(url)?, max, ScoreAlgo::Default)
+    }
+
+    fn parse_url_search(&self, url: &StoryUrl) -> Result<impl Query, PersistError> {
         let hash = url.normalization().hash();
         let hash_field = self.schema.url_norm_hash_field;
         let query = TermQuery::new(
@@ -585,7 +597,7 @@ impl StoryIndex {
         );
 
         tracing::debug!("URL hash query = {:?} (for {url})", query);
-        self.fetch_search_query(query, max, ScoreAlgo::Default)
+        Ok(query)
     }
 
     fn fetch_text_search(
@@ -593,6 +605,10 @@ impl StoryIndex {
         search: &str,
         max: usize,
     ) -> Result<Vec<(Shard, DocAddress)>, PersistError> {
+        self.fetch_search_query(self.parse_text_search(search)?, max, ScoreAlgo::Related)
+    }
+
+    fn parse_text_search(&self, search: &str) -> Result<impl Query, PersistError> {
         let mut query_parser = QueryParser::new(
             self.schema.schema.clone(),
             vec![self.schema.title_field, self.schema.tags_field],
@@ -615,7 +631,7 @@ impl StoryIndex {
 
         let query = query_parser.parse_query(&search)?;
         tracing::debug!("Term query = {:?}", query);
-        self.fetch_search_query(query, max, ScoreAlgo::Related)
+        Ok(query)
     }
 
     fn fetch_related(
@@ -624,6 +640,18 @@ impl StoryIndex {
         tags: &[String],
         max: usize,
     ) -> Result<Vec<(Shard, DocAddress)>, PersistError> {
+        self.fetch_search_query(
+            self.parse_related_search(title, tags)?,
+            max,
+            ScoreAlgo::Related,
+        )
+    }
+
+    fn parse_related_search(
+        &self,
+        title: &str,
+        tags: &[String],
+    ) -> Result<impl Query, PersistError> {
         let mut query_parser = QueryParser::new(
             self.schema.schema.clone(),
             vec![self.schema.title_field, self.schema.tags_field],
@@ -663,7 +691,7 @@ impl StoryIndex {
 
         let query = BooleanQuery::new(subqueries);
         tracing::debug!("Related query = {:?}", query);
-        self.fetch_search_query(query, max, ScoreAlgo::Related)
+        Ok(query)
     }
 
     fn fetch_front_page(&self, max_count: usize) -> Result<Vec<(Shard, DocAddress)>, PersistError> {

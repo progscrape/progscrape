@@ -145,6 +145,20 @@ impl StoryIndexShard {
         }
     }
 
+    #[cfg(test)]
+    pub(crate) fn with_writer<
+        F: FnOnce(&Self, &mut IndexWriter, &StorySchema) -> Result<T, PersistError>,
+        T,
+    >(
+        &mut self,
+        f: F,
+    ) -> Result<T, PersistError> {
+        let mut writer = self.writer()?;
+        let res = f(self, &mut writer, &self.schema)?;
+        self.commit_writer(writer)?;
+        Ok(res)
+    }
+
     pub fn writer(&self) -> Result<IndexWriter, PersistError> {
         Ok(self.index.writer(MEMORY_ARENA_SIZE)?)
     }
