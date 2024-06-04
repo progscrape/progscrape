@@ -18,7 +18,9 @@ use std::time::Duration;
 use crate::persist::index::indexshard::{StoryIndexShard, StoryLookup, StoryLookupId};
 use crate::persist::scrapestore::ScrapeStore;
 use crate::persist::shard::{ShardOrder, ShardRange};
-use crate::persist::{ScrapePersistResult, Shard, ShardSummary, StorageFetch, StoryQuery};
+use crate::persist::{
+    ScrapePersistResult, SearchSummary, Shard, ShardSummary, StorageFetch, StoryQuery,
+};
 use crate::story::{StoryCollector, TagSet};
 use crate::{
     timer_end, timer_start, MemIndex, PersistError, PersistLocation, Storage, StorageSummary,
@@ -508,16 +510,30 @@ impl StoryIndex {
         Ok(vec)
     }
 
-    fn fetch_tag_search(
+    /// If this is a type of [`StoryQuery`] that can be parsed as a tantivy [`Query`], make it so.
+    fn try_parse_query(
+        &self,
+        query: StoryQuery,
+    ) -> Result<Result<Box<dyn Query>, StoryQuery>, PersistError> {
+        match query {
+            StoryQuery::DomainSearch(domain) => Ok(Ok(self.parse_domain_search(&domain)?)),
+            StoryQuery::TagSearch(tag, alt) => Ok(Ok(self.parse_tag_search(&tag, alt.as_deref())?)),
+            StoryQuery::Related(title, tags) => {
+                Ok(Ok(self.parse_related_search(&title, tags.as_slice())?))
+            }
+            StoryQuery::TextSearch(search) => Ok(Ok(self.parse_text_search(&search)?)),
+            StoryQuery::UrlSearch(url) => Ok(Ok(self.parse_url_search(&url)?)),
+            StoryQuery::ById(..) | StoryQuery::ByShard(..) | StoryQuery::FrontPage => {
+                Ok(Err(query))
+            }
+        }
+    }
+
+    fn parse_tag_search(
         &self,
         tag: &str,
         alt: Option<&str>,
-        max: usize,
-    ) -> Result<Vec<(Shard, DocAddress)>, PersistError> {
-        self.fetch_search_query(self.parse_tag_search(tag, alt)?, max, ScoreAlgo::Default)
-    }
-
-    fn parse_tag_search(&self, tag: &str, alt: Option<&str>) -> Result<impl Query, PersistError> {
+    ) -> Result<Box<dyn Query>, PersistError> {
         // TODO: We use the query parser instead of a direct tags search because we want to ensure
         // that non-tagged stories match, just with a much bigger boost to the tags field than a
         // standard query search. We should be smarter about tags -- if something looks like a tag
@@ -543,15 +559,7 @@ impl StoryIndex {
             query_parser.parse_query(tag)?
         };
         tracing::debug!("Tag symbol query = {:?}", query);
-        Ok(query)
-    }
-
-    fn fetch_domain_search(
-        &self,
-        domain: &str,
-        max: usize,
-    ) -> Result<Vec<(Shard, DocAddress)>, PersistError> {
-        self.fetch_search_query(self.parse_domain_search(domain)?, max, ScoreAlgo::Default)
+        Ok(Box::new(query))
     }
 
     fn parse_domain_search(&self, domain: &str) -> Result<Box<dyn Query>, PersistError> {
@@ -580,15 +588,7 @@ impl StoryIndex {
         })
     }
 
-    fn fetch_url_search(
-        &self,
-        url: &StoryUrl,
-        max: usize,
-    ) -> Result<Vec<(Shard, DocAddress)>, PersistError> {
-        self.fetch_search_query(self.parse_url_search(url)?, max, ScoreAlgo::Default)
-    }
-
-    fn parse_url_search(&self, url: &StoryUrl) -> Result<impl Query, PersistError> {
+    fn parse_url_search(&self, url: &StoryUrl) -> Result<Box<dyn Query>, PersistError> {
         let hash = url.normalization().hash();
         let hash_field = self.schema.url_norm_hash_field;
         let query = TermQuery::new(
@@ -597,18 +597,10 @@ impl StoryIndex {
         );
 
         tracing::debug!("URL hash query = {:?} (for {url})", query);
-        Ok(query)
+        Ok(Box::new(query))
     }
 
-    fn fetch_text_search(
-        &self,
-        search: &str,
-        max: usize,
-    ) -> Result<Vec<(Shard, DocAddress)>, PersistError> {
-        self.fetch_search_query(self.parse_text_search(search)?, max, ScoreAlgo::Related)
-    }
-
-    fn parse_text_search(&self, search: &str) -> Result<impl Query, PersistError> {
+    fn parse_text_search(&self, search: &str) -> Result<Box<dyn Query>, PersistError> {
         let mut query_parser = QueryParser::new(
             self.schema.schema.clone(),
             vec![self.schema.title_field, self.schema.tags_field],
@@ -634,24 +626,11 @@ impl StoryIndex {
         Ok(query)
     }
 
-    fn fetch_related(
-        &self,
-        title: &str,
-        tags: &[String],
-        max: usize,
-    ) -> Result<Vec<(Shard, DocAddress)>, PersistError> {
-        self.fetch_search_query(
-            self.parse_related_search(title, tags)?,
-            max,
-            ScoreAlgo::Related,
-        )
-    }
-
     fn parse_related_search(
         &self,
         title: &str,
         tags: &[String],
-    ) -> Result<impl Query, PersistError> {
+    ) -> Result<Box<dyn Query>, PersistError> {
         let mut query_parser = QueryParser::new(
             self.schema.schema.clone(),
             vec![self.schema.title_field, self.schema.tags_field],
@@ -691,7 +670,7 @@ impl StoryIndex {
 
         let query = BooleanQuery::new(subqueries);
         tracing::debug!("Related query = {:?}", query);
-        Ok(query)
+        Ok(Box::new(query))
     }
 
     fn fetch_front_page(&self, max_count: usize) -> Result<Vec<(Shard, DocAddress)>, PersistError> {
@@ -742,15 +721,21 @@ impl StoryIndex {
         query: StoryQuery,
         max: usize,
     ) -> Result<Vec<(Shard, DocAddress)>, PersistError> {
-        catch_unwind(|| match query {
-            StoryQuery::ById(id) => self.with_searcher(id.shard(), self.fetch_by_id(&id)),
-            StoryQuery::ByShard(shard) => self.with_searcher(shard, self.fetch_by_segment()),
-            StoryQuery::FrontPage => self.fetch_front_page(max),
-            StoryQuery::TagSearch(tag, alt) => self.fetch_tag_search(&tag, alt.as_deref(), max),
-            StoryQuery::DomainSearch(domain) => self.fetch_domain_search(&domain, max),
-            StoryQuery::UrlSearch(url) => self.fetch_url_search(&url, max),
-            StoryQuery::TextSearch(text) => self.fetch_text_search(&text, max),
-            StoryQuery::Related(title, tags) => self.fetch_related(&title, tags.as_slice(), max),
+        let algo = if matches!(query, StoryQuery::Related(..)) {
+            ScoreAlgo::Related
+        } else {
+            ScoreAlgo::Default
+        };
+        catch_unwind(|| match self.try_parse_query(query)? {
+            Ok(query) => self.fetch_search_query(query, max, algo),
+            Err(query) => match query {
+                StoryQuery::ById(id) => self.with_searcher(id.shard(), self.fetch_by_id(&id)),
+                StoryQuery::ByShard(shard) => self.with_searcher(shard, self.fetch_by_segment()),
+                StoryQuery::FrontPage => self.fetch_front_page(max),
+                _ => Err(PersistError::UnexpectedError(format!(
+                    "Unexpected try_parse_query result"
+                ))),
+            },
         })
         .map_err(|e|
             // We don't have as much control over the underlying search library as we'd like, so we try to
@@ -895,6 +880,25 @@ impl Storage for StoryIndex {
         Ok(summary)
     }
 
+    fn fetch_count_by_shard(&self, query: StoryQuery) -> Result<SearchSummary, PersistError> {
+        let mut summary = SearchSummary::default();
+        let Ok(query) = self.try_parse_query(query)? else {
+            return Err(PersistError::UnexpectedError(format!(
+                "Unable to summarize query by shards"
+            )));
+        };
+
+        for shard in self.shards().iterate(ShardOrder::NewestFirst) {
+            let docs = self.with_searcher(shard, |_, searcher, _| {
+                let docs = searcher.search(&query, &tantivy::collector::Count)?;
+                Ok(docs)
+            })?;
+            summary.by_shard.push((shard.to_string(), docs));
+            summary.total += docs;
+        }
+        Ok(summary)
+    }
+
     fn fetch_count(&self, query: StoryQuery, max: usize) -> Result<usize, PersistError> {
         Ok(self.fetch_doc_addresses(query, max)?.len())
     }
@@ -932,6 +936,7 @@ mod test {
     use progscrape_scrapers::{
         hacker_news::*, lobsters::LobstersStory, reddit::*, ScrapeConfig, ScrapeSource, StoryUrl,
     };
+    use tempfile::tempdir;
 
     use crate::{story::TagSet, test::*, MemIndex};
     use rstest::*;
@@ -1324,9 +1329,9 @@ mod test {
 
     #[rstest]
     fn test_index_lots(_enable_tracing: &bool) -> Result<(), Box<dyn std::error::Error>> {
-        let path = "/tmp/indextest";
-        std::fs::create_dir_all(path)?;
-        let mut index = StoryIndex::new(PersistLocation::Path(path.into()))?;
+        let path = tempdir()?.path().to_owned();
+        std::fs::create_dir_all(&path)?;
+        let mut index = StoryIndex::new(PersistLocation::Path(path.clone()))?;
 
         let scrapes = progscrape_scrapers::load_sample_scrapes(&ScrapeConfig::default());
         let eval = StoryEvaluator::new_for_test();
@@ -1334,13 +1339,23 @@ mod test {
 
         // First, build an in-memory index quickly
         memindex.insert_scrapes(scrapes)?;
-
         index.insert_scrape_collections(&eval, memindex.get_all_stories())?;
 
-        // Query the new index
+        // Query the new index, ensuring only one result per URL
+        let mut set = HashSet::new();
         for story in index.fetch::<Shard>(StoryQuery::from_search(&eval.tagger, "rust"), 10)? {
             println!("{:?}", story);
+            assert!(
+                set.insert(story.url.clone()),
+                "Duplicate url: {:?}",
+                story.url
+            );
         }
+
+        let summary = index.fetch_count_by_shard(StoryQuery::from_search(&eval.tagger, "rust"))?;
+        println!("{summary:?}");
+
+        std::fs::remove_dir_all(&path)?;
 
         Ok(())
     }

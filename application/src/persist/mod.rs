@@ -51,6 +51,12 @@ pub struct StorageSummary {
     pub total: ShardSummary,
 }
 
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct SearchSummary {
+    pub by_shard: Vec<(String, usize)>,
+    pub total: usize,
+}
+
 #[derive(Debug, Clone)]
 /// The type of story fetch to perform.
 pub enum StoryQuery {
@@ -197,6 +203,9 @@ pub trait Storage: Send + Sync {
 
     /// Count the docs matching the query, at most max.
     fn fetch_count(&self, query: StoryQuery, max: usize) -> Result<usize, PersistError>;
+
+    /// Count the docs matching the query, at most max.
+    fn fetch_count_by_shard(&self, query: StoryQuery) -> Result<SearchSummary, PersistError>;
 
     /// Fetches the index-specific story details for a single story.
     fn fetch_detail_one(

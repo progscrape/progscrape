@@ -11,7 +11,7 @@ use crate::{
 };
 
 /// Collection of scrapes, which can also extract the best title, etc.
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct ScrapeCollection {
     pub earliest: StoryDate,
 
