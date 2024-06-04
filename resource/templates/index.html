@@ -12,6 +12,96 @@
         {% endfor %}
     </div>
 
+    {% for tag in top_tags %}{% if search == tag.0 %}
+    <script src="{{ 'chart.js-4.4.3.umd.min.js' | static }}"></script>
+    <div id="zeitgeist">
+        <div class="loading">Loading...</div>
+        <canvas></canvas>
+    </div>
+    <script>
+        const zeitgeistContainer = document.getElementById('zeitgeist');
+        zeitgeistContainer.classList.add('loading');
+        (async () => {
+            let a = await (await fetch('/zeitgeist.json')).json();
+            let b = await (await fetch('/zeitgeist.json?search={{ search }}')).json();
+            let base = {};
+            for (const story of a.stories.by_shard) {
+                base[story[0]] = story[1];
+            }
+            let count = {};
+            for (const story of b.stories.by_shard) {
+                count[story[0]] = story[1];
+            }
+            let labels = a.stories.by_shard.map((x) => x[0]);
+            let data = [];
+            for (const label of labels) {
+                if (count[label] == 0 || base[label] == 0) {
+                    data.push(0);
+                } else {
+                    data.push(count[label] / base[label]);
+                }
+            }
+            while (data.length > 12 && labels.length > 12) {
+                if (data[0] == 0 && data[1] == 0 && data[2] == 0) {
+                    data.shift();
+                    labels.shift();
+                } else {
+                    break;
+                }
+            }
+            for (let i = 0; i < data.length; i++) {
+                if (data[i] == 0) {
+                    data[i] = 1e-12;
+                }
+            }
+
+            console.log(a, b);
+            const ctx = zeitgeistContainer.getElementsByTagName('canvas')[0];
+            zeitgeistContainer.classList.add('loaded');
+            console.log(ctx);
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [{
+                        label: 'Popularity',
+                        data,
+                        borderWidth: 1,
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    elements: {
+                        point: {
+                            pointStyle: false,
+                        },
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: "Stories tagged '{{ tag.0 }}'"
+                        },
+                        legend: {
+                            display: false,
+                        },
+                    },
+                    scales: {
+                        y: {
+                            min: 1e-12,
+                            type: 'logarithmic',
+                            ticks: {
+                                callback: (_) => ""
+                            },
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        })()
+    </script>
+    {% endif %}
+    {% endfor %}
+
     {% for story in stories %}
     <div class="story">
         <h2 class="story-title"><a class="url" href="{{ story.url }}">{{ story.title }}</a><a class="detail" title="Story details" href="/s/{{ story.url | trim_start_matches(pat='http://') | trim_start_matches(pat='https://') }}"></a></h2>

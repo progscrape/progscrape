@@ -10,6 +10,28 @@ h2.error {
     padding: 1em 0 1em 0;
 }
 
+#zeitgeist {
+    display: none;
+
+    &.loading {
+        display: table;
+        width: 100%;
+        .loading {
+            height: 300px;
+            display: table-cell;
+            width: 100%;
+            text-align: center;
+            vertical-align: middle;
+        }
+    }
+
+    &.loaded {
+        .loading {
+            display: none;
+        }
+    }
+}
+
 .tag {
     font-size: 10px;
     font-weight: bold;

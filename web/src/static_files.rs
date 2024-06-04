@@ -26,6 +26,7 @@ fn mime_type_from(extension: &str, buf: &[u8]) -> Option<&'static str> {
     match extension {
         "txt" => Some("text/plain"),
         "css" => Some("text/css"),
+        "js" => Some("application/javascript"),
         _ => infer::get(buf).map(|x| x.mime_type()),
     }
 }
