@@ -12,7 +12,8 @@
         {% endfor %}
     </div>
 
-    {% if search.type == "tag" or search.type == "domain" %}
+    {# Show the chart for tag/domain searches, but only at offset 0 #}
+    {% if (search.type == "tag" or search.type == "domain") and (search.offset == 0) and (stories | length == search.count) %}
     <script src="{{ 'chart.js-4.4.3.umd.min.js' | static }}"></script>
     <div id="zeitgeist">
         <div class="loading">Loading...</div>
@@ -45,7 +46,7 @@
     <h2 class="error">No stories found!</h2>
     {% endfor %}
 
-    {% if search.offset <= 30 %}
+    {% if search.offset <= 30 and (stories | length == search.count) %}
     {% if search.text %}
     <p class="more"><a href="?search={{ search.text }}&offset={{ search.offset + 30 }}">More &rarr;</a></p>
     {% else %}

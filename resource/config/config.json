@@ -133,6 +133,7 @@
                 "compiler(s)": {},
                 "3d": {"alts": ["3(-)d", "3(-)dimension(s)", "three(-)d", "three(-)dimension(s)", "three(-)dimensional", "3(-)dimensional"]},
                 "ai": {"alts": ["artificial(-)intelligence"]},
+                "deepfake(s)": {"alts": ["deep(-)fake(s)"]},
                 "llm(s)": {},
                 "hash": {},
                 "web": {},
@@ -199,6 +200,7 @@
                 "openai": {}
             },
             "org": {
+                "raspberry(-)pi": {},
                 "amd": {},
                 "intel": {},
                 "apple": {},
@@ -327,7 +329,7 @@
                 "biology": {},
                 "cancer": {},
                 "coronavirus": {},
-                "covid": {"alts": ["covid 19", "covid19"]},
+                "covid": {"alts": ["covid(-)19", "covid19"]},
                 "diabetes": {"alts": ["diabetic", "prediabetic", "prediabetes"]},
                 "disease": {},
                 "epilepsy": {},
@@ -336,7 +338,9 @@
                 "mrna": {},
                 "vaccine": {},
                 "brain": {},
-                "cannabis": {}
+                "cannabis": {},
+                "mdma": {},
+                "psilocybin": {}
             },
             "language": {
                 "php": {},
@@ -483,6 +487,8 @@
                 "yaml": {},
                 "csv": {},
                 "arm": {},
+                "aarch64": {},
+                "amd64": {},
                 "mips": {},
                 "gpu": {},
                 "awk": {},
