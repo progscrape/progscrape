@@ -1,7 +1,7 @@
 use itertools::Itertools;
 
 use tantivy::directory::{MmapDirectory, RamDirectory};
-use tantivy::tokenizer::{PreTokenizedString, SimpleTokenizer, Tokenizer};
+use tantivy::tokenizer::{PreTokenizedString, SimpleTokenizer, Token, Tokenizer};
 use tantivy::{doc, Index, IndexReader};
 use tantivy::{
     schema::*, Directory, DocAddress, IndexSettings, IndexSortByField, IndexWriter, Searcher,
@@ -222,14 +222,7 @@ impl StoryIndexShard {
             new_doc.add_text(self.schema.tags_field, tag);
         }
 
-        let tokens = {
-            let mut token_stream = SimpleTokenizer.token_stream(&doc.host);
-            let mut tokens = vec![];
-            while token_stream.advance() {
-                tokens.push(token_stream.token().clone());
-            }
-            tokens
-        };
+        let tokens = tokenize_domain(&doc.host);
         new_doc.add_pre_tokenized_text(
             self.schema.host_field,
             PreTokenizedString {
@@ -361,4 +354,17 @@ impl StoryIndexShard {
             Ok(result)
         })
     }
+}
+
+/// Tokenize a domain
+pub(crate) fn tokenize_domain(domain: &str) -> Vec<Token> {
+    let tokens = {
+        let mut token_stream = SimpleTokenizer.token_stream(&domain);
+        let mut tokens = vec![];
+        while token_stream.advance() {
+            tokens.push(token_stream.token().clone());
+        }
+        tokens
+    };
+    tokens
 }

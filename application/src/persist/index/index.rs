@@ -5,7 +5,7 @@ use tantivy::collector::TopDocs;
 use tantivy::query::{
     AllQuery, BooleanQuery, BoostQuery, Occur, PhraseQuery, Query, QueryParser, TermQuery,
 };
-use tantivy::tokenizer::TokenizerManager;
+use tantivy::tokenizer::{SimpleTokenizer, Tokenizer, TokenizerManager};
 use tantivy::{schema::*, DocAddress, IndexWriter, Searcher, SegmentReader};
 
 use progscrape_scrapers::{ScrapeCollection, StoryDate, StoryUrl, TypedScrape};
@@ -27,7 +27,7 @@ use crate::{
     StorageWriter, Story, StoryEvaluator, StoryIdentifier,
 };
 
-use super::indexshard::StoryInsert;
+use super::indexshard::{tokenize_domain, StoryInsert};
 use super::schema::StorySchema;
 
 const STORY_INDEXING_CHUNK_SIZE: usize = 10000;
@@ -562,10 +562,9 @@ impl StoryIndex {
 
     fn parse_domain_search(&self, domain: &str) -> Result<Box<dyn Query>, PersistError> {
         let host_field = self.schema.host_field;
-        let phrase = domain
-            .split('.')
-            .filter(|s| !s.is_empty())
-            .map(|s| Term::from_field_text(host_field, s))
+        let phrase = tokenize_domain(domain)
+            .into_iter()
+            .map(|s| Term::from_field_text(host_field, &s.text))
             .collect_vec();
 
         // This shouldn't be possible
@@ -649,10 +648,9 @@ impl StoryIndex {
         for tag in tags {
             // TODO: we need to ensure these are display tags!
             let query: Box<dyn Query> = if tag.trim_matches('.').contains('.') {
-                let phrase = tag
-                    .split('.')
-                    .filter(|s| !s.is_empty())
-                    .map(|s| Term::from_field_text(self.schema.host_field, s))
+                let phrase = tokenize_domain(tag)
+                    .into_iter()
+                    .map(|s| Term::from_field_text(self.schema.host_field, &s.text))
                     .collect_vec();
                 Box::new(BoostQuery::new(Box::new(PhraseQuery::new(phrase)), 10.0))
             } else {
@@ -1298,6 +1296,7 @@ mod test {
     /// Ensure that a story is searchable by various terms.
     #[rstest]
     #[case("http://example.com", "I love Rust", &["rust", "love", "example.com"])]
+    #[case("http://domain-xyz.com", "I love Rust", &["rust", "love", "domain-xyz.com"])]
     #[case("http://medium.com", "The Pitfalls of C++", &["c++", "cplusplus", "pitfalls", "Pitfalls"])]
     #[case("http://www.att.com", "New AT&T plans", &["at&t", "atandt", "att.com", "http://att.com"])]
     #[case("http://example.com", "I love Go", &["golang", "love"])]
@@ -1328,10 +1327,11 @@ mod test {
             .expect("Didn't find doc");
 
         for term in search_terms {
-            let search = index.fetch_count(&StoryQuery::from_search(&eval.tagger, term), 10)?;
+            let query = StoryQuery::from_search(&eval.tagger, term);
+            let search = index.fetch_count(&query, 10)?;
             assert_eq!(
                 1, search,
-                "Expected one search result when querying '{}' for title={} url={} doc={:?}",
+                "Expected one search result when querying '{}' for title={} url={} doc={:?} query={query:?}",
                 term, title, url, doc
             );
         }
