@@ -75,9 +75,6 @@
                 "science": { "flair_is_tag": true }
             },
             "limit": 50
-        },
-        "feed": {
-
         }
     },
     "cron": {
@@ -97,8 +94,7 @@
             "update_blog": {
                 "url": "/admin/cron/blog",
                 "interval": [1, "Day"],
-                "eager": true,
-                "enabled": true
+                "eager": true
             },
             "scrape_hackernews": {
                 "url": "/admin/cron/scrape/hacker_news",
