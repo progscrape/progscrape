@@ -6,6 +6,17 @@
 {%- endfor -%}
 {% endmacro %}
 
+{% macro comment_links_scrapes(scrapes) %}
+{%- for id, scrape in scrapes -%}
+{%- if id -%}
+{% set source = id | split(pat='-') | nth(n=0) %}
+<a href="{{ id | comment_link }}" class="{{ source }}"
+    data-timestamp="{% for id, data in scrape %}{{ data.date | relative_time(now=now) }}{% endfor %}"
+    data-title="{% for id, data in scrape %}{{ data.raw_title }}{% endfor %}"><img src="{{ source ~ '.png' | static }}" width="16" height="16"></a><span> </span>
+{%- endif -%}
+{%- endfor -%}
+{% endmacro %}
+
 {% macro sort(sort) -%}
 {%- if sort == "date" -%}
 date

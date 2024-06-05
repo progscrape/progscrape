@@ -20,17 +20,3 @@ pub struct StoryRender {
     pub html: String,
     pub sources: TypedScrapeMap<Option<ScrapeId>>,
 }
-
-/// Fully-rendered story, suitable for display on admin screens.
-#[derive(Clone, Default, Deserialize, Serialize)]
-pub struct StoryFullRender {
-    /// Base render flattened into this structure at display time by serde.
-    #[serde(flatten)]
-    pub base: StoryRender,
-
-    pub url_norm: String,
-    pub url_norm_hash: i64,
-
-    /// Fully-detailed scrapes
-    pub scrapes: HashMap<ScrapeId, TypedScrape>,
-}

@@ -154,16 +154,16 @@ h2.error {
             }
 
             a.reddit::before {
-                content: "Reddit discussion";
+                content: "Reddit (" attr(data-timestamp) "): " attr(data-title);
             }
             a.hacker_news::before {
-                content: "Hacker News discussion";
+                content: "Hacker News (" attr(data-timestamp) "): " attr(data-title);
             }
             a.lobsters::before {
-                content: "Lobste.rs discussion";
+                content: "Lobste.rs (" attr(data-timestamp) "): " attr(data-title);
             }
             a.slashdot::before {
-                content: "Slashdot discussion";
+                content: "Slashdot (" attr(data-timestamp) "): " attr(data-title);
             }
         }
     }

@@ -713,6 +713,17 @@ async fn story(
                 .await?,
         );
     }
+    let mut stories_with_scrapes = vec![];
+    for story in stories {
+        let story_raw = index
+            .fetch_one::<TypedScrape>(StoryQuery::ById(
+                StoryIdentifier::from_base64(story.id.clone()).ok_or(WebError::NotFound)?,
+            ))
+            .await?
+            .ok_or(WebError::NotFound)?;
+        let scrapes = story_raw.scrapes;
+        stories_with_scrapes.push((story, scrapes));
+    }
     let top_tags = index.top_tags(20)?;
     let path = original_uri
         .path_and_query()
@@ -724,7 +735,7 @@ async fn story(
             "public, max-age=300, s-max-age=300, stale-while-revalidate=60, stale-if-error=86400",
         ),
     )],
-    render(&resources, "story.html", context!(top_tags, stories, related, now, search, host, path))))
+    render(&resources, "story.html", context!(top_tags, stories = stories_with_scrapes, related, now, search, host, path))))
 }
 
 async fn zeitgeist_json(
