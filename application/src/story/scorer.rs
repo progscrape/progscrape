@@ -180,6 +180,7 @@ impl StoryScorer {
                     accum(CommentCount, 5.0);
                 }
             }
+            TypedScrape::Feed(_feed) => {}
         }
     }
 

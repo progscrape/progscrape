@@ -6,6 +6,7 @@ pub(crate) use self::def::*;
 use crate::types::*;
 
 mod def;
+pub mod feed;
 pub mod hacker_news;
 pub mod legacy;
 pub mod lobsters;
@@ -351,6 +352,7 @@ scrapers! {
     slashdot::Slashdot,
     lobsters::Lobsters,
     reddit::Reddit,
+    feed::Feed,
 }
 
 #[cfg(any(test, feature = "scrape_test"))]
@@ -391,6 +393,7 @@ pub mod test {
             ScrapeSource::Slashdot => slashdot_files(),
             ScrapeSource::Reddit => reddit_files(),
             ScrapeSource::Lobsters => lobsters_files(),
+            ScrapeSource::Feed => vec![],
             ScrapeSource::Other => vec![],
         }
     }

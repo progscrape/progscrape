@@ -1044,6 +1044,9 @@ async fn admin_cron_refresh(
     }): State<AdminState>,
 ) -> Result<impl IntoResponse, WebError> {
     let start = Instant::now();
+    if let Some(blog) = resources.blog_posts.read().get(0) {
+        *index.pinned_story.write() = Some(blog.url.clone());
+    }
     index.refresh_hot_set().await?;
     let elapsed_ms = start.elapsed().as_millis();
     tracing::info!("Hotset refresh: time={elapsed_ms}ms");
@@ -1078,6 +1081,18 @@ async fn admin_update_blog(
         resources, index, ..
     }): State<AdminState>,
 ) -> Result<impl IntoResponse, WebError> {
+    let mut scrapes = vec![];
+    for post in &*resources.blog_posts.read() {
+        let story = progscrape_scrapers::feed::FeedStory::new(
+            post.date.timestamp().to_string(),
+            post.date,
+            post.title.clone(),
+            post.url.clone(),
+            post.tags.clone(),
+        );
+        scrapes.push(story.into());
+    }
+    index.insert_scrapes(scrapes).await?;
     render_admin(None, &resources, "admin/cron_blog.html", context!())
 }
 

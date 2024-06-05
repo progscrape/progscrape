@@ -93,7 +93,8 @@
             },
             "update_blog": {
                 "url": "/admin/cron/blog",
-                "interval": [1, "Day"]
+                "interval": [1, "Day"],
+                "eager": true
             },
             "scrape_hackernews": {
                 "url": "/admin/cron/scrape/hacker_news",

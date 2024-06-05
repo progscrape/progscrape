@@ -72,10 +72,11 @@ impl ScrapeCollection {
             match source {
                 // HN is moderated and titles are high quality
                 ScrapeSource::HackerNews => 0,
-                ScrapeSource::Lobsters => 1,
-                ScrapeSource::Slashdot => 2,
+                ScrapeSource::Feed => 1,
+                ScrapeSource::Lobsters => 2,
+                ScrapeSource::Slashdot => 3,
                 // User-submitted titles are generally just OK
-                ScrapeSource::Reddit => 3,
+                ScrapeSource::Reddit => 4,
                 ScrapeSource::Other => 99,
             }
         };
