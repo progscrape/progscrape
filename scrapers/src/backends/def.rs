@@ -106,10 +106,10 @@ macro_rules! scrape_story {
 
         impl $name {
             #[allow(clippy::too_many_arguments)]
-            pub fn new<'a, S: Clone + Into<Cow<'a, str>>>(id: S, date: StoryDate, raw_title: S, url: StoryUrl, $( $id: $type ),*) -> GenericScrape<$name> {
+            pub fn new<'a, S: Clone + Into<std::borrow::Cow<'a, str>>>(id: S, date: $crate::types::StoryDate, raw_title: S, url: $crate::types::StoryUrl, $( $id: $type ),*) -> GenericScrape<$name> {
                 GenericScrape {
-                    shared: ScrapeShared {
-                        id: ScrapeId::new(<$name as ScrapeStory>::TYPE, None, id.into().into()), date, raw_title: raw_title.into().into(), url
+                    shared: $crate::backends::ScrapeShared {
+                        id: $crate::backends::ScrapeId::new(<$name as ScrapeStory>::TYPE, None, id.into().into()), date, raw_title: raw_title.into().into(), url
                     },
                     data: $name {
                         $($id),*
@@ -118,10 +118,10 @@ macro_rules! scrape_story {
             }
 
             #[allow(clippy::too_many_arguments)]
-            pub fn new_subsource<'a, S: Clone + Into<Cow<'a, str>>>(id: S, subsource: S, date: StoryDate, raw_title: S, url: StoryUrl, $( $id: $type ),*) -> GenericScrape<$name> {
+            pub fn new_subsource<'a, S: Clone + Into<std::borrow::Cow<'a, str>>>(id: S, subsource: S, date: $crate::types::StoryDate, raw_title: S, url: $crate::types::StoryUrl, $( $id: $type ),*) -> GenericScrape<$name> {
                 GenericScrape {
-                    shared: ScrapeShared {
-                        id: ScrapeId::new(<$name as ScrapeStory>::TYPE, Some(subsource.into().into()), id.into().into()), date, raw_title: raw_title.into().into(), url
+                    shared: $crate::backends::ScrapeShared {
+                        id: $crate::backends::ScrapeId::new(<$name as ScrapeStory>::TYPE, Some(subsource.into().into()), id.into().into()), date, raw_title: raw_title.into().into(), url
                     },
                     data: $name {
                         $($id),*
@@ -130,10 +130,10 @@ macro_rules! scrape_story {
             }
 
             #[allow(clippy::too_many_arguments)]
-            pub fn new_with_defaults<'a, S: Clone + Into<Cow<'a, str>>>(id: S, date: StoryDate, raw_title: S, url: StoryUrl) -> GenericScrape<$name> {
+            pub fn new_with_defaults<'a, S: Clone + Into<std::borrow::Cow<'a, str>>>(id: S, date: $crate::types::StoryDate, raw_title: S, url: $crate::types::StoryUrl) -> GenericScrape<$name> {
                 GenericScrape {
-                    shared: ScrapeShared {
-                        id: ScrapeId::new(<$name as ScrapeStory>::TYPE, None, id.into().into()), date, raw_title: raw_title.into().into(), url
+                    shared: $crate::backends::ScrapeShared {
+                        id: $crate::backends::ScrapeId::new(<$name as ScrapeStory>::TYPE, None, id.into().into()), date, raw_title: raw_title.into().into(), url
                     },
                     data: $name {
                         $($id : Default::default() ),*
@@ -142,10 +142,10 @@ macro_rules! scrape_story {
             }
 
             #[allow(clippy::too_many_arguments)]
-            pub fn new_subsource_with_defaults<'a, S: Clone + Into<Cow<'a, str>>>(id: S, subsource: S, date: StoryDate, raw_title: S, url: StoryUrl) -> GenericScrape<$name> {
+            pub fn new_subsource_with_defaults<'a, S: Clone + Into<std::borrow::Cow<'a, str>>>(id: S, subsource: S, date: $crate::types::StoryDate, raw_title: S, url: $crate::types::StoryUrl) -> GenericScrape<$name> {
                 GenericScrape {
-                    shared: ScrapeShared {
-                        id: ScrapeId::new(<$name as ScrapeStory>::TYPE, Some(subsource.into().into()), id.into().into()), date, raw_title: raw_title.into().into(), url
+                    shared: $crate::backends::ScrapeShared {
+                        id: $crate::backends::ScrapeId::new(<$name as ScrapeStory>::TYPE, Some(subsource.into().into()), id.into().into()), date, raw_title: raw_title.into().into(), url
                     },
                     data: $name {
                         $($id : Default::default() ),*
