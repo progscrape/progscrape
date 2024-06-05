@@ -140,6 +140,8 @@
                 "spam": {}
             },
             "concrete_concept": {
+                "flight": {},
+                "airline(s)": {"implies": "flight"},
                 "drm": {},
                 "nosql": {},
                 "sql": {},
@@ -282,7 +284,14 @@
                 "navy": {},
                 "debian": {},
                 "nvidia": {},
-                "darpa": {}
+                "darpa": {},
+                "netflix": {},
+                "spotify": {},
+                "zoom": {},
+                "ikea": {},
+                "whatsapp": {},
+                "discord": {},
+                "twitch": {}
             },
             "politics": {
                 "obama": {},
@@ -398,7 +407,7 @@
                 "signal": {},
                 "progscrape": {},
                 "azure": {},
-                "chatgpt": {}
+                "chatgpt": {"implies": "gpt"}
             },
             "technology": {
                 "kde": {},
@@ -493,7 +502,7 @@
                 "angular": {"alt": "angularjs"},
                 "ember": {"alt": "emberjs"},
                 "smb": {},
-                "gpt": {"alt": "chatgpt"},
+                "gpt": {},
                 "wasm": {},
                 "wasi": {"implies": "wasm"},
                 "llvm": {},
