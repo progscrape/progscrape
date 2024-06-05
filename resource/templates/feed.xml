@@ -26,6 +26,7 @@
 				&lt;span class="tag"&gt;&lt;a href="https://{{ host }}/?search={{ tag }}"&gt;{{ tag }}&lt;/a&gt;&lt;/span&gt;
 				{%- endfor -%}
 			&lt;/p&gt;
+			{{- story.html -}}
 		</summary>
 	</entry>
 {% endfor -%}

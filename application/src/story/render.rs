@@ -16,6 +16,8 @@ pub struct StoryRender {
     pub date: StoryDate,
     pub score: f32,
     pub tags: Vec<String>,
+    /// Only for our blog posts
+    pub html: String,
     pub sources: TypedScrapeMap<Option<ScrapeId>>,
 }
 

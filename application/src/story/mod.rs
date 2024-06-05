@@ -142,6 +142,7 @@ impl<S> Story<S> {
             title: self.title.to_owned(),
             date: self.date,
             tags: self.render_tags(&eval.tagger),
+            html: Default::default(),
             sources,
         }
     }

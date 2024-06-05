@@ -75,6 +75,7 @@ impl TryInto<StoryRender> for FeedStory {
             id: "".to_owned(),
             order: 0,
             score: 0.0,
+            html: "".to_owned(),
             sources,
         })
     }
@@ -109,6 +110,7 @@ mod tests {
             tags: vec!["a".to_string()],
             title: "Title".to_string(),
             url: url.to_string(),
+            html: "".to_string(),
         };
 
         let feed_story: FeedStory = story.clone().into();
