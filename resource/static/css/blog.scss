@@ -55,7 +55,20 @@
             color: #333;
             font-size: 16px;
             line-height: 22px;
-            padding: 0 1em 0.75em 1em;
+            margin: 0 1em 0.75em 1em;
+        }
+
+        pre {
+            display: block;
+            font-size: 14px;
+            margin: 0em 2em 1em 1.2em;
+            padding: 0.4em;
+            background-color: #f1f1f1;
+            border: 1px dashed #e2e2e2;
+        }
+
+        code {
+            font-size: 14px;
         }
 
         ul {
