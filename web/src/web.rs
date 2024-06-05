@@ -178,7 +178,18 @@ async fn request_trace(req: Request, next: Next) -> Result<Response, StatusCode>
         .headers()
         .get(header::USER_AGENT)
         .map(|s| String::from_utf8_lossy(s.as_bytes()));
-    tracing::info!("page_request {}", json!({ "uri": uri, "ua": ua }));
+    let ip = req
+        .headers()
+        .get("x-forwarded-for")
+        .map(|s| String::from_utf8_lossy(s.as_bytes()));
+    let r = req
+        .headers()
+        .get(header::REFERER)
+        .map(|s| String::from_utf8_lossy(s.as_bytes()));
+    tracing::info!(
+        "http_request {}",
+        json!({ "uri": uri, "ua": ua, "ip": ip, "r": r })
+    );
 
     Ok(next.run(req).await)
 }
