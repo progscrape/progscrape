@@ -39,6 +39,7 @@ pub enum StoryScore {
     PoorUpvoteRatio,
     UpvoteCount,
     CommentCount,
+    MetaStory,
     Position(ScrapeSource),
     Source(ScrapeSource),
 }
@@ -134,6 +135,10 @@ impl StoryScorer {
             } else {
                 accum(ImageLink, -10.0);
             }
+        }
+        // Boost our own stories
+        if url.host().contains("progscrape") {
+            accum(MetaStory, 100.0);
         }
 
         match scrape {
