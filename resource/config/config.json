@@ -75,6 +75,8 @@
                 "science": { "flair_is_tag": true }
             },
             "limit": 50
+        },
+        "feed": {
         }
     },
     "cron": {
