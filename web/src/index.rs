@@ -197,11 +197,17 @@ impl Index<StoryIndex> {
             .skip(offset)
             .take(count)
             .enumerate()
-            .map(|(index, story)| self.render(host, story, index).into())
+            .map(|(index, story)| self.render(host, story, index).map(|s| s.into()))
+            .filter_map(|story| story)
             .collect_vec()
     }
 
-    fn render<'a>(&self, host: &HostParams, story: &'a Story<Shard>, order: usize) -> StoryRender {
+    fn render<'a>(
+        &self,
+        host: &HostParams,
+        story: &'a Story<Shard>,
+        order: usize,
+    ) -> Option<StoryRender> {
         let mut render = story.render(&self.eval.read(), order);
         if story.url.host() == "progscrape" {
             for blog in &*self.blog.read() {
@@ -215,10 +221,13 @@ impl Index<StoryIndex> {
                         "http://progscrape/",
                         &format!("{}://{}/", host.protocol, host.host),
                     );
+                    return Some(render);
                 }
             }
+            None
+        } else {
+            Some(render)
         }
-        render
     }
 
     pub fn parse_query(&self, query: impl IntoStoryQuery) -> Result<StoryQuery, PersistError> {
