@@ -129,6 +129,7 @@ fn blog_posts(resource_path: &Path) -> Result<Vec<BlogPost>, WebError> {
             .map(|s| s.trim().to_owned())
             .collect_vec();
         tags.push("blog".to_owned());
+        tags.push("progscrape".to_owned());
         let html =
             markdown::to_html_with_options(&contents, &opts).map_err(WebError::MarkdownError)?;
         let slug = title
