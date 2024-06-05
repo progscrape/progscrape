@@ -647,7 +647,8 @@ impl StoryIndex {
 
         let mut subqueries = vec![(Occur::Should, title_query)];
         for tag in tags {
-            let query: Box<dyn Query> = if tag.contains('.') {
+            // TODO: we need to ensure these are display tags!
+            let query: Box<dyn Query> = if tag.trim_matches('.').contains('.') {
                 let phrase = tag
                     .split('.')
                     .filter(|s| !s.is_empty())

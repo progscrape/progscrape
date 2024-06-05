@@ -30,7 +30,8 @@
         </div>
     </div>
     {% else %}
-    <h2 class="error">No stories found from <code>{{ search }}</code>!</h2>
+    <h2 class="error">No stories found!</h2>
+    <p>Hmm. No stories were found with the url <code>http://{{ search.text }}</code></p>
     {% endfor %}
 
     <h1 class="related">Related Stories</h1>
