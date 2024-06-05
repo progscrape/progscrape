@@ -123,7 +123,12 @@ impl<S> Story<S> {
     }
 
     pub fn render_tags(&self, tagger: &StoryTagger) -> Vec<String> {
-        let mut tags = vec![self.url.host().to_owned()];
+        let host = self.url.host();
+        let mut tags = vec![];
+        // This is mainly for our blog entries that explicitly use "progscrape" as a host
+        if host.contains('.') {
+            tags.push(host.to_owned());
+        }
         tags.extend(tagger.make_display_tags(self.tags.dump()));
         tags
     }
