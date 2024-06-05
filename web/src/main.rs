@@ -160,6 +160,7 @@ async fn go() -> Result<(), WebError> {
             let index = Index::initialize_with_persistence(
                 persist_path,
                 resources.story_evaluator.clone(),
+                resources.blog_posts.clone(),
             )?;
             index.backup(&backup_path)?;
         }
@@ -186,6 +187,7 @@ async fn go() -> Result<(), WebError> {
             let index = Index::initialize_with_persistence(
                 persist_path,
                 resources.story_evaluator.clone(),
+                resources.blog_posts.clone(),
             )?;
             let listen_port = listen_port
                 .map(|s| s.parse().expect("Failed to parse socket address"))

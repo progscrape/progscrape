@@ -2,9 +2,9 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 	<title>progscrape</title>
 	<updated>{{ now | rfc_3339 }}</updated>
-	<id>https://{{ host }}/</id>
-	<link rel="self" href="https://{{ host }}/feed" />
-	<link rel="alternate" href="https://{{ host }}/" />
+	<id>{{ host.protocol }}://{{ host.host }}/</id>
+	<link rel="self" href="{{ host.protocol }}://{{ host.host }}/feed" />
+	<link rel="alternate" href="{{ host.protocol }}://{{ host.host }}/" />
 {% for story in stories %}
 	<entry>
 		<title>{{ story.title }}</title>
@@ -18,12 +18,12 @@
 		<summary type="html">
 			{% for source, id in story.sources -%}
 			{%- if id -%}
-			&lt;p&gt;&lt;a href="{{ id | comment_link }}"&gt;&lt;img style="vertical-align: text-bottom;" src="https://{{ host }}{{ source ~ '.png' | static }}" width="16" height="16" /&gt; {{ source | replace(from='_', to=' ') }}&lt;/a&gt;&lt;/p&gt;
+			&lt;p&gt;&lt;a href="{{ id | comment_link }}"&gt;&lt;img style="vertical-align: text-bottom;" src="{{ host.protocol }}://{{ host.host }}{{ source ~ '.png' | static }}" width="16" height="16" /&gt; {{ source | replace(from='_', to=' ') }}&lt;/a&gt;&lt;/p&gt;
 			{%- endif -%}
 			{%- endfor -%}
 			&lt;p&gt;Tags:
 				{%- for tag in story.tags %}
-				&lt;span class="tag"&gt;&lt;a href="https://{{ host }}/?search={{ tag }}"&gt;{{ tag }}&lt;/a&gt;&lt;/span&gt;
+				&lt;span class="tag"&gt;&lt;a href="{{ host.protocol }}://{{ host.host }}/?search={{ tag }}"&gt;{{ tag }}&lt;/a&gt;&lt;/span&gt;
 				{%- endfor -%}
 			&lt;/p&gt;
 			{{- story.html -}}

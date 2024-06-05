@@ -44,6 +44,8 @@ use progscrape_scrapers::{
     TypedScrape,
 };
 
+pub const BLOG_SEARCH: &str = "progscrape blog";
+
 #[derive(Debug, Error)]
 pub enum WebError {
     #[error("Template error")]
@@ -359,6 +361,9 @@ pub async fn start_server<P2: Into<std::path::PathBuf>>(
     auth: Auth,
     metrics_auth_bearer_token: Option<String>,
 ) -> Result<(), WebError> {
+    if let Some(blog) = resources.blog_posts.read().get(0) {
+        *index.pinned_story.write() = Some(blog.url.clone());
+    }
     index.refresh_hot_set().await?;
 
     let cron = SharedMut::new(Cron::new_with_jitter(-20..=20));
@@ -499,6 +504,7 @@ async fn blog_posts(
     if original_uri.path() == "/blog" {
         return Err(WebError::WrongUrl("/blog/".to_string()));
     }
+    let host = HostParams::new(host);
     let posts = &*resources.blog_posts.read();
     let now = now(&index).await?;
     let top_tags = index.top_tags(20)?;
@@ -506,7 +512,7 @@ async fn blog_posts(
         .path_and_query()
         .map(|s| s.as_str())
         .unwrap_or_default();
-    let (search, _query) = SearchParams::new(&index, "progscrape blog", 0, 30)?;
+    let (search, _query) = SearchParams::new(&index, BLOG_SEARCH, 0, 30)?;
 
     Ok(([(
         header::CACHE_CONTROL,
@@ -535,6 +541,7 @@ async fn blog_post(
         .filter(|s| s.id == path.date)
         .cloned()
         .collect_vec();
+    let host = HostParams::new(host);
     if posts.is_empty() {
         return Err(WebError::NotFound);
     }
@@ -544,6 +551,7 @@ async fn blog_post(
             posts[0].id, posts[0].slug
         )));
     }
+
     let now = now(&index).await?;
     let top_tags = index.top_tags(20)?;
     let path = original_uri
@@ -551,7 +559,7 @@ async fn blog_post(
         .map(|s| s.as_str())
         .unwrap_or_default();
 
-    let (search, _query) = SearchParams::new(&index, "progscrape blog", 0, 30)?;
+    let (search, _query) = SearchParams::new(&index, BLOG_SEARCH, 0, 30)?;
 
     Ok(([(
         header::CACHE_CONTROL,
@@ -591,6 +599,23 @@ impl SearchParams {
     }
 }
 
+#[derive(Serialize)]
+pub struct HostParams {
+    pub host: String,
+    pub protocol: &'static str,
+}
+
+impl HostParams {
+    pub fn new(host: String) -> Self {
+        let protocol = if host.starts_with("localhost") {
+            "http"
+        } else {
+            "https"
+        };
+        Self { host, protocol }
+    }
+}
+
 async fn root(
     OriginalUri(original_uri): OriginalUri,
     Host(host): Host,
@@ -598,6 +623,7 @@ async fn root(
     query: Query<HashMap<String, String>>,
 ) -> Result<impl IntoResponse, WebError> {
     let now = now(&index).await?;
+    let host = HostParams::new(host);
     let (search, query) = SearchParams::new(
         &index,
         query.get("search"),
@@ -607,11 +633,14 @@ async fn root(
             .unwrap_or_default(),
         30,
     )?;
+    if &search.text == BLOG_SEARCH {
+        return Err(WebError::WrongUrl(format!("/blog/")));
+    }
     if let StoryQuery::UrlSearch(url) = query {
         return Err(WebError::WrongUrl(format!("/s/{url}")));
     }
     let stories = index
-        .stories::<StoryRender>(query, search.offset, search.count)
+        .stories::<StoryRender>(&host, query, search.offset, search.count)
         .await?;
     let top_tags = index.top_tags(20)?;
     let path = original_uri
@@ -633,6 +662,7 @@ async fn story(
     State((index, resources)): State<(Index<StoryIndex>, Resources)>,
 ) -> Result<impl IntoResponse, WebError> {
     let now = now(&index).await?;
+    let host = HostParams::new(host);
     let mut search = original_uri
         .path_and_query()
         .map(|p| p.as_str())
@@ -659,14 +689,14 @@ async fn story(
     };
     let offset = 0;
     let stories = index
-        .stories::<StoryRender>(query, search.offset, search.count)
+        .stories::<StoryRender>(&host, query, search.offset, search.count)
         .await?;
     // Get the related stories for the first story
     let mut related = vec![];
     if let Some(story) = stories.first() {
         let related_query = StoryQuery::RelatedSearch(story.title.clone(), story.tags.clone());
         for story in index
-            .stories::<StoryRender>(related_query, offset, 30)
+            .stories::<StoryRender>(&host, related_query, offset, 30)
             .await?
         {
             if story.url == stories[0].url && story.date == stories[0].date {
@@ -679,7 +709,7 @@ async fn story(
         let related_query = StoryQuery::DomainSearch(url.host().to_string());
         related.append(
             &mut index
-                .stories::<StoryRender>(related_query, offset, 30)
+                .stories::<StoryRender>(&host, related_query, offset, 30)
                 .await?,
         );
     }
@@ -728,11 +758,13 @@ async fn zeitgeist_json(
 }
 
 async fn root_feed_json(
+    Host(host): Host,
     State((index, _resources)): State<(Index<StoryIndex>, Resources)>,
     query: Query<HashMap<String, String>>,
 ) -> Result<impl IntoResponse, WebError> {
+    let host = HostParams::new(host);
     let (search, query) = SearchParams::new(&index, query.get("search"), 0, 150)?;
-    let stories = index.stories::<FeedStory>(query, 0, 150).await?;
+    let stories = index.stories::<FeedStory>(&host, query, 0, 150).await?;
     let top_tags: Vec<_> = index
         .top_tags(usize::MAX)?
         .into_iter()
@@ -760,8 +792,9 @@ async fn root_feed_xml(
     query: Query<HashMap<String, String>>,
 ) -> Result<impl IntoResponse, WebError> {
     let now = now(&index).await?;
+    let host = HostParams::new(host);
     let (search, query) = SearchParams::new(&index, query.get("search"), 0, 30)?;
-    let stories = index.stories::<StoryRender>(query, 0, 30).await?;
+    let stories = index.stories::<StoryRender>(&host, query, 0, 30).await?;
 
     let xml = resources
         .templates
@@ -790,9 +823,10 @@ async fn root_feed_text(
     query: Query<HashMap<String, String>>,
 ) -> Result<impl IntoResponse, WebError> {
     let now = now(&index).await?;
+    let host = HostParams::new(host);
     let (search, query) = SearchParams::new(&index, query.get("search"), 0, 100)?;
     let stories = index
-        .stories::<StoryRender>(query, search.offset, search.count)
+        .stories::<StoryRender>(&host, query, search.offset, search.count)
         .await?;
 
     let xml = resources
@@ -872,6 +906,7 @@ async fn state_tracker(
 /// Return the current metrics in Prometheus-compatible format.
 async fn root_metrics_txt(
     headers_in: HeaderMap,
+    Host(host): Host,
     State((index, resources, metrics_auth_bearer_token)): State<(
         Index<StoryIndex>,
         Resources,
@@ -897,8 +932,9 @@ async fn root_metrics_txt(
             return Err(WebError::AuthError);
         }
     }
+    let host = HostParams::new(host);
     let stories = index
-        .stories::<StoryRender>(StoryQuery::FrontPage, 0, usize::MAX)
+        .stories::<StoryRender>(&host, StoryQuery::FrontPage, 0, usize::MAX)
         .await?;
     let mut source_count: HashMap<(ScrapeSource, Option<String>), usize> = Default::default();
     for story in stories {
@@ -1031,7 +1067,6 @@ async fn admin_update_blog(
         resources, index, ..
     }): State<AdminState>,
 ) -> Result<impl IntoResponse, WebError> {
-    for post in &*resources.blog_posts.read() {}
     render_admin(None, &resources, "admin/cron_blog.html", context!())
 }
 
@@ -1205,6 +1240,7 @@ async fn admin_index_status(
 
 async fn admin_status_frontpage(
     Extension(user): Extension<CurrentUser>,
+    Host(host): Host,
     State(AdminState {
         index, resources, ..
     }): State<AdminState>,
@@ -1212,8 +1248,9 @@ async fn admin_status_frontpage(
 ) -> Result<impl IntoResponse, WebError> {
     let now = now(&index).await?;
     let sort = sort.get("sort").cloned().unwrap_or_default();
+    let host = HostParams::new(host);
     let stories = index
-        .stories::<StoryRender>(StoryQuery::FrontPage, 0, 500)
+        .stories::<StoryRender>(&host, StoryQuery::FrontPage, 0, 500)
         .await?;
     render_admin(
         Some(&user),

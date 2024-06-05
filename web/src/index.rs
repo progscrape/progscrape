@@ -1,6 +1,9 @@
 use std::{collections::HashMap, path::Path, time::Instant};
 
-use crate::web::WebError;
+use crate::{
+    resource::BlogPost,
+    web::{HostParams, WebError, BLOG_SEARCH},
+};
 use itertools::Itertools;
 use keepcalm::{Shared, SharedMut};
 use progscrape_application::{
@@ -8,7 +11,7 @@ use progscrape_application::{
     SearchSummary, Shard, Storage, StorageFetch, StorageSummary, StorageWriter, Story,
     StoryEvaluator, StoryIdentifier, StoryIndex, StoryQuery, StoryRender, StoryScrapePayload,
 };
-use progscrape_scrapers::{StoryDate, TypedScrape};
+use progscrape_scrapers::{StoryDate, StoryUrl, TypedScrape};
 use tracing::Level;
 
 pub struct HotSet {
@@ -19,7 +22,9 @@ pub struct HotSet {
 pub struct Index<S: StorageWriter> {
     pub storage: SharedMut<S>,
     pub hot_set: SharedMut<HotSet>,
+    pub pinned_story: SharedMut<Option<StoryUrl>>,
     pub eval: Shared<StoryEvaluator>,
+    pub blog: Shared<Vec<BlogPost>>,
 }
 
 impl<S: StorageWriter> Clone for Index<S> {
@@ -27,7 +32,9 @@ impl<S: StorageWriter> Clone for Index<S> {
         Self {
             storage: self.storage.clone(),
             hot_set: self.hot_set.clone(),
+            pinned_story: self.pinned_story.clone(),
             eval: self.eval.clone(),
+            blog: self.blog.clone(),
         }
     }
 }
@@ -62,6 +69,7 @@ impl Index<StoryIndex> {
     pub fn initialize_with_persistence<P: AsRef<Path>>(
         path: P,
         eval: Shared<StoryEvaluator>,
+        blog: Shared<Vec<BlogPost>>,
     ) -> Result<Index<StoryIndex>, WebError> {
         let index = StoryIndex::new(PersistLocation::Path(path.as_ref().to_owned()))?;
         Ok(Index {
@@ -70,13 +78,21 @@ impl Index<StoryIndex> {
                 stories: vec![],
                 top_tags: vec![],
             }),
+            pinned_story: SharedMut::new(None),
+            blog,
             eval,
         })
     }
 
-    fn compute_hot_set(&self, mut stories: Vec<Story<Shard>>, now: StoryDate) -> HotSet {
+    fn compute_hot_set(&self, stories: Vec<Story<Shard>>, now: StoryDate) -> HotSet {
         // First we'll sort these stories
         let scorer = &self.eval.read().scorer;
+        let lock = self.pinned_story.read();
+        let pinned = (*lock).as_ref();
+        let (mut pinned, mut stories) = stories
+            .into_iter()
+            .partition::<Vec<Story<Shard>>, _>(|s| Some(&s.url) == pinned);
+        pinned.truncate(1);
         stories
             .sort_by_cached_key(|x| ((x.score + scorer.score_age(now - x.date)) * -1000.0) as i32);
 
@@ -105,7 +121,11 @@ impl Index<StoryIndex> {
             .take(50)
             .collect_vec();
 
-        HotSet { stories, top_tags }
+        pinned.append(&mut stories);
+        HotSet {
+            stories: pinned,
+            top_tags,
+        }
     }
 
     /// Back up the current index to the given path. The return value of this function is a little convoluted because we
@@ -131,7 +151,10 @@ impl Index<StoryIndex> {
 
     pub async fn refresh_hot_set(&self) -> Result<(), PersistError> {
         let now = self.storage.read().most_recent_story()?;
-        let v = self.fetch(StoryQuery::FrontPage, 500).await?;
+        let mut v = self.fetch(StoryQuery::FrontPage, 500).await?;
+        for pinned in self.pinned_story.read().iter() {
+            v.append(&mut self.fetch(StoryQuery::UrlSearch(pinned.clone()), 1).await?);
+        }
         *self.hot_set.write() = self.compute_hot_set(v, now);
         Ok(())
     }
@@ -165,6 +188,7 @@ impl Index<StoryIndex> {
 
     fn filter_and_render<'a, S: From<StoryRender>>(
         &self,
+        host: &HostParams,
         raw_stories: impl Iterator<Item = &'a Story<Shard>>,
         offset: usize,
         count: usize,
@@ -173,12 +197,37 @@ impl Index<StoryIndex> {
             .skip(offset)
             .take(count)
             .enumerate()
-            .map(|(index, story)| story.render(&self.eval.read(), index).into())
+            .map(|(index, story)| self.render(host, story, index).into())
             .collect_vec()
     }
 
+    fn render<'a>(&self, host: &HostParams, story: &'a Story<Shard>, order: usize) -> StoryRender {
+        let mut render = story.render(&self.eval.read(), order);
+        if story.url.host() == "progscrape" {
+            for blog in &*self.blog.read() {
+                if blog.url == story.url {
+                    render.html = blog.html.clone();
+                    if host.host.contains('.') {
+                        render.tags.insert(0, host.host.to_string());
+                    }
+                    // TODO: Would be nice if StoryUrl preserved the URL parts
+                    render.url = story.url.raw().replace(
+                        "http://progscrape/",
+                        &format!("{}://{}/", host.protocol, host.host),
+                    );
+                }
+            }
+        }
+        render
+    }
+
     pub fn parse_query(&self, query: impl IntoStoryQuery) -> Result<StoryQuery, PersistError> {
-        Ok(query.into_story_query(&self.eval.read().tagger))
+        // Special case for blog
+        if query.search_text() == BLOG_SEARCH {
+            Ok("tags:progscrape AND tags:blog".into_story_query(&self.eval.read().tagger))
+        } else {
+            Ok(query.into_story_query(&self.eval.read().tagger))
+        }
     }
 
     pub async fn stories_by_shard(&self, query: StoryQuery) -> Result<SearchSummary, PersistError> {
@@ -189,12 +238,13 @@ impl Index<StoryIndex> {
 
     pub async fn stories<S: From<StoryRender>>(
         &self,
+        host: &HostParams,
         query: StoryQuery,
         offset: usize,
         count: usize,
     ) -> Result<Vec<S>, PersistError> {
         let stories = if let StoryQuery::FrontPage = query {
-            self.filter_and_render(self.hot_set.read().stories.iter(), offset, count)
+            self.filter_and_render(host, self.hot_set.read().stories.iter(), offset, count)
         } else {
             let start = Instant::now();
             let (query_log, query_text) = if tracing::enabled!(Level::INFO) {
@@ -212,7 +262,7 @@ impl Index<StoryIndex> {
                 query_text.unwrap_or_default(),
                 query_log.unwrap_or_default()
             );
-            self.filter_and_render(stories.iter(), offset, count)
+            self.filter_and_render(host, stories.iter(), offset, count)
         };
 
         Ok(stories)

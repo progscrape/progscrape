@@ -9,15 +9,15 @@
     <title>{% block title %}{% endblock title %}: {{ search.text }}</title>
     <meta property="og:title" content="progscrape: &quot;{{ search.text }}&quot; search results">
     <meta property="og:description" content="Technology news about &quot;{{ search.text }}&quot; from Hacker News, Reddit, and other programming sites.">
-    <meta property="og:url" content="https://{{ host }}/?search={{ search.text }}">
+    <meta property="og:url" content="{{ host.protocol }}://{{ host.host }}/?search={{ search.text }}">
     {% else %}
     <title>{% block title %}{% endblock title %}</title>
     <meta property="og:title" content="progscrape: all the news that's fit to scrape">
     <meta property="og:description" content="Technology news from Hacker News, Reddit, and other programming sites.">
-    <meta property="og:url" content="https://{{ host }}/">
+    <meta property="og:url" content="{{ host.protocol }}://{{ host.host }}/">
     {% endif %}
     <meta property="og:type" content="article" />
-    <meta property="og:image" content="https://{{ host }}{{ 'opengraph_image.png' | static | safe }}">
+    <meta property="og:image" content="{{ host.protocol }}://{{ host.host }}{{ 'opengraph_image.png' | static | safe }}">
     <meta property="og:image:alt" content="progscrape logo and tagline: all the news that's fit to scrape">
     <meta property="og:site_name" content="progscrape">
     <meta name="twitter:card" content="summary_large_image">

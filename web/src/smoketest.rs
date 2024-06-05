@@ -83,6 +83,7 @@ mod test {
         let index = Index::<StoryIndex>::initialize_with_persistence(
             tempdir,
             resources.story_evaluator.clone(),
+            resources.blog_posts.clone(),
         )?;
         index.insert_scrapes(scrapes).await?;
         index.refresh_hot_set().await?;
