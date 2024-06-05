@@ -172,6 +172,17 @@ async fn ensure_slash(req: Request, next: Next) -> Result<Response, StatusCode> 
     Ok(next.run(req).await)
 }
 
+async fn request_trace(req: Request, next: Next) -> Result<Response, StatusCode> {
+    let uri = req.uri().to_string();
+    let ua = req
+        .headers()
+        .get(header::USER_AGENT)
+        .map(|s| String::from_utf8_lossy(s.as_bytes()));
+    tracing::info!("page_request {}", json!({ "uri": uri, "ua": ua }));
+
+    Ok(next.run(req).await)
+}
+
 async fn rate_limit(
     State(Resources { rate_limits, .. }): State<Resources>,
     req: Request,
@@ -347,6 +358,7 @@ pub fn create_feeds<S: Clone + Send + Sync + 'static>(
         .route("/blog/:date/", get(blog_post))
         .route("/blog/:date/:title", get(blog_post))
         .with_state((index, resources.clone()))
+        .route_layer(middleware::from_fn(request_trace))
         .route_layer(middleware::from_fn_with_state(
             resources.clone(),
             rate_limit,
