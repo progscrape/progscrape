@@ -96,7 +96,8 @@
             "update_blog": {
                 "url": "/admin/cron/blog",
                 "interval": [1, "Day"],
-                "eager": true
+                "eager": true,
+                "enabled": false
             },
             "scrape_hackernews": {
                 "url": "/admin/cron/scrape/hacker_news",
