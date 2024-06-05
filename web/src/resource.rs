@@ -136,7 +136,8 @@ fn blog_posts(resource_path: &Path) -> Result<Vec<BlogPost>, WebError> {
             .to_ascii_lowercase()
             .replace(' ', "-")
             .replace(|c: char| !c.is_alphanumeric() && c != '-' && c != '_', "");
-        let url = StoryUrl::parse(format!("http://progscrape/blog/{id}/{slug}")).ok_or_else(err)?;
+        let url =
+            StoryUrl::parse(format!("https://progscrape.com/blog/{id}/{slug}")).ok_or_else(err)?;
         posts.push(BlogPost {
             id,
             title,

@@ -1,4 +1,8 @@
-use std::{collections::HashMap, path::Path, time::Instant};
+use std::{
+    collections::{HashMap, HashSet},
+    path::Path,
+    time::Instant,
+};
 
 use crate::{
     resource::BlogPost,
@@ -210,13 +214,13 @@ impl Index<StoryIndex> {
         order: usize,
     ) -> Option<StoryRender> {
         let mut render = story.render(&self.eval.read(), order);
-        if story.url.host() == "progscrape" {
+        // TODO: This is a bit hacky
+        if story.url.host() == "progscrape.com" {
             for blog in &*self.blog.read() {
                 if blog.url == story.url {
                     render.html = blog.html.clone();
-                    if host.host.contains('.') {
-                        render.tags.insert(0, host.host.to_string());
-                    }
+                    // render.tags = blog.tags;
+                    render.tags.insert(0, host.host.to_string());
                     // TODO: Would be nice if StoryUrl preserved the URL parts
                     render.url = story.url.raw().replace(
                         "http://progscrape/",
@@ -234,7 +238,7 @@ impl Index<StoryIndex> {
     pub fn parse_query(&self, query: impl IntoStoryQuery) -> Result<StoryQuery, PersistError> {
         // Special case for blog
         if query.search_text() == BLOG_SEARCH {
-            Ok("tags:progscrape AND tags:blog".into_story_query(&self.eval.read().tagger))
+            Ok("host:progscrape.com".into_story_query(&self.eval.read().tagger))
         } else {
             Ok(query.into_story_query(&self.eval.read().tagger))
         }
