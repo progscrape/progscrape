@@ -1,6 +1,6 @@
 use std::{
     collections::HashMap,
-    net::{IpAddr, Ipv4Addr, SocketAddr},
+    net::SocketAddr,
     sync::OnceLock,
     time::{Duration, Instant},
 };
@@ -21,7 +21,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tera::Context;
 use thiserror::Error;
-use tokio::{net::TcpListener, select, sync::Semaphore};
+use tokio::{net::TcpListener, sync::Semaphore};
 use tower::Service;
 use unwrap_infallible::UnwrapInfallible;
 
@@ -35,8 +35,9 @@ use crate::{
     story::FeedStory,
 };
 use progscrape_application::{
-    PersistError, ScrapePersistResultSummarizer, ScrapePersistResultSummary, Shard, Story,
-    StoryEvaluator, StoryIdentifier, StoryIndex, StoryQuery, StoryRender, StoryScore, TagSet,
+    IntoStoryQuery, PersistError, ScrapePersistResultSummarizer, ScrapePersistResultSummary, Shard,
+    Story, StoryEvaluator, StoryIdentifier, StoryIndex, StoryQuery, StoryRender, StoryScore,
+    TagSet,
 };
 use progscrape_scrapers::{
     ScrapeCollection, ScrapeSource, ScraperHttpResponseInput, ScraperHttpResult, StoryDate,
@@ -505,13 +506,14 @@ async fn blog_posts(
         .path_and_query()
         .map(|s| s.as_str())
         .unwrap_or_default();
+    let (search, _query) = SearchParams::new(&index, "progscrape blog", 0, 30)?;
 
     Ok(([(
         header::CACHE_CONTROL,
         HeaderValue::from_static(
             "public, max-age=300, s-max-age=300, stale-while-revalidate=60, stale-if-error=86400",
         ),
-    )], render(&resources, "blog.html", context!(posts, top_tags, now, path, host, search = ""))))
+    )], render(&resources, "blog.html", context!(posts, top_tags, now, path, host, search))))
 }
 
 #[derive(Deserialize)]
@@ -549,12 +551,44 @@ async fn blog_post(
         .map(|s| s.as_str())
         .unwrap_or_default();
 
+    let (search, _query) = SearchParams::new(&index, "progscrape blog", 0, 30)?;
+
     Ok(([(
         header::CACHE_CONTROL,
         HeaderValue::from_static(
             "public, max-age=300, s-max-age=300, stale-while-revalidate=60, stale-if-error=86400",
         ),
-    )], render(&resources, "blog.html", context!(posts, top_tags, now, path, host, search = ""))))
+    )], render(&resources, "blog.html", context!(posts, top_tags, now, path, host, search))))
+}
+
+#[derive(Serialize)]
+struct SearchParams {
+    text: String,
+    r#type: &'static str,
+    offset: usize,
+    count: usize,
+}
+
+impl SearchParams {
+    pub fn new(
+        index: &Index<StoryIndex>,
+        query: impl IntoStoryQuery,
+        offset: usize,
+        count: usize,
+    ) -> Result<(Self, StoryQuery), PersistError> {
+        let text = query.search_text().to_owned();
+        let query = index.parse_query(query)?;
+        let r#type = query.query_type();
+        Ok((
+            Self {
+                text,
+                r#type,
+                offset,
+                count,
+            },
+            query,
+        ))
+    }
 }
 
 async fn root(
@@ -564,16 +598,21 @@ async fn root(
     query: Query<HashMap<String, String>>,
 ) -> Result<impl IntoResponse, WebError> {
     let now = now(&index).await?;
-    let search = query.get("search");
-    let offset: usize = query
-        .get("offset")
-        .map(|x| x.parse().unwrap_or_default())
-        .unwrap_or_default();
-    let query = index.parse_query(search)?;
+    let (search, query) = SearchParams::new(
+        &index,
+        query.get("search"),
+        query
+            .get("offset")
+            .map(|x| x.parse().unwrap_or_default())
+            .unwrap_or_default(),
+        30,
+    )?;
     if let StoryQuery::UrlSearch(url) = query {
         return Err(WebError::WrongUrl(format!("/s/{url}")));
     }
-    let stories = index.stories::<StoryRender>(query, offset, 30).await?;
+    let stories = index
+        .stories::<StoryRender>(query, search.offset, search.count)
+        .await?;
     let top_tags = index.top_tags(20)?;
     let path = original_uri
         .path_and_query()
@@ -585,7 +624,7 @@ async fn root(
             "public, max-age=300, s-max-age=300, stale-while-revalidate=60, stale-if-error=86400",
         ),
     )],
-    render(&resources, "index.html", context!(top_tags, stories, now, search, offset, host, path))))
+    render(&resources, "index.html", context!(top_tags, stories, now, search, host, path))))
 }
 
 async fn story(
@@ -609,21 +648,23 @@ async fn story(
     if did_trim {
         return Err(WebError::WrongUrl(format!("/s/{search}")));
     }
-    let query = index.parse_query(search)?;
+    let (search, query) = SearchParams::new(&index, search, 0, 10)?;
     if let StoryQuery::DomainSearch(domain) = query {
         return Err(WebError::WrongUrl(format!("/s/{domain}/")));
     }
     let StoryQuery::UrlSearch(url) = query.clone() else {
-        tracing::info!("Invalid story URL: {search}");
+        tracing::info!("Invalid story URL: '{}'", search.text);
         // Send them to the root page for everything that doesn't match
         return Err(WebError::WrongUrl("/".to_string()));
     };
     let offset = 0;
-    let stories = index.stories::<StoryRender>(query, offset, 10).await?;
+    let stories = index
+        .stories::<StoryRender>(query, search.offset, search.count)
+        .await?;
     // Get the related stories for the first story
     let mut related = vec![];
     if let Some(story) = stories.first() {
-        let related_query = StoryQuery::Related(story.title.clone(), story.tags.clone());
+        let related_query = StoryQuery::RelatedSearch(story.title.clone(), story.tags.clone());
         for story in index
             .stories::<StoryRender>(related_query, offset, 30)
             .await?
@@ -653,7 +694,7 @@ async fn story(
             "public, max-age=300, s-max-age=300, stale-while-revalidate=60, stale-if-error=86400",
         ),
     )],
-    render(&resources, "story.html", context!(top_tags, stories, related, now, search, offset, host, path))))
+    render(&resources, "story.html", context!(top_tags, stories, related, now, search, host, path))))
 }
 
 async fn zeitgeist_json(
@@ -690,7 +731,7 @@ async fn root_feed_json(
     State((index, _resources)): State<(Index<StoryIndex>, Resources)>,
     query: Query<HashMap<String, String>>,
 ) -> Result<impl IntoResponse, WebError> {
-    let query = index.parse_query(query.get("search"))?;
+    let (search, query) = SearchParams::new(&index, query.get("search"), 0, 150)?;
     let stories = index.stories::<FeedStory>(query, 0, 150).await?;
     let top_tags: Vec<_> = index
         .top_tags(usize::MAX)?
@@ -719,7 +760,7 @@ async fn root_feed_xml(
     query: Query<HashMap<String, String>>,
 ) -> Result<impl IntoResponse, WebError> {
     let now = now(&index).await?;
-    let query = index.parse_query(query.get("search"))?;
+    let (search, query) = SearchParams::new(&index, query.get("search"), 0, 30)?;
     let stories = index.stories::<StoryRender>(query, 0, 30).await?;
 
     let xml = resources
@@ -749,8 +790,10 @@ async fn root_feed_text(
     query: Query<HashMap<String, String>>,
 ) -> Result<impl IntoResponse, WebError> {
     let now = now(&index).await?;
-    let query = index.parse_query(query.get("search"))?;
-    let stories = index.stories::<StoryRender>(query, 0, 100).await?;
+    let (search, query) = SearchParams::new(&index, query.get("search"), 0, 100)?;
+    let stories = index
+        .stories::<StoryRender>(query, search.offset, search.count)
+        .await?;
 
     let xml = resources
         .templates

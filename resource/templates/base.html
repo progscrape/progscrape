@@ -6,10 +6,10 @@
     <link rel="stylesheet" href="{{ 'style.css' | static }}" />
 	<meta name="viewport" content="user-scalable=no, width=device-width, initial-scale=1.0" />
     {% if search %}
-    <title>{% block title %}{% endblock title %}: {{ search }}</title>
-    <meta property="og:title" content="progscrape: &quot;{{ search }}&quot; search results">
-    <meta property="og:description" content="Technology news about &quot;{{ search }}&quot; from Hacker News, Reddit, and other programming sites.">
-    <meta property="og:url" content="https://{{ host }}/?search={{ search }}">
+    <title>{% block title %}{% endblock title %}: {{ search.text }}</title>
+    <meta property="og:title" content="progscrape: &quot;{{ search.text }}&quot; search results">
+    <meta property="og:description" content="Technology news about &quot;{{ search.text }}&quot; from Hacker News, Reddit, and other programming sites.">
+    <meta property="og:url" content="https://{{ host }}/?search={{ search.text }}">
     {% else %}
     <title>{% block title %}{% endblock title %}</title>
     <meta property="og:title" content="progscrape: all the news that's fit to scrape">
@@ -22,7 +22,7 @@
     <meta property="og:site_name" content="progscrape">
     <meta name="twitter:card" content="summary_large_image">
     {% if search %}
-    <link rel="alternate" type="application/rss+xml" title="progscrape.com" href="/feed?search={{ search }}" />
+    <link rel="alternate" type="application/rss+xml" title="progscrape.com" href="/feed?search={{ search.text }}" />
     {% else %}
     <link rel="alternate" type="application/rss+xml" title="progscrape.com" href="/feed" />
     {% endif %}
@@ -33,12 +33,12 @@
         <h1><a href="/">&gt;progscrape &#x2592;</a></h1>
         <h2>All the news that's fit to scrape</h2>
         {% if search %}
-        <a class="subscribe" href="/feed?search={{ search }}"><img src="{{ 'feed-icon-14x14.png' | static }}" /> Subscribe to search feed</a>
+        <a class="subscribe" href="/feed?search={{ search.text }}"><img src="{{ 'feed-icon-14x14.png' | static }}" /> Subscribe to search feed</a>
         {% else %}
         <a class="subscribe" href="/feed"><img src="{{ 'feed-icon-14x14.png' | static }}" /> Subscribe to feed</a>
         {% endif %}
         <form class="search" method="GET" action="/">
-            <input type="search" name="search" results="5" value="{{ search }}" placeholder="Search" />
+            <input type="search" name="search" results="5" value="{{ search.text }}" placeholder="Search" />
         </form>
     </div>
     

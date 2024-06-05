@@ -513,19 +513,17 @@ impl StoryIndex {
     /// If this is a type of [`StoryQuery`] that can be parsed as a tantivy [`Query`], make it so.
     fn try_parse_query(
         &self,
-        query: StoryQuery,
-    ) -> Result<Result<Box<dyn Query>, StoryQuery>, PersistError> {
+        query: &StoryQuery,
+    ) -> Result<Result<Box<dyn Query>, ()>, PersistError> {
         match query {
             StoryQuery::DomainSearch(domain) => Ok(Ok(self.parse_domain_search(&domain)?)),
             StoryQuery::TagSearch(tag, alt) => Ok(Ok(self.parse_tag_search(&tag, alt.as_deref())?)),
-            StoryQuery::Related(title, tags) => {
+            StoryQuery::RelatedSearch(title, tags) => {
                 Ok(Ok(self.parse_related_search(&title, tags.as_slice())?))
             }
             StoryQuery::TextSearch(search) => Ok(Ok(self.parse_text_search(&search)?)),
             StoryQuery::UrlSearch(url) => Ok(Ok(self.parse_url_search(&url)?)),
-            StoryQuery::ById(..) | StoryQuery::ByShard(..) | StoryQuery::FrontPage => {
-                Ok(Err(query))
-            }
+            StoryQuery::ById(..) | StoryQuery::ByShard(..) | StoryQuery::FrontPage => Ok(Err(())),
         }
     }
 
@@ -718,19 +716,19 @@ impl StoryIndex {
 
     fn fetch_doc_addresses(
         &self,
-        query: StoryQuery,
+        query: &StoryQuery,
         max: usize,
     ) -> Result<Vec<(Shard, DocAddress)>, PersistError> {
-        let algo = if matches!(query, StoryQuery::Related(..)) {
+        let algo = if matches!(query, StoryQuery::RelatedSearch(..)) {
             ScoreAlgo::Related
         } else {
             ScoreAlgo::Default
         };
         catch_unwind(|| match self.try_parse_query(query)? {
             Ok(query) => self.fetch_search_query(query, max, algo),
-            Err(query) => match query {
+            Err(_) => match query {
                 StoryQuery::ById(id) => self.with_searcher(id.shard(), self.fetch_by_id(&id)),
-                StoryQuery::ByShard(shard) => self.with_searcher(shard, self.fetch_by_segment()),
+                StoryQuery::ByShard(shard) => self.with_searcher(*shard, self.fetch_by_segment()),
                 StoryQuery::FrontPage => self.fetch_front_page(max),
                 _ => Err(PersistError::UnexpectedError(format!(
                     "Unexpected try_parse_query result"
@@ -781,7 +779,11 @@ impl StorageWriter for StoryIndex {
 }
 
 impl StorageFetch<Shard> for StoryIndex {
-    fn fetch_type(&self, query: StoryQuery, max: usize) -> Result<Vec<Story<Shard>>, PersistError> {
+    fn fetch_type(
+        &self,
+        query: &StoryQuery,
+        max: usize,
+    ) -> Result<Vec<Story<Shard>>, PersistError> {
         let mut v = vec![];
         for (shard, doc) in self.fetch_doc_addresses(query, max)? {
             let doc = self.with_index(shard, |_, index| {
@@ -808,7 +810,7 @@ impl StorageFetch<Shard> for StoryIndex {
 impl StorageFetch<TypedScrape> for StoryIndex {
     fn fetch_type(
         &self,
-        query: StoryQuery,
+        query: &StoryQuery,
         max: usize,
     ) -> Result<Vec<Story<TypedScrape>>, PersistError> {
         let mut v = vec![];
@@ -880,7 +882,7 @@ impl Storage for StoryIndex {
         Ok(summary)
     }
 
-    fn fetch_count_by_shard(&self, query: StoryQuery) -> Result<SearchSummary, PersistError> {
+    fn fetch_count_by_shard(&self, query: &StoryQuery) -> Result<SearchSummary, PersistError> {
         let mut summary = SearchSummary::default();
         if let StoryQuery::FrontPage = query {
             for shard in self.shards().iterate(ShardOrder::OldestFirst) {
@@ -908,13 +910,13 @@ impl Storage for StoryIndex {
         Ok(summary)
     }
 
-    fn fetch_count(&self, query: StoryQuery, max: usize) -> Result<usize, PersistError> {
+    fn fetch_count(&self, query: &StoryQuery, max: usize) -> Result<usize, PersistError> {
         Ok(self.fetch_doc_addresses(query, max)?.len())
     }
 
     fn fetch_detail_one(
         &self,
-        query: StoryQuery,
+        query: &StoryQuery,
     ) -> Result<Option<HashMap<String, Vec<String>>>, PersistError> {
         if let Some((shard, doc)) = self.fetch_doc_addresses(query, 1)?.first() {
             let res = self.with_index(*shard, |_, index| {
@@ -1079,7 +1081,7 @@ mod test {
         let counts = index.story_count()?;
         assert_eq!(counts.total.story_count, 1);
 
-        let search = index.fetch::<Shard>(StoryQuery::from_search(&eval.tagger, "rust"), 10)?;
+        let search = index.fetch::<Shard>(&StoryQuery::from_search(&eval.tagger, "rust"), 10)?;
         assert_eq!(search.len(), 1);
 
         let story = &search[0];
@@ -1114,7 +1116,7 @@ mod test {
         let counts = index.story_count()?;
         assert_eq!(counts.total.story_count, 1);
 
-        let search = index.fetch::<Shard>(StoryQuery::from_search(&eval.tagger, "rust"), 10)?;
+        let search = index.fetch::<Shard>(&StoryQuery::from_search(&eval.tagger, "rust"), 10)?;
         assert_eq!(search.len(), 1);
 
         let story = &search[0];
@@ -1147,7 +1149,7 @@ mod test {
         let counts = index.story_count()?;
         assert_eq!(counts.total.story_count, 1);
 
-        let search = index.fetch::<Shard>(StoryQuery::from_search(&eval.tagger, "rust"), 10)?;
+        let search = index.fetch::<Shard>(&StoryQuery::from_search(&eval.tagger, "rust"), 10)?;
         assert_eq!(search.len(), 1);
 
         let story = &search[0];
@@ -1176,7 +1178,7 @@ mod test {
 
         // Ask the index for this story
         let story = index
-            .fetch_one::<Shard>(StoryQuery::from_search(&eval.tagger, "rust"))?
+            .fetch_one::<Shard>(&StoryQuery::from_search(&eval.tagger, "rust"))?
             .expect("Missing story");
 
         // Re-insert it and make sure it comes back with the right info
@@ -1185,7 +1187,7 @@ mod test {
             vec![ScrapePersistResult::MergedWithExistingStory]
         );
         let story = index
-            .fetch_one::<Shard>(StoryQuery::from_search(&eval.tagger, "rust"))?
+            .fetch_one::<Shard>(&StoryQuery::from_search(&eval.tagger, "rust"))?
             .expect("Missing story");
         assert_eq!(story.title, "I love Rust");
 
@@ -1225,7 +1227,7 @@ mod test {
 
         index.insert_scrapes(&eval, batch.clone())?;
 
-        let front_page = index.fetch_count(StoryQuery::FrontPage, 100)?;
+        let front_page = index.fetch_count(&StoryQuery::FrontPage, 100)?;
         assert_eq!(30, front_page);
 
         Ok(())
@@ -1244,7 +1246,7 @@ mod test {
 
         // Title is "Type inference in rust". Site tags are "plt"/"c++" from scrape.
         let story = index
-            .fetch_one::<Shard>(StoryQuery::ById(id.clone()))?
+            .fetch_one::<Shard>(&StoryQuery::ById(id.clone()))?
             .expect("Expected one story");
         assert_eq!(
             story.tags.into_iter().sorted().collect_vec(),
@@ -1252,8 +1254,8 @@ mod test {
         );
 
         for term in ["plt", "c++", "cplusplus", "type", "inference"] {
-            let search = index.fetch_count(StoryQuery::from_search(&eval.tagger, term), 10)?;
-            let doc = index.fetch_detail_one(StoryQuery::ById(id.clone()))?;
+            let search = index.fetch_count(&StoryQuery::from_search(&eval.tagger, term), 10)?;
+            let doc = index.fetch_detail_one(&StoryQuery::ById(id.clone()))?;
             assert_eq!(
                 1, search,
                 "Expected one search result when querying '{}' for title={} url={} doc={:?}",
@@ -1283,7 +1285,7 @@ mod test {
                         eprintln!("{s}");
                         // Result is ignored for this test
                         let res =
-                            index.fetch_count(StoryQuery::from_search(&eval.tagger, &s), 10)?;
+                            index.fetch_count(&StoryQuery::from_search(&eval.tagger, &s), 10)?;
                         assert_eq!(res, 0, "Expected zero results for '{s}'");
                     }
                 }
@@ -1321,11 +1323,11 @@ mod test {
 
         // We use the doc for test failure analysis
         let doc = index
-            .fetch_detail_one(StoryQuery::ById(id))?
+            .fetch_detail_one(&StoryQuery::ById(id))?
             .expect("Didn't find doc");
 
         for term in search_terms {
-            let search = index.fetch_count(StoryQuery::from_search(&eval.tagger, term), 10)?;
+            let search = index.fetch_count(&StoryQuery::from_search(&eval.tagger, term), 10)?;
             assert_eq!(
                 1, search,
                 "Expected one search result when querying '{}' for title={} url={} doc={:?}",
@@ -1352,7 +1354,7 @@ mod test {
 
         // Query the new index, ensuring only one result per URL
         let mut set = HashSet::new();
-        for story in index.fetch::<Shard>(StoryQuery::from_search(&eval.tagger, "rust"), 10)? {
+        for story in index.fetch::<Shard>(&StoryQuery::from_search(&eval.tagger, "rust"), 10)? {
             println!("{:?}", story);
             assert!(
                 set.insert(story.url.clone()),
@@ -1361,7 +1363,7 @@ mod test {
             );
         }
 
-        let summary = index.fetch_count_by_shard(StoryQuery::from_search(&eval.tagger, "rust"))?;
+        let summary = index.fetch_count_by_shard(&StoryQuery::from_search(&eval.tagger, "rust"))?;
         println!("{summary:?}");
 
         std::fs::remove_dir_all(&path)?;

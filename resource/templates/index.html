@@ -12,7 +12,7 @@
         {% endfor %}
     </div>
 
-    {% for tag in top_tags %}{% if search == tag.0 %}
+    {% if search.type == "tag" or search.type == "domain" %}
     <script src="{{ 'chart.js-4.4.3.umd.min.js' | static }}"></script>
     <div id="zeitgeist">
         <div class="loading">Loading...</div>
@@ -20,10 +20,9 @@
     </div>
     <script src="{{ 'zeitgeist.js' | static }}"></script>
     <script>
-        loadZeitgeist('{{ search }}');
+        loadZeitgeist('{{ search.text }}');
     </script>
     {% endif %}
-    {% endfor %}
 
     {% for story in stories %}
     <div class="story">
@@ -46,11 +45,11 @@
     <h2 class="error">No stories found!</h2>
     {% endfor %}
 
-    {% if offset <= 30 %}
-    {% if search %}
-    <p class="more"><a href="?search={{ search }}&offset={{ offset + 30 }}">More &rarr;</a></p>
+    {% if search.offset <= 30 %}
+    {% if search.text %}
+    <p class="more"><a href="?search={{ search.text }}&offset={{ search.offset + 30 }}">More &rarr;</a></p>
     {% else %}
-    <p class="more"><a href="?offset={{ offset + 30 }}">More &rarr;</a></p>
+    <p class="more"><a href="?offset={{ search.offset + 30 }}">More &rarr;</a></p>
     {% endif %}
     {% endif %}
     </div>

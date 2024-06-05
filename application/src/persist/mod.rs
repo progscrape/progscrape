@@ -75,11 +75,12 @@ pub enum StoryQuery {
     /// Stories matching a text search.
     TextSearch(String),
     /// Related stories (title, tags)
-    Related(String, Vec<String>),
+    RelatedSearch(String, Vec<String>),
 }
 
 /// A string that may be turned into a [`StoryQuery`].
 pub trait IntoStoryQuery {
+    fn search_text(&self) -> &str;
     fn into_story_query(self, tagger: &StoryTagger) -> StoryQuery;
 }
 
@@ -94,6 +95,9 @@ impl<S: StoryQueryString> IntoStoryQuery for S {
     fn into_story_query(self, tagger: &StoryTagger) -> StoryQuery {
         StoryQuery::from_search(tagger, self.as_ref())
     }
+    fn search_text(&self) -> &str {
+        self.as_ref().trim()
+    }
 }
 
 impl<S: StoryQueryString> IntoStoryQuery for &Option<S> {
@@ -103,11 +107,17 @@ impl<S: StoryQueryString> IntoStoryQuery for &Option<S> {
         };
         s.as_ref().into_story_query(tagger)
     }
+    fn search_text(&self) -> &str {
+        self.as_ref().map(|s| s.as_ref()).unwrap_or("").trim()
+    }
 }
 
 impl<S: StoryQueryString> IntoStoryQuery for Option<S> {
     fn into_story_query(self, tagger: &StoryTagger) -> StoryQuery {
         (&self).into_story_query(tagger)
+    }
+    fn search_text(&self) -> &str {
+        self.as_ref().map(|s| s.as_ref()).unwrap_or("").trim()
     }
 }
 
@@ -123,7 +133,20 @@ impl StoryQuery {
             Self::TagSearch(tag, _) => tag.into(),
             Self::TextSearch(text) => text.into(),
             // TODO: This probably won't work
-            Self::Related(title, tags) => format!("title:{title:?} tags:{tags:?}").into(),
+            Self::RelatedSearch(title, tags) => format!("title:{title:?} tags:{tags:?}").into(),
+        }
+    }
+
+    pub fn query_type(&self) -> &'static str {
+        match self {
+            Self::FrontPage => "",
+            Self::ById(id) => "id",
+            Self::ByShard(shard) => "shard",
+            Self::DomainSearch(domain) => "domain",
+            Self::UrlSearch(url) => "url",
+            Self::TagSearch(tag, _) => "tag",
+            Self::TextSearch(text) => "text",
+            Self::RelatedSearch(title, tags) => "related",
         }
     }
 
@@ -146,6 +169,9 @@ impl StoryQuery {
             StoryQuery::TagSearch(tag.to_string(), alt)
         } else if let Some(domain_or_url) = Self::try_domain_or_url(search) {
             domain_or_url
+        } else if !search.contains(|c: char| !c.is_alphanumeric()) {
+            // Not a tag we know of, but tag-like
+            StoryQuery::TagSearch(search.to_lowercase(), None)
         } else {
             StoryQuery::TextSearch(search.to_string())
         }
@@ -187,7 +213,7 @@ impl StoryScrapePayload for Shard {}
 impl StoryScrapePayload for TypedScrape {}
 
 pub trait StorageFetch<S: StoryScrapePayload> {
-    fn fetch_type(&self, query: StoryQuery, max: usize) -> Result<Vec<Story<S>>, PersistError>;
+    fn fetch_type(&self, query: &StoryQuery, max: usize) -> Result<Vec<Story<S>>, PersistError>;
 }
 
 /// The underlying storage engine.
@@ -202,22 +228,22 @@ pub trait Storage: Send + Sync {
     fn story_count(&self) -> Result<StorageSummary, PersistError>;
 
     /// Count the docs matching the query, at most max.
-    fn fetch_count(&self, query: StoryQuery, max: usize) -> Result<usize, PersistError>;
+    fn fetch_count(&self, query: &StoryQuery, max: usize) -> Result<usize, PersistError>;
 
     /// Count the docs matching the query, at most max.
-    fn fetch_count_by_shard(&self, query: StoryQuery) -> Result<SearchSummary, PersistError>;
+    fn fetch_count_by_shard(&self, query: &StoryQuery) -> Result<SearchSummary, PersistError>;
 
     /// Fetches the index-specific story details for a single story.
     fn fetch_detail_one(
         &self,
-        query: StoryQuery,
+        query: &StoryQuery,
     ) -> Result<Option<HashMap<String, Vec<String>>>, PersistError>;
 
     /// Fetch a list of stories with the specified payload type.
     #[inline(always)]
     fn fetch<S: StoryScrapePayload>(
         &self,
-        query: StoryQuery,
+        query: &StoryQuery,
         max: usize,
     ) -> Result<Vec<Story<S>>, PersistError>
     where
@@ -230,7 +256,7 @@ pub trait Storage: Send + Sync {
     #[inline(always)]
     fn fetch_one<S: StoryScrapePayload>(
         &self,
-        query: StoryQuery,
+        query: &StoryQuery,
     ) -> Result<Option<Story<S>>, PersistError>
     where
         Self: StorageFetch<S>,

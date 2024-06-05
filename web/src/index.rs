@@ -183,7 +183,7 @@ impl Index<StoryIndex> {
 
     pub async fn stories_by_shard(&self, query: StoryQuery) -> Result<SearchSummary, PersistError> {
         async_run!(self.storage, |storage: &StoryIndex| {
-            storage.fetch_count_by_shard(query)
+            storage.fetch_count_by_shard(&query)
         })
     }
 
@@ -259,7 +259,7 @@ impl Index<StoryIndex> {
         StoryIndex: StorageFetch<S>,
     {
         async_run!(self.storage, |storage: &StoryIndex| {
-            storage.fetch::<S>(query, max)
+            storage.fetch::<S>(&query, max)
         })
     }
 
@@ -271,7 +271,7 @@ impl Index<StoryIndex> {
         StoryIndex: StorageFetch<S>,
     {
         async_run!(self.storage, |storage: &StoryIndex| {
-            storage.fetch_one::<S>(query)
+            storage.fetch_one::<S>(&query)
         })
     }
 
@@ -280,7 +280,7 @@ impl Index<StoryIndex> {
         id: StoryIdentifier,
     ) -> Result<Option<HashMap<String, Vec<String>>>, PersistError> {
         async_run!(self.storage, |storage: &StoryIndex| {
-            storage.fetch_detail_one(StoryQuery::ById(id))
+            storage.fetch_detail_one(&StoryQuery::ById(id))
         })
     }
 }
