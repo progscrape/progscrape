@@ -654,7 +654,11 @@ async fn root(
             .get("offset")
             .map(|x| x.parse().unwrap_or_default())
             .unwrap_or_default(),
-        30,
+        query
+            .get("count")
+            .map(|x| x.parse::<usize>().unwrap_or_default())
+            .unwrap_or_default()
+            .clamp(30, 500),
     )?;
     if &search.text == BLOG_SEARCH {
         return Err(WebError::WrongUrl(format!("/blog/")));
