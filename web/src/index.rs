@@ -174,9 +174,8 @@ impl Index<StoryIndex> {
         // Fetch
         let max = self.config.read().hot_set.size;
         let v = async_run!(self.storage, |storage: &StoryIndex| {
-            storage.fetch::<S>(&StoryQuery::FrontPage, max)
-        })
-        .await?;
+            storage.fetch::<Shard>(&StoryQuery::FrontPage, max)
+        })?;
 
         // TODO: We should only add this if it doesn't exist
         // for pinned in self.pinned_story.read().iter() {
