@@ -9,7 +9,7 @@
     <div class="menu" tabindex="1">
         <div class="contents">
             <h1>Display options</h1>
-            <p>You can modify the default view of progscrape using query parameters.</p>
+            <p>You can modify the default view of progscrape using query parameters.</p><p>Feedback? Email <a href="mailto:matthew@mastracci.com">matthew@mastracci.com</a> <span class="beta"></span></p>
             <form id="settings">
                 <label for="count">Story count</label><span><input type="number" name="count" value="{{ search.count }}" /></span>
                 <!-- <label>Page</label><span><label><input type="radio" name="page" value="normal" checked /> Normal</label> <label><input type="radio" name="page" value="normal" /> Wide</label></span>
@@ -50,7 +50,7 @@
     <div id="zeitgeist" data-search="{{ search.text }}">
         <div class="loading">Loading... <span class="spinner"></span></div>
         <canvas></canvas>
-        <p class="note">Tag trends are in beta. Feedback? Thoughts? Email me at <a href="mailto:matthew@mastracci.com">matthew@mastracci.com</a></p>
+        <p class="note">Tag trends are in beta. Feedback? Thoughts? Email me at <a href="mailto:matthew@mastracci.com">matthew@mastracci.com</a> <span class="beta"></span></p>
     </div>
     <script id="chartJs" async src="{{ 'chart.js-4.4.3.umd.min.js' | static }}" onload="this.loadState='load'" onerror="this.loadState='error'" ></script>
     <script async src="{{ 'zeitgeist.js' | static }}"></script>

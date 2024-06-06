@@ -29,6 +29,24 @@
     {%- endblock head -%}
 </head>
 <body>
+    <script>
+        (function() {
+            window.siteSettings = {};
+            const settings = localStorage.getItem('siteSettings');
+            if (settings) {
+                try {
+                    window.siteSettings = JSON.parse(settings);
+                } catch (e) {
+                    console.error("Invalid settings: ", e, settings);
+                    localStorage.removeItem('siteSettings');
+                }
+            }
+            window.siteSettings.page_style = window.siteSettings.page_style || 'normal';
+            window.siteSettings.story_style = window.siteSettings.story_style || 'normal';
+            document.body.classList.add('page-' + window.siteSettings.page_style);
+            document.body.classList.add('story-' + window.siteSettings.story_style);
+        }());
+    </script>
     <div id="header">
         <h1><a href="/">&gt;progscrape &#x2592;</a></h1>
         <h2>All the news that's fit to scrape</h2>
