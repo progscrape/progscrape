@@ -6,6 +6,39 @@
 {% block content %}
     <div id="main">
     <div class="container">
+    <div class="menu" tabindex="1">
+        <div class="contents">
+            <h1>Display options</h1>
+            <p>You can modify the default view of progscrape using query parameters.</p>
+            <form id="settings">
+                <label for="count">Story count</label><span><input type="number" name="count" value="{{ search.count }}" /></span>
+                <!-- <label>Page</label><span><label><input type="radio" name="page" value="normal" checked /> Normal</label> <label><input type="radio" name="page" value="normal" /> Wide</label></span>
+                <label>Stories</label><span><label><input type="radio" name="stories" value="compact" /> Compact</label> <label><input type="radio" name="stories" value="normal" checked /> Normal</label></span> -->
+                <label for="url">Bookmark</label><span><a id="bookmark" tabindex="1" href="{{ host.protocol }}://{{ host.host }}/">progscrape</a></span>
+                <label>URL</label><span id="bookmark-url">{{ host.protocol }}://{{ host.host }}/</span>
+            </form>
+            <script>
+                function update() {
+                    const count = document.querySelector('input[name="count"]').value;
+                    const page = 'normal';//document.querySelector('input[name="page"]:checked').value;
+                    const stories = 'normal';//document.querySelector('input[name="stories"]:checked').value;
+        
+                    const params = new URLSearchParams();
+                    if (count != '30') params.set('count', count);
+                    if (page != 'normal') params.set('page', page);
+                    if (stories != 'normal') params.set('stories', stories);
+        
+                    const bookmarkUrl = `${window.location.protocol}//${window.location.host}/?${params.toString()}`;
+                    document.getElementById('bookmark').href = bookmarkUrl;
+                    document.getElementById('bookmark-url').textContent = bookmarkUrl;                    
+                }
+                document.getElementById('settings').addEventListener('change', () => {
+                    update();
+                }, { capture: true });
+                update();
+            </script>
+        </div>
+    </div>
     <div class="popular-tags">Trending tags:
         {% for tag in top_tags %}
         <span class="tag"><a href="/?search={{ tag.0 }}">{{ tag.0 }}</a></span>&nbsp;

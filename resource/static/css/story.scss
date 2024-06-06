@@ -91,8 +91,79 @@ h2.error {
     }
 }
 
+.menu {
+    height: 0;
+    display: flex;
+    flex-direction: row-reverse;
+    transition: height 0.25s ease-in;
+
+    &:focus-within, &:hover {
+        &::before {
+            transform: rotate(-90deg);
+        }
+    }
+    &::before {
+        content: "\00a0";
+        transition: transform 0.25s ease-in;
+        flex: 0 36px;
+        display: flex;
+        height: 36px;
+        background-image: url('data:image/svg+xml;utf8,<svg fill="none" height="24" width="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><g stroke="black" stroke-linecap="round" stroke-width="2"><path d="m4 18h16"/><path d="m4 12h16"/><path d="m4 6h16"/></g></svg>');
+        background-size: cover;
+    }
+
+    > * {
+        opacity: 0;
+        transform: scale(0);
+        flex: 1 auto;
+        position: absolute;
+        transition: max-height 0.25s ease-in, opacity 0.25s ease-in;
+        overflow: hidden;
+    }
+
+    .contents {
+        padding: 0.5em;
+        background-color: #fafafa;
+        border: 1px solid #ccc;
+        box-shadow: 2px 2px 10px #eee;
+        border-radius: 5px;
+        h1 {
+            font-size: 16px;
+        }
+        p {
+            margin: 1em 0 1em 0;
+        }
+        form {
+            display: flex;
+            flex-direction: row;
+            flex-wrap: wrap;
+            > *:nth-child(2n + 1) {
+                &::after {
+                    content: ":";
+                }
+                flex: 0 8em;
+                height: 2em;
+                align-content: center;
+            }
+            > *:nth-child(2n + 0) {
+                flex: 1 calc(100% - 9em);
+                height: 2em;
+                align-content: center;
+            }
+        }
+    }
+
+    &:focus-within, &:hover {
+        > * {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+}
+
 .popular-tags {
     padding-bottom: 1em;
+    padding-right: 36px;
     font-size: 11px;
     line-height: 17px;
     color: #555;
