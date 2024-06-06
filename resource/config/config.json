@@ -135,6 +135,7 @@
             "general_concept": {
                 "algorithm(s)": {},
                 "compiler(s)": {},
+                "parser(s)": {},
                 "3d": {"alts": ["3(-)d", "3(-)dimension(s)", "three(-)d", "three(-)dimension(s)", "three(-)dimensional", "3(-)dimensional"]},
                 "ai": {"alts": ["artificial(-)intelligence"]},
                 "deepfake(s)": {"alts": ["deep(-)fake(s)"]},
@@ -516,7 +517,10 @@
                 "wasm": {},
                 "wasi": {"implies": "wasm"},
                 "llvm": {},
-                "risc": {"alts": ["risc-v", "riscv", "risc v"]}
+                "risc": {"alts": ["risc-v", "riscv", "risc v"]},
+                "opengl": {"implies": "graphics"},
+                "vulkan": {"implies": "graphics"},
+                "direct3d": {"implies": "3d"}
             }
         }
     }
