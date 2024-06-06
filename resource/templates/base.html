@@ -5,7 +5,7 @@
     {%- block head -%}
     <link rel="stylesheet" href="{{ 'style.css' | static }}" />
 	<meta name="viewport" content="user-scalable=no, width=device-width, initial-scale=1.0" />
-    {% if search %}
+    {% if search.text %}
     <title>{% block title %}{% endblock title %}: {{ search.text }}</title>
     <meta property="og:title" content="progscrape: &quot;{{ search.text }}&quot; search results">
     <meta property="og:description" content="Technology news about &quot;{{ search.text }}&quot; from Hacker News, Reddit, and other programming sites.">
