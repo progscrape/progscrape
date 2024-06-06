@@ -20,6 +20,12 @@ To initialize the server index:
 SERVER_LOG="debug,tantivy=info" cargo run -- initialize --persist-path target/index --root=.
 ```
 
+To load from a set of backup scrapes:
+
+```
+SERVER_LOG="debug,tantivy=info" cargo run -- initialize --persist-path target/index --root=. backup/????-??.json
+```
+
 To run the server behind a CloudFlare Access tunnel:
 
 ```
