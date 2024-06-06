@@ -801,7 +801,14 @@ async fn root_feed_json(
     query: Query<HashMap<String, String>>,
 ) -> Result<impl IntoResponse, WebError> {
     let host = HostParams::new(host);
-    let (search, query) = SearchParams::new(&index, query.get("search"), 0, 150)?;
+    // Allow consumers to request a story count from feed.json
+    let count = query
+        .get("count")
+        .map(|x| x.parse::<usize>().unwrap_or_default())
+        .unwrap_or(150)
+        .clamp(30, 300);
+
+    let (search, query) = SearchParams::new(&index, query.get("search"), 0, count)?;
     let stories = index.stories::<FeedStory>(&host, query, 0, 150).await?;
     let top_tags: Vec<_> = index
         .top_tags(usize::MAX)?
