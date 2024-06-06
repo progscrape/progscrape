@@ -1,7 +1,25 @@
+const zeitgeistContainer = document.getElementById("zeitgeist");
+const searchText = zeitgeistContainer.getAttribute("data-search");
+const chartJsScript = document.getElementById("chartJs");
+
+loadZeitgeist(searchText);
+
 function loadZeitgeist(search) {
-  const zeitgeistContainer = document.getElementById("zeitgeist");
   zeitgeistContainer.classList.add("loading");
+
   (async () => {
+    if (!chartJsScript.loadState) {
+      console.log("Waiting for chart.js to load...");
+      await new Promise((r) => chartJsScript.addEventListener("load", r));
+      console.log("Loaded chart.js");
+    } else {
+      console.log("Already loaded chart.js");
+    }
+
+    // Delay load of trends for testing purposes
+    if (location.href.includes("delayLoad")) {
+      await new Promise((r) => setTimeout(r, 10000));
+    }
     let a = await (await fetch("/zeitgeist.json")).json();
     let b = await (await fetch(`/zeitgeist.json?search=${search}`)).json();
     let base = {};

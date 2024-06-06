@@ -11,14 +11,33 @@ h2.error {
 }
 
 #zeitgeist {
-    display: none;
+    height: 0px;
+    display: table;
+    width: 100%;
+    transition: height 0.25s ease;
+
+    .loading, canvas {
+        display: none;
+    }
+
+    .spinner {
+        &::before {
+            content: "\00a0";
+        }
+        display: inline-block;
+        width: 1rem;
+        height: 1rem;
+        margin-left: 1em;
+        background-image: url('data:image/svg+xml;utf8,<svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><style>.spinner_b2T7{animation:spinner_xe7Q .8s linear infinite}.spinner_YRVV{animation-delay:-.65s}.spinner_c9oY{animation-delay:-.5s}@keyframes spinner_xe7Q{93.75%,100%{r:3px}46.875%{r:.2px}}</style><circle class="spinner_b2T7" cx="4" cy="12" r="3"/><circle class="spinner_b2T7 spinner_YRVV" cx="12" cy="12" r="3"/><circle class="spinner_b2T7 spinner_c9oY" cx="20" cy="12" r="3"/></svg>');
+        background-size: cover;
+    }
 
     &.loading {
+        height: 300px;
         display: table;
-        width: 100%;
-        .loading {
-            height: 300px;
+        .loading, canvas {
             display: table-cell;
+            height: 100%;
             width: 100%;
             text-align: center;
             vertical-align: middle;
@@ -29,6 +48,13 @@ h2.error {
         .loading {
             display: none;
         }
+    }
+
+    .note {
+        display: table-row;
+        text-align: center;
+        font-style: italic;
+        padding-bottom: 1em;
     }
 }
 

@@ -14,15 +14,13 @@
 
     {# Show the chart for tag/domain searches, but only at offset 0 #}
     {% if (search.type == "tag" or search.type == "domain") and (search.offset == 0) and (stories | length == search.count) %}
-    <script src="{{ 'chart.js-4.4.3.umd.min.js' | static }}"></script>
-    <div id="zeitgeist">
-        <div class="loading">Loading...</div>
+    <div id="zeitgeist" data-search="{{ search.text }}">
+        <div class="loading">Loading... <span class="spinner"></span></div>
         <canvas></canvas>
+        <p class="note">Tag trends are in beta. Feedback? Thoughts? Email me at <a href="mailto:matthew@mastracci.com">matthew@mastracci.com</a></p>
     </div>
-    <script src="{{ 'zeitgeist.js' | static }}"></script>
-    <script>
-        loadZeitgeist('{{ search.text }}');
-    </script>
+    <script id="chartJs" async src="{{ 'chart.js-4.4.3.umd.min.js' | static }}" onload="this.loadState='load'" onerror="this.loadState='error'" ></script>
+    <script async src="{{ 'zeitgeist.js' | static }}"></script>
     {% endif %}
 
     {% for story in stories %}
