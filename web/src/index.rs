@@ -170,9 +170,14 @@ impl Index<StoryIndex> {
 
     pub async fn refresh_hot_set(&self) -> Result<(), PersistError> {
         let now = self.storage.read().most_recent_story()?;
-        let mut v = self
-            .fetch(StoryQuery::FrontPage, self.config.read().hot_set.size)
-            .await?;
+
+        // Fetch
+        let max = self.config.read().hot_set.size;
+        let v = async_run!(self.storage, |storage: &StoryIndex| {
+            storage.fetch::<S>(&StoryQuery::FrontPage, max)
+        })
+        .await?;
+
         // TODO: We should only add this if it doesn't exist
         // for pinned in self.pinned_story.read().iter() {
         //     v.append(&mut self.fetch(StoryQuery::UrlSearch(pinned.clone()), 1).await?);
