@@ -7,6 +7,8 @@ use std::time::Instant;
 
 use clap::{Parser, Subcommand};
 use config::Config;
+use index::{HotSetConfig, IndexConfig};
+use keepcalm::Shared;
 use progscrape_application::{
     MemIndex, PersistLocation, Storage, StorageWriter, StoryEvaluator, StoryIndex,
 };
@@ -161,6 +163,13 @@ async fn go() -> Result<(), WebError> {
                 persist_path,
                 resources.story_evaluator.clone(),
                 resources.blog_posts.clone(),
+                Shared::new(IndexConfig {
+                    max_count: 300,
+                    hot_set: HotSetConfig {
+                        size: 500,
+                        jitter: 0.0,
+                    },
+                }),
             )?;
             index.backup(&backup_path)?;
         }
@@ -188,6 +197,7 @@ async fn go() -> Result<(), WebError> {
                 persist_path,
                 resources.story_evaluator.clone(),
                 resources.blog_posts.clone(),
+                resources.config.project_fn(|config| &config.index),
             )?;
             let listen_port = listen_port
                 .map(|s| s.parse().expect("Failed to parse socket address"))

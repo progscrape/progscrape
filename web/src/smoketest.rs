@@ -4,13 +4,19 @@ mod test {
 
     use axum::{http::HeaderValue, routing::IntoMakeService, Router};
     use hyper::{header::CONTENT_TYPE, Method};
+    use keepcalm::Shared;
     use progscrape_application::StoryIndex;
     use progscrape_scrapers::{hacker_news::HackerNewsStory, StoryUrl};
     use serde::Deserialize;
     use tower::Service;
     use tracing_subscriber::EnvFilter;
 
-    use crate::{index::Index, resource::Resources, story::FeedStory, web::create_feeds};
+    use crate::{
+        index::{HotSetConfig, Index, IndexConfig},
+        resource::Resources,
+        story::FeedStory,
+        web::create_feeds,
+    };
 
     fn create_request(
         path: &'static str,
@@ -84,6 +90,13 @@ mod test {
             tempdir,
             resources.story_evaluator.clone(),
             resources.blog_posts.clone(),
+            Shared::new(IndexConfig {
+                max_count: 300,
+                hot_set: HotSetConfig {
+                    size: 500,
+                    jitter: 0.0,
+                },
+            }),
         )?;
         index.insert_scrapes(scrapes).await?;
         index.refresh_hot_set().await?;

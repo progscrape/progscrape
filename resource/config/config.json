@@ -1,4 +1,11 @@
 {
+    "index": {
+        "max_count": 300,
+        "hot_set": {
+            "size": 1000,
+            "jitter": 0
+        }
+    },
     "score": {
         "age_breakpoint_days": [1, 30],
         "hour_scores": [-5, -3, -0.1],
@@ -520,7 +527,7 @@
                 "risc": {"alts": ["risc-v", "riscv", "risc v"]},
                 "opengl": {"implies": "graphics"},
                 "vulkan": {"implies": "graphics"},
-                "direct3d": {"implies": "3d"}
+                "direct3d": {"implies": "graphics"}
             }
         }
     }

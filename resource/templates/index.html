@@ -44,11 +44,11 @@
     <h2 class="error">No stories found!</h2>
     {% endfor %}
 
-    {% if search.offset <= 500 and (stories | length == search.count) %}
+    {% if stories | length == search.count %}
     {% if search.text %}
-    <p class="more"><a href="?search={{ search.text }}&offset={{ search.offset + search.count }}">More &rarr;</a></p>
+    <p class="more"><a href="?search={{ search.text }}&count={{ search.count }}&offset={{ search.offset + search.count }}">More &rarr;</a></p>
     {% else %}
-    <p class="more"><a href="?offset={{ search.offset + search.count }}">More &rarr;</a></p>
+    <p class="more"><a href="?offset={{ search.offset + search.count }}&count={{ search.count }}">More &rarr;</a></p>
     {% endif %}
     {% endif %}
     </div>

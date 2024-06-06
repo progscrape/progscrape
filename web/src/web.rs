@@ -657,8 +657,8 @@ async fn root(
         query
             .get("count")
             .map(|x| x.parse::<usize>().unwrap_or_default())
-            .unwrap_or_default()
-            .clamp(30, 500),
+            .unwrap_or(30)
+            .max(1),
     )?;
     if &search.text == BLOG_SEARCH {
         return Err(WebError::WrongUrl(format!("/blog/")));
@@ -806,10 +806,12 @@ async fn root_feed_json(
         .get("count")
         .map(|x| x.parse::<usize>().unwrap_or_default())
         .unwrap_or(150)
-        .clamp(30, 300);
+        .max(1);
 
     let (search, query) = SearchParams::new(&index, query.get("search"), 0, count)?;
-    let stories = index.stories::<FeedStory>(&host, query, 0, 150).await?;
+    let stories = index
+        .stories::<FeedStory>(&host, query, search.offset, search.count)
+        .await?;
     let top_tags: Vec<_> = index
         .top_tags(usize::MAX)?
         .into_iter()
@@ -1310,7 +1312,7 @@ async fn admin_status_frontpage(
     let sort = sort.get("sort").cloned().unwrap_or_default();
     let host = HostParams::new(host);
     let stories = index
-        .stories::<StoryRender>(&host, StoryQuery::FrontPage, 0, 500)
+        .stories::<StoryRender>(&host, StoryQuery::FrontPage, 0, usize::MAX)
         .await?;
     render_admin(
         Some(&user),
@@ -1334,7 +1336,7 @@ async fn admin_index_frontpage_scoretuner(
         score_detail: Vec<(StoryScore, f32)>,
     }
 
-    let stories: Vec<Story<TypedScrape>> = index.fetch(StoryQuery::FrontPage, 500).await?;
+    let stories: Vec<Story<TypedScrape>> = index.fetch(StoryQuery::FrontPage, usize::MAX).await?;
     let mut story_details = vec![];
     let eval = resources.story_evaluator.read();
 

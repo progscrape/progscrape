@@ -1,8 +1,4 @@
-use std::{
-    collections::{HashMap, HashSet},
-    path::Path,
-    time::Instant,
-};
+use std::{collections::HashMap, path::Path, time::Instant};
 
 use crate::{
     resource::BlogPost,
@@ -16,6 +12,7 @@ use progscrape_application::{
     StoryEvaluator, StoryIdentifier, StoryIndex, StoryQuery, StoryRender, StoryScrapePayload,
 };
 use progscrape_scrapers::{StoryDate, StoryUrl, TypedScrape};
+use serde::{Deserialize, Serialize};
 use tracing::Level;
 
 pub struct HotSet {
@@ -23,12 +20,27 @@ pub struct HotSet {
     top_tags: Vec<(String, usize)>,
 }
 
+#[derive(Serialize, Deserialize, Default, Clone)]
+pub struct IndexConfig {
+    pub hot_set: HotSetConfig,
+    pub max_count: usize,
+}
+
+#[derive(Serialize, Deserialize, Default, Clone)]
+pub struct HotSetConfig {
+    /// The size of the hot set we keep resident
+    pub size: usize,
+    /// The max amount of jitter we may add to each story's score when fetching the hot set
+    pub jitter: f32,
+}
+
 pub struct Index<S: StorageWriter> {
-    pub storage: SharedMut<S>,
-    pub hot_set: SharedMut<HotSet>,
     pub pinned_story: SharedMut<Option<StoryUrl>>,
-    pub eval: Shared<StoryEvaluator>,
-    pub blog: Shared<Vec<BlogPost>>,
+    storage: SharedMut<S>,
+    hot_set: SharedMut<HotSet>,
+    eval: Shared<StoryEvaluator>,
+    blog: Shared<Vec<BlogPost>>,
+    config: Shared<IndexConfig>,
 }
 
 impl<S: StorageWriter> Clone for Index<S> {
@@ -39,6 +51,7 @@ impl<S: StorageWriter> Clone for Index<S> {
             pinned_story: self.pinned_story.clone(),
             eval: self.eval.clone(),
             blog: self.blog.clone(),
+            config: self.config.clone(),
         }
     }
 }
@@ -74,6 +87,7 @@ impl Index<StoryIndex> {
         path: P,
         eval: Shared<StoryEvaluator>,
         blog: Shared<Vec<BlogPost>>,
+        config: Shared<IndexConfig>,
     ) -> Result<Index<StoryIndex>, WebError> {
         let index = StoryIndex::new(PersistLocation::Path(path.as_ref().to_owned()))?;
         Ok(Index {
@@ -85,6 +99,7 @@ impl Index<StoryIndex> {
             pinned_story: SharedMut::new(None),
             blog,
             eval,
+            config,
         })
     }
 
@@ -155,7 +170,9 @@ impl Index<StoryIndex> {
 
     pub async fn refresh_hot_set(&self) -> Result<(), PersistError> {
         let now = self.storage.read().most_recent_story()?;
-        let mut v = self.fetch(StoryQuery::FrontPage, 500).await?;
+        let mut v = self
+            .fetch(StoryQuery::FrontPage, self.config.read().hot_set.size)
+            .await?;
         // TODO: We should only add this if it doesn't exist
         // for pinned in self.pinned_story.read().iter() {
         //     v.append(&mut self.fetch(StoryQuery::UrlSearch(pinned.clone()), 1).await?);
@@ -322,6 +339,8 @@ impl Index<StoryIndex> {
     where
         StoryIndex: StorageFetch<S>,
     {
+        // Clamp to the configured max
+        let max = self.config.read().max_count.min(max);
         async_run!(self.storage, |storage: &StoryIndex| {
             storage.fetch::<S>(&query, max)
         })
