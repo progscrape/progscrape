@@ -767,7 +767,7 @@ impl StorageWriter for StoryIndex {
     }
 
     /// Re-insert a set of stories, assuming that they are in the index. This must only be
-    /// used with a story sourced from this index. Note that the
+    /// used with a story sourced from this index.
     fn reinsert_stories<I: IntoIterator<Item = StoryIdentifier>>(
         &mut self,
         eval: &StoryEvaluator,
