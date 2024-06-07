@@ -24,7 +24,7 @@ RUN cat .cargo/config.toml
 
 # Build amd64 and arm64 in parallel
 RUN cargo fetch
-RUN parallel \
+RUN RUSTFLAGS="-Awarnings" parallel \
     --tagstring '{= s:x86_64-unknown-linux-gnu:amd64:; s:aarch64-unknown-linux-gnu:arm64: =}' \
     -j 2 --lb --tag --color 'cargo build --release --target {} --target-dir target/{}' ::: 'x86_64-unknown-linux-gnu' 'aarch64-unknown-linux-gnu'
 
