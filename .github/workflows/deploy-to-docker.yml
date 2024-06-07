@@ -35,9 +35,4 @@ jobs:
         run:
           docker run --rm mmastrac/progscrape:latest /usr/local/bin/progscrape-web help
       - name: Push
-        uses: docker/build-push-action@v3
-        with:
-          context: .
-          push: true
-          platforms: linux/amd64,linux/arm64
-          tags: mmastrac/progscrape:latest
+        run: docker buildx build --push --tag mmastrac/progscrape:latest .
