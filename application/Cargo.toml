@@ -17,7 +17,7 @@ keepcalm = { version = "0", features = ["serde"] }
 
 # Do not bump
 tantivy = "=0.19.2"
-
+rust-bert = { version="0.22.0", features = ["download-libtorch"] }
 rusqlite = "0.31"
 base64 = "0.22"
 itertools = "0"
