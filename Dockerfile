@@ -2,7 +2,7 @@ FROM --platform=amd64 rust:1.78.0 as builder
 
 RUN dpkg --add-architecture arm64
 RUN apt-get update --allow-insecure-repositories
-RUN apt install -y gcc-aarch64-linux-gnu libssl-dev:arm64 libsqlite3-dev:arm64
+RUN apt install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu libssl-dev:arm64 libsqlite3-dev:arm64
 
 # .git directory is required to serve git version
 COPY .git /build/.git/
