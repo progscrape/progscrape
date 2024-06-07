@@ -33,6 +33,7 @@ jobs:
           tags: mmastrac/progscrape:latest
       - name: Smoketest
         run:
-          docker run --rm mmastrac/progscrape:latest /usr/local/bin/progscrape-web help
+          docker run --rm --platform linux/amd64 mmastrac/progscrape:latest /usr/local/bin/progscrape-web help
+          docker run --rm --platform linux/arm64 mmastrac/progscrape:latest /usr/local/bin/progscrape-web help
       - name: Push
         run: docker buildx build --push --tag mmastrac/progscrape:latest .
