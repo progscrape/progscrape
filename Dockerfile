@@ -23,7 +23,7 @@ RUN mkdir .cargo && echo "[target.aarch64-unknown-linux-gnu]\nlinker = \"aarch64
 RUN cat .cargo/config.toml
 
 # Build amd64 and arm64 in parallel
-RUN parallel -j 2 --citation --lb --tag 'cargo build --release --target' ::: 'x86_64-unknown-linux-gnu ' 'aarch64-unknown-linux-gnu'
+RUN parallel -j 2 --lb --tag 'cargo build --release --target' ::: 'x86_64-unknown-linux-gnu ' 'aarch64-unknown-linux-gnu'
 
 RUN mkdir -p /output/linux/arm64
 RUN mkdir -p /output/linux/amd64
