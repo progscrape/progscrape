@@ -24,12 +24,12 @@ RUN cat .cargo/config.toml
 
 # Build amd64 and arm64 in parallel
 RUN cargo fetch
-RUN parallel -j 2 --lb --tag 'cargo build --release --target' ::: 'x86_64-unknown-linux-gnu ' 'aarch64-unknown-linux-gnu'
+RUN parallel -j 2 --lb --tag 'cargo build --release --target {} --target-dir target/{}' ::: 'x86_64-unknown-linux-gnu' 'aarch64-unknown-linux-gnu'
 
 RUN mkdir -p /output/linux/arm64
 RUN mkdir -p /output/linux/amd64
-RUN mv /build/target/release/progscrape /output/linux/amd64/progscrape-web
-RUN mv /build/target/aarch64-unknown-linux-gnu/release/progscrape /output/linux/arm64/progscrape-web
+RUN mv /build/target/x86_64-unknown-linux-gnu/x86_64-unknown-linux-gnu/release/progscrape /output/linux/amd64/progscrape-web
+RUN mv /build/target/aarch64-unknown-linux-gnu/aarch64-unknown-linux-gnu/release/progscrape /output/linux/arm64/progscrape-web
 
 FROM rust:1.78.0
 ARG TARGETPLATFORM
