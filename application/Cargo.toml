@@ -14,13 +14,13 @@ serde = { version = "1.0", features = ["derive", "rc"] }
 serde_rusqlite = "0.35"
 serde_json = "1.0"
 keepcalm = { version = "0", features = ["serde"] }
+rusqlite = "0.31"
+base64 = "0.22"
+itertools = "0"
 
 # Do not bump
 tantivy = "=0.19.2"
 rust-bert = { version="0.22.0", features = ["download-libtorch"] }
-rusqlite = "0.31"
-base64 = "0.22"
-itertools = "0"
 
 progscrape-scrapers = { version = "0.0.1", path = "../scrapers" }
 
