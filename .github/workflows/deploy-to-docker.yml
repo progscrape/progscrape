@@ -30,6 +30,7 @@ jobs:
         with:
           context: .
           platforms: linux/amd64,linux/arm64
+          load: true
           tags: mmastrac/progscrape:latest,smoketest
       - name: Smoketest (AMD64)
         run:
