@@ -63,8 +63,6 @@ pub fn trim_title(mut title: &str, ideal_length: usize, awkward_length: usize) -
 
 /// Removes a `[tag]` from the beginning and/or end of a title.
 pub fn remove_tags(title: &str) -> (&str, Option<&str>, Option<&str>) {
-    let mut start = 0;
-    let mut end = title.len();
     let mut start_tag = None;
     let mut end_tag = None;
 
@@ -74,6 +72,7 @@ pub fn remove_tags(title: &str) -> (&str, Option<&str>, Option<&str>) {
     }
 
     let mut title = title.trim();
+    let orig_title = title;
 
     // Check and remove tag at the start
     if title.starts_with('[') {
@@ -81,24 +80,31 @@ pub fn remove_tags(title: &str) -> (&str, Option<&str>, Option<&str>) {
             let possible_tag = &title[1..end_index];
             if is_valid_tag(possible_tag) {
                 start_tag = Some(possible_tag);
-                start = end_index + 1;
+                title = &title[end_index + 1..];
             }
         }
+    }
+
+    if title.trim().is_empty() {
+        return (orig_title, None, None);
     }
 
     // Check and remove tag at the end
     if title.ends_with(']') {
-        if let Some(start_index) = title[..end].rfind('[') {
-            let possible_tag = &title[start_index + 1..end - 1];
+        if let Some(start_index) = title.rfind('[') {
+            let possible_tag = &title[start_index + 1..title.len() - 1];
             if is_valid_tag(possible_tag) {
                 end_tag = Some(possible_tag);
-                end = start_index;
+                title = &title[..start_index - 1];
             }
         }
     }
 
-    let modified_title = &title[start..end].trim();
-    (modified_title, start_tag, end_tag)
+    if title.trim().is_empty() {
+        return (orig_title, None, None);
+    }
+
+    (title.trim(), start_tag, end_tag)
 }
 
 #[cfg(test)]
@@ -144,6 +150,12 @@ mod test {
     )]
     #[case(
         "[short] This is a title [valid]",
+        "This is a title",
+        Some("short"),
+        Some("valid")
+    )]
+    #[case(
+        " [short]  This is a title  [valid] ",
         "This is a title",
         Some("short"),
         Some("valid")
