@@ -1,4 +1,8 @@
-use std::{collections::{HashMap, HashSet}, path::Path, time::Instant};
+use std::{
+    collections::{HashMap, HashSet},
+    path::Path,
+    time::Instant,
+};
 
 use crate::{
     resource::BlogPost,

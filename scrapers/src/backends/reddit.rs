@@ -8,7 +8,7 @@ use super::{
     ScrapeShared, ScrapeSource, ScrapeSourceDef, ScrapeStory, Scraper,
 };
 use crate::{
-    datasci::titletrimmer::{trim_title, AWKWARD_LENGTH, IDEAL_LENGTH},
+    datasci::titletrimmer::{remove_tags, trim_title, AWKWARD_LENGTH, IDEAL_LENGTH},
     types::*,
 };
 
@@ -290,7 +290,10 @@ impl Scraper for RedditScraper {
             }
         }
 
-        let title = trim_title(&input.shared.raw_title, IDEAL_LENGTH, AWKWARD_LENGTH);
+        // Trim any [tag] prefixes or suffixes
+        let (title, _, _) = remove_tags(&input.raw_title);
+
+        let title = trim_title(title, IDEAL_LENGTH, AWKWARD_LENGTH);
 
         ScrapeCore {
             source: &input.shared.id,
