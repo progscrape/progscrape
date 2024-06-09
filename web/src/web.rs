@@ -1080,8 +1080,14 @@ async fn admin_cron_refresh(
     }): State<AdminState>,
 ) -> Result<impl IntoResponse, WebError> {
     let start = Instant::now();
+    let now = now(&index).await?;
     if let Some(blog) = resources.blog_posts.read().get(0) {
-        *index.pinned_story.write() = Some(blog.url.clone());
+        // This should be configurable -- but we don't want to pin these stories forever
+        if let Some(expiry) = blog.date.checked_add_days(2) {
+            if expiry < now {
+                *index.pinned_story.write() = Some(blog.url.clone());
+            }
+        }
     }
     index.refresh_hot_set().await?;
     let elapsed_ms = start.elapsed().as_millis();
