@@ -31,4 +31,4 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: mmastrac/progscrape:latest,smoketest
+          tags: mmastrac/progscrape:latest
