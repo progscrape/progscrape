@@ -1,4 +1,6 @@
-use chrono::{DateTime, Datelike, Months, NaiveDate, NaiveDateTime, NaiveTime, TimeZone, Utc};
+use chrono::{
+    DateTime, Datelike, Days, Months, NaiveDate, NaiveDateTime, NaiveTime, TimeZone, Utc,
+};
 use serde::{Deserialize, Serialize};
 use std::{fmt::Display, ops::Sub, time::SystemTime};
 
@@ -80,6 +82,16 @@ impl StoryDate {
     pub fn checked_sub_months(&self, months: u32) -> Option<Self> {
         self.internal_date
             .checked_sub_months(Months::new(months))
+            .map(StoryDate::new)
+    }
+    pub fn checked_add_days(&self, days: u64) -> Option<Self> {
+        self.internal_date
+            .checked_add_days(Days::new(days))
+            .map(StoryDate::new)
+    }
+    pub fn checked_sub_days(&self, days: u64) -> Option<Self> {
+        self.internal_date
+            .checked_sub_days(Days::new(days))
             .map(StoryDate::new)
     }
 }
