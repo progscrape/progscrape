@@ -160,6 +160,8 @@ mod test {
         Some("short"),
         Some("valid")
     )]
+    #[case("[bad]", "[bad]", None, None)]
+    #[case(" [bad] ", "[bad]", None, None)]
     fn test_remove_tags(
         #[case] input: &str,
         #[case] expected_title: &str,
