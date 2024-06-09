@@ -33,9 +33,15 @@ RUN mkdir -p /output/linux/amd64
 RUN mv /build/target/x86_64-unknown-linux-gnu/x86_64-unknown-linux-gnu/release/progscrape /output/linux/amd64/progscrape-web
 RUN mv /build/target/aarch64-unknown-linux-gnu/aarch64-unknown-linux-gnu/release/progscrape /output/linux/arm64/progscrape-web
 
-FROM rust:1.78.0
+FROM rust:1.78.0 as tester
 ARG TARGETPLATFORM
 COPY --from=builder /output/$TARGETPLATFORM/progscrape-web /usr/local/bin/
+COPY --from=builder /build/resource/ /var/progscrape/resource/
+RUN /usr/local/bin/progscrape-web help
+
+FROM rust:1.78.0
+ARG TARGETPLATFORM
+COPY --from=tester /usr/local/bin/progscrape-web /usr/local/bin/
 COPY --from=builder /build/resource/ /var/progscrape/resource/
 EXPOSE 3000
 VOLUME /var/progscrape/data

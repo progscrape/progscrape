@@ -30,13 +30,5 @@ jobs:
         with:
           context: .
           platforms: linux/amd64,linux/arm64
-          outputs: "type=image"
+          push: true
           tags: mmastrac/progscrape:latest,smoketest
-      - name: Smoketest (AMD64)
-        run:
-          docker run --pull never --rm --platform linux/amd64 smoketest /usr/local/bin/progscrape-web help
-      - name: Smoketest (ARM64)
-        run:
-          docker run --pull never --rm --platform linux/arm64 smoketest /usr/local/bin/progscrape-web help
-      - name: Push
-        run: docker buildx build --push --tag mmastrac/progscrape:latest .
