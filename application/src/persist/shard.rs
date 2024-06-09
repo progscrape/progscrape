@@ -121,9 +121,22 @@ impl Shard {
 
 #[cfg(test)]
 mod test {
+    use super::*;
     use itertools::Itertools;
 
-    use super::*;
+    #[test]
+    fn test_year_month() {
+        let date = Shard::from_year_month(2000, 12);
+        assert_eq!(Shard::from_year_month(2001, 1), date.plus_months(1));
+        assert_eq!(Shard::from_year_month(2001, 12), date.plus_months(12));
+        assert_eq!(Shard::from_year_month(1999, 12), date.sub_months(12));
+        assert_eq!(Shard::from_year_month(2000, 1), date.sub_months(11));
+
+        assert_eq!(
+            date,
+            Shard::from_string(&date.to_string()).expect("Failed to parse")
+        );
+    }
 
     #[test]
     fn test_shard_iterator() {
