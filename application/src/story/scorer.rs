@@ -138,7 +138,7 @@ impl StoryScorer {
         }
         // Boost our own stories
         if url.host().contains("progscrape") {
-            accum(MetaStory, 100.0);
+            accum(MetaStory, 30.0);
         }
 
         match scrape {

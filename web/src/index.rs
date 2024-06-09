@@ -1,4 +1,4 @@
-use std::{collections::HashMap, path::Path, time::Instant};
+use std::{collections::{HashMap, HashSet}, path::Path, time::Instant};
 
 use crate::{
     resource::BlogPost,
@@ -240,8 +240,12 @@ impl Index<StoryIndex> {
             for blog in &*self.blog.read() {
                 if blog.url == story.url {
                     render.html = blog.html.clone();
-                    // render.tags = blog.tags;
-                    render.tags.insert(0, host.host.to_string());
+                    // Not efficient, but this is pretty rare
+                    for tag in &blog.tags {
+                        if !render.tags.contains(tag) {
+                            render.tags.push(tag.to_owned());
+                        }
+                    }
                     // TODO: Would be nice if StoryUrl preserved the URL parts
                     render.url = story.url.raw().replace(
                         "http://progscrape/",
