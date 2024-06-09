@@ -30,8 +30,7 @@ jobs:
         with:
           context: .
           platforms: linux/amd64,linux/arm64
-          outputs:
-            - type=image
+          outputs: "type=image"
           tags: mmastrac/progscrape:latest,smoketest
       - name: Smoketest (AMD64)
         run:
