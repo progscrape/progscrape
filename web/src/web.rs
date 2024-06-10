@@ -1084,7 +1084,7 @@ async fn admin_cron_refresh(
     if let Some(blog) = resources.blog_posts.read().get(0) {
         // This should be configurable -- but we don't want to pin these stories forever
         if let Some(expiry) = blog.date.checked_add_days(2) {
-            if expiry < now {
+            if expiry > now {
                 *index.pinned_story.write() = Some(blog.url.clone());
             }
         }

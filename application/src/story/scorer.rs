@@ -136,10 +136,6 @@ impl StoryScorer {
                 accum(ImageLink, -10.0);
             }
         }
-        // Boost our own stories
-        if url.host().contains("progscrape") {
-            accum(MetaStory, 30.0);
-        }
 
         match scrape {
             TypedScrape::HackerNews(hn) => {
@@ -215,6 +211,11 @@ impl StoryScorer {
 
         for (scrape, core, _) in best.values().flatten() {
             self.score_single(scrape, core, &mut accum);
+        }
+
+        // Boost our own stories, once only
+        if url.host().contains("progscrape") {
+            accum(MetaStory, 50.0);
         }
 
         // Penalize a really long title regardless of source
