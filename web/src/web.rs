@@ -385,7 +385,14 @@ pub async fn start_server<P2: Into<std::path::PathBuf>>(
     metrics_auth_bearer_token: Option<String>,
 ) -> Result<(), WebError> {
     if let Some(blog) = resources.blog_posts.read().get(0) {
-        *index.pinned_story.write() = Some(blog.url.clone());
+        // This should be configurable -- but we don't want to pin these stories forever
+        if let Some(expiry) = blog.date.checked_add_days(2) {
+            if expiry > now {
+                *index.pinned_story.write() = Some(blog.url.clone());
+            } else {
+                *index.pinned_story.write() = None;
+            }
+        }
     }
     index.refresh_hot_set().await?;
 
@@ -1086,6 +1093,8 @@ async fn admin_cron_refresh(
         if let Some(expiry) = blog.date.checked_add_days(2) {
             if expiry > now {
                 *index.pinned_story.write() = Some(blog.url.clone());
+            } else {
+                *index.pinned_story.write() = None;
             }
         }
     }
