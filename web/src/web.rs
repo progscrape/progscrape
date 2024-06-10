@@ -384,6 +384,7 @@ pub async fn start_server<P2: Into<std::path::PathBuf>>(
     auth: Auth,
     metrics_auth_bearer_token: Option<String>,
 ) -> Result<(), WebError> {
+    let now = now(&index).await?;
     if let Some(blog) = resources.blog_posts.read().get(0) {
         // This should be configurable -- but we don't want to pin these stories forever
         if let Some(expiry) = blog.date.checked_add_days(2) {
