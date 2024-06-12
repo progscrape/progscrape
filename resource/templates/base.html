@@ -1,7 +1,7 @@
 {% import "macros/macros_story.html" as macros_story %}
 <!DOCTYPE html>
 <html lang="en">
-<head>
+<head id="head">
     {%- block head -%}
     <link rel="stylesheet" href="{{ 'style.css' | static }}" />
 	<meta name="viewport" content="user-scalable=no, width=device-width, initial-scale=1.0" />
@@ -27,8 +27,6 @@
     <link rel="alternate" type="application/rss+xml" title="progscrape.com" href="/feed" />
     {% endif %}
     {%- endblock head -%}
-</head>
-<body>
     <script>
         (function() {
             window.siteSettings = {};
@@ -43,10 +41,12 @@
             }
             window.siteSettings.page_style = window.siteSettings.page_style || 'normal';
             window.siteSettings.story_style = window.siteSettings.story_style || 'normal';
-            document.body.classList.add('page-' + window.siteSettings.page_style);
-            document.body.classList.add('story-' + window.siteSettings.story_style);
+            document.getElementById('head').classList.add('page-' + window.siteSettings.page_style);
+            document.getElementById('head').classList.add('story-' + window.siteSettings.story_style);
         }());
     </script>
+</head>
+<body>
     <div id="header">
         <h1><a href="/">&gt;progscrape &#x2592;</a></h1>
         <h2>All the news that's fit to scrape</h2>
