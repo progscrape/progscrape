@@ -43,11 +43,7 @@ impl StoryDate {
         let date = NaiveDateTime::parse_from_str(date, s).ok();
         date.map(|x| Self::new(Utc.from_utc_datetime(&x)))
     }
-    pub fn parse_from_rfc3339(mut date: &str) -> Option<Self> {
-        // HN is currently producing invalid dates trailing with "ZZ" . (Sept 2024)
-        if date.ends_with("ZZ") {
-            date = date.strip_suffix("Z").unwrap_or(date);
-        }
+    pub fn parse_from_rfc3339(date: &str) -> Option<Self> {
         DateTime::parse_from_rfc3339(date)
             .ok()
             .map(|x| Self::new(x.into()))

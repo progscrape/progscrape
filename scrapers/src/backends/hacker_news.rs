@@ -140,9 +140,11 @@ impl HackerNewsScraper {
         } else if find_first(p, node, ".subtext").is_some() {
             let age_node =
                 find_first(p, node, ".age").ok_or_else(|| "Failed to query .age".to_string())?;
-            let date = get_attribute(p, age_node, "title")
-                .ok_or_else(|| "Failed to get age title".to_string())?
-                + "Z";
+            let mut date = get_attribute(p, age_node, "title")
+                .ok_or_else(|| "Failed to get age title".to_string())?;
+            if !date.ends_with("Z") {
+                date = date + "Z";
+            }
             let date = StoryDate::parse_from_rfc3339(&date)
                 .ok_or_else(|| "Failed to map date".to_string())?;
             let mut comments = None;

@@ -411,7 +411,7 @@ pub mod test {
                 let mut res = scrape(config, source, file)
                     .unwrap_or_else(|_| panic!("Scrape of {:?} failed", source));
                 if res.0.is_empty() {
-                    panic!("Failed to scrape anything from {file}");
+                    panic!("Failed to scrape anything! {file} {:?}", res.1);
                 }
                 v.append(&mut res.0);
             }
