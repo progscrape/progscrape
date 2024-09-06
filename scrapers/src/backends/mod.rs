@@ -370,7 +370,7 @@ pub mod test {
     }
 
     fn hacker_news_files() -> Vec<&'static str> {
-        stringify_all!["hn1.html", "hn2.html", "hn3.html", "hn4.html"]
+        stringify_all!["hn1.html", "hn2.html", "hn3.html", "hn4.html", "hn5.html"]
     }
 
     fn lobsters_files() -> Vec<&'static str> {
@@ -410,6 +410,9 @@ pub mod test {
             for file in files_by_source(source) {
                 let mut res = scrape(config, source, file)
                     .unwrap_or_else(|_| panic!("Scrape of {:?} failed", source));
+                if res.0.is_empty() {
+                    panic!("Failed to scrape anything from {file}");
+                }
                 v.append(&mut res.0);
             }
             v.sort_by_key(|scrape| scrape.date);
@@ -432,7 +435,7 @@ pub mod test {
                     && !scrape.title.contains("&squot")
             );
             assert!(!scrape.url.raw().contains("&amp"));
-            assert!(scrape.date.year() == 2023 || scrape.date.year() == 2022);
+            assert!(scrape.date.year() >= 2022 && scrape.date.year() <= 2024);
         }
     }
 }
