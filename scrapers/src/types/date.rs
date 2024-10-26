@@ -48,6 +48,32 @@ impl StoryDate {
             .ok()
             .map(|x| Self::new(x.into()))
     }
+    pub fn parse_from_rfc3339_loose(date: &str) -> Option<Self> {
+        // Try as actual RFC3339
+        // 2024-10-26T14:38:11Z
+        if let Some(date) = Self::parse_from_rfc3339(date) {
+            return Some(date);
+        }
+        // Try chopping off most of the date and just putting a Z
+        // 2024-10-26T14:38:11
+        if date.len() >= 19 {
+            if let Some(date) = Self::parse_from_rfc3339(&format!("{}Z", &date[..19])) {
+                return Some(date);
+            }
+            // Try combining the first and second parts with a T and Z
+            if let Some(date) =
+                Self::parse_from_rfc3339(&format!("{}T{}Z", &date[..10], &date[11..19]))
+            {
+                return Some(date);
+            }
+        }
+        // Try combining the first part with midnight
+        if let Some(date) = Self::parse_from_rfc3339(&format!("{}T00:00:00Z", &date[..10])) {
+            return Some(date);
+        }
+
+        return None;
+    }
     pub fn to_rfc3339(&self) -> String {
         self.internal_date.to_rfc3339()
     }
@@ -191,5 +217,22 @@ mod test {
             date,
             StoryDate::from_seconds(date_from_seconds).expect("From seconds")
         );
+    }
+
+    #[test]
+    fn test_parse_from_rfc3339_loose() {
+        let actual_date = StoryDate::parse_from_rfc3339("2024-10-26T14:38:11Z").unwrap();
+
+        for variations in [
+            "2024-10-26T14:38:11",
+            "2024-10-26T14:38:11ZZ",
+            "2024-10-26 14:38:11",
+        ] {
+            assert_eq!(
+                StoryDate::parse_from_rfc3339_loose(&variations),
+                Some(actual_date),
+                "{variations}"
+            );
+        }
     }
 }

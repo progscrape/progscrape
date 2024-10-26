@@ -145,8 +145,8 @@ impl HackerNewsScraper {
             if !date.ends_with("Z") {
                 date = date + "Z";
             }
-            let date = StoryDate::parse_from_rfc3339(&date)
-                .ok_or_else(|| "Failed to map date".to_string())?;
+            let date = StoryDate::parse_from_rfc3339_loose(&date)
+                .ok_or_else(|| format!("Failed to map date: {date}"))?;
             let mut comments = None;
             for node in html_tag_iterator(p, node.query_selector(p, "a")) {
                 let text = node.inner_text(p);
