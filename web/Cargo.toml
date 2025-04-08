@@ -22,7 +22,7 @@ tera = "1.17.1"
 axum = { version = "0.7", features = ["ws"] }
 tower = "0.4"
 hyper = "1"
-tokio = { version = "1.23.0", features = ["full"] }
+tokio = { version = "1.38.2", features = ["full"] }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 num-format = "0.4.4"
 sha2 = "0.10"
