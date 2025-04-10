@@ -75,7 +75,7 @@ pub struct StoryTagger {
     exclusions: HashMap<MultiTokenTag, String>,
     /// Maps internal symbols to tags (only required in a handful of cases)
     backward: HashMap<String, String>,
-    ///
+    /// Maps symbol-like tags to their internal version.
     symbols: HashMap<String, usize>,
 }
 

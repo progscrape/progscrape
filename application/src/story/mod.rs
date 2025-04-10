@@ -165,12 +165,6 @@ impl TagSet {
         }
     }
 
-    pub fn from_iter<S: AsRef<str>>(iter: impl IntoIterator<Item = S>) -> Self {
-        Self {
-            set: HashSet::from_iter(iter.into_iter().map(|s| s.as_ref().to_owned())),
-        }
-    }
-
     pub fn contains(&self, tag: impl AsRef<str>) -> bool {
         self.set.contains(tag.as_ref())
     }
@@ -189,6 +183,14 @@ impl TagSet {
 
     pub fn iter(&self) -> impl Iterator<Item = &String> {
         self.set.iter()
+    }
+}
+
+impl <T: AsRef<str>> FromIterator<T> for TagSet {
+    fn from_iter<U: IntoIterator<Item = T>>(iter: U) -> Self {
+        Self {
+            set: HashSet::from_iter(iter.into_iter().map(|s| s.as_ref().to_owned())),
+        }
     }
 }
 

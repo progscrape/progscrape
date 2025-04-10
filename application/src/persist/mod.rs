@@ -88,7 +88,7 @@ trait StoryQueryString: AsRef<str> {}
 
 impl StoryQueryString for &str {}
 impl StoryQueryString for String {}
-impl<'a> StoryQueryString for &String {}
+impl StoryQueryString for &String {}
 impl StoryQueryString for Cow<'_, str> {}
 
 impl<S: StoryQueryString> IntoStoryQuery for S {

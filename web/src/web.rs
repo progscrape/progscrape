@@ -686,7 +686,7 @@ async fn root(
             .unwrap_or(30)
             .max(1),
     )?;
-    if &search.text == BLOG_SEARCH {
+    if search.text == BLOG_SEARCH {
         return Err(WebError::WrongUrl("/blog/".to_string()));
     }
     if let StoryQuery::UrlSearch(url) = query {
@@ -886,7 +886,7 @@ async fn root_feed_xml(
 ) -> Result<impl IntoResponse, WebError> {
     let now = now(&index).await?;
     let host = HostParams::new(host);
-    let (search, query) = SearchParams::new(&index, query.get("search"), 0, 30)?;
+    let (_, query) = SearchParams::new(&index, query.get("search"), 0, 30)?;
     let stories = index.stories::<StoryRender>(&host, query, 0, 30).await?;
 
     let xml = resources
@@ -1039,12 +1039,10 @@ async fn root_metrics_txt(
         .await?;
     let mut source_count: HashMap<(ScrapeSource, Option<String>), usize> = Default::default();
     for story in stories {
-        for source in story.sources {
-            if let Some(source) = source {
-                *source_count
-                    .entry((source.source, source.subsource))
-                    .or_default() += 1;
-            }
+        for source in story.sources.into_iter().flatten() {
+            *source_count
+                .entry((source.source, source.subsource))
+                .or_default() += 1;
         }
     }
     let source_count: Vec<_> = source_count.into_iter().collect();
