@@ -1,8 +1,4 @@
-use std::{
-    collections::{HashMap, HashSet},
-    path::Path,
-    time::Instant,
-};
+use std::{collections::HashMap, path::Path, time::Instant};
 
 use crate::{
     resource::BlogPost,
@@ -227,17 +223,11 @@ impl Index<StoryIndex> {
             .skip(offset)
             .take(count)
             .enumerate()
-            .map(|(index, story)| self.render(host, story, index).map(|s| s.into()))
-            .filter_map(|story| story)
+            .filter_map(|(index, story)| self.render(host, story, index).map(|s| s.into()))
             .collect_vec()
     }
 
-    fn render<'a>(
-        &self,
-        host: &HostParams,
-        story: &'a Story<Shard>,
-        order: usize,
-    ) -> Option<StoryRender> {
+    fn render(&self, host: &HostParams, story: &Story<Shard>, order: usize) -> Option<StoryRender> {
         let mut render = story.render(&self.eval.read(), order);
         // TODO: This is a bit hacky
         if story.url.host() == "progscrape.com" {

@@ -72,7 +72,7 @@ impl StoryDate {
             return Some(date);
         }
 
-        return None;
+        None
     }
     pub fn to_rfc3339(&self) -> String {
         self.internal_date.to_rfc3339()
@@ -232,7 +232,7 @@ mod test {
             "2024-10-26 14:38:11",
         ] {
             assert_eq!(
-                StoryDate::parse_from_rfc3339_loose(&variations),
+                StoryDate::parse_from_rfc3339_loose(variations),
                 Some(actual_date),
                 "{variations}"
             );

@@ -68,7 +68,7 @@ pub fn remove_tags(title: &str) -> (&str, Option<&str>, Option<&str>) {
 
     // Helper function to check if a string is a valid tag
     fn is_valid_tag(tag: &str) -> bool {
-        tag.len() > 0 && tag.len() < 10 && tag.chars().all(|c| c.is_ascii_alphabetic())
+        !tag.is_empty() && tag.len() < 10 && tag.chars().all(|c| c.is_ascii_alphabetic())
     }
 
     let mut title = title.trim();

@@ -7,8 +7,8 @@ use std::{
 use tl::{HTMLTag, Parser, ParserOptions};
 
 use super::{
-    scrape_story, utils::html::*, GenericScrape, ScrapeConfigSource, ScrapeCore, ScrapeShared,
-    ScrapeSource, ScrapeSourceDef, ScrapeStory, Scraper,
+    scrape_story, utils::html::*, GenericScrape, ScrapeConfigSource, ScrapeCore, ScrapeSource,
+    ScrapeSourceDef, ScrapeStory, Scraper,
 };
 use crate::types::*;
 
@@ -107,7 +107,7 @@ impl HackerNewsScraper {
                 .map_err(|_| format!("Failed to parse number: '{}'", s))
         }
 
-        return if let Some(titleline) = find_first(p, node, ".titleline") {
+        if let Some(titleline) = find_first(p, node, ".titleline") {
             if find_first(p, node, ".votelinks").is_none() {
                 return Err("Missing votelinks".to_string());
             }
@@ -143,7 +143,7 @@ impl HackerNewsScraper {
             let mut date = get_attribute(p, age_node, "title")
                 .ok_or_else(|| "Failed to get age title".to_string())?;
             if !date.ends_with("Z") {
-                date = date + "Z";
+                date += "Z";
             }
             let date = StoryDate::parse_from_rfc3339_loose(&date)
                 .ok_or_else(|| format!("Failed to map date: {date}"))?;
@@ -172,7 +172,7 @@ impl HackerNewsScraper {
             }))
         } else {
             Err("Unknown node type".to_string())
-        };
+        }
     }
 
     fn tags_from_title(

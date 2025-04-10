@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
-use crate::{ScrapeCore, ScrapeSource, TypedScrape};
+use crate::{ScrapeCore, ScrapeSource};
 
 use super::{
     scrape_story, GenericScrape, ScrapeConfigSource, ScrapeSourceDef, ScrapeStory, Scraper,

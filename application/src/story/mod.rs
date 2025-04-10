@@ -135,7 +135,7 @@ impl<S> Story<S> {
 
     pub fn render(&self, eval: &StoryEvaluator, order: usize) -> StoryRender {
         let mut sources = TypedScrapeMap::new();
-        for (id, _) in &self.scrapes {
+        for id in self.scrapes.keys() {
             sources.set(id.source, Some(id.clone()));
         }
         StoryRender {

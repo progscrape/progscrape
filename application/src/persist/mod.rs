@@ -86,10 +86,10 @@ pub trait IntoStoryQuery {
 
 trait StoryQueryString: AsRef<str> {}
 
-impl<'a> StoryQueryString for &'a str {}
+impl StoryQueryString for &str {}
 impl StoryQueryString for String {}
 impl<'a> StoryQueryString for &String {}
-impl<'a> StoryQueryString for Cow<'a, str> {}
+impl StoryQueryString for Cow<'_, str> {}
 
 impl<S: StoryQueryString> IntoStoryQuery for S {
     fn into_story_query(self, tagger: &StoryTagger) -> StoryQuery {
@@ -327,11 +327,11 @@ impl ScrapePersistResultSummarizer for Vec<ScrapePersistResult> {
     fn summary(&self) -> ScrapePersistResultSummary {
         let mut summary = ScrapePersistResultSummary::default();
         for x in self {
-            match x {
-                &ScrapePersistResult::MergedWithExistingStory => summary.merged += 1,
-                &ScrapePersistResult::AlreadyPartOfExistingStory => summary.existing += 1,
-                &ScrapePersistResult::NewStory => summary.new += 1,
-                &ScrapePersistResult::NotFound => summary.not_found += 1,
+            match *x {
+                ScrapePersistResult::MergedWithExistingStory => summary.merged += 1,
+                ScrapePersistResult::AlreadyPartOfExistingStory => summary.existing += 1,
+                ScrapePersistResult::NewStory => summary.new += 1,
+                ScrapePersistResult::NotFound => summary.not_found += 1,
             }
         }
         summary

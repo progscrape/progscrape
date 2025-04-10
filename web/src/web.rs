@@ -385,7 +385,7 @@ pub async fn start_server<P2: Into<std::path::PathBuf>>(
     metrics_auth_bearer_token: Option<String>,
 ) -> Result<(), WebError> {
     let now = now(&index).await?;
-    if let Some(blog) = resources.blog_posts.read().get(0) {
+    if let Some(blog) = resources.blog_posts.read().first() {
         // This should be configurable -- but we don't want to pin these stories forever
         if let Some(expiry) = blog.date.checked_add_days(2) {
             if expiry > now {
@@ -669,7 +669,7 @@ async fn root(
             .max(1),
     )?;
     if &search.text == BLOG_SEARCH {
-        return Err(WebError::WrongUrl(format!("/blog/")));
+        return Err(WebError::WrongUrl("/blog/".to_string()));
     }
     if let StoryQuery::UrlSearch(url) = query {
         return Err(WebError::WrongUrl(format!("/s/{url}")));
@@ -1089,7 +1089,7 @@ async fn admin_cron_refresh(
 ) -> Result<impl IntoResponse, WebError> {
     let start = Instant::now();
     let now = now(&index).await?;
-    if let Some(blog) = resources.blog_posts.read().get(0) {
+    if let Some(blog) = resources.blog_posts.read().first() {
         // This should be configurable -- but we don't want to pin these stories forever
         if let Some(expiry) = blog.date.checked_add_days(2) {
             if expiry > now {

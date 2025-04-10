@@ -5,7 +5,7 @@ use tantivy::collector::TopDocs;
 use tantivy::query::{
     AllQuery, BooleanQuery, BoostQuery, Occur, PhraseQuery, Query, QueryParser, TermQuery,
 };
-use tantivy::tokenizer::{SimpleTokenizer, Tokenizer, TokenizerManager};
+use tantivy::tokenizer::TokenizerManager;
 use tantivy::{schema::*, DocAddress, IndexWriter, Searcher, SegmentReader};
 
 use progscrape_scrapers::{ScrapeCollection, StoryDate, StoryUrl, TypedScrape};
@@ -516,13 +516,13 @@ impl StoryIndex {
         query: &StoryQuery,
     ) -> Result<Result<Box<dyn Query>, ()>, PersistError> {
         match query {
-            StoryQuery::DomainSearch(domain) => Ok(Ok(self.parse_domain_search(&domain)?)),
-            StoryQuery::TagSearch(tag, alt) => Ok(Ok(self.parse_tag_search(&tag, alt.as_deref())?)),
+            StoryQuery::DomainSearch(domain) => Ok(Ok(self.parse_domain_search(domain)?)),
+            StoryQuery::TagSearch(tag, alt) => Ok(Ok(self.parse_tag_search(tag, alt.as_deref())?)),
             StoryQuery::RelatedSearch(title, tags) => {
-                Ok(Ok(self.parse_related_search(&title, tags.as_slice())?))
+                Ok(Ok(self.parse_related_search(title, tags.as_slice())?))
             }
-            StoryQuery::TextSearch(search) => Ok(Ok(self.parse_text_search(&search)?)),
-            StoryQuery::UrlSearch(url) => Ok(Ok(self.parse_url_search(&url)?)),
+            StoryQuery::TextSearch(search) => Ok(Ok(self.parse_text_search(search)?)),
+            StoryQuery::UrlSearch(url) => Ok(Ok(self.parse_url_search(url)?)),
             StoryQuery::ById(..) | StoryQuery::ByShard(..) | StoryQuery::FrontPage => Ok(Err(())),
         }
     }
@@ -726,12 +726,12 @@ impl StoryIndex {
         catch_unwind(|| match self.try_parse_query(query)? {
             Ok(query) => self.fetch_search_query(query, max, algo),
             Err(_) => match query {
-                StoryQuery::ById(id) => self.with_searcher(id.shard(), self.fetch_by_id(&id)),
+                StoryQuery::ById(id) => self.with_searcher(id.shard(), self.fetch_by_id(id)),
                 StoryQuery::ByShard(shard) => self.with_searcher(*shard, self.fetch_by_segment()),
                 StoryQuery::FrontPage => self.fetch_front_page(max),
-                _ => Err(PersistError::UnexpectedError(format!(
-                    "Unexpected try_parse_query result"
-                ))),
+                _ => Err(PersistError::UnexpectedError(
+                    "Unexpected try_parse_query result".to_string(),
+                )),
             },
         })
         .map_err(|e|
@@ -893,9 +893,9 @@ impl Storage for StoryIndex {
         }
 
         let Ok(query) = self.try_parse_query(query)? else {
-            return Err(PersistError::UnexpectedError(format!(
-                "Unable to summarize query by shards"
-            )));
+            return Err(PersistError::UnexpectedError(
+                "Unable to summarize query by shards".to_string(),
+            ));
         };
 
         for shard in self.shards().iterate(ShardOrder::OldestFirst) {

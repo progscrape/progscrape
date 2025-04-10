@@ -177,7 +177,7 @@ impl StoryIndexShard {
     pub fn most_recent_story(&self) -> Result<StoryDate, PersistError> {
         let searcher = self.index.reader()?.searcher();
         let mut recent = 0;
-        for (_segment_ord, segment_reader) in searcher.segment_readers().iter().enumerate() {
+        for segment_reader in searcher.segment_readers().iter() {
             let date = segment_reader.fast_fields().i64(self.schema.date_field)?;
             recent = recent.max(date.max_value());
         }
@@ -359,7 +359,7 @@ impl StoryIndexShard {
 /// Tokenize a domain
 pub(crate) fn tokenize_domain(domain: &str) -> Vec<Token> {
     let tokens = {
-        let mut token_stream = SimpleTokenizer.token_stream(&domain);
+        let mut token_stream = SimpleTokenizer.token_stream(domain);
         let mut tokens = vec![];
         while token_stream.advance() {
             tokens.push(token_stream.token().clone());

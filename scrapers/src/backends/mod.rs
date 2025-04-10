@@ -90,7 +90,7 @@ macro_rules! scrapers {
                 }
             }
 
-            pub fn id_from_comments_url<'a, 'b>(&'a self, url: &'b str) -> Option<ScrapeId> {
+            pub fn id_from_comments_url(&self, url: &str) -> Option<ScrapeId> {
                 match self {
                     $(Self::$name => {
                         let (source, subsource) = $package :: $name :: id_from_comments_url(url)?;

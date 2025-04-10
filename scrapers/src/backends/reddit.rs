@@ -5,7 +5,7 @@ use serde_json::Value;
 
 use super::{
     scrape_story, utils::html::unescape_entities, GenericScrape, ScrapeConfigSource, ScrapeCore,
-    ScrapeShared, ScrapeSource, ScrapeSourceDef, ScrapeStory, Scraper,
+    ScrapeSource, ScrapeSourceDef, ScrapeStory, Scraper,
 };
 use crate::{
     datasci::titletrimmer::{remove_tags, trim_title, AWKWARD_LENGTH, IDEAL_LENGTH},
