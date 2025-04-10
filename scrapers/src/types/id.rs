@@ -4,7 +4,7 @@ use std::{
     marker::PhantomData,
 };
 
-use crate::{backends::ScrapeSource, StoryUrl};
+use crate::{StoryUrl, backends::ScrapeSource};
 
 /// Identify a scrape by source an ID.
 #[derive(Clone, Eq, PartialEq, Hash, PartialOrd, Ord)]

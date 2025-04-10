@@ -2,7 +2,7 @@ use std::path::Path;
 
 use super::*;
 use keepcalm::Shared;
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 
 pub struct DB {
     connection: Shared<rusqlite::Connection>,

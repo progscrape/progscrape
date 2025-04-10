@@ -1,4 +1,4 @@
-use serde::{ser::SerializeMap, Deserialize, Serialize};
+use serde::{Deserialize, Serialize, ser::SerializeMap};
 use std::{borrow::Cow, fmt::Debug};
 
 pub use self::def::ScrapeCore;
@@ -370,7 +370,9 @@ pub mod test {
     }
 
     fn hacker_news_files() -> Vec<&'static str> {
-        stringify_all!["hn1.html", "hn2.html", "hn3.html", "hn4.html", "hn5.html", "hn6.html"]
+        stringify_all![
+            "hn1.html", "hn2.html", "hn3.html", "hn4.html", "hn5.html", "hn6.html"
+        ]
     }
 
     fn lobsters_files() -> Vec<&'static str> {

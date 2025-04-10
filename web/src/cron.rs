@@ -103,7 +103,12 @@ impl CronHistory {
         } else {
             // This _may_ fail when the computer is recently rebooted as the instant might be relative
             // to that particular time.
-            tracing::error!("Failed to compute the cutoff, perhaps this computer was rebooted recently? now={:?} duration={} {:?}", now, max_age.0, max_age.1);
+            tracing::error!(
+                "Failed to compute the cutoff, perhaps this computer was rebooted recently? now={:?} duration={} {:?}",
+                now,
+                max_age.0,
+                max_age.1
+            );
         }
     }
 

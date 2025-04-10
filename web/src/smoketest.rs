@@ -2,11 +2,11 @@
 mod test {
     use std::cmp::Ordering;
 
-    use axum::{http::HeaderValue, routing::IntoMakeService, Router};
-    use hyper::{header::CONTENT_TYPE, Method};
+    use axum::{Router, http::HeaderValue, routing::IntoMakeService};
+    use hyper::{Method, header::CONTENT_TYPE};
     use keepcalm::Shared;
     use progscrape_application::StoryIndex;
-    use progscrape_scrapers::{hacker_news::HackerNewsStory, StoryUrl};
+    use progscrape_scrapers::{StoryUrl, hacker_news::HackerNewsStory};
     use serde::Deserialize;
     use tower::Service;
     use tracing_subscriber::EnvFilter;

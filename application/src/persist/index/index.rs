@@ -6,7 +6,7 @@ use tantivy::query::{
     AllQuery, BooleanQuery, BoostQuery, Occur, PhraseQuery, Query, QueryParser, TermQuery,
 };
 use tantivy::tokenizer::TokenizerManager;
-use tantivy::{schema::*, DocAddress, IndexWriter, Searcher, SegmentReader};
+use tantivy::{DocAddress, IndexWriter, Searcher, SegmentReader, schema::*};
 
 use progscrape_scrapers::{ScrapeCollection, StoryDate, StoryUrl, TypedScrape};
 
@@ -23,11 +23,11 @@ use crate::persist::{
 };
 use crate::story::{StoryCollector, TagSet};
 use crate::{
-    timer_end, timer_start, MemIndex, PersistError, PersistLocation, Storage, StorageSummary,
-    StorageWriter, Story, StoryEvaluator, StoryIdentifier,
+    MemIndex, PersistError, PersistLocation, Storage, StorageSummary, StorageWriter, Story,
+    StoryEvaluator, StoryIdentifier, timer_end, timer_start,
 };
 
-use super::indexshard::{tokenize_domain, StoryInsert};
+use super::indexshard::{StoryInsert, tokenize_domain};
 use super::schema::StorySchema;
 
 const STORY_INDEXING_CHUNK_SIZE: usize = 10000;
@@ -456,7 +456,7 @@ impl StoryIndex {
                 IndexRecordOption::Basic,
             );
             let docs = searcher.search(&query, &TopDocs::with_limit(1))?;
-            for (_, doc_address) in docs {
+            if let Some((_, doc_address)) = docs.into_iter().next() {
                 return Ok(vec![(shard, doc_address)]);
             }
             Ok(vec![])
@@ -944,11 +944,11 @@ mod test {
 
     use super::*;
     use progscrape_scrapers::{
-        hacker_news::*, lobsters::LobstersStory, reddit::*, ScrapeConfig, ScrapeSource, StoryUrl,
+        ScrapeConfig, ScrapeSource, StoryUrl, hacker_news::*, lobsters::LobstersStory, reddit::*,
     };
     use tempfile::tempdir;
 
-    use crate::{story::TagSet, test::*, MemIndex};
+    use crate::{MemIndex, story::TagSet, test::*};
     use rstest::*;
 
     fn populate_shard(

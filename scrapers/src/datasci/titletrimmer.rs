@@ -111,7 +111,7 @@ pub fn remove_tags(title: &str) -> (&str, Option<&str>, Option<&str>) {
 mod test {
     use rstest::rstest;
 
-    use crate::datasci::titletrimmer::{trim_title, AWKWARD_LENGTH, IDEAL_LENGTH};
+    use crate::datasci::titletrimmer::{AWKWARD_LENGTH, IDEAL_LENGTH, trim_title};
 
     use super::remove_tags;
 

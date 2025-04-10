@@ -13,8 +13,8 @@ use url::Url;
 use crate::types::*;
 
 use super::{
-    scrape_story, utils::html::*, GenericScrape, ScrapeConfigSource, ScrapeCore, ScrapeSource,
-    ScrapeSourceDef, ScrapeStory, Scraper,
+    GenericScrape, ScrapeConfigSource, ScrapeCore, ScrapeSource, ScrapeSourceDef, ScrapeStory,
+    Scraper, scrape_story, utils::html::*,
 };
 
 pub struct Slashdot {}

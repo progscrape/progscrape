@@ -140,13 +140,13 @@ impl StoryQuery {
     pub fn query_type(&self) -> &'static str {
         match self {
             Self::FrontPage => "",
-            Self::ById(id) => "id",
-            Self::ByShard(shard) => "shard",
-            Self::DomainSearch(domain) => "domain",
-            Self::UrlSearch(url) => "url",
-            Self::TagSearch(tag, _) => "tag",
-            Self::TextSearch(text) => "text",
-            Self::RelatedSearch(title, tags) => "related",
+            Self::ById(_) => "id",
+            Self::ByShard(_) => "shard",
+            Self::DomainSearch(_) => "domain",
+            Self::UrlSearch(_) => "url",
+            Self::TagSearch(_, _) => "tag",
+            Self::TextSearch(_) => "text",
+            Self::RelatedSearch(_, _) => "related",
         }
     }
 

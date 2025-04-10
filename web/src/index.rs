@@ -2,7 +2,7 @@ use std::{collections::HashMap, path::Path, time::Instant};
 
 use crate::{
     resource::BlogPost,
-    web::{HostParams, WebError, BLOG_SEARCH},
+    web::{BLOG_SEARCH, HostParams, WebError},
 };
 use itertools::Itertools;
 use keepcalm::{Shared, SharedMut};

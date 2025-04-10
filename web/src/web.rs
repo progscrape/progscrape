@@ -6,15 +6,15 @@ use std::{
 };
 
 use axum::{
+    Extension, Json, Router,
     body::Body,
     extract::{Host, OriginalUri, Path, Query, Request, State},
     http::{HeaderName, HeaderValue},
     middleware::{self, Next},
     response::{Html, IntoResponse, Redirect, Response},
     routing::{get, post},
-    Extension, Json, Router,
 };
-use hyper::{header, HeaderMap, Method, StatusCode};
+use hyper::{HeaderMap, Method, StatusCode, header};
 use itertools::Itertools;
 use keepcalm::SharedMut;
 use serde::{Deserialize, Serialize};
@@ -227,13 +227,17 @@ async fn rate_limit(
                 }
                 LimitState::Soft => {
                     tracing::warn!(
-                        "User hit soft rate limit: ratelimit=soft ip={ip:?} browser={bot_ua:?} method={} uri={}", req.method(), req.uri()
+                        "User hit soft rate limit: ratelimit=soft ip={ip:?} browser={bot_ua:?} method={} uri={}",
+                        req.method(),
+                        req.uri()
                     );
                     tokio::time::sleep(Duration::from_secs(1)).await;
                 }
                 LimitState::Hard => {
                     tracing::warn!(
-                        "User hit hard rate limit: ratelimit=hard ip={ip:?} browser={bot_ua:?} method={} uri={}", req.method(), req.uri()
+                        "User hit hard rate limit: ratelimit=hard ip={ip:?} browser={bot_ua:?} method={} uri={}",
+                        req.method(),
+                        req.uri()
                     );
                     return Err(StatusCode::SERVICE_UNAVAILABLE);
                 }
@@ -545,12 +549,19 @@ async fn blog_posts(
         .unwrap_or_default();
     let (search, _query) = SearchParams::new(&index, BLOG_SEARCH, 0, 30)?;
 
-    Ok(([(
-        header::CACHE_CONTROL,
-        HeaderValue::from_static(
-            "public, max-age=300, s-max-age=300, stale-while-revalidate=60, stale-if-error=86400",
+    Ok((
+        [(
+            header::CACHE_CONTROL,
+            HeaderValue::from_static(
+                "public, max-age=300, s-max-age=300, stale-while-revalidate=60, stale-if-error=86400",
+            ),
+        )],
+        render(
+            &resources,
+            "blog.html",
+            context!(posts, top_tags, now, path, host, search),
         ),
-    )], render(&resources, "blog.html", context!(posts, top_tags, now, path, host, search))))
+    ))
 }
 
 #[derive(Deserialize)]
@@ -592,12 +603,19 @@ async fn blog_post(
 
     let (search, _query) = SearchParams::new(&index, BLOG_SEARCH, 0, 30)?;
 
-    Ok(([(
-        header::CACHE_CONTROL,
-        HeaderValue::from_static(
-            "public, max-age=300, s-max-age=300, stale-while-revalidate=60, stale-if-error=86400",
+    Ok((
+        [(
+            header::CACHE_CONTROL,
+            HeaderValue::from_static(
+                "public, max-age=300, s-max-age=300, stale-while-revalidate=60, stale-if-error=86400",
+            ),
+        )],
+        render(
+            &resources,
+            "blog.html",
+            context!(posts, top_tags, now, path, host, search),
         ),
-    )], render(&resources, "blog.html", context!(posts, top_tags, now, path, host, search))))
+    ))
 }
 
 #[derive(Serialize)]
@@ -682,13 +700,19 @@ async fn root(
         .path_and_query()
         .map(|s| s.as_str())
         .unwrap_or_default();
-    Ok(([(
-        header::CACHE_CONTROL,
-        HeaderValue::from_static(
-            "public, max-age=300, s-max-age=300, stale-while-revalidate=60, stale-if-error=86400",
+    Ok((
+        [(
+            header::CACHE_CONTROL,
+            HeaderValue::from_static(
+                "public, max-age=300, s-max-age=300, stale-while-revalidate=60, stale-if-error=86400",
+            ),
+        )],
+        render(
+            &resources,
+            "index.html",
+            context!(top_tags, stories, now, search, host, path),
         ),
-    )],
-    render(&resources, "index.html", context!(top_tags, stories, now, search, host, path))))
+    ))
 }
 
 async fn story(
@@ -764,13 +788,27 @@ async fn story(
         .path_and_query()
         .map(|s| s.as_str())
         .unwrap_or_default();
-    Ok(([(
-        header::CACHE_CONTROL,
-        HeaderValue::from_static(
-            "public, max-age=300, s-max-age=300, stale-while-revalidate=60, stale-if-error=86400",
+    Ok((
+        [(
+            header::CACHE_CONTROL,
+            HeaderValue::from_static(
+                "public, max-age=300, s-max-age=300, stale-while-revalidate=60, stale-if-error=86400",
+            ),
+        )],
+        render(
+            &resources,
+            "story.html",
+            context!(
+                top_tags,
+                stories = stories_with_scrapes,
+                related,
+                now,
+                search,
+                host,
+                path
+            ),
         ),
-    )],
-    render(&resources, "story.html", context!(top_tags, stories = stories_with_scrapes, related, now, search, host, path))))
+    ))
 }
 
 async fn zeitgeist_json(
@@ -856,18 +894,22 @@ async fn root_feed_xml(
         .read()
         .render("feed.xml", &context!(stories, now, host))?;
     Ok((
-        [(
-            header::CONTENT_TYPE,
-            HeaderValue::from_static("application/atom+xml"),
-        ), (
-            header::CACHE_CONTROL,
-            HeaderValue::from_static(
-                "public, max-age=300, s-max-age=300, stale-while-revalidate=60, stale-if-error=86400",
+        [
+            (
+                header::CONTENT_TYPE,
+                HeaderValue::from_static("application/atom+xml"),
             ),
-        ), (
-            header::ACCESS_CONTROL_ALLOW_ORIGIN,
-            HeaderValue::from_static("*"),
-        )],
+            (
+                header::CACHE_CONTROL,
+                HeaderValue::from_static(
+                    "public, max-age=300, s-max-age=300, stale-while-revalidate=60, stale-if-error=86400",
+                ),
+            ),
+            (
+                header::ACCESS_CONTROL_ALLOW_ORIGIN,
+                HeaderValue::from_static("*"),
+            ),
+        ],
         xml,
     ))
 }
@@ -889,18 +931,22 @@ async fn root_feed_text(
         .read()
         .render("feed.txt", &context!(stories, now, host))?;
     Ok((
-        [(
-            header::CONTENT_TYPE,
-            HeaderValue::from_static("text/plain; charset=utf-8"),
-        ), (
-            header::CACHE_CONTROL,
-            HeaderValue::from_static(
-                "public, max-age=300, s-max-age=300, stale-while-revalidate=60, stale-if-error=86400",
+        [
+            (
+                header::CONTENT_TYPE,
+                HeaderValue::from_static("text/plain; charset=utf-8"),
             ),
-        ), (
-            header::ACCESS_CONTROL_ALLOW_ORIGIN,
-            HeaderValue::from_static("*"),
-        )],
+            (
+                header::CACHE_CONTROL,
+                HeaderValue::from_static(
+                    "public, max-age=300, s-max-age=300, stale-while-revalidate=60, stale-if-error=86400",
+                ),
+            ),
+            (
+                header::ACCESS_CONTROL_ALLOW_ORIGIN,
+                HeaderValue::from_static("*"),
+            ),
+        ],
         xml,
     ))
 }
@@ -1202,7 +1248,9 @@ async fn admin_cron_scrape(
     }
     let insert_ms = start.elapsed().as_millis();
 
-    tracing::info!("Scrape source={source:?} fetch_time={fetch_ms}ms process_time={process_ms}ms insert_time={insert_ms}ms errors={errors} result={summary:?}");
+    tracing::info!(
+        "Scrape source={source:?} fetch_time={fetch_ms}ms process_time={process_ms}ms insert_time={insert_ms}ms errors={errors} result={summary:?}"
+    );
 
     render_admin(
         None,

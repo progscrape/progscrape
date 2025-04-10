@@ -6,7 +6,7 @@ mod scrapers;
 mod types;
 
 pub use backends::export::*;
-pub use backends::legacy::{import_backup, LegacyError};
+pub use backends::legacy::{LegacyError, import_backup};
 pub use backends::{ScrapeConfig, ScrapeCore, ScrapeSource, TypedScrape, TypedScrapeMap};
 pub use collections::{ExtractedScrapeCollection, ScrapeCollection};
 pub use extractor::*;

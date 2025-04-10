@@ -3,7 +3,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use bloom::{CountingBloomFilter, ASMS};
+use bloom::{ASMS, CountingBloomFilter};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Default)]

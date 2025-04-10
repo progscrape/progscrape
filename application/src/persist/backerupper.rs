@@ -7,8 +7,9 @@ use progscrape_scrapers::StoryDate;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    persist::scrapestore::{ScrapeStoreStats, SCRAPE_STORE_VERSION},
-    timer_end, timer_start, PersistError, Shard,
+    PersistError, Shard,
+    persist::scrapestore::{SCRAPE_STORE_VERSION, ScrapeStoreStats},
+    timer_end, timer_start,
 };
 
 use super::{
@@ -139,8 +140,8 @@ impl BackerUpper {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test::enable_tracing;
     use crate::PersistLocation;
+    use crate::test::enable_tracing;
     use progscrape_scrapers::ScrapeConfig;
     use rstest::*;
 

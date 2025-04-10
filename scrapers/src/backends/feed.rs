@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use crate::{ScrapeCore, ScrapeSource};
 
 use super::{
-    scrape_story, GenericScrape, ScrapeConfigSource, ScrapeSourceDef, ScrapeStory, Scraper,
+    GenericScrape, ScrapeConfigSource, ScrapeSourceDef, ScrapeStory, Scraper, scrape_story,
 };
 
 pub struct Feed {}
@@ -16,15 +16,15 @@ impl ScrapeSourceDef for Feed {
     type Scrape = FeedStory;
     type Scraper = FeedScraper;
 
-    fn comments_url(id: &str, subsource: Option<&str>) -> String {
+    fn comments_url(_id: &str, _subsource: Option<&str>) -> String {
         "".to_string()
     }
 
-    fn id_from_comments_url(url: &str) -> Option<(&str, Option<&str>)> {
+    fn id_from_comments_url(_url: &str) -> Option<(&str, Option<&str>)> {
         None
     }
 
-    fn is_comments_host(host: &str) -> bool {
+    fn is_comments_host(_host: &str) -> bool {
         false
     }
 }
@@ -33,7 +33,7 @@ impl ScrapeSourceDef for Feed {
 pub struct FeedConfig {}
 
 impl ScrapeConfigSource for FeedConfig {
-    fn provide_urls(&self, subsources: Vec<String>) -> Vec<String> {
+    fn provide_urls(&self, _subsources: Vec<String>) -> Vec<String> {
         vec![]
     }
 
@@ -51,7 +51,7 @@ scrape_story! {
 impl ScrapeStory for FeedStory {
     const TYPE: ScrapeSource = ScrapeSource::Feed;
 
-    fn merge(&mut self, other: Self) {}
+    fn merge(&mut self, _other: Self) {}
 }
 
 #[derive(Default)]
@@ -84,8 +84,8 @@ impl Scraper for FeedScraper {
 
     fn scrape(
         &self,
-        args: &Self::Config,
-        input: &str,
+        _args: &Self::Config,
+        _input: &str,
     ) -> Result<(Vec<super::GenericScrape<Self::Output>>, Vec<String>), crate::ScrapeError> {
         unimplemented!()
     }

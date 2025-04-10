@@ -1,4 +1,4 @@
-use tantivy::schema::{Field, Schema, FAST, INDEXED, STORED, STRING, TEXT};
+use tantivy::schema::{FAST, Field, INDEXED, STORED, STRING, Schema, TEXT};
 
 #[derive(Clone)]
 pub struct StorySchema {

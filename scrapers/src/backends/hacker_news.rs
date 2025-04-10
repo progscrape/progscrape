@@ -7,8 +7,8 @@ use std::{
 use tl::{HTMLTag, Parser, ParserOptions};
 
 use super::{
-    scrape_story, utils::html::*, GenericScrape, ScrapeConfigSource, ScrapeCore, ScrapeSource,
-    ScrapeSourceDef, ScrapeStory, Scraper,
+    GenericScrape, ScrapeConfigSource, ScrapeCore, ScrapeSource, ScrapeSourceDef, ScrapeStory,
+    Scraper, scrape_story, utils::html::*,
 };
 use crate::types::*;
 

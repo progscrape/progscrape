@@ -6,9 +6,9 @@ use std::{
 use progscrape_scrapers::{ScrapeId, StoryDate, TypedScrape};
 use serde::{Deserialize, Serialize};
 
-use crate::{story::StoryScrapeId, PersistError};
+use crate::{PersistError, story::StoryScrapeId};
 
-use super::{db::DB, shard::Shard, PersistLocation};
+use super::{PersistLocation, db::DB, shard::Shard};
 
 pub const SCRAPE_STORE_VERSION: usize = 1;
 

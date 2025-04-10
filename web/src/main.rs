@@ -12,8 +12,8 @@ use keepcalm::Shared;
 use progscrape_application::{
     MemIndex, PersistLocation, Storage, StorageWriter, StoryEvaluator, StoryIndex,
 };
-use tracing_subscriber::filter::LevelFilter;
 use tracing_subscriber::EnvFilter;
+use tracing_subscriber::filter::LevelFilter;
 use web::WebError;
 
 use crate::auth::Auth;

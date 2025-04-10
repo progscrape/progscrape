@@ -3,7 +3,7 @@ use std::collections::HashMap;
 
 use serde::Serialize;
 
-use crate::{backends::scrape, ScrapeConfig, ScrapeSource, TypedScrape};
+use crate::{ScrapeConfig, ScrapeSource, TypedScrape, backends::scrape};
 
 /// Accumulates the URLs required to scrape for all the services.
 #[derive(Serialize)]

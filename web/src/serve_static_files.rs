@@ -1,7 +1,7 @@
 use lazy_static::lazy_static;
 
 use axum::{body::Bytes, http::HeaderValue, response::IntoResponse};
-use hyper::{header::*, HeaderMap, StatusCode};
+use hyper::{HeaderMap, StatusCode, header::*};
 
 use crate::{static_files::StaticFileRegistry, web::WebError};
 

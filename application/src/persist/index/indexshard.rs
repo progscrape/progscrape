@@ -2,10 +2,10 @@ use itertools::Itertools;
 
 use tantivy::directory::{MmapDirectory, RamDirectory};
 use tantivy::tokenizer::{PreTokenizedString, SimpleTokenizer, Token, Tokenizer};
-use tantivy::{doc, Index, IndexReader};
 use tantivy::{
-    schema::*, Directory, DocAddress, IndexSettings, IndexSortByField, IndexWriter, Searcher,
+    Directory, DocAddress, IndexSettings, IndexSortByField, IndexWriter, Searcher, schema::*,
 };
+use tantivy::{Index, IndexReader, doc};
 
 use progscrape_scrapers::{ScrapeId, StoryDate};
 

@@ -4,11 +4,11 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::{
-    scrape_story, utils::html::unescape_entities, GenericScrape, ScrapeConfigSource, ScrapeCore,
-    ScrapeSource, ScrapeSourceDef, ScrapeStory, Scraper,
+    GenericScrape, ScrapeConfigSource, ScrapeCore, ScrapeSource, ScrapeSourceDef, ScrapeStory,
+    Scraper, scrape_story, utils::html::unescape_entities,
 };
 use crate::{
-    datasci::titletrimmer::{remove_tags, trim_title, AWKWARD_LENGTH, IDEAL_LENGTH},
+    datasci::titletrimmer::{AWKWARD_LENGTH, IDEAL_LENGTH, remove_tags, trim_title},
     types::*,
 };
 

@@ -1,13 +1,13 @@
 use std::{
     borrow::Cow,
-    collections::{hash_map::Entry, HashMap, HashSet},
+    collections::{HashMap, HashSet, hash_map::Entry},
 };
 
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    backends::ScrapeCore, ScrapeExtractor, ScrapeId, ScrapeSource, StoryDate, StoryUrl, TypedScrape,
+    ScrapeExtractor, ScrapeId, ScrapeSource, StoryDate, StoryUrl, TypedScrape, backends::ScrapeCore,
 };
 
 /// Collection of scrapes, which can also extract the best title, etc.
@@ -131,7 +131,7 @@ impl<'a> ExtractedScrapeCollection<'a> {
             .next()
             .expect("Expected at least one scrape")
             .1
-             .0
+            .0
             .url
     }
 

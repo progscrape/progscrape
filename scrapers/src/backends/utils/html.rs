@@ -4,7 +4,7 @@ use tl::{HTMLTag, NodeHandle, Parser};
 pub fn html_tag_iterator<'a, T: IntoIterator<Item = NodeHandle> + 'a>(
     p: &'a Parser<'a>,
     it: Option<T>,
-) -> impl Iterator<Item = &'a HTMLTag> + 'a {
+) -> impl Iterator<Item = &'a HTMLTag<'a>> + 'a {
     let it = Iterator::flatten(it.into_iter().map(|x| x.into_iter()));
     it.filter_map(|node| node.get(p).and_then(|node| node.as_tag()))
 }
@@ -57,7 +57,7 @@ pub fn unescape_entities(input: &str) -> String {
                         }
                     }
                 } else if entity_name.starts_with('#') {
-                    if let Ok(n) = u32::from_str_radix(&entity_name[1..entity_name.len()], 10) {
+                    if let Ok(n) = str::parse(&entity_name[1..entity_name.len()]) {
                         if let Some(c) = char::from_u32(n) {
                             s.push(c);
                             entity_name.clear();
