@@ -512,7 +512,7 @@ fn render_admin(
     resources: &Resources,
     template_name: &str,
     mut context: Context,
-) -> Result<impl IntoResponse, WebError> {
+) -> Result<impl IntoResponse + use<>, WebError> {
     // If this is an authenticated page, log it with the user
     if let Some(user) = user {
         tracing::debug!("Admin page: template={template_name} user={}", user.user);

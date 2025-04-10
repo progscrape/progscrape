@@ -45,7 +45,7 @@ pub fn immutable(
     headers_in: HeaderMap,
     key: String,
     static_files: &StaticFileRegistry,
-) -> Result<impl IntoResponse, WebError> {
+) -> Result<impl IntoResponse + use<>, WebError> {
     let mut headers = HeaderMap::new();
     headers.append(ETAG, key.parse()?);
     headers.append(SERVER, SERVER_HEADER.clone());
@@ -76,7 +76,7 @@ pub fn well_known(
     headers_in: HeaderMap,
     file: String,
     static_files: &StaticFileRegistry,
-) -> Result<impl IntoResponse, WebError> {
+) -> Result<impl IntoResponse + use<>, WebError> {
     let mut headers = HeaderMap::new();
     headers.append(SERVER, SERVER_HEADER.clone());
 
