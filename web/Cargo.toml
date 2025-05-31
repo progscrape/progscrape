@@ -16,7 +16,7 @@ serde_cbor = "0.11"
 lazy_static = "1.4"
 itertools = "0.13"
 unwrap-infallible = "0.1"
-keepcalm = { version = "0", features = ["serde"] }
+keepcalm = { version = "0.4", features = ["serde"] }
 futures = "0.3"
 tera = "1.17.1"
 axum = { version = "0.7", features = ["ws"] }

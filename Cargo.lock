@@ -1710,11 +1710,10 @@ dependencies = [
 
 [[package]]
 name = "keepcalm"
-version = "0.3.5"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "031ddc7e27bbb011c78958881a3723873608397b8b10e146717fc05cf3364d78"
+checksum = "6a3767eb6220d0b3f3b3a894da6992fd90fbf6a1325e604b5b52d27d4cc841bf"
 dependencies = [
- "once_cell",
  "parking_lot",
  "serde",
 ]
