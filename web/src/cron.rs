@@ -4,6 +4,8 @@ use std::{
     time::{Duration, Instant, SystemTime},
 };
 
+use axum::http::status;
+use keepcalm::SharedMut;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 
@@ -76,7 +78,23 @@ impl Default for CronConfig {
 
 #[derive(Default)]
 pub struct CronHistory {
-    history: HashMap<String, BTreeMap<Instant, (u16, String)>>,
+    history: HashMap<String, BTreeMap<Instant, CronHistoryEntry>>,
+}
+
+#[derive(Serialize)]
+pub struct CronHistoryEntry {
+    #[serde(serialize_with = "serialize_instant")]
+    pub time: Instant,
+    pub duration: Duration,
+    pub status: u16,
+    pub output: String,
+}
+
+fn serialize_instant<S>(instant: &Instant, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    serializer.serialize_u64(approximate_instant_as_unix_time(*instant))
 }
 
 impl CronHistory {
@@ -85,12 +103,21 @@ impl CronHistory {
         max_age: (usize, CronInterval),
         max_count: usize,
         service: String,
+        duration: Duration,
         status_code: u16,
         output: String,
     ) {
         let now = Instant::now();
         let map = self.history.entry(service).or_default();
-        map.insert(now, (status_code, output));
+        map.insert(
+            now,
+            CronHistoryEntry {
+                time: now,
+                duration,
+                status: status_code,
+                output,
+            },
+        );
         let cutoff = now.checked_sub(max_age.1.as_duration(max_age.0));
         if let Some(cutoff) = cutoff {
             while let (len, Some(entry)) = (map.len(), map.first_entry()) {
@@ -115,12 +142,12 @@ impl CronHistory {
     pub fn entries(&self) -> Vec<(u64, String, u16, String)> {
         let mut out = vec![];
         for (service, entries) in &self.history {
-            for (time, (status, output)) in entries {
+            for (time, entry) in entries {
                 out.push((
                     approximate_instant_as_unix_time(*time),
                     service.clone(),
-                    *status,
-                    output.clone(),
+                    entry.status,
+                    entry.output.clone(),
                 ));
             }
         }
@@ -140,6 +167,7 @@ pub struct CronTask {
     name: String,
     url: String,
     last: Option<Instant>,
+    last_status: SharedMut<Option<CronHistoryEntry>>,
     next: Instant,
 }
 
@@ -169,6 +197,7 @@ impl Serialize for CronTask {
             url: &'a str,
             next: u64,
             last: u64,
+            last_status: Option<&'a CronHistoryEntry>,
         }
         Temp {
             name: &self.name,
@@ -178,6 +207,7 @@ impl Serialize for CronTask {
                 .last
                 .map(approximate_instant_as_unix_time)
                 .unwrap_or_default(),
+            last_status: self.last_status.read().as_ref(),
         }
         .serialize(serializer)
     }
@@ -233,18 +263,28 @@ impl Cron {
         false
     }
 
-    pub fn tick(&mut self, jobs: &HashMap<String, CronJob>, now: Instant) -> Vec<String> {
+    pub fn tick(
+        &mut self,
+        jobs: &HashMap<String, CronJob>,
+        now: Instant,
+    ) -> Vec<(String, SharedMut<Option<CronHistoryEntry>>)> {
         // Drain the queue of any ready items
         let mut ready = HashSet::new();
         let mut ret = vec![];
         let mut remaining = HashMap::<_, _>::from_iter(jobs.iter().filter(|job| job.1.enabled));
+
+        // The cron code needs a cleanup but in the meantime we save this and
+        // restore it in the loop below
+        let mut statuses = HashMap::new();
         self.queue.retain(|task| {
             let entry = remaining.get(&task.name);
             if entry.is_none() {
                 false
             } else if task.next <= now {
                 ready.insert(task.name.clone());
-                ret.push(task.url.clone());
+                statuses.insert(task.name.clone(), task.last_status.clone());
+                task.last_status.write().take();
+                ret.push((task.url.clone(), task.last_status.clone()));
                 false
             } else {
                 remaining.remove(&task.name);
@@ -272,6 +312,7 @@ impl Cron {
                 url: job.url.clone(),
                 next: now + jitter,
                 last,
+                last_status: statuses.remove(name).unwrap_or(SharedMut::new(None)),
             });
         }
 
@@ -328,6 +369,7 @@ mod test {
             (1, CronInterval::Minute),
             10,
             "service".into(),
+            Duration::from_secs(1),
             200,
             "".into(),
         );

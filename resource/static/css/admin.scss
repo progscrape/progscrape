@@ -76,11 +76,17 @@ body {
         }
     }
 
-    .cron-history {
+    .cron-history, .cron-inspect {
         [class^="status-"] {
             background-color: orange;
             color: black;
         }
+
+        .status-unknown {
+            background-color: #ccc;
+            color: black;
+        }
+
         .status-200 {
             background-color: green;
             color: white;

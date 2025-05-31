@@ -2,15 +2,21 @@
 {% block content %}
 <h1>Cron</h1>
 
-<table>
-<tr><th>Name</th><th>URL</th><th>Last</th><th>Next</th></tr>
-{% for cron in cron %}
+<table class="cron-inspect">
+<tr><th>Name</th><th>URL</th><th>Last</th><th>Last Status Code</th><th>Next</th></tr>
+{% for cron in cron | sort(attribute="name") %}
 <tr id="cron-{{ loop.index }}" name="{{ cron.name }}">
 <td>{{ cron.name }}</td><td>{{ cron.url }}</td><td>
     {% if cron.last == 0 %}
     (never)
     {% else %}
     {{ cron.last | approx_time }}
+    {% endif %}
+</td><td class="status-{% if cron.last_status %}{{ cron.last_status.status }}{% else %}unknown{% endif %}">
+    {% if cron.last_status %}
+    {{ cron.last_status.status }}
+    {% else %}
+    {% if cron.last == 0 %}(never){% else %}(running){% endif %}
     {% endif %}
 </td><td>{{ cron.next | approx_time }}</td><td><button onclick="run('cron-{{ loop.index }}')">Run now</button></td>
 </tr>
@@ -20,7 +26,7 @@
 <h1>History</h1>
 
 <button onclick="refreshHistory()">Refresh</button> <span id="history-refresh-time"></span>
-<div id="history-error"></div>
+<p id="history-error"></p>
 
 <table id="history" class="cron-history">
     <tr><th colspan="2">Time</th><th>Endpoint</th><th>Status Code</th><th>Output</th></tr>

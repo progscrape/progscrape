@@ -27,7 +27,7 @@ use unwrap_infallible::UnwrapInfallible;
 
 use crate::{
     auth::Auth,
-    cron::{Cron, CronHistory},
+    cron::{Cron, CronHistory, CronHistoryEntry},
     index::Index,
     rate_limits::LimitState,
     resource::Resources,
@@ -318,7 +318,7 @@ fn start_cron(
                 continue;
             }
 
-            for ready_uri in ready {
+            for (ready_uri, history) in ready {
                 let uri = match ready_uri.parse() {
                     Ok(uri) => uri,
                     Err(e) => {
@@ -327,6 +327,7 @@ fn start_cron(
                     }
                 };
                 tracing::info!("Running cron task: POST '{}'...", ready_uri);
+                let now = Instant::now();
                 let mut req = Request::<Body>::default();
                 *req.method_mut() = Method::POST;
                 *req.uri_mut() = uri;
@@ -345,10 +346,17 @@ fn start_cron(
                     }
                 };
 
+                *history.write() = Some(CronHistoryEntry {
+                    time: now,
+                    duration: now.elapsed(),
+                    status: status.as_u16(),
+                    output: body.clone(),
+                });
                 cron_history.write().insert(
                     resources.config.read().cron.history_age,
                     resources.config.read().cron.history_count,
                     ready_uri,
+                    now.elapsed(),
                     status.as_u16(),
                     body,
                 );
