@@ -186,7 +186,7 @@ impl TagSet {
     }
 }
 
-impl <T: AsRef<str>> FromIterator<T> for TagSet {
+impl<T: AsRef<str>> FromIterator<T> for TagSet {
     fn from_iter<U: IntoIterator<Item = T>>(iter: U) -> Self {
         Self {
             set: HashSet::from_iter(iter.into_iter().map(|s| s.as_ref().to_owned())),
