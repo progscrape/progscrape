@@ -1,13 +1,15 @@
 [package]
 name = "progscrape-application"
-version = "0.0.1"
 edition = "2024"
 license = "MIT"
 homepage = "https://progscrape.com"
 description = "progscrape.com application logic"
 repository = "https://github.com/progscrape/progscrape"
+version.workspace = true
 
 [dependencies]
+progscrape-scrapers.workspace = true
+
 tracing = "0.1"
 thiserror = "1.0.38"
 serde = { version = "1.0", features = ["derive", "rc"] }
@@ -21,8 +23,6 @@ itertools = "0"
 # Do not bump
 tantivy = "=0.19.2"
 rust-bert = { version="0.22.0", features = ["download-libtorch"] }
-
-progscrape-scrapers = { version = "0.0.1", path = "../scrapers" }
 
 [dev-dependencies]
 rstest = "0"

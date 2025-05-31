@@ -1,13 +1,16 @@
 [package]
 name = "progscrape"
-version = "0.0.1"
 edition = "2024"
 license = "MIT"
 homepage = "https://progscrape.com"
 description = "progscrape.com web application"
 repository = "https://github.com/progscrape/progscrape"
+version.workspace = true
 
 [dependencies]
+progscrape-scrapers.workspace = true
+progscrape-application.workspace = true
+
 tracing = "0.1"
 thiserror = "1.0.38"
 serde = { version = "1.0", features = ["derive", "rc"] }
@@ -35,9 +38,6 @@ git-version = "0.3"
 clap = { version = "4.1", features = ["derive"] }
 markdown = "1.0.0-alpha.17"
 bloom = "0.3"
-
-progscrape-scrapers = { version = "0.0.1", path = "../scrapers" }
-progscrape-application = { version = "0.0.1", path = "../application" }
 
 [dev-dependencies]
 rstest = "0"
