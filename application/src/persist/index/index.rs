@@ -237,7 +237,8 @@ impl StoryIndex {
         }
         let url = extracted.url();
         let id = StoryIdentifier::new(story.earliest, extracted.url().normalization()).to_base64();
-        let doc = StoryInsert {
+
+        StoryInsert {
             id,
             host: url.host().to_owned(),
             url: url.raw().to_owned(),
@@ -248,8 +249,7 @@ impl StoryIndex {
             title,
             scrape_ids,
             tags,
-        };
-        doc
+        }
     }
 
     /// Given a stream of `ScrapeCollection`s, returns the insert position in the index for each. If

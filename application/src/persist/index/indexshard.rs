@@ -358,13 +358,12 @@ impl StoryIndexShard {
 
 /// Tokenize a domain
 pub(crate) fn tokenize_domain(domain: &str) -> Vec<Token> {
-    let tokens = {
+    {
         let mut token_stream = SimpleTokenizer.token_stream(domain);
         let mut tokens = vec![];
         while token_stream.advance() {
             tokens.push(token_stream.token().clone());
         }
         tokens
-    };
-    tokens
+    }
 }
