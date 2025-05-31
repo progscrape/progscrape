@@ -84,7 +84,7 @@ impl BackerUpper {
                 earliest = earliest.min(scrape.date);
                 latest = latest.max(scrape.date);
                 w.write_all(serde_json::to_string(&scrape)?.as_bytes())?;
-                w.write(&NEWLINE)?;
+                w.write_all(&NEWLINE)?;
                 Ok(())
             },
             |error| {
