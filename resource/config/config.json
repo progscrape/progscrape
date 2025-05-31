@@ -121,6 +121,10 @@
             "scrape_slashdot": {
                 "url": "/admin/cron/scrape/slashdot",
                 "interval": [42, "Minute"]
+            },
+            "validate": {
+                "url": "/admin/cron/validate",
+                "interval": [1, "Day"]
             }
         },
         "jitter": [-20, 20],

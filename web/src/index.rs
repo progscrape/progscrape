@@ -8,7 +8,7 @@ use itertools::Itertools;
 use keepcalm::{Shared, SharedMut};
 use progscrape_application::{
     BackerUpper, BackupResult, IntoStoryQuery, PersistError, PersistLocation, ScrapePersistResult,
-    SearchSummary, Shard, Storage, StorageFetch, StorageSummary, StorageWriter, Story,
+    SearchSummary, Shard, ShardOrder, Storage, StorageFetch, StorageSummary, StorageWriter, Story,
     StoryEvaluator, StoryIdentifier, StoryIndex, StoryQuery, StoryRender, StoryScrapePayload,
 };
 use progscrape_scrapers::{StoryDate, StoryUrl, TypedScrape};
@@ -183,6 +183,22 @@ impl Index<StoryIndex> {
         // }
         *self.hot_set.write() = self.compute_hot_set(v, now);
         Ok(())
+    }
+
+    /// Validate the index shards.
+    pub async fn validate(
+        &self,
+    ) -> Result<Vec<(Shard, Result<usize, PersistError>)>, PersistError> {
+        let storage = self.storage.read();
+        let shard_range = storage.shard_range()?;
+        let mut results = Vec::new();
+        for shard in shard_range.iterate(ShardOrder::OldestFirst) {
+            let count = async_run!(self.storage, |storage: &StoryIndex| {
+                storage.validate_shard(shard)
+            })?;
+            results.push((shard, Ok(count)));
+        }
+        Ok(results)
     }
 
     /// Borrows the hot set

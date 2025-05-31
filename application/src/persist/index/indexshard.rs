@@ -114,6 +114,19 @@ impl StoryIndexShard {
         })
     }
 
+    pub fn validate(&self) -> Result<usize, PersistError> {
+        let searcher = self.index.reader()?.searcher();
+        let mut count = 0;
+        for segment_reader in searcher.segment_readers().iter() {
+            let store_reader = segment_reader.get_store_reader(100)?;
+            for doc_id in segment_reader.doc_ids_alive() {
+                let _doc = store_reader.get(doc_id)?;
+                count += 1;
+            }
+        }
+        Ok(count)
+    }
+
     /// Provides a valid searcher and schema temporarily for the callback function.
     #[inline(always)]
     pub fn with_searcher<F: FnOnce(&Searcher, &StorySchema) -> Result<T, PersistError>, T>(

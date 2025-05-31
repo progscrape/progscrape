@@ -15,7 +15,7 @@ mod shard;
 pub use backerupper::{BackerUpper, BackupResult};
 pub use index::StoryIndex;
 pub use memindex::MemIndex;
-pub use shard::Shard;
+pub use shard::{Shard, ShardOrder};
 
 use self::shard::ShardRange;
 

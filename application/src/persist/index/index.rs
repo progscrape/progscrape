@@ -133,6 +133,12 @@ impl StoryIndex {
         self.index_cache.read().range
     }
 
+    pub fn validate_shard(&self, shard: Shard) -> Result<usize, PersistError> {
+        let shard_index = self.get_shard(shard)?;
+        let shard_index = shard_index.read();
+        shard_index.validate()
+    }
+
     fn get_shard(&self, shard: Shard) -> Result<SharedMut<StoryIndexShard>, PersistError> {
         let mut lock = self.index_cache.write();
         lock.get_shard(shard)

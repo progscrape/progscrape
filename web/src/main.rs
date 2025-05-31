@@ -189,9 +189,17 @@ async fn go() -> Result<(), WebError> {
 
             let resources = Resources::start_watcher(resource_path).await?;
 
-            let persist_path = persist_path
-                .unwrap_or("target/index".into())
-                .canonicalize()?;
+            let persist_path = match persist_path.unwrap_or("target/index".into()).canonicalize() {
+                Ok(path) => path,
+                Err(e) => {
+                    tracing::error!("Persist path was invalid: {}", e);
+                    return Err(WebError::ArgumentsInvalid(format!(
+                        "Invalid persist path, use --persist-path to specify a valid path: {}",
+                        e
+                    )));
+                }
+            };
+
             tracing::info!("Persist path: {}", persist_path.to_string_lossy());
             let index = Index::initialize_with_persistence(
                 persist_path,

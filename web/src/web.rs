@@ -271,6 +271,7 @@ pub fn admin_routes<S: Clone + Send + Sync + 'static>(
         .route("/cron/backup", post(admin_cron_backup))
         .route("/cron/refresh", post(admin_cron_refresh))
         .route("/cron/reindex", post(admin_cron_reindex))
+        .route("/cron/validate", post(admin_cron_validate))
         .route("/cron/scrape/:service", post(admin_cron_scrape))
         .route("/headers/", get(admin_headers))
         .route("/scrape/", get(admin_scrape))
@@ -1169,6 +1170,35 @@ async fn admin_cron_reindex(
         &resources,
         "admin/cron_reindex.html",
         context!(results, elapsed_ms, summary),
+    )
+}
+
+async fn admin_cron_validate(
+    State(AdminState {
+        resources, index, ..
+    }): State<AdminState>,
+) -> Result<impl IntoResponse, WebError> {
+    let start = Instant::now();
+    let results = index.validate().await?;
+    #[derive(Serialize)]
+    struct ShardResult {
+        shard: String,
+        result: String,
+    }
+    let results = results
+        .into_iter()
+        .map(|(shard, result)| ShardResult {
+            shard: shard.to_string(),
+            result: format!("{result:?}"),
+        })
+        .collect_vec();
+    let elapsed_ms = start.elapsed().as_millis();
+
+    render_admin(
+        None,
+        &resources,
+        "admin/cron_validate.html",
+        context!(results, elapsed_ms),
     )
 }
 
