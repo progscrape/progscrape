@@ -47,7 +47,7 @@ impl<'de> Deserialize<'de> for StoryUrl {
             Deserialize::deserialize(deserializer);
         match res {
             Ok(StoryUrlSerializationOptions::Raw(raw)) => StoryUrl::parse(&raw).ok_or(
-                serde::de::Error::custom(format!("Failed to parse URL '{}'", raw)),
+                serde::de::Error::custom(format!("Failed to parse URL '{raw}'")),
             ),
             Ok(StoryUrlSerializationOptions::Bits((url, host, norm))) => Ok(StoryUrl {
                 url,

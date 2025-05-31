@@ -52,8 +52,8 @@ impl BackerUpper {
         }
 
         // Metadata read intentionally drops some errors - we'll intentionally do more work if it's corrupt
-        let meta = self.path.join(format!("{}.meta.json", name));
-        let meta_temp = self.path.join(format!(".{}.meta.json", name));
+        let meta = self.path.join(format!("{name}.meta.json"));
+        let meta_temp = self.path.join(format!(".{name}.meta.json"));
         if meta.exists() {
             if let Ok(file) = std::fs::File::open(&meta).map_err(Self::trace_error) {
                 if let Ok(current_stats) = serde_json::from_reader(file).map_err(Self::trace_error)
@@ -65,8 +65,8 @@ impl BackerUpper {
             }
         }
 
-        let output = self.path.join(format!("{}.json", name));
-        let temp = self.path.join(format!(".{}.temp", name));
+        let output = self.path.join(format!("{name}.json"));
+        let temp = self.path.join(format!(".{name}.temp"));
         let file = std::fs::File::create(&temp)?;
 
         let time = timer_start!();

@@ -17,7 +17,7 @@ pub struct StaticFileRegistry {
 fn to_hash_key(bytes: &[u8]) -> String {
     let mut s = "v0-".to_owned();
     for byte in bytes {
-        s += &format!("{:02x}", byte);
+        s += &format!("{byte:02x}");
     }
     s
 }
@@ -52,7 +52,7 @@ impl StaticFileRegistry {
         buf: &[u8],
     ) -> Result<(), std::io::Error> {
         let mime_type = mime_type_from(extension, buf)
-            .unwrap_or_else(|| panic!("File type was not known for {}", key));
+            .unwrap_or_else(|| panic!("File type was not known for {key}"));
 
         let mut hash = sha2::Sha256::new();
         hash.update(buf);

@@ -356,8 +356,7 @@ pub(crate) mod test {
             assert_eq!(
                 tagger.check_tag_search(b),
                 Some(a),
-                "Didn't match for '{}'",
-                b
+                "Didn't match for '{b}'"
             );
         }
     }
@@ -382,8 +381,7 @@ pub(crate) mod test {
         assert_eq!(
             tag_set.collect(),
             tags.to_vec(),
-            "while checking tags for {}",
-            s
+            "while checking tags for {s}"
         );
     }
 
@@ -406,8 +404,7 @@ pub(crate) mod test {
         assert_eq!(
             tag_set.collect(),
             tags.to_vec(),
-            "while checking tags for {}",
-            s
+            "while checking tags for {s}"
         );
     }
 
@@ -429,8 +426,7 @@ pub(crate) mod test {
         assert_eq!(
             tag_set.collect(),
             tags.to_vec(),
-            "while checking tags for {}",
-            s
+            "while checking tags for {s}"
         );
     }
 }

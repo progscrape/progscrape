@@ -73,7 +73,7 @@ pub fn unescape_entities(input: &str) -> String {
                         }
                     }
                 }
-                s += &format!("&{};", entity_name);
+                s += &format!("&{entity_name};");
                 entity_name.clear();
                 continue 'char;
             }
@@ -85,7 +85,7 @@ pub fn unescape_entities(input: &str) -> String {
         }
     }
     if !entity_name.is_empty() {
-        s += &format!("&{}", entity_name);
+        s += &format!("&{entity_name}");
     }
     s
 }

@@ -25,7 +25,7 @@ impl ScrapeSourceDef for Slashdot {
     type Scraper = SlashdotScraper;
 
     fn comments_url(id: &str, _subsource: Option<&str>) -> String {
-        format!("https://tech.slashdot.org/story/{}/", id)
+        format!("https://tech.slashdot.org/story/{id}/")
     }
 
     fn id_from_comments_url(url: &str) -> Option<(&str, Option<&str>)> {
@@ -101,13 +101,13 @@ impl SlashdotScraper {
             .cartesian_product(day)
             .cartesian_product(am_pm)
         {
-            let pattern = format!("{}%B {} %Y %I:%M{} %z", day_of_week, day, am_pm);
+            let pattern = format!("{day_of_week}%B {day} %Y %I:%M{am_pm} %z");
             if let Some(date) = StoryDate::from_string(&date, &pattern) {
                 return Ok(date);
             }
         }
 
-        Err(format!("Failed to parse date: {}", date))
+        Err(format!("Failed to parse date: {date}"))
     }
 
     fn parse_topic(href: &str) -> Option<String> {
@@ -130,16 +130,16 @@ impl SlashdotScraper {
         let story_link = links.next().ok_or("Missing story link")?;
         let raw_title = unescape_entities(story_link.inner_text(p).borrow());
         if raw_title.len() < 5 {
-            return Err(format!("Title was too short: {}", raw_title));
+            return Err(format!("Title was too short: {raw_title}"));
         }
         let story_url =
             get_attribute(p, story_link, "href").ok_or_else(|| "Missing story href".to_string())?;
         let (_, b) = story_url
             .split_once("/story/")
-            .ok_or(format!("Invalid link format: {}", story_url))?;
+            .ok_or(format!("Invalid link format: {story_url}"))?;
         let id = b.splitn(5, '/').take(4).collect::<Vec<_>>();
         if id.len() != 4 {
-            return Err(format!("Invalid link format: {}", story_url));
+            return Err(format!("Invalid link format: {story_url}"));
         }
         let id = id.join("/");
 
@@ -147,7 +147,7 @@ impl SlashdotScraper {
         let href = unescape_entities(
             &get_attribute(p, external_link, "href").ok_or_else(|| "Missing href".to_string())?,
         );
-        let url = StoryUrl::parse(&href).ok_or(format!("Invalid href: {}", href))?;
+        let url = StoryUrl::parse(&href).ok_or(format!("Invalid href: {href}"))?;
 
         // This doesn't appear if there are no comments on a story, so we need to be flexible
         let num_comments = if let Some(comments) = find_first(p, article, ".comment-bubble") {

@@ -13,7 +13,7 @@ impl ScrapeSourceDef for Lobsters {
     type Scraper = LobstersScraper;
 
     fn comments_url(id: &str, _subsource: Option<&str>) -> String {
-        format!("https://lobste.rs/s/{}/", id)
+        format!("https://lobste.rs/s/{id}/")
     }
 
     fn id_from_comments_url(url: &str) -> Option<(&str, Option<&str>)> {
@@ -107,7 +107,7 @@ impl Scraper for LobstersScraper {
                             "comments" => {}
                             "category" => drop(subitem.text().map(|s| tags.push(s.to_owned()))),
                             "description" => {}
-                            x => warnings.push(format!("Unknown sub-node '{}'", x)),
+                            x => warnings.push(format!("Unknown sub-node '{x}'")),
                         }
                     }
                     if let (Some(raw_title), Some(id), Some(url), Some(date)) =

@@ -21,9 +21,9 @@ impl ScrapeSourceDef for Reddit {
 
     fn comments_url(id: &str, subsource: Option<&str>) -> String {
         if let Some(subsource) = subsource {
-            format!("https://www.reddit.com/r/{}/comments/{}/", subsource, id)
+            format!("https://www.reddit.com/r/{subsource}/comments/{id}/")
         } else {
-            format!("https://www.reddit.com/comments/{}/", id)
+            format!("https://www.reddit.com/comments/{id}/")
         }
     }
 
@@ -115,7 +115,7 @@ impl RedditScraper {
     fn require_string(&self, data: &Value, key: &str) -> Result<String, String> {
         Ok(data[key]
             .as_str()
-            .ok_or(format!("Missing field {:?}", key))?
+            .ok_or(format!("Missing field {key:?}"))?
             .to_owned())
     }
 
@@ -146,8 +146,7 @@ impl RedditScraper {
                 }
             }
             Err(format!(
-                "Failed to parse {} as integer (value was {:?})",
-                key, n
+                "Failed to parse {key} as integer (value was {n:?})"
             ))
         } else {
             Err(format!(
@@ -168,10 +167,7 @@ impl RedditScraper {
             if let Some(n) = n.as_f64() {
                 return Ok(n);
             }
-            Err(format!(
-                "Failed to parse {} as float (value was {:?})",
-                key, n
-            ))
+            Err(format!("Failed to parse {key} as float (value was {n:?})"))
         } else {
             Err(format!(
                 "Missing or invalid field {:?} (value was {:?})",
@@ -189,13 +185,13 @@ impl RedditScraper {
         let data = if kind == Some("t3") {
             &child["data"]
         } else {
-            return Err(format!("Unknown story type: {:?}", kind));
+            return Err(format!("Unknown story type: {kind:?}"));
         };
 
         let id = self.require_string(data, "id")?;
         let subreddit = self.require_string(data, "subreddit")?.to_ascii_lowercase();
         if let Some(true) = data["stickied"].as_bool() {
-            return Err(format!("Ignoring stickied story {}/{}", subreddit, id));
+            return Err(format!("Ignoring stickied story {subreddit}/{id}"));
         }
         let position = *positions
             .entry(subreddit.clone())

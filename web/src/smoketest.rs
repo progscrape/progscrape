@@ -22,7 +22,7 @@ mod test {
         path: &'static str,
         query: &'static str,
     ) -> Result<axum::extract::Request, Box<dyn std::error::Error>> {
-        let uri = format!("http://localhost{}{}", path, query).parse()?;
+        let uri = format!("http://localhost{path}{query}").parse()?;
         let mut req = axum::extract::Request::default();
         *req.method_mut() = Method::GET;
         *req.uri_mut() = uri;
@@ -42,8 +42,7 @@ mod test {
         assert_eq!(
             resp.headers().get(CONTENT_TYPE),
             Some(&HeaderValue::from_str(mime)?),
-            "Incorrect mime type for path {}",
-            path
+            "Incorrect mime type for path {path}"
         );
 
         let body = axum::body::to_bytes(resp.into_body(), 1_000_000)

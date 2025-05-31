@@ -35,7 +35,7 @@ impl tera::Filter for AbsoluteTimeFilter {
     ) -> tera::Result<Value> {
         let date = value.as_i64().and_then(StoryDate::from_seconds);
         if let Some(date) = date {
-            Ok(format!("{}", date).into())
+            Ok(format!("{date}").into())
         } else {
             Err("Invalid date arguments".to_string().into())
         }

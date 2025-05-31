@@ -20,7 +20,7 @@ impl ScrapeSourceDef for HackerNews {
     type Scraper = HackerNewsScraper;
 
     fn comments_url(id: &str, _subsource: Option<&str>) -> String {
-        format!("https://news.ycombinator.com/item?id={}", id)
+        format!("https://news.ycombinator.com/item?id={id}")
     }
 
     fn id_from_comments_url(url: &str) -> Option<(&str, Option<&str>)> {
@@ -104,7 +104,7 @@ impl HackerNewsScraper {
 
         fn extract_number(s: &str) -> Result<u32, String> {
             str::parse(&s.replace(|c: char| !c.is_ascii_digit(), ""))
-                .map_err(|_| format!("Failed to parse number: '{}'", s))
+                .map_err(|_| format!("Failed to parse number: '{s}'"))
         }
 
         if let Some(titleline) = find_first(p, node, ".titleline") {
@@ -121,7 +121,7 @@ impl HackerNewsScraper {
             if url.starts_with("item?") {
                 url.insert_str(0, "https://news.ycombinator.com/");
             }
-            let url = StoryUrl::parse(&url).ok_or(format!("Failed to parse URL {}", url))?;
+            let url = StoryUrl::parse(&url).ok_or(format!("Failed to parse URL {url}"))?;
             let id =
                 get_attribute(p, node, "id").ok_or_else(|| "Failed to get id node".to_string())?;
             let rank =
@@ -246,7 +246,7 @@ impl Scraper for HackerNewsScraper {
                     id, date, raw_title, url, points, comments, position,
                 ));
             } else {
-                errors.push(format!("Unmatched story/info for id {}", k));
+                errors.push(format!("Unmatched story/info for id {k}"));
             }
         }
         stories.sort_by_key(|x| x.data.position);

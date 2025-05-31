@@ -97,7 +97,7 @@ impl IntoResponse for WebError {
         if let Self::WrongUrl(url) = self {
             return Redirect::permanent(&url).into_response();
         }
-        let body = format!("Error: {:?}", self);
+        let body = format!("Error: {self:?}");
         let code = match self {
             Self::AuthError => StatusCode::UNAUTHORIZED,
             Self::NotFound => StatusCode::NOT_FOUND,

@@ -1202,11 +1202,11 @@ mod test {
         let date = StoryDate::year_month_day(2020, 1, 1).expect("Date failed");
 
         for i in 0..30 {
-            let url = StoryUrl::parse(format!("http://domain-{}.com/", i)).expect("URL");
+            let url = StoryUrl::parse(format!("http://domain-{i}.com/")).expect("URL");
             batch.push(hn_story(
-                &format!("story-{}", i),
+                &format!("story-{i}"),
                 date,
-                &format!("Title {}", i),
+                &format!("Title {i}"),
                 &url,
             ));
         }
@@ -1331,8 +1331,7 @@ mod test {
             let search = index.fetch_count(&query, 10)?;
             assert_eq!(
                 1, search,
-                "Expected one search result when querying '{}' for title={} url={} doc={:?} query={query:?}",
-                term, title, url, doc
+                "Expected one search result when querying '{term}' for title={title} url={url} doc={doc:?} query={query:?}"
             );
         }
 
@@ -1356,7 +1355,7 @@ mod test {
         // Query the new index, ensuring only one result per URL
         let mut set = HashSet::new();
         for story in index.fetch::<Shard>(&StoryQuery::from_search(&eval.tagger, "rust"), 10)? {
-            println!("{:?}", story);
+            println!("{story:?}");
             assert!(
                 set.insert(story.url.clone()),
                 "Duplicate url: {:?}",

@@ -49,7 +49,7 @@ impl Serialize for StoryScore {
     where
         S: serde::Serializer,
     {
-        format!("{:?}", self).serialize(serializer)
+        format!("{self:?}").serialize(serializer)
     }
 }
 
@@ -286,7 +286,7 @@ mod test {
         let scorer = StoryScorer::new(&config);
         for i in 0..StoryDuration::days(60).num_hours() {
             let score = scorer.score_age(StoryDuration::hours(i));
-            assert!(score < last_score, "{} < {}", score, last_score);
+            assert!(score < last_score, "{score} < {last_score}");
             last_score = score;
         }
     }

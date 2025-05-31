@@ -111,7 +111,7 @@ fn blog_posts(resource_path: &Path) -> Result<Vec<BlogPost>, WebError> {
             .to_string_lossy()
             .trim_end_matches(".md")
             .to_owned();
-        let date = StoryDate::parse_from_rfc3339(&format!("{}T00:00:00Z", id)).ok_or_else(err)?;
+        let date = StoryDate::parse_from_rfc3339(&format!("{id}T00:00:00Z")).ok_or_else(err)?;
         let contents = std::fs::read_to_string(entry.path().canonicalize()?)?;
         let title = contents
             .split('\n')

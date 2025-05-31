@@ -184,7 +184,7 @@ impl StoryQuery {
                 StoryUrl::parse(search)
             } else {
                 // TODO: We probably don't want to re-parse this as a URL, but it's the fastest way to normalize it
-                StoryUrl::parse(format!("http://{}", search))
+                StoryUrl::parse(format!("http://{search}"))
             };
             if let Some(url) = url {
                 let host = url.host();
