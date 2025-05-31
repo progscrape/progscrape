@@ -5,6 +5,7 @@ use std::{
 
 use progscrape_scrapers::{ScrapeId, StoryDate, TypedScrape};
 use serde::{Deserialize, Serialize};
+use tracing::{error, info, trace};
 
 use crate::{PersistError, story::StoryScrapeId};
 
@@ -68,6 +69,18 @@ impl ScrapeStore {
         db.create_table::<ScrapeCacheEntry>()?;
         db.create_unique_index::<ScrapeCacheEntry>("idx_id", &["id"])?;
         Ok(db.clone())
+    }
+
+    pub fn validate_shard(&self, shard: Shard) -> Result<(), PersistError> {
+        let db = self.open_shard(shard)?;
+        info!("Validating DB shard {shard:?}");
+        let res = db.execute_raw("PRAGMA integrity_check");
+        if let Err(e) = res {
+            error!("Failed to validate DB shard {shard:?}: {e:?}");
+            return Err(e);
+        }
+        info!("DB shard {shard:?} OK.");
+        Ok(())
     }
 
     pub fn insert_scrape(&self, scrape: &TypedScrape) -> Result<(), PersistError> {

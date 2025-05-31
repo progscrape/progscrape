@@ -136,7 +136,9 @@ impl StoryIndex {
     pub fn validate_shard(&self, shard: Shard) -> Result<usize, PersistError> {
         let shard_index = self.get_shard(shard)?;
         let shard_index = shard_index.read();
-        shard_index.validate()
+        let count = shard_index.validate()?;
+        self.scrape_db.validate_shard(shard)?;
+        Ok(count)
     }
 
     fn get_shard(&self, shard: Shard) -> Result<SharedMut<StoryIndexShard>, PersistError> {

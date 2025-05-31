@@ -8,6 +8,7 @@ use tantivy::{
 use tantivy::{Index, IndexReader, doc};
 
 use progscrape_scrapers::{ScrapeId, StoryDate};
+use tracing::{error, info};
 
 use std::collections::HashSet;
 use std::hash::Hash;
@@ -115,7 +116,19 @@ impl StoryIndexShard {
     }
 
     pub fn validate(&self) -> Result<usize, PersistError> {
+        info!("Validating index shard {:?}", self.shard);
         let searcher = self.index.reader()?.searcher();
+        let damaged = self.index.validate_checksum()?;
+        if !damaged.is_empty() {
+            error!(
+                "Damaged files in index shard {:?}: {:?}",
+                self.shard, damaged
+            );
+            return Err(PersistError::UnexpectedError(
+                "Damaged files in index shard".to_owned(),
+            ));
+        }
+        info!("Index shard {:?} checksums OK.", self.shard);
         let mut count = 0;
         for segment_reader in searcher.segment_readers().iter() {
             let store_reader = segment_reader.get_store_reader(100)?;
@@ -124,6 +137,7 @@ impl StoryIndexShard {
                 count += 1;
             }
         }
+        info!("Validated index shard {:?} with {count} docs", self.shard);
         Ok(count)
     }
 
