@@ -1,0 +1,8 @@
+<table class="cron-history">
+    <tr><th colspan="2">Time</th><th>Endpoint</th><th>Status Code</th><th>Output</th></tr>
+{% for row in history | sort(key=0) | reverse %}
+    <tr><td>{{ row.0 | absolute_time }}</td><td>{{ row.0 | approx_time }}</td><td>{{ row.1 }}</td><td class="status-{{ row.2 }}">{{ row.2 }}</td><td><button onclick="showOutput(event, 'output-{{loop.index}}')">Output</button><input id="output-{{loop.index}}" type="hidden" value="{{ row.3 }}" /></td></th></tr>
+{% else %}
+    <tr><td colspan="5">No history</td></tr>
+{% endfor %}
+</table>

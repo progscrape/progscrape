@@ -19,7 +19,10 @@
 
 <h1>History</h1>
 
-<table class="cron-history">
+<button onclick="refreshHistory()">Refresh</button> <span id="history-refresh-time"></span>
+<div id="history-error"></div>
+
+<table id="history" class="cron-history">
     <tr><th colspan="2">Time</th><th>Endpoint</th><th>Status Code</th><th>Output</th></tr>
 {% for row in history | sort(key=0) | reverse %}
     <tr><td>{{ row.0 | absolute_time }}</td><td>{{ row.0 | approx_time }}</td><td>{{ row.1 }}</td><td class="status-{{ row.2 }}">{{ row.2 }}</td><td><button onclick="showOutput(event, 'output-{{loop.index}}')">Output</button><input id="output-{{loop.index}}" type="hidden" value="{{ row.3 }}" /></td></th></tr>
@@ -49,6 +52,28 @@
             wind.document.documentElement.innerHTML = document.getElementById(output).value;
         })
     }
+
+    async function refreshHistory() {
+        let refreshTime = document.getElementById('history-refresh-time');
+        refreshTime.innerText = 'Refreshing...';
+        let response = await fetch('history', {method:'post'});
+        refreshTime.innerText = `Refreshed at ${new Date().toLocaleTimeString()}`;
+        let error = document.getElementById('history-error');
+        if (response.status == 200) {
+            let data = await response.text();
+            let history = document.getElementById('history');
+            history.innerHTML = data;
+            error.innerHTML = '';
+        } else {
+            error.innerHTML = `Failed to refresh history (${response.status}): ${await response.text()}`;
+        }
+
+        setTimeout(refreshHistory, 10000);
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        refreshHistory();
+    });
 </script>
 
 {% endblock %}

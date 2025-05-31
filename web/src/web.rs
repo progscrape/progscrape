@@ -266,6 +266,7 @@ pub fn admin_routes<S: Clone + Send + Sync + 'static>(
     Router::new()
         .route("/", get(admin))
         .route("/cron/", get(admin_cron))
+        .route("/cron/history", post(admin_cron_history))
         .route("/cron/", post(admin_cron_post))
         .route("/cron/blog", post(admin_update_blog))
         .route("/cron/backup", post(admin_cron_backup))
@@ -1088,6 +1089,27 @@ async fn admin_cron(
         Some(&user),
         &resources,
         "admin/cron.html",
+        context!(
+            user,
+            cron = cron.read().inspect(),
+            history = cron_history.read().entries()
+        ),
+    )
+}
+
+async fn admin_cron_history(
+    Extension(user): Extension<CurrentUser>,
+    State(AdminState {
+        cron,
+        cron_history,
+        resources,
+        ..
+    }): State<AdminState>,
+) -> Result<impl IntoResponse, WebError> {
+    render_admin(
+        Some(&user),
+        &resources,
+        "admin/cron_history.html",
         context!(
             user,
             cron = cron.read().inspect(),
