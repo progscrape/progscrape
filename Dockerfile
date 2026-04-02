@@ -1,4 +1,4 @@
-FROM --platform=amd64 rust:1.87.0 as builder
+FROM --platform=amd64 rust:1.94.1 as builder
 
 RUN dpkg --add-architecture arm64
 RUN apt-get update --allow-insecure-repositories
