@@ -1,12 +1,23 @@
 ARG RUST_VERSION=1.94.1
 FROM --platform=amd64 rust:${RUST_VERSION} AS builder
 
+# Test faster dev mode: docker buildx build --build-arg RUST_PROFILE=dev ...
+ARG RUST_PROFILE=release
+
+# Avoid interactive prompts during apt.
+ENV DEBIAN_FRONTEND=noninteractive
+
 RUN dpkg --add-architecture arm64
-RUN apt-get update --allow-insecure-repositories
-RUN apt install -y parallel \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    pkg-config \
+    clang lld \
+    parallel \
     gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
+    crossbuild-essential-arm64 \
     libssl-dev libsqlite3-dev \
-    libssl-dev:arm64 libsqlite3-dev:arm64
+    libssl-dev:arm64 libsqlite3-dev:arm64 \
+    && rm -rf /var/lib/apt/lists/*
 
 # .git directory is required to serve git version
 COPY .git /build/.git/
@@ -27,13 +38,13 @@ RUN mkdir .cargo && echo "[target.aarch64-unknown-linux-gnu]\nlinker = \"aarch64
 
 # Build amd64 and arm64 in parallel
 RUN cargo fetch
-RUN RUSTFLAGS="-Awarnings" parallel \
+RUN RUSTFLAGS="-Awarnings" RUST_PROFILE=${RUST_PROFILE} parallel \
     --tagstring '{= s:x86_64-unknown-linux-gnu:amd64:; s:aarch64-unknown-linux-gnu:arm64: =}' \
-    -j 2 --lb --tag --color 'cargo build --release --target {} --target-dir target/{}' ::: 'x86_64-unknown-linux-gnu' 'aarch64-unknown-linux-gnu'
+    -j 2 --lb --tag --color 'cargo build --profile ${RUST_PROFILE} --target {} --target-dir target/{}' ::: 'x86_64-unknown-linux-gnu' 'aarch64-unknown-linux-gnu'
 
 RUN mkdir -p /output/linux/{arm64,amd64}
-RUN mv /build/target/x86_64-unknown-linux-gnu/x86_64-unknown-linux-gnu/release/progscrape /output/linux/amd64/progscrape-web
-RUN mv /build/target/aarch64-unknown-linux-gnu/aarch64-unknown-linux-gnu/release/progscrape /output/linux/arm64/progscrape-web
+RUN mv /build/target/x86_64-unknown-linux-gnu/x86_64-unknown-linux-gnu/${RUST_PROFILE}/progscrape /output/linux/amd64/progscrape-web
+RUN mv /build/target/aarch64-unknown-linux-gnu/aarch64-unknown-linux-gnu/${RUST_PROFILE}/progscrape /output/linux/arm64/progscrape-web
 
 FROM rust:${RUST_VERSION} AS tester
 ARG TARGETPLATFORM
