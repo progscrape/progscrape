@@ -125,6 +125,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 async fn go() -> Result<(), WebError> {
+    rustls::crypto::ring::default_provider()
+        .install_default()
+        .map_err(|_| WebError::InitializationError("Failed to install rustls crypto provider".into()))?;
+
     let args = Args::parse();
 
     // We ask for more detailed tracing in debug mode

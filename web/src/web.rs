@@ -91,6 +91,8 @@ pub enum WebError {
     WrongUrl(String),
     #[error("Invalid command-line arguments")]
     ArgumentsInvalid(String),
+    #[error("Initialization error")]
+    InitializationError(String),
 }
 
 impl IntoResponse for WebError {
