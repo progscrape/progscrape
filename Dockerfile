@@ -55,9 +55,10 @@ RUN RUSTFLAGS="-Awarnings" parallel \
     "cargo build --profile ${RUST_PROFILE} --target {} --target-dir target/{}" \
     ::: x86_64-unknown-linux-gnu aarch64-unknown-linux-gnu
 
-RUN mkdir -p /output/linux/{arm64,amd64}
-RUN mv /build/target/x86_64-unknown-linux-gnu/${RUST_PROFILE}/progscrape /output/linux/amd64/progscrape-web
-RUN mv /build/target/aarch64-unknown-linux-gnu/${RUST_PROFILE}/progscrape /output/linux/arm64/progscrape-web
+RUN mkdir -p /output/linux/arm64
+RUN mkdir -p /output/linux/amd64
+RUN mv /build/target/x86_64-unknown-linux-gnu/x86_64-unknown-linux-gnu/${RUST_PROFILE}/progscrape /output/linux/amd64/progscrape-web
+RUN mv /build/target/aarch64-unknown-linux-gnu/aarch64-unknown-linux-gnu/${RUST_PROFILE}/progscrape /output/linux/arm64/progscrape-web
 
 FROM rust:${RUST_VERSION} AS tester
 ARG TARGETPLATFORM
