@@ -123,7 +123,7 @@ impl<S: StoryQueryString> IntoStoryQuery for Option<S> {
 
 impl StoryQuery {
     /// Reconstructs the query text for the given query.
-    pub fn query_text(&self) -> Cow<str> {
+    pub fn query_text(&self) -> Cow<'_, str> {
         match self {
             Self::FrontPage => "".into(),
             Self::ById(id) => format!("id={id}").into(),

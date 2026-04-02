@@ -233,11 +233,10 @@ impl StoryScorer {
             let mut score_total = 0_f32;
             let accum = |_, score| score_total += score;
             self.score_single(scrape, core, accum);
-            if let Some((_, _, existing_score)) = service_scrapes.get(id.source) {
-                if *existing_score > score_total {
+            if let Some((_, _, existing_score)) = service_scrapes.get(id.source)
+                && *existing_score > score_total {
                     continue;
                 }
-            }
             service_scrapes.set(id.source, Some((*scrape, core, score_total)));
         }
         service_scrapes

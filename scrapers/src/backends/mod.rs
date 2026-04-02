@@ -133,7 +133,7 @@ macro_rules! scrapers {
                 }
             }
 
-            pub(crate) fn extract(&self, config: &ScrapeConfig) -> ScrapeCore {
+            pub(crate) fn extract(&self, config: &ScrapeConfig) -> ScrapeCore<'_> {
                 match self {
                     $(
                         Self::$name(a) => {

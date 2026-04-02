@@ -54,19 +54,17 @@ pub fn immutable(
         headers.append(CACHE_CONTROL, IMMUTABLE_CACHE_HEADER.clone());
         headers.append(CONTENT_LENGTH, bytes.len().into());
         headers.append(CONTENT_TYPE, mime.parse()?);
-        if let Some(etag) = headers_in.get(IF_NONE_MATCH) {
-            if *etag == key {
+        if let Some(etag) = headers_in.get(IF_NONE_MATCH)
+            && *etag == key {
                 return Ok(not_modified(headers));
             }
-        }
         Ok(ok(bytes, headers))
     } else {
         // In the case we don't have the file, but the client has specified an ETAG that matches, we assume this is some ancient file and let them keep it.
-        if let Some(etag) = headers_in.get(IF_NONE_MATCH) {
-            if *etag == key {
+        if let Some(etag) = headers_in.get(IF_NONE_MATCH)
+            && *etag == key {
                 return Ok(not_modified(headers));
             }
-        }
         Ok(not_found(&key, headers))
     }
 }
@@ -87,11 +85,10 @@ pub fn well_known(
             headers.append(CACHE_CONTROL, IMMUTABLE_CACHE_WELL_KNOWN_HEADER.clone());
             headers.append(CONTENT_LENGTH, bytes.len().into());
             headers.append(CONTENT_TYPE, mime.parse()?);
-            if let Some(etag) = headers_in.get(IF_NONE_MATCH) {
-                if *etag == key {
+            if let Some(etag) = headers_in.get(IF_NONE_MATCH)
+                && *etag == key {
                     return Ok(not_modified(headers));
                 }
-            }
             Ok(ok(bytes, headers))
         } else {
             Ok(not_found(key, headers))

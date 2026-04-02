@@ -5,7 +5,7 @@ use std::{
 
 use progscrape_scrapers::{ScrapeId, StoryDate, TypedScrape};
 use serde::{Deserialize, Serialize};
-use tracing::{error, info, trace};
+use tracing::{error, info};
 
 use crate::{PersistError, story::StoryScrapeId};
 

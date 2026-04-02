@@ -226,15 +226,14 @@ impl StoryTagger {
                     continue 'outer;
                 }
             }
-            if let Some(rec) = self.forward.get(&tokens[0]) {
-                if !mutes.contains_key(&tokens[0]) {
+            if let Some(rec) = self.forward.get(&tokens[0])
+                && !mutes.contains_key(&tokens[0]) {
                     let rec = &self.records[*rec];
                     tags.tag(&rec.output);
                     for implies in &rec.implies {
                         tags.tag(implies);
                     }
                 }
-            }
             tokens = &tokens[1..];
         }
     }

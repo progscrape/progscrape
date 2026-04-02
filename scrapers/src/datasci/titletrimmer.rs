@@ -13,7 +13,7 @@ pub const ENGLISH_SIMPLIFICATIONS: [(&str, &str); 4] = [
 
 /// Attempt to trim a title down to the ideal length by splitting, cutting out extraneous words, and other
 /// optimizations.
-pub fn trim_title(mut title: &str, ideal_length: usize, awkward_length: usize) -> Cow<str> {
+pub fn trim_title(mut title: &str, ideal_length: usize, awkward_length: usize) -> Cow<'_, str> {
     if title.len() <= ideal_length {
         return Cow::Borrowed(title);
     }
@@ -75,30 +75,28 @@ pub fn remove_tags(title: &str) -> (&str, Option<&str>, Option<&str>) {
     let orig_title = title;
 
     // Check and remove tag at the start
-    if title.starts_with('[') {
-        if let Some(end_index) = title.find(']') {
+    if title.starts_with('[')
+        && let Some(end_index) = title.find(']') {
             let possible_tag = &title[1..end_index];
             if is_valid_tag(possible_tag) {
                 start_tag = Some(possible_tag);
                 title = &title[end_index + 1..];
             }
         }
-    }
 
     if title.trim().is_empty() {
         return (orig_title, None, None);
     }
 
     // Check and remove tag at the end
-    if title.ends_with(']') {
-        if let Some(start_index) = title.rfind('[') {
+    if title.ends_with(']')
+        && let Some(start_index) = title.rfind('[') {
             let possible_tag = &title[start_index + 1..title.len() - 1];
             if is_valid_tag(possible_tag) {
                 end_tag = Some(possible_tag);
                 title = &title[..start_index - 1];
             }
         }
-    }
 
     if title.trim().is_empty() {
         return (orig_title, None, None);

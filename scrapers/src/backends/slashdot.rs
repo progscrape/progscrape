@@ -113,11 +113,10 @@ impl SlashdotScraper {
     fn parse_topic(href: &str) -> Option<String> {
         let base = Url::parse("https://slashdot.org").expect("Failed to parse base URL");
         let url = base.join(href);
-        if let Ok(url) = url {
-            if let Some((_, value)) = url.query_pairs().find(|(k, _)| k == "fhfilter") {
+        if let Ok(url) = url
+            && let Some((_, value)) = url.query_pairs().find(|(k, _)| k == "fhfilter") {
                 return Some(value.into());
             }
-        }
         None
     }
 
@@ -162,11 +161,10 @@ impl SlashdotScraper {
         let topics = find_first(p, article, ".topic").ok_or_else(|| "Mising topics".to_string())?;
         let mut tags = vec![];
         for topic in html_tag_iterator(p, topics.query_selector(p, "a")) {
-            if let Some(topic_href) = get_attribute(p, topic, "href") {
-                if let Some(topic) = Self::parse_topic(&topic_href) {
+            if let Some(topic_href) = get_attribute(p, topic, "href")
+                && let Some(topic) = Self::parse_topic(&topic_href) {
                     tags.push(topic);
                 }
-            }
         }
 
         let date =

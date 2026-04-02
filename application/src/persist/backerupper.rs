@@ -54,16 +54,12 @@ impl BackerUpper {
         // Metadata read intentionally drops some errors - we'll intentionally do more work if it's corrupt
         let meta = self.path.join(format!("{name}.meta.json"));
         let meta_temp = self.path.join(format!(".{name}.meta.json"));
-        if meta.exists() {
-            if let Ok(file) = std::fs::File::open(&meta).map_err(Self::trace_error) {
-                if let Ok(current_stats) = serde_json::from_reader(file).map_err(Self::trace_error)
-                {
-                    if stats == current_stats {
+        if meta.exists()
+            && let Ok(file) = std::fs::File::open(&meta).map_err(Self::trace_error)
+                && let Ok(current_stats) = serde_json::from_reader(file).map_err(Self::trace_error)
+                    && stats == current_stats {
                         return Ok(BackupResult::NoChange);
                     }
-                }
-            }
-        }
 
         let output = self.path.join(format!("{name}.json"));
         let temp = self.path.join(format!(".{name}.temp"));
