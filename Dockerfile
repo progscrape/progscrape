@@ -30,17 +30,30 @@ WORKDIR /build
 
 RUN echo "[profile.release]\nlto = true\ncodegen-units = 1" >> Cargo.toml
 
-# Set up arm64 cross compile (do not set OPENSSL_* in the image ENV: it breaks the native link step with wrong CRT/arch).
+# Set up arm64 cross compile.
 RUN rustup target add aarch64-unknown-linux-gnu
 ENV CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc
 ENV CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++
 RUN mkdir .cargo && echo "[target.aarch64-unknown-linux-gnu]\nlinker = \"aarch64-linux-gnu-gcc\"" > .cargo/config.toml
 
-# Build amd64 and arm64 in parallel
+# pkg-config 0.3: PKG_CONFIG_PATH_${TARGET} (hyphenated triple) is selected per build script when cross-compiling.
+ENV PKG_CONFIG_ALLOW_CROSS=1 \
+    PKG_CONFIG_SYSROOT_DIR=/
+ENV PKG_CONFIG_PATH_x86_64-unknown-linux-gnu=/usr/lib/x86_64-linux-gnu/pkgconfig
+ENV PKG_CONFIG_PATH_aarch64-unknown-linux-gnu=/usr/lib/aarch64-linux-gnu/pkgconfig
+
+# openssl-sys: target-prefixed OPENSSL_* (see its build.rs env()) before plain OPENSSL_* — parallel-safe.
+ENV X86_64_UNKNOWN_LINUX_GNU_OPENSSL_LIB_DIR=/usr/lib/x86_64-linux-gnu \
+    X86_64_UNKNOWN_LINUX_GNU_OPENSSL_INCLUDE_DIR=/usr/include
+ENV AARCH64_UNKNOWN_LINUX_GNU_OPENSSL_LIB_DIR=/usr/lib/aarch64-linux-gnu \
+    AARCH64_UNKNOWN_LINUX_GNU_OPENSSL_INCLUDE_DIR=/usr/include
+
 RUN cargo fetch
-RUN RUSTFLAGS="-Awarnings" RUST_PROFILE=${RUST_PROFILE} parallel \
+RUN RUSTFLAGS="-Awarnings" parallel \
     --tagstring '{= s:x86_64-unknown-linux-gnu:amd64:; s:aarch64-unknown-linux-gnu:arm64: =}' \
-    -j 2 --lb --tag --color 'cargo build --profile ${RUST_PROFILE} --target {} --target-dir target/{}' ::: 'x86_64-unknown-linux-gnu' 'aarch64-unknown-linux-gnu'
+    -j 2 --lb --tag --color \
+    "cargo build --profile ${RUST_PROFILE} --target {} --target-dir target/{}" \
+    ::: x86_64-unknown-linux-gnu aarch64-unknown-linux-gnu
 
 RUN mkdir -p /output/linux/{arm64,amd64}
 RUN mv /build/target/x86_64-unknown-linux-gnu/x86_64-unknown-linux-gnu/${RUST_PROFILE}/progscrape /output/linux/amd64/progscrape-web
