@@ -22,7 +22,8 @@ itertools = "0"
 
 # Do not bump
 tantivy = "=0.19.2"
-rust-bert = { version="0.22.0", features = ["download-libtorch"] }
+rust-bert = { version="=0.23.0", features = ["download-libtorch"] }
+console = { version="0.16", features = ["std"] } # fixes a transitive dep issue
 
 [dev-dependencies]
 rstest = "0"
