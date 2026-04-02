@@ -2473,7 +2473,7 @@ dependencies = [
 
 [[package]]
 name = "progscrape"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "axum",
  "bloom",
@@ -2511,11 +2511,11 @@ dependencies = [
 
 [[package]]
 name = "progscrape-application"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "base64 0.22.1",
  "console",
- "itertools 0.14.0",
+ "itertools 0.10.5",
  "keepcalm",
  "progscrape-scrapers",
  "rstest",
@@ -2533,11 +2533,11 @@ dependencies = [
 
 [[package]]
 name = "progscrape-scrapers"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "chrono",
  "chrono-tz",
- "itertools 0.14.0",
+ "itertools 0.10.5",
  "lazy_static",
  "regex",
  "roxmltree",

@@ -7,9 +7,9 @@ members = [
 ]
 
 [workspace.package]
-version = "0.0.2"
+version = "0.0.3"
 
 [workspace.dependencies]
-progscrape = { path = "web", version = "0.0.2" }
-progscrape-application = { path = "application", version = "0.0.2" }
-progscrape-scrapers = { path = "scrapers", version = "0.0.2" }
+progscrape = { path = "web", version = "0.0.3" }
+progscrape-application = { path = "application", version = "0.0.3" }
+progscrape-scrapers = { path = "scrapers", version = "0.0.3" }
