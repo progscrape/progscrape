@@ -1,9 +1,12 @@
 ARG RUST_VERSION=1.94.1
-FROM --platform=amd64 rust:${RUST_VERSION} as builder
+FROM --platform=amd64 rust:${RUST_VERSION} AS builder
 
 RUN dpkg --add-architecture arm64
 RUN apt-get update --allow-insecure-repositories
-RUN apt install -y parallel gcc-aarch64-linux-gnu g++-aarch64-linux-gnu libssl-dev:arm64 libsqlite3-dev:arm64
+RUN apt install -y parallel \
+    gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
+    libssl-dev libsqlite3-dev \
+    libssl-dev:arm64 libsqlite3-dev:arm64
 
 # .git directory is required to serve git version
 COPY .git /build/.git/
@@ -16,12 +19,11 @@ WORKDIR /build
 
 RUN echo "[profile.release]\nlto = true\ncodegen-units = 1" >> Cargo.toml
 
-# Set up arm64 (hard mode)
+# Set up arm64 cross compile (do not set OPENSSL_* in the image ENV: it breaks the native link step with wrong CRT/arch).
 RUN rustup target add aarch64-unknown-linux-gnu
-ENV OPENSSL_INCLUDE_DIR=/usr/include/openssl/
-ENV OPENSSL_LIB_DIR=/usr/lib/aarch64-linux-gnu/
+ENV CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc
+ENV CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++
 RUN mkdir .cargo && echo "[target.aarch64-unknown-linux-gnu]\nlinker = \"aarch64-linux-gnu-gcc\"" > .cargo/config.toml
-RUN cat .cargo/config.toml
 
 # Build amd64 and arm64 in parallel
 RUN cargo fetch
@@ -29,12 +31,11 @@ RUN RUSTFLAGS="-Awarnings" parallel \
     --tagstring '{= s:x86_64-unknown-linux-gnu:amd64:; s:aarch64-unknown-linux-gnu:arm64: =}' \
     -j 2 --lb --tag --color 'cargo build --release --target {} --target-dir target/{}' ::: 'x86_64-unknown-linux-gnu' 'aarch64-unknown-linux-gnu'
 
-RUN mkdir -p /output/linux/arm64
-RUN mkdir -p /output/linux/amd64
+RUN mkdir -p /output/linux/{arm64,amd64}
 RUN mv /build/target/x86_64-unknown-linux-gnu/x86_64-unknown-linux-gnu/release/progscrape /output/linux/amd64/progscrape-web
 RUN mv /build/target/aarch64-unknown-linux-gnu/aarch64-unknown-linux-gnu/release/progscrape /output/linux/arm64/progscrape-web
 
-FROM rust:${RUST_VERSION} as tester
+FROM rust:${RUST_VERSION} AS tester
 ARG TARGETPLATFORM
 COPY --from=builder /output/$TARGETPLATFORM/progscrape-web /usr/local/bin/
 COPY --from=builder /build/resource/ /var/progscrape/resource/
