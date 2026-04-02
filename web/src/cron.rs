@@ -4,7 +4,7 @@ use std::{
     time::{Duration, Instant, SystemTime},
 };
 
-use keepcalm::SharedMut;
+use keepcalm::{PoisonPolicy, SharedMut};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 
@@ -311,7 +311,9 @@ impl Cron {
                 url: job.url.clone(),
                 next: now + jitter,
                 last,
-                last_status: statuses.remove(name).unwrap_or(SharedMut::new(None)),
+                last_status: statuses
+                    .remove(name)
+                    .unwrap_or_else(|| SharedMut::new_with_policy(None, PoisonPolicy::Ignore)),
             });
         }
 

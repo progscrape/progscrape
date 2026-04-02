@@ -14,6 +14,7 @@ use axum::{
     response::{Html, IntoResponse, Redirect, Response},
     routing::{get, post},
 };
+use futures::FutureExt;
 use hyper::{HeaderMap, Method, StatusCode, header};
 use itertools::Itertools;
 use keepcalm::SharedMut;
@@ -332,7 +333,19 @@ fn start_cron(
                 *req.method_mut() = Method::POST;
                 *req.uri_mut() = uri;
                 (*req.extensions_mut()).insert(CronMarker {});
-                let response = router.call(req).await.unwrap_infallible();
+                let response = match std::panic::AssertUnwindSafe(router.call(req))
+                    .catch_unwind()
+                    .await
+                {
+                    Ok(service_result) => service_result.unwrap_infallible(),
+                    Err(_) => {
+                        tracing::error!(ready_uri = %ready_uri, "Cron task handler panicked");
+                        Response::builder()
+                            .status(StatusCode::INTERNAL_SERVER_ERROR)
+                            .body(Body::from("Internal Server Error (handler panicked)"))
+                            .unwrap()
+                    }
+                };
                 let status = response.status();
                 tracing::info!("Cron task '{}' ran with status {}", ready_uri, status);
 
