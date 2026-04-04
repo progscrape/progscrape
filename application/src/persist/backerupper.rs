@@ -56,10 +56,11 @@ impl BackerUpper {
         let meta_temp = self.path.join(format!(".{name}.meta.json"));
         if meta.exists()
             && let Ok(file) = std::fs::File::open(&meta).map_err(Self::trace_error)
-                && let Ok(current_stats) = serde_json::from_reader(file).map_err(Self::trace_error)
-                    && stats == current_stats {
-                        return Ok(BackupResult::NoChange);
-                    }
+            && let Ok(current_stats) = serde_json::from_reader(file).map_err(Self::trace_error)
+            && stats == current_stats
+        {
+            return Ok(BackupResult::NoChange);
+        }
 
         let output = self.path.join(format!("{name}.json"));
         let temp = self.path.join(format!(".{name}.temp"));

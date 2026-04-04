@@ -98,9 +98,10 @@ impl Shard {
 
     pub fn from_string(s: &str) -> Option<Self> {
         if let Some((a, b)) = s.split_once('-')
-            && let (Ok(a), Ok(b)) = (str::parse(a), str::parse(b)) {
-                return Some(Self::from_year_month(a, b));
-            }
+            && let (Ok(a), Ok(b)) = (str::parse(a), str::parse(b))
+        {
+            return Some(Self::from_year_month(a, b));
+        }
         None
     }
 

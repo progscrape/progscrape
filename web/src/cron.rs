@@ -44,7 +44,7 @@ fn default_cron_job_enabled() -> bool {
     true
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct CronJob {
     url: String,
     interval: (usize, CronInterval),

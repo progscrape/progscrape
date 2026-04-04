@@ -303,9 +303,9 @@ impl StoryIndexShard {
                 if let Some((a, b)) = id.split_once(':')
                     && let (Some(shard), Some(id)) =
                         (Shard::from_string(a), ScrapeId::from_string(b))
-                    {
-                        return Some(StoryScrapeId { id, shard });
-                    }
+                {
+                    return Some(StoryScrapeId { id, shard });
+                }
                 None
             })
             .collect_vec()

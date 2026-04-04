@@ -68,18 +68,19 @@ impl Display for StoryUrl {
 impl StoryUrl {
     pub fn parse<S: AsRef<str>>(s: S) -> Option<Self> {
         if let Ok(url) = Url::parse(s.as_ref())
-            && let Some(host) = URL_NORMALIZER.normalize_host(&url) {
-                let host = host.to_owned();
-                let norm_str = StoryUrlNorm {
-                    norm: URL_NORMALIZER.compute_normalization_string(&url),
-                };
-                let url = url.into();
-                return Some(Self {
-                    url,
-                    host,
-                    norm_str,
-                });
-            }
+            && let Some(host) = URL_NORMALIZER.normalize_host(&url)
+        {
+            let host = host.to_owned();
+            let norm_str = StoryUrlNorm {
+                norm: URL_NORMALIZER.compute_normalization_string(&url),
+            };
+            let url = url.into();
+            return Some(Self {
+                url,
+                host,
+                norm_str,
+            });
+        }
         None
     }
 

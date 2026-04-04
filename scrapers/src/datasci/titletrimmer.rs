@@ -76,13 +76,14 @@ pub fn remove_tags(title: &str) -> (&str, Option<&str>, Option<&str>) {
 
     // Check and remove tag at the start
     if title.starts_with('[')
-        && let Some(end_index) = title.find(']') {
-            let possible_tag = &title[1..end_index];
-            if is_valid_tag(possible_tag) {
-                start_tag = Some(possible_tag);
-                title = &title[end_index + 1..];
-            }
+        && let Some(end_index) = title.find(']')
+    {
+        let possible_tag = &title[1..end_index];
+        if is_valid_tag(possible_tag) {
+            start_tag = Some(possible_tag);
+            title = &title[end_index + 1..];
         }
+    }
 
     if title.trim().is_empty() {
         return (orig_title, None, None);
@@ -90,13 +91,14 @@ pub fn remove_tags(title: &str) -> (&str, Option<&str>, Option<&str>) {
 
     // Check and remove tag at the end
     if title.ends_with(']')
-        && let Some(start_index) = title.rfind('[') {
-            let possible_tag = &title[start_index + 1..title.len() - 1];
-            if is_valid_tag(possible_tag) {
-                end_tag = Some(possible_tag);
-                title = &title[..start_index - 1];
-            }
+        && let Some(start_index) = title.rfind('[')
+    {
+        let possible_tag = &title[start_index + 1..title.len() - 1];
+        if is_valid_tag(possible_tag) {
+            end_tag = Some(possible_tag);
+            title = &title[..start_index - 1];
         }
+    }
 
     if title.trim().is_empty() {
         return (orig_title, None, None);

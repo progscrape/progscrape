@@ -50,18 +50,20 @@ pub fn unescape_entities(input: &str) -> String {
                 entity = false;
                 if entity_name.starts_with("#x") {
                     if let Ok(n) = u32::from_str_radix(&entity_name[2..entity_name.len()], 16)
-                        && let Some(c) = char::from_u32(n) {
-                            s.push(c);
-                            entity_name.clear();
-                            continue 'char;
-                        }
+                        && let Some(c) = char::from_u32(n)
+                    {
+                        s.push(c);
+                        entity_name.clear();
+                        continue 'char;
+                    }
                 } else if entity_name.starts_with('#') {
                     if let Ok(n) = str::parse(&entity_name[1..entity_name.len()])
-                        && let Some(c) = char::from_u32(n) {
-                            s.push(c);
-                            entity_name.clear();
-                            continue 'char;
-                        }
+                        && let Some(c) = char::from_u32(n)
+                    {
+                        s.push(c);
+                        entity_name.clear();
+                        continue 'char;
+                    }
                 } else {
                     for (name, value) in ENTITIES {
                         if entity_name == name {

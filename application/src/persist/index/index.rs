@@ -105,9 +105,10 @@ impl StoryIndex {
         if let PersistLocation::Path(path) = &location {
             for d in std::fs::read_dir(path)?.flatten() {
                 if let Some(s) = d.file_name().to_str()
-                    && let Some(shard) = Shard::from_string(s) {
-                        range.include(shard);
-                    }
+                    && let Some(shard) = Shard::from_string(s)
+                {
+                    range.include(shard);
+                }
             }
         }
 

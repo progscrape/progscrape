@@ -130,13 +130,15 @@ impl RedditScraper {
     ) -> Result<T, String> {
         if let Value::Number(n) = &data[key] {
             if let Some(n) = n.as_u64()
-                && let Ok(n) = n.try_into() {
-                    return Ok(n);
-                }
+                && let Ok(n) = n.try_into()
+            {
+                return Ok(n);
+            }
             if let Some(n) = n.as_i64()
-                && let Ok(n) = n.try_into() {
-                    return Ok(n);
-                }
+                && let Ok(n) = n.try_into()
+            {
+                return Ok(n);
+            }
             if let Some(n) = n.as_f64() {
                 let n = n as i64;
                 if let Ok(n) = n.try_into() {
@@ -274,14 +276,15 @@ impl Scraper for RedditScraper {
     ) -> ScrapeCore<'a> {
         let mut tags = vec![];
         if let Some(ref subreddit) = input.shared.id.subsource
-            && let Some(config) = args.subreddits.get(subreddit) {
-                if config.flair_is_tag && !input.data.flair.contains(' ') {
-                    tags.push(Cow::Owned(input.data.flair.to_lowercase()));
-                }
-                if config.is_tag {
-                    tags.push(Cow::Borrowed(subreddit.as_str()));
-                }
+            && let Some(config) = args.subreddits.get(subreddit)
+        {
+            if config.flair_is_tag && !input.data.flair.contains(' ') {
+                tags.push(Cow::Owned(input.data.flair.to_lowercase()));
             }
+            if config.is_tag {
+                tags.push(Cow::Borrowed(subreddit.as_str()));
+            }
+        }
 
         // Trim any [tag] prefixes or suffixes
         let (title, _, _) = remove_tags(&input.raw_title);
