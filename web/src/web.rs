@@ -14,7 +14,7 @@ use axum::{
     response::{Html, IntoResponse, Redirect, Response},
     routing::{get, post},
 };
-use futures::{FutureExt, StreamExt, stream::FuturesUnordered};
+use futures::{StreamExt, stream::FuturesUnordered};
 use hyper::{HeaderMap, Method, StatusCode, header};
 use itertools::Itertools;
 use keepcalm::SharedMut;
@@ -311,9 +311,9 @@ fn start_cron(
     tokio::spawn(async move {
         let router = router.call(()).await.unwrap_infallible();
         loop {
-            let ready = cron
-                .write()
-                .tick(&resources.config.read().cron.jobs, Instant::now());
+            // TODO: Cloning to avoid the risk of deadlocks --
+            let jobs = resources.config.read().cron.jobs.clone();
+            let ready = cron.write().tick(&jobs, Instant::now());
 
             // Sleep if no tasks are available
             if ready.is_empty() {
@@ -331,7 +331,11 @@ fn start_cron(
                     let uri = match ready_uri.parse() {
                         Ok(uri) => uri,
                         Err(e) => {
-                            tracing::error!("Failed to parse URI: {} (error was {:?})", ready_uri, e);
+                            tracing::error!(
+                                "Failed to parse URI: {} (error was {:?})",
+                                ready_uri,
+                                e
+                            );
                             return;
                         }
                     };
@@ -341,13 +345,10 @@ fn start_cron(
                     *req.method_mut() = Method::POST;
                     *req.uri_mut() = uri;
                     (*req.extensions_mut()).insert(CronMarker {});
-                    let response = match std::panic::AssertUnwindSafe(router.call(req))
-                        .catch_unwind()
-                        .await
-                    {
+                    let response = match tokio::spawn(router.call(req)).await {
                         Ok(service_result) => service_result.unwrap_infallible(),
-                        Err(_) => {
-                            tracing::error!(ready_uri = %ready_uri, "Cron task handler panicked");
+                        Err(e) => {
+                            tracing::error!(ready_uri = %ready_uri, "Cron request task panicked: {e:?}");
                             Response::builder()
                                 .status(StatusCode::INTERNAL_SERVER_ERROR)
                                 .body(Body::from("Internal Server Error (handler panicked)"))
@@ -355,8 +356,11 @@ fn start_cron(
                         }
                     };
                     let status = response.status();
-                    tracing::info!("Cron task '{ready_uri}' ran with status {status} in {:.2}ms", now.elapsed().as_millis());
-    
+                    tracing::info!(
+                        "Cron task '{ready_uri}' ran with status {status} in {:.2}ms",
+                        now.elapsed().as_millis()
+                    );
+
                     // TODO: Do we need to read data() multiple times?
                     let body = axum::body::to_bytes(response.into_body(), 1_000_000).await;
                     let body = match body {
@@ -366,16 +370,18 @@ fn start_cron(
                             "(empty)".into()
                         }
                     };
-    
+
                     *history.write() = Some(CronHistoryEntry {
                         time: now,
                         duration: now.elapsed(),
                         status: status.as_u16(),
                         output: body.clone(),
                     });
+                    let history_age = resources.config.read().cron.history_age;
+                    let history_count = resources.config.read().cron.history_count;
                     cron_history.write().insert(
-                        resources.config.read().cron.history_age,
-                        resources.config.read().cron.history_count,
+                        history_age,
+                        history_count,
                         ready_uri,
                         now.elapsed(),
                         status.as_u16(),
