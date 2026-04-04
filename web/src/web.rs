@@ -14,7 +14,7 @@ use axum::{
     response::{Html, IntoResponse, Redirect, Response},
     routing::{get, post},
 };
-use futures::FutureExt;
+use futures::{FutureExt, StreamExt, stream::FuturesUnordered};
 use hyper::{HeaderMap, Method, StatusCode, header};
 use itertools::Itertools;
 use keepcalm::SharedMut;
@@ -309,7 +309,7 @@ fn start_cron(
     // Router doesn't require poll_ready
     let mut router = router.into_make_service();
     tokio::spawn(async move {
-        let mut router = router.call(()).await.unwrap_infallible();
+        let router = router.call(()).await.unwrap_infallible();
         loop {
             let ready = cron
                 .write()
@@ -321,61 +321,70 @@ fn start_cron(
                 continue;
             }
 
+            let mut futures = FuturesUnordered::new();
+
             for (ready_uri, history) in ready {
-                let uri = match ready_uri.parse() {
-                    Ok(uri) => uri,
-                    Err(e) => {
-                        tracing::error!("Failed to parse URI: {} (error was {:?})", ready_uri, e);
-                        continue;
-                    }
-                };
-                tracing::info!("Running cron task: POST '{}'...", ready_uri);
-                let now = Instant::now();
-                let mut req = Request::<Body>::default();
-                *req.method_mut() = Method::POST;
-                *req.uri_mut() = uri;
-                (*req.extensions_mut()).insert(CronMarker {});
-                let response = match std::panic::AssertUnwindSafe(router.call(req))
-                    .catch_unwind()
-                    .await
-                {
-                    Ok(service_result) => service_result.unwrap_infallible(),
-                    Err(_) => {
-                        tracing::error!(ready_uri = %ready_uri, "Cron task handler panicked");
-                        Response::builder()
-                            .status(StatusCode::INTERNAL_SERVER_ERROR)
-                            .body(Body::from("Internal Server Error (handler panicked)"))
-                            .unwrap()
-                    }
-                };
-                let status = response.status();
-                tracing::info!("Cron task '{}' ran with status {}", ready_uri, status);
-
-                // TODO: Do we need to read data() multiple times?
-                let body = axum::body::to_bytes(response.into_body(), 1_000_000).await;
-                let body = match body {
-                    Ok(b) => String::from_utf8_lossy(&b).into_owned(),
-                    x => {
-                        tracing::error!("Could not retrieve body from cron response: {:?}", x);
-                        "(empty)".into()
-                    }
-                };
-
-                *history.write() = Some(CronHistoryEntry {
-                    time: now,
-                    duration: now.elapsed(),
-                    status: status.as_u16(),
-                    output: body.clone(),
+                let resources = resources.clone();
+                let cron_history = cron_history.clone();
+                let mut router = router.clone();
+                let f = tokio::spawn(async move {
+                    let uri = match ready_uri.parse() {
+                        Ok(uri) => uri,
+                        Err(e) => {
+                            tracing::error!("Failed to parse URI: {} (error was {:?})", ready_uri, e);
+                            return;
+                        }
+                    };
+                    tracing::info!("Running cron task: POST '{}'...", ready_uri);
+                    let now = Instant::now();
+                    let mut req = Request::<Body>::default();
+                    *req.method_mut() = Method::POST;
+                    *req.uri_mut() = uri;
+                    (*req.extensions_mut()).insert(CronMarker {});
+                    let response = match std::panic::AssertUnwindSafe(router.call(req))
+                        .catch_unwind()
+                        .await
+                    {
+                        Ok(service_result) => service_result.unwrap_infallible(),
+                        Err(_) => {
+                            tracing::error!(ready_uri = %ready_uri, "Cron task handler panicked");
+                            Response::builder()
+                                .status(StatusCode::INTERNAL_SERVER_ERROR)
+                                .body(Body::from("Internal Server Error (handler panicked)"))
+                                .unwrap()
+                        }
+                    };
+                    let status = response.status();
+                    tracing::info!("Cron task '{ready_uri}' ran with status {status} in {:.2}ms", now.elapsed().as_millis());
+    
+                    // TODO: Do we need to read data() multiple times?
+                    let body = axum::body::to_bytes(response.into_body(), 1_000_000).await;
+                    let body = match body {
+                        Ok(b) => String::from_utf8_lossy(&b).into_owned(),
+                        x => {
+                            tracing::error!("Could not retrieve body from cron response: {:?}", x);
+                            "(empty)".into()
+                        }
+                    };
+    
+                    *history.write() = Some(CronHistoryEntry {
+                        time: now,
+                        duration: now.elapsed(),
+                        status: status.as_u16(),
+                        output: body.clone(),
+                    });
+                    cron_history.write().insert(
+                        resources.config.read().cron.history_age,
+                        resources.config.read().cron.history_count,
+                        ready_uri,
+                        now.elapsed(),
+                        status.as_u16(),
+                        body,
+                    );
                 });
-                cron_history.write().insert(
-                    resources.config.read().cron.history_age,
-                    resources.config.read().cron.history_count,
-                    ready_uri,
-                    now.elapsed(),
-                    status.as_u16(),
-                    body,
-                );
+                futures.push(f);
             }
+            while let Some(_) = futures.next().await {}
         }
     });
 }
