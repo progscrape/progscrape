@@ -18,7 +18,7 @@ serde_json = "1.0"
 keepcalm = { version = "0.4", features = ["serde"] }
 rusqlite = "0.31"
 base64 = "0.22"
-itertools = "0"
+itertools = "0.14.0"
 
 # Do not bump
 tantivy = "=0.19.2"
