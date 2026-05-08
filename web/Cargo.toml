@@ -31,8 +31,8 @@ grass = "0.13"
 hyper = "1"
 infer = "0.19"
 lazy_static = "1.4"
-markdown = "1.0.0-alpha.17"
-notify = "6"
+markdown = "1.0.0"
+notify = "8.2"
 num-format = "0.4.4"
 reqwest = { version = "0.13.2", default-features = false, features = [
     "charset",
@@ -43,7 +43,7 @@ reqwest = { version = "0.13.2", default-features = false, features = [
 ] }
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
 tera = "1.17.1"
-tokio = { version = "1.50.0", features = ["full"] }
+tokio = { version = "1.52.3", features = ["full"] }
 tower = "0.5"
 unwrap-infallible = "1"
 
