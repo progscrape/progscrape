@@ -8,7 +8,7 @@ use std::{
 use axum::{
     Extension, Json, Router,
     body::Body,
-    extract::{Host, OriginalUri, Path, Query, Request, State},
+    extract::{FromRequestParts, OriginalUri, Path, Query, Request, State},
     http::{HeaderName, HeaderValue},
     middleware::{self, Next},
     response::{Html, IntoResponse, Redirect, Response},
@@ -276,7 +276,7 @@ pub fn admin_routes<S: Clone + Send + Sync + 'static>(
         .route("/cron/refresh", post(admin_cron_refresh))
         .route("/cron/reindex", post(admin_cron_reindex))
         .route("/cron/validate", post(admin_cron_validate))
-        .route("/cron/scrape/:service", post(admin_cron_scrape))
+        .route("/cron/scrape/{service}", post(admin_cron_scrape))
         .route("/headers/", get(admin_headers))
         .route("/scrape/", get(admin_scrape))
         .route("/scrape/test", post(admin_scrape_test))
@@ -286,8 +286,8 @@ pub fn admin_routes<S: Clone + Send + Sync + 'static>(
             "/index/frontpage/scoretuner/",
             get(admin_index_frontpage_scoretuner),
         )
-        .route("/index/shard/:shard/", get(admin_status_shard))
-        .route("/index/story/:story/", get(admin_status_story))
+        .route("/index/shard/{shard}/", get(admin_status_shard))
+        .route("/index/story/{story}/", get(admin_status_story))
         .fallback(handle_404_admin)
         .with_state(AdminState {
             resources,
@@ -409,9 +409,9 @@ pub fn create_feeds<S: Clone + Send + Sync + 'static>(
         .route("/feed", get(root_feed_xml))
         .route("/blog", get(blog_posts))
         .route("/blog/", get(blog_posts))
-        .route("/blog/:date", get(blog_post))
-        .route("/blog/:date/", get(blog_post))
-        .route("/blog/:date/:title", get(blog_post))
+        .route("/blog/{date}", get(blog_post))
+        .route("/blog/{date}/", get(blog_post))
+        .route("/blog/{date}/{title}", get(blog_post))
         .with_state((index, resources.clone()))
         .route_layer(middleware::from_fn(request_trace))
         .route_layer(middleware::from_fn_with_state(
@@ -460,11 +460,11 @@ pub async fn start_server<P2: Into<std::path::PathBuf>>(
                 auth,
             ),
         )
-        .route("/static/:file", get(serve_static_files_immutable))
+        .route("/static/{file}", get(serve_static_files_immutable))
         .with_state(resources.clone())
         .route_layer(middleware::from_fn(ensure_slash))
         .route(
-            "/:file",
+            "/{file}",
             get(serve_static_files_well_known).with_state(resources.clone()),
         )
         .fallback(handle_404);
@@ -572,14 +572,13 @@ fn render_admin(
 
 async fn blog_posts(
     OriginalUri(original_uri): OriginalUri,
-    Host(host): Host,
+    host: HostParams,
     State((index, resources)): State<(Index<StoryIndex>, Resources)>,
 ) -> Result<impl IntoResponse, WebError> {
     // TODO: This should be middleware
     if original_uri.path() == "/blog" {
         return Err(WebError::WrongUrl("/blog/".to_string()));
     }
-    let host = HostParams::new(host);
     let posts = &*resources.blog_posts.read();
     let now = now(&index).await?;
     let top_tags = index.top_tags(20)?;
@@ -612,7 +611,7 @@ struct BlogPath {
 
 async fn blog_post(
     OriginalUri(original_uri): OriginalUri,
-    Host(host): Host,
+    host: HostParams,
     State((index, resources)): State<(Index<StoryIndex>, Resources)>,
     Path(path): Path<BlogPath>,
 ) -> Result<impl IntoResponse, WebError> {
@@ -623,7 +622,6 @@ async fn blog_post(
         .filter(|s| s.id == path.date)
         .cloned()
         .collect_vec();
-    let host = HostParams::new(host);
     if posts.is_empty() {
         return Err(WebError::NotFound);
     }
@@ -705,14 +703,32 @@ impl HostParams {
     }
 }
 
+impl<S: Send + Sync> FromRequestParts<S> for HostParams {
+    type Rejection = (StatusCode, &'static str);
+
+    fn from_request_parts(
+        parts: &mut axum::http::request::Parts,
+        _state: &S,
+    ) -> impl std::future::Future<Output = Result<Self, Self::Rejection>> + Send {
+        let raw = parts
+            .headers
+            .get(header::HOST)
+            .and_then(|v| v.to_str().ok())
+            .map(|s| s.to_owned());
+        std::future::ready(
+            raw.map(HostParams::new)
+                .ok_or((StatusCode::BAD_REQUEST, "Missing host header")),
+        )
+    }
+}
+
 async fn root(
     OriginalUri(original_uri): OriginalUri,
-    Host(host): Host,
+    host: HostParams,
     State((index, resources)): State<(Index<StoryIndex>, Resources)>,
     query: Query<HashMap<String, String>>,
 ) -> Result<impl IntoResponse, WebError> {
     let now = now(&index).await?;
-    let host = HostParams::new(host);
     let (search, query) = SearchParams::new(
         &index,
         query.get("search"),
@@ -757,11 +773,10 @@ async fn root(
 
 async fn story(
     OriginalUri(original_uri): OriginalUri,
-    Host(host): Host,
+    host: HostParams,
     State((index, resources)): State<(Index<StoryIndex>, Resources)>,
 ) -> Result<impl IntoResponse, WebError> {
     let now = now(&index).await?;
-    let host = HostParams::new(host);
     let mut search = original_uri
         .path_and_query()
         .map(|p| p.as_str())
@@ -882,11 +897,10 @@ async fn zeitgeist_json(
 }
 
 async fn root_feed_json(
-    Host(host): Host,
+    host: HostParams,
     State((index, _resources)): State<(Index<StoryIndex>, Resources)>,
     query: Query<HashMap<String, String>>,
 ) -> Result<impl IntoResponse, WebError> {
-    let host = HostParams::new(host);
     // Allow consumers to request a story count from feed.json
     let count = query
         .get("count")
@@ -920,12 +934,11 @@ async fn root_feed_json(
 }
 
 async fn root_feed_xml(
-    Host(host): Host,
+    host: HostParams,
     State((index, resources)): State<(Index<StoryIndex>, Resources)>,
     query: Query<HashMap<String, String>>,
 ) -> Result<impl IntoResponse, WebError> {
     let now = now(&index).await?;
-    let host = HostParams::new(host);
     let (_, query) = SearchParams::new(&index, query.get("search"), 0, 30)?;
     let stories = index.stories::<StoryRender>(&host, query, 0, 30).await?;
 
@@ -955,12 +968,11 @@ async fn root_feed_xml(
 }
 
 async fn root_feed_text(
-    Host(host): Host,
+    host: HostParams,
     State((index, resources)): State<(Index<StoryIndex>, Resources)>,
     query: Query<HashMap<String, String>>,
 ) -> Result<impl IntoResponse, WebError> {
     let now = now(&index).await?;
-    let host = HostParams::new(host);
     let (search, query) = SearchParams::new(&index, query.get("search"), 0, 100)?;
     let stories = index
         .stories::<StoryRender>(&host, query, search.offset, search.count)
@@ -1047,7 +1059,7 @@ async fn state_tracker(
 /// Return the current metrics in Prometheus-compatible format.
 async fn root_metrics_txt(
     headers_in: HeaderMap,
-    Host(host): Host,
+    host: HostParams,
     State((index, resources, metrics_auth_bearer_token)): State<(
         Index<StoryIndex>,
         Resources,
@@ -1073,7 +1085,6 @@ async fn root_metrics_txt(
             return Err(WebError::AuthError);
         }
     }
-    let host = HostParams::new(host);
     let stories = index
         .stories::<StoryRender>(&host, StoryQuery::FrontPage, 0, usize::MAX)
         .await?;
@@ -1454,7 +1465,7 @@ async fn admin_index_status(
 
 async fn admin_status_frontpage(
     Extension(user): Extension<CurrentUser>,
-    Host(host): Host,
+    host: HostParams,
     State(AdminState {
         index, resources, ..
     }): State<AdminState>,
@@ -1462,7 +1473,6 @@ async fn admin_status_frontpage(
 ) -> Result<impl IntoResponse, WebError> {
     let now = now(&index).await?;
     let sort = sort.get("sort").cloned().unwrap_or_default();
-    let host = HostParams::new(host);
     let stories = index
         .stories::<StoryRender>(&host, StoryQuery::FrontPage, 0, usize::MAX)
         .await?;

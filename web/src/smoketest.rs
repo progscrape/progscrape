@@ -3,7 +3,7 @@ mod test {
     use std::cmp::Ordering;
 
     use axum::{Router, http::HeaderValue, routing::IntoMakeService};
-    use hyper::{Method, header::CONTENT_TYPE};
+    use hyper::{Method, header::CONTENT_TYPE, header::HOST};
     use keepcalm::Shared;
     use progscrape_application::StoryIndex;
     use progscrape_scrapers::{StoryUrl, hacker_news::HackerNewsStory};
@@ -26,6 +26,8 @@ mod test {
         let mut req = axum::extract::Request::default();
         *req.method_mut() = Method::GET;
         *req.uri_mut() = uri;
+        req.headers_mut()
+            .insert(HOST, HeaderValue::from_static("localhost"));
         Ok(req)
     }
 

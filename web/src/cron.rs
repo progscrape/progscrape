@@ -5,7 +5,6 @@ use std::{
 };
 
 use keepcalm::{PoisonPolicy, SharedMut};
-use rand::Rng;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
@@ -242,7 +241,7 @@ impl Cron {
     fn jitter(&self, interval: (usize, CronInterval)) -> Duration {
         if let Some(jitter) = &self.jitter_fraction {
             // Perform jitter math in floating point
-            let fraction = rand::thread_rng().gen_range(jitter.clone());
+            let fraction = rand::random_range(jitter.clone());
             // For sanity, clamp fraction from EPSILON..2.0
             let fraction = fraction.clamp(f32::EPSILON, 2.0);
             interval.1.as_duration_f32(interval.0 as f32 * fraction)
