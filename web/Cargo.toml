@@ -8,31 +8,32 @@ repository = "https://github.com/progscrape/progscrape"
 version.workspace = true
 
 [dependencies]
-progscrape-scrapers.workspace = true
 progscrape-application.workspace = true
+progscrape-scrapers.workspace = true
 
-tracing = "0.1"
-thiserror = "1.0.38"
-serde = { version = "1.0", features = ["derive", "rc"] }
-serde_json = "1.0"
-serde_cbor = "0.11"
-lazy_static = "1.4"
-itertools = "0.14"
-unwrap-infallible = "1"
-keepcalm = { version = "0.4", features = ["serde"] }
-futures = "0.3"
-tera = "1.17.1"
+futures.workspace = true
+itertools.workspace = true
+keepcalm.workspace = true
+rand.workspace = true
+serde.workspace = true
+serde_cbor.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
 axum = { version = "0.8", features = ["ws"] }
-tower = "0.5"
-hyper = "1"
-tokio = { version = "1.50.0", features = ["full"] }
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-num-format = "0.4.4"
-sha2 = "0.11"
-infer = "0.19"
+bloom = "0.3"
+clap = { version = "4.1", features = ["derive"] }
+git-version = "0.3"
 grass = "0.13"
+hyper = "1"
+infer = "0.19"
+lazy_static = "1.4"
+markdown = "1.0.0-alpha.17"
 notify = "6"
-rand = "0.10.1"
+num-format = "0.4.4"
 reqwest = { version = "0.13.2", default-features = false, features = [
     "charset",
     "http2",
@@ -41,15 +42,16 @@ reqwest = { version = "0.13.2", default-features = false, features = [
     "system-proxy",
 ] }
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
-git-version = "0.3"
-clap = { version = "4.1", features = ["derive"] }
-markdown = "1.0.0-alpha.17"
-bloom = "0.3"
+tera = "1.17.1"
+tokio = { version = "1.50.0", features = ["full"] }
+tower = "0.5"
+unwrap-infallible = "1"
 
 [dev-dependencies]
-rstest = "0"
-tempfile = "3.3"
-progscrape-scrapers = { path = "../scrapers", features=["scrape_test"] }
+progscrape-scrapers = { path = "../scrapers", features = ["scrape_test"] }
+
+rstest.workspace = true
+tempfile.workspace = true
 
 [profile.release]
 lto = true

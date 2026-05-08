@@ -8,25 +8,28 @@ repository = "https://github.com/progscrape/progscrape"
 version.workspace = true
 
 [dependencies]
+base64.workspace = true
+itertools.workspace = true
+keepcalm.workspace = true
 progscrape-scrapers.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
 
-tracing = "0.1"
-thiserror = "1.0.38"
-serde = { version = "1.0", features = ["derive", "rc"] }
-serde_rusqlite = "0.42.0"
-serde_json = "1.0"
-keepcalm = { version = "0.4", features = ["serde"] }
 rusqlite = "0.39.0"
-base64 = "0.22"
-itertools = "0.14.0"
+serde_rusqlite = "0.42.0"
 
 # Do not bump
+console = { version = "0.16", features = ["std"] } # fixes a transitive dep issue
+rust-bert = { version = "=0.23.0", features = ["download-libtorch"] }
 tantivy = "=0.19.2"
-rust-bert = { version="=0.23.0", features = ["download-libtorch"] }
-console = { version="0.16", features = ["std"] } # fixes a transitive dep issue
 
 [dev-dependencies]
-rstest = "0"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-progscrape-scrapers = { path = "../scrapers", features=["scrape_test"] }
-tempfile = "3.3"
+# Workspace
+rstest.workspace = true
+tempfile.workspace = true
+tracing-subscriber.workspace = true
+
+# External
+progscrape-scrapers = { path = "../scrapers", features = ["scrape_test"] }

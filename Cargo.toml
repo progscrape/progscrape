@@ -10,6 +10,27 @@ members = [
 version = "0.0.3"
 
 [workspace.dependencies]
+# Workspace members
 progscrape = { path = "web", version = "0.0.3" }
 progscrape-application = { path = "application", version = "0.0.3" }
 progscrape-scrapers = { path = "scrapers", version = "0.0.3" }
+
+# Crates.io
+base64 = "0.22"
+chrono = { version = "0.4.44", features = ["serde"] }
+chrono-tz = "0.10.4"
+futures = "0.3"
+itertools = "0.14"
+keepcalm = { version = "0.4", features = ["serde"] }
+rand = "0.10.1"
+regex = "1.7"
+rstest = "0.26"
+serde = { version = "1.0", features = ["derive", "rc"] }
+serde_cbor = "0.11"
+serde_json = "1.0"
+sha2 = "0.11"
+tempfile = "3.3"
+thiserror = "1.0"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+url = "2.3"
