@@ -1,25 +1,31 @@
-use lazy_static::lazy_static;
+use std::sync::OnceLock;
 
 use axum::{body::Bytes, http::HeaderValue, response::IntoResponse};
 use hyper::{HeaderMap, StatusCode, header::*};
 
 use crate::{static_files::StaticFileRegistry, web::WebError};
 
-lazy_static! {
-    /// Immutable caching header, for files that never, ever, ever change.
-    pub static ref IMMUTABLE_CACHE_HEADER: HeaderValue = "public, max-age=31536000, immutable"
-        .parse()
-        .expect("Failed to parse header");
+fn immutable_cache_header() -> &'static HeaderValue {
+    static CELL: OnceLock<HeaderValue> = OnceLock::new();
+    CELL.get_or_init(|| {
+        "public, max-age=31536000, immutable"
+            .parse()
+            .expect("Failed to parse header")
+    })
+}
 
-        /// Immutable caching header for files that are aggressively cache, but may change (rarely).
-    pub static ref IMMUTABLE_CACHE_WELL_KNOWN_HEADER: HeaderValue =
+fn immutable_cache_well_known_header() -> &'static HeaderValue {
+    static CELL: OnceLock<HeaderValue> = OnceLock::new();
+    CELL.get_or_init(|| {
         "public, max-age=86400, immutable"
             .parse()
-            .expect("Failed to parse header");
+            .expect("Failed to parse header")
+    })
+}
 
-            /// Our server brag header.
-    pub static ref SERVER_HEADER: HeaderValue =
-        "progscrape".parse().expect("Failed to parse header");
+fn server_header() -> &'static HeaderValue {
+    static CELL: OnceLock<HeaderValue> = OnceLock::new();
+    CELL.get_or_init(|| "progscrape".parse().expect("Failed to parse header"))
 }
 
 #[allow(clippy::declare_interior_mutable_const)]
@@ -48,10 +54,10 @@ pub fn immutable(
 ) -> Result<impl IntoResponse + use<>, WebError> {
     let mut headers = HeaderMap::new();
     headers.append(ETAG, key.parse()?);
-    headers.append(SERVER, SERVER_HEADER.clone());
+    headers.append(SERVER, server_header().clone());
 
     if let Some((bytes, mime)) = static_files.get_bytes_from_key(&key) {
-        headers.append(CACHE_CONTROL, IMMUTABLE_CACHE_HEADER.clone());
+        headers.append(CACHE_CONTROL, immutable_cache_header().clone());
         headers.append(CONTENT_LENGTH, bytes.len().into());
         headers.append(CONTENT_TYPE, mime.parse()?);
         if let Some(etag) = headers_in.get(IF_NONE_MATCH)
@@ -78,13 +84,13 @@ pub fn well_known(
     static_files: &StaticFileRegistry,
 ) -> Result<impl IntoResponse + use<>, WebError> {
     let mut headers = HeaderMap::new();
-    headers.append(SERVER, SERVER_HEADER.clone());
+    headers.append(SERVER, server_header().clone());
 
     if let Some(key) = static_files.lookup_key(&file) {
         headers.append(ETAG, key.parse()?);
 
         if let Some((bytes, mime)) = static_files.get_bytes_from_key(key) {
-            headers.append(CACHE_CONTROL, IMMUTABLE_CACHE_WELL_KNOWN_HEADER.clone());
+            headers.append(CACHE_CONTROL, immutable_cache_well_known_header().clone());
             headers.append(CONTENT_LENGTH, bytes.len().into());
             headers.append(CONTENT_TYPE, mime.parse()?);
             if let Some(etag) = headers_in.get(IF_NONE_MATCH)

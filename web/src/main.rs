@@ -70,6 +70,12 @@ pub enum Command {
         #[arg(long, value_name = "DIR", value_hint = clap::ValueHint::DirPath, help = "Root path")]
         root: Option<PathBuf>,
 
+        #[arg(long, help = "Watch for resource changes")]
+        watch: bool,
+
+        #[arg(long, value_name = "CONFIG", conflicts_with = "watch", value_hint = clap::ValueHint::FilePath, help = "Config file override path")]
+        config: Option<PathBuf>,
+
         #[arg(long, value_name = "ADDRESS", help = "Listen port")]
         listen_port: Option<String>,
 
@@ -182,6 +188,8 @@ async fn go() -> Result<(), WebError> {
         Command::Serve {
             root,
             persist_path,
+            config,
+            watch,
             auth_header,
             fixed_auth_value,
             metrics_auth_bearer_token,
@@ -193,7 +201,13 @@ async fn go() -> Result<(), WebError> {
 
             let resource_path = root_path.join("resource");
 
-            let resources = Resources::start_watcher(resource_path).await?;
+            let resources = if watch {
+                Resources::start_watcher(resource_path).await?
+            } else if let Some(config) = config {
+                Resources::get_resources_override(resource_path, config)?
+            } else {
+                Resources::get_resources(resource_path)?
+            };
 
             let persist_path = match persist_path.unwrap_or("target/index".into()).canonicalize() {
                 Ok(path) => path,

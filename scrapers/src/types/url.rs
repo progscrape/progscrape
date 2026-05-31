@@ -2,14 +2,16 @@ use std::{
     collections::hash_map::DefaultHasher,
     fmt::Display,
     hash::{Hash, Hasher},
+    sync::OnceLock,
 };
 
 use serde::{Deserialize, Serialize};
 use url::Url;
 use urlnorm::UrlNormalizer;
 
-lazy_static::lazy_static! {
-    static ref URL_NORMALIZER: UrlNormalizer = UrlNormalizer::default();
+fn url_normalizer() -> &'static UrlNormalizer {
+    static CELL: OnceLock<UrlNormalizer> = OnceLock::new();
+    CELL.get_or_init(UrlNormalizer::default)
 }
 
 /// Story-specific URL that caches the normalization information and other important parts of the URL.
@@ -67,19 +69,20 @@ impl Display for StoryUrl {
 
 impl StoryUrl {
     pub fn parse<S: AsRef<str>>(s: S) -> Option<Self> {
-        if let Ok(url) = Url::parse(s.as_ref())
-            && let Some(host) = URL_NORMALIZER.normalize_host(&url)
-        {
-            let host = host.to_owned();
-            let norm_str = StoryUrlNorm {
-                norm: URL_NORMALIZER.compute_normalization_string(&url),
-            };
-            let url = url.into();
-            return Some(Self {
-                url,
-                host,
-                norm_str,
-            });
+        if let Ok(url) = Url::parse(s.as_ref()) {
+            let n = url_normalizer();
+            if let Some(host) = n.normalize_host(&url) {
+                let host = host.to_owned();
+                let norm_str = StoryUrlNorm {
+                    norm: n.compute_normalization_string(&url),
+                };
+                let url = url.into();
+                return Some(Self {
+                    url,
+                    host,
+                    norm_str,
+                });
+            }
         }
         None
     }

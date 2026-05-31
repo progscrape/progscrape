@@ -5,6 +5,7 @@ use progscrape_scrapers::Scrapers;
 use progscrape_scrapers::StoryDate;
 use progscrape_scrapers::StoryUrl;
 use serde::Serialize;
+use serde_json::Value;
 use std::borrow::Borrow;
 use std::fs::File;
 use std::io::BufReader;
@@ -196,13 +197,36 @@ fn create_admin_css(resource_path: &Path) -> Result<String, WebError> {
     Ok(out)
 }
 
-fn create_config(resource_path: &Path) -> Result<Config, WebError> {
-    let reader = BufReader::new(File::open(resource_path.join("config/config.json"))?);
-    Ok(serde_json::from_reader(reader)?)
+fn merge_json(base: &mut Value, patch: Value) {
+    match (base, patch) {
+        (Value::Object(base_map), Value::Object(patch_map)) => {
+            for (key, patch_value) in patch_map {
+                match base_map.get_mut(&key) {
+                    Some(base_value) => merge_json(base_value, patch_value),
+                    None => {
+                        base_map.insert(key, patch_value);
+                    }
+                }
+            }
+        }
+        (base, patch) => *base = patch,
+    }
 }
 
-fn generate<T: AsRef<Path>>(resource_path: T) -> Result<ResourceHolder, WebError> {
-    let resource_path = resource_path.as_ref();
+fn create_config(resource_path: &Path, config: Option<&Path>) -> Result<Config, WebError> {
+    let reader = BufReader::new(File::open(resource_path.join("config/config.json"))?);
+    let mut value: Value = serde_json::from_reader(reader)?;
+
+    if let Some(config_path) = config {
+        let reader = BufReader::new(File::open(config_path)?);
+        let patch: Value = serde_json::from_reader(reader)?;
+        merge_json(&mut value, patch);
+    }
+
+    Ok(serde_json::from_value(value)?)
+}
+
+fn generate(resource_path: &Path, config: Option<&Path>) -> Result<ResourceHolder, WebError> {
     if !resource_path.exists() {
         tracing::error!(
             "Root resources path does not exist: {} (cwd was {})",
@@ -220,7 +244,7 @@ fn generate<T: AsRef<Path>>(resource_path: T) -> Result<ResourceHolder, WebError
     let static_files = create_static_files(resource_path, css, admin_css)?;
     let static_files_root = create_static_files_root(resource_path)?;
     let templates = create_templates(resource_path, static_files.clone())?;
-    let config = create_config(resource_path)?;
+    let config = create_config(resource_path, config)?;
     let story_evaluator = StoryEvaluator::new(&config.tagger, &config.score, &config.scrape);
     let scrapers = Scrapers::new(&config.scrape);
     let blog_posts = blog_posts(resource_path)?;
@@ -240,13 +264,27 @@ fn generate<T: AsRef<Path>>(resource_path: T) -> Result<ResourceHolder, WebError
 impl Resources {
     /// Returns a `Resources` object that doesn't watch a file path.
     pub fn get_resources<T: AsRef<Path>>(resource_path: T) -> Result<Resources, WebError> {
-        Ok(Resources::new(SharedMut::new(generate(resource_path)?)))
+        Ok(Resources::new(SharedMut::new(generate(
+            resource_path.as_ref(),
+            None,
+        )?)))
+    }
+
+    /// Returns a `Resources` object that doesn't watch a file path.
+    pub fn get_resources_override<T: AsRef<Path>, U: AsRef<Path>>(
+        resource_path: T,
+        config: U,
+    ) -> Result<Resources, WebError> {
+        Ok(Resources::new(SharedMut::new(generate(
+            resource_path.as_ref(),
+            Some(config.as_ref()),
+        )?)))
     }
 
     /// Starts a process to watch all the templates/static data and regenerates everything if something changes.
     pub async fn start_watcher<T: AsRef<Path>>(resource_path: T) -> Result<Resources, WebError> {
         let resource_path = resource_path.as_ref();
-        let r = SharedMut::new(generate(resource_path)?);
+        let r = SharedMut::new(generate(resource_path.as_ref(), None)?);
         let (tx_dirty, mut rx_dirty) = watch::channel(false);
         let mut watcher = notify::recommended_watcher(move |res| {
             if let Ok(event) = res {
@@ -270,7 +308,9 @@ impl Resources {
                     tracing::debug!("Debouncing extra event within timeout period");
                 }
                 tracing::info!("Regenerating...");
-                let res = tokio::task::spawn_blocking(move || generate(resource_path)).await;
+                let res =
+                    tokio::task::spawn_blocking(move || generate(resource_path.as_ref(), None))
+                        .await;
                 match res {
                     Ok(Ok(v)) => *r_set.write() = v,
                     Ok(Err(e)) => tracing::error!("Failed to regenerate data: {:?}", e),
