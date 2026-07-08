@@ -72,7 +72,13 @@ RUN /usr/local/bin/progscrape-web help
 
 FROM rust:${RUST_VERSION}
 ARG TARGETPLATFORM
+# Debugger for the heartbeat watchdog's native backtraces on a wedged process
+# (needs CAP_SYS_PTRACE on the container too). gdb (~30MB) enables `rust-gdb`;
+# swap for `lldb` (~300MB) if you want `rust-lldb`'s richer output.
+RUN apt-get update && apt-get install -y --no-install-recommends gdb \
+    && rm -rf /var/lib/apt/lists/*
 COPY --from=tester /usr/local/bin/progscrape-web /usr/local/bin/
 COPY --from=builder /build/resource/ /var/progscrape/resource/
+ENV RUST_BACKTRACE=1
 EXPOSE 3000
 VOLUME /var/progscrape/data

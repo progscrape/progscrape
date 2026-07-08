@@ -2506,6 +2506,7 @@ dependencies = [
  "infer",
  "itertools 0.14.0",
  "keepcalm",
+ "libc",
  "markdown",
  "notify",
  "num-format",

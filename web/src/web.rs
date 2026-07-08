@@ -277,7 +277,6 @@ pub fn admin_routes<S: Clone + Send + Sync + 'static>(
         .route("/cron/reindex", post(admin_cron_reindex))
         .route("/cron/validate", post(admin_cron_validate))
         .route("/cron/scrape/{service}", post(admin_cron_scrape))
-        .route("/tasks/", get(admin_tasks))
         .route("/proxy/{target}/{*path}", any(admin_proxy))
         .route("/headers/", get(admin_headers))
         .route("/scrape/", get(admin_scrape))
@@ -500,7 +499,7 @@ pub async fn start_server<P2: Into<std::path::PathBuf>>(
         app.clone(),
     );
 
-    start_task_monitor(resources.config.read().task_dump_interval_seconds);
+    crate::watchdog::start();
 
     let tcp = TcpListener::bind(&address).await?;
     axum::serve(tcp, app.into_make_service()).await?;
@@ -1123,12 +1122,10 @@ async fn root_metrics_txt(
     let now = now(&index).await?;
     let top_tags = index.top_tags(usize::MAX)?;
     let storage = index.story_count().await?;
-    // Cached only -- never dump on the scrape path.
-    let tasks = TaskMetrics::current();
     let metrics = render(
         &resources,
         "metrics.txt",
-        context!(source_count, storage, top_tags, now, tasks),
+        context!(source_count, storage, top_tags, now),
     )?;
 
     Ok((
@@ -1391,162 +1388,6 @@ async fn admin_cron_scrape(
         &resources,
         "admin/cron_scrape_run.html",
         context!(source, scrapes: HashMap<String, ScraperHttpResult>, summary, fetch_ms, process_ms, insert_ms,),
-    )
-}
-
-#[derive(Clone, Serialize)]
-struct TaskDumpEntry {
-    id: String,
-    /// Backtrace showing where the task is parked.
-    trace: String,
-}
-
-// Handle::dump() only exists on Linux x86/x86_64/aarch64 + tokio_unstable + taskdump.
-const TASKDUMP_SUPPORTED: bool = cfg!(all(
-    tokio_unstable,
-    target_os = "linux",
-    any(target_arch = "aarch64", target_arch = "x86", target_arch = "x86_64"),
-));
-
-#[cfg(all(
-    tokio_unstable,
-    target_os = "linux",
-    any(target_arch = "aarch64", target_arch = "x86", target_arch = "x86_64"),
-))]
-async fn dump_tasks() -> Vec<TaskDumpEntry> {
-    let handle = tokio::runtime::Handle::current();
-    let dump = handle.dump().await;
-    dump.tasks()
-        .iter()
-        .map(|task| TaskDumpEntry {
-            id: task.id().to_string(),
-            trace: task.trace().to_string(),
-        })
-        .collect()
-}
-
-#[cfg(not(all(
-    tokio_unstable,
-    target_os = "linux",
-    any(target_arch = "aarch64", target_arch = "x86", target_arch = "x86_64"),
-)))]
-async fn dump_tasks() -> Vec<TaskDumpEntry> {
-    Vec::new()
-}
-
-#[derive(Clone)]
-struct TaskDumpSnapshot {
-    tasks: Vec<TaskDumpEntry>,
-    captured_at: Instant,
-    duration: Duration,
-}
-
-/// Latest task dump.
-static TASK_SNAPSHOT: OnceLock<SharedMut<Option<TaskDumpSnapshot>>> = OnceLock::new();
-
-fn task_snapshot() -> &'static SharedMut<Option<TaskDumpSnapshot>> {
-    TASK_SNAPSHOT.get_or_init(|| SharedMut::new(None))
-}
-
-// Serialize dumps: concurrent Handle::dump() can deadlock the runtime.
-static DUMP_LOCK: OnceLock<tokio::sync::Mutex<()>> = OnceLock::new();
-
-// dump() pauses the runtime -- only call on-demand, never on a hot path.
-async fn refresh_task_dump() {
-    if !TASKDUMP_SUPPORTED {
-        return;
-    }
-    let _guard = DUMP_LOCK
-        .get_or_init(|| tokio::sync::Mutex::new(()))
-        .lock()
-        .await;
-    let start = Instant::now();
-    let tasks = dump_tasks().await;
-    *task_snapshot().write() = Some(TaskDumpSnapshot {
-        tasks,
-        captured_at: Instant::now(),
-        duration: start.elapsed(),
-    });
-}
-
-// Opt-in periodic dump, off by default (dump() pauses the runtime).
-fn start_task_monitor(interval_seconds: u64) {
-    if !TASKDUMP_SUPPORTED || interval_seconds == 0 {
-        return;
-    }
-    tokio::spawn(async move {
-        let interval = Duration::from_secs(interval_seconds);
-        loop {
-            refresh_task_dump().await;
-            tokio::time::sleep(interval).await;
-        }
-    });
-}
-
-// Task metrics for /metrics, from the cached dump.
-#[derive(Serialize)]
-struct TaskMetrics {
-    total: usize,
-    /// Backtraces mentioning hyper.
-    hyper: usize,
-    supported: u8,
-    /// Grows without bound if a task is wedged.
-    age_seconds: f64,
-    duration_seconds: f64,
-}
-
-impl TaskMetrics {
-    fn current() -> Self {
-        let supported = TASKDUMP_SUPPORTED as u8;
-        match &*task_snapshot().read() {
-            Some(s) => TaskMetrics {
-                total: s.tasks.len(),
-                hyper: s.tasks.iter().filter(|t| t.trace.contains("hyper")).count(),
-                supported,
-                age_seconds: s.captured_at.elapsed().as_secs_f64(),
-                duration_seconds: s.duration.as_secs_f64(),
-            },
-            None => TaskMetrics {
-                total: 0,
-                hyper: 0,
-                supported,
-                age_seconds: 0.0,
-                duration_seconds: 0.0,
-            },
-        }
-    }
-}
-
-// Captures a fresh dump on load (on-demand, serialized).
-async fn admin_tasks(
-    Extension(user): Extension<CurrentUser>,
-    State(AdminState { resources, .. }): State<AdminState>,
-) -> Result<impl IntoResponse, WebError> {
-    let supported = TASKDUMP_SUPPORTED;
-    refresh_task_dump().await;
-    let (tasks, task_count, dump_ms, age_seconds, has_snapshot) = match &*task_snapshot().read() {
-        Some(s) => (
-            s.tasks.clone(),
-            s.tasks.len(),
-            s.duration.as_millis(),
-            s.captured_at.elapsed().as_secs(),
-            true,
-        ),
-        None => (Vec::new(), 0, 0u128, 0u64, false),
-    };
-    render_admin(
-        Some(&user),
-        &resources,
-        "admin/tasks.html",
-        context!(
-            user,
-            tasks,
-            task_count,
-            dump_ms,
-            supported,
-            age_seconds,
-            has_snapshot
-        ),
     )
 }
 

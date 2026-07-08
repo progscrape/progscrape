@@ -1,6 +1,5 @@
 {
     "proxy": {},
-    "task_dump_interval_seconds": 0,
     "index": {
         "max_count": 300,
         "hot_set": {

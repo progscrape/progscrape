@@ -14,7 +14,4 @@ pub struct Config {
     /// `/admin/proxy/<name>/<path>` -> upstream base URL, e.g. { "scrape-vm": "http://scrape-vm:8080" }.
     #[serde(default)]
     pub proxy: HashMap<String, String>,
-    /// Background task-dump interval (secs); 0 = off (dump() pauses the runtime).
-    #[serde(default)]
-    pub task_dump_interval_seconds: u64,
 }
