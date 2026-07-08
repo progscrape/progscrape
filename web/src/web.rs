@@ -391,12 +391,12 @@ fn start_cron(
                         }
                     };
 
-                    *history.write() = Some(CronHistoryEntry {
+                    history.set(Some(CronHistoryEntry {
                         time: now,
                         duration: now.elapsed(),
                         status: status.as_u16(),
                         output: body.clone(),
-                    });
+                    }));
                     let history_age = resources.config.read().cron.history_age;
                     let history_count = resources.config.read().cron.history_count;
                     cron_history.write().insert(
@@ -453,9 +453,9 @@ pub async fn start_server<P2: Into<std::path::PathBuf>>(
         // This should be configurable -- but we don't want to pin these stories forever
         if let Some(expiry) = blog.date.checked_add_days(2) {
             if expiry > now {
-                *index.pinned_story.write() = Some(blog.url.clone());
+                index.pinned_story.set(Some(blog.url.clone()));
             } else {
-                *index.pinned_story.write() = None;
+                index.pinned_story.set(None);
             }
         }
     }
@@ -1231,9 +1231,9 @@ async fn admin_cron_refresh(
         // This should be configurable -- but we don't want to pin these stories forever
         if let Some(expiry) = blog.date.checked_add_days(2) {
             if expiry > now {
-                *index.pinned_story.write() = Some(blog.url.clone());
+                index.pinned_story.set(Some(blog.url.clone()));
             } else {
-                *index.pinned_story.write() = None;
+                index.pinned_story.set(None);
             }
         }
     }

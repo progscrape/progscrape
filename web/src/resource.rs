@@ -48,16 +48,19 @@ pub struct Resources {
 }
 
 impl Resources {
-    fn new(r: SharedMut<ResourceHolder>) -> Self {
+    /// Build from freshly-generated values. Each field is its own independent,
+    /// `Arc`-backed `Shared` (lock-free reads, cheap clones, never in the
+    /// deadlock graph) rather than a projection of one shared lock.
+    fn from_holder(h: ResourceHolder) -> Self {
         Resources {
-            templates: r.shared_copy().project_fn(|x| &x.templates),
-            static_files: r.shared_copy().project_fn(|x| &x.static_files),
-            static_files_root: r.shared_copy().project_fn(|x| &x.static_files_root),
-            blog_posts: r.shared_copy().project_fn(|x| &x.blog_posts),
-            config: r.shared_copy().project_fn(|x| &x.config),
-            story_evaluator: r.shared_copy().project_fn(|x| &x.story_evaluator),
-            scrapers: r.shared_copy().project_fn(|x| &x.scrapers),
-            rate_limits: r.project_fn(|x| &x.rate_limits, |x| &mut x.rate_limits),
+            templates: Shared::new(h.templates),
+            static_files: Shared::new(h.static_files),
+            static_files_root: Shared::new(h.static_files_root),
+            blog_posts: Shared::new(h.blog_posts),
+            config: Shared::new(h.config),
+            story_evaluator: Shared::new(h.story_evaluator),
+            scrapers: Shared::new(h.scrapers),
+            rate_limits: SharedMut::new(h.rate_limits),
         }
     }
 }
@@ -271,10 +274,7 @@ fn generate(resource_path: &Path, config: Option<&Path>) -> Result<ResourceHolde
 impl Resources {
     /// Returns a `Resources` object that doesn't watch a file path.
     pub fn get_resources<T: AsRef<Path>>(resource_path: T) -> Result<Resources, WebError> {
-        Ok(Resources::new(SharedMut::new(generate(
-            resource_path.as_ref(),
-            None,
-        )?)))
+        Ok(Resources::from_holder(generate(resource_path.as_ref(), None)?))
     }
 
     /// Returns a `Resources` object that doesn't watch a file path.
@@ -282,16 +282,36 @@ impl Resources {
         resource_path: T,
         config: U,
     ) -> Result<Resources, WebError> {
-        Ok(Resources::new(SharedMut::new(generate(
+        Ok(Resources::from_holder(generate(
             resource_path.as_ref(),
             Some(config.as_ref()),
-        )?)))
+        )?))
     }
 
     /// Starts a process to watch all the templates/static data and regenerates everything if something changes.
     pub async fn start_watcher<T: AsRef<Path>>(resource_path: T) -> Result<Resources, WebError> {
         let resource_path = resource_path.as_ref();
-        let r = SharedMut::new(generate(resource_path.as_ref(), None)?);
+        let h = generate(resource_path, None)?;
+        // Per-field shared-mut handles the watcher hot-swaps on change; handlers
+        // see them as independent immutable `Shared` views (`shared_copy`).
+        let templates = SharedMut::new(h.templates);
+        let static_files = SharedMut::new(h.static_files);
+        let static_files_root = SharedMut::new(h.static_files_root);
+        let blog_posts = SharedMut::new(h.blog_posts);
+        let config = SharedMut::new(h.config);
+        let story_evaluator = SharedMut::new(h.story_evaluator);
+        let scrapers = SharedMut::new(h.scrapers);
+        let resources = Resources {
+            templates: templates.shared_copy(),
+            static_files: static_files.shared_copy(),
+            static_files_root: static_files_root.shared_copy(),
+            blog_posts: blog_posts.shared_copy(),
+            config: config.shared_copy(),
+            story_evaluator: story_evaluator.shared_copy(),
+            scrapers: scrapers.shared_copy(),
+            rate_limits: SharedMut::new(h.rate_limits),
+        };
+
         let (tx_dirty, mut rx_dirty) = watch::channel(false);
         let mut watcher = notify::recommended_watcher(move |res| {
             if let Ok(event) = res {
@@ -303,7 +323,6 @@ impl Resources {
         watcher.watch(resource_path, RecursiveMode::Recursive)?;
 
         let resource_path = resource_path.to_owned();
-        let r_set = r.clone();
         tokio::spawn(async move {
             while rx_dirty.changed().await.is_ok() {
                 let resource_path = resource_path.clone();
@@ -319,7 +338,16 @@ impl Resources {
                     tokio::task::spawn_blocking(move || generate(resource_path.as_ref(), None))
                         .await;
                 match res {
-                    Ok(Ok(v)) => *r_set.write() = v,
+                    Ok(Ok(v)) => {
+                        templates.set(v.templates);
+                        static_files.set(v.static_files);
+                        static_files_root.set(v.static_files_root);
+                        blog_posts.set(v.blog_posts);
+                        config.set(v.config);
+                        story_evaluator.set(v.story_evaluator);
+                        scrapers.set(v.scrapers);
+                        // rate_limits keeps its runtime state; not reloaded.
+                    }
                     Ok(Err(e)) => tracing::error!("Failed to regenerate data: {:?}", e),
                     _ => {}
                 };
@@ -328,6 +356,6 @@ impl Resources {
             // Keep the watcher alive in this task
             drop(watcher);
         });
-        Ok(Resources::new(r))
+        Ok(resources)
     }
 }

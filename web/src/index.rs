@@ -1,4 +1,4 @@
-use std::{collections::HashMap, path::Path, sync::Arc, time::Instant};
+use std::{collections::HashMap, path::Path, time::Instant};
 
 use crate::{
     resource::BlogPost,
@@ -16,7 +16,7 @@ use serde::{Deserialize, Serialize};
 use tracing::Level;
 
 /// The resident hot set.
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct HotSet {
     stories: Vec<Story<Shard>>,
     top_tags: Vec<(String, usize)>,
@@ -39,7 +39,7 @@ pub struct HotSetConfig {
 pub struct Index<S: StorageWriter> {
     pub pinned_story: SharedMut<Option<StoryUrl>>,
     storage: SharedMut<S>,
-    hot_set: SharedMut<Arc<HotSet>>,
+    hot_set: SharedMut<HotSet>,
     eval: Shared<StoryEvaluator>,
     blog: Shared<Vec<BlogPost>>,
     config: Shared<IndexConfig>,
@@ -94,7 +94,7 @@ impl Index<StoryIndex> {
         let index = StoryIndex::new(PersistLocation::Path(path.as_ref().to_owned()))?;
         Ok(Index {
             storage: SharedMut::new(index),
-            hot_set: SharedMut::new(Arc::new(HotSet::default())),
+            hot_set: SharedMut::new_rcu(HotSet::default()),
             pinned_story: SharedMut::new(None),
             blog,
             eval,
@@ -180,10 +180,7 @@ impl Index<StoryIndex> {
         // for pinned in self.pinned_story.read().iter() {
         //     v.append(&mut self.fetch(StoryQuery::UrlSearch(pinned.clone()), 1).await?);
         // }
-        // compute_hot_set reads eval: finish (and drop eval) before taking
-        // hot_set.write(), so the two locks are never co-held.
-        let hot_set = Arc::new(self.compute_hot_set(v, now));
-        *self.hot_set.write() = hot_set;
+        self.hot_set.set(self.compute_hot_set(v, now));
         Ok(())
     }
 
@@ -208,8 +205,7 @@ impl Index<StoryIndex> {
         &self,
         f: impl FnOnce(&Vec<Story<Shard>>) -> Result<T, PersistError>,
     ) -> Result<T, PersistError> {
-        let hot_set = self.hot_set.read().clone();
-        f(&hot_set.stories)
+        f(&self.hot_set.read().stories)
     }
 
     /// Re-index and refresh the hot set using the most current configuration.
@@ -296,8 +292,7 @@ impl Index<StoryIndex> {
         count: usize,
     ) -> Result<Vec<S>, PersistError> {
         let stories = if let StoryQuery::FrontPage = query {
-            let hot_set = self.hot_set.read().clone();
-            self.filter_and_render(host, hot_set.stories.iter(), offset, count)
+            self.filter_and_render(host, self.hot_set.read().stories.iter(), offset, count)
         } else {
             let start = Instant::now();
             let (query_log, query_text) = if tracing::enabled!(Level::INFO) {
@@ -322,7 +317,7 @@ impl Index<StoryIndex> {
     }
 
     pub fn top_tags(&self, limit: usize) -> Result<Vec<(String, usize)>, PersistError> {
-        let hot_set = self.hot_set.read().clone();
+        let hot_set = self.hot_set.read();
         let eval = self.eval.read();
         Ok(hot_set
             .top_tags
