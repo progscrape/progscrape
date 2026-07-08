@@ -46,6 +46,13 @@ tokio = { version = "1.52.3", features = ["full"] }
 tower = "0.5"
 unwrap-infallible = "1"
 
+# The `taskdump` feature powers the /admin/tasks/ page (Handle::dump()). Tokio
+# only supports it on Linux x86/x86_64/aarch64 (and `compile_error!`s elsewhere),
+# so it's enabled per-target here rather than globally. It also needs the
+# `--cfg tokio_unstable` flag set in .cargo/config.toml.
+[target.'cfg(all(target_os = "linux", any(target_arch = "aarch64", target_arch = "x86", target_arch = "x86_64")))'.dependencies]
+tokio = { version = "1.52.3", features = ["taskdump"] }
+
 [dev-dependencies]
 progscrape-scrapers = { path = "../scrapers", features = ["scrape_test"] }
 

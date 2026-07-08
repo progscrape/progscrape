@@ -277,6 +277,7 @@ pub fn admin_routes<S: Clone + Send + Sync + 'static>(
         .route("/cron/reindex", post(admin_cron_reindex))
         .route("/cron/validate", post(admin_cron_validate))
         .route("/cron/scrape/{service}", post(admin_cron_scrape))
+        .route("/tasks/", get(admin_tasks))
         .route("/headers/", get(admin_headers))
         .route("/scrape/", get(admin_scrape))
         .route("/scrape/test", post(admin_scrape_test))
@@ -1356,6 +1357,80 @@ async fn admin_cron_scrape(
         &resources,
         "admin/cron_scrape_run.html",
         context!(source, scrapes: HashMap<String, ScraperHttpResult>, summary, fetch_ms, process_ms, insert_ms,),
+    )
+}
+
+/// A single task's snapshot, as rendered on the `/admin/tasks/` page.
+#[derive(Serialize)]
+struct TaskDumpEntry {
+    id: String,
+    /// The captured backtrace showing where the task is currently parked. Tasks
+    /// stuck in a hyper poll loop (see the Cloudflare hyper bug) show up here.
+    trace: String,
+}
+
+/// Whether `Handle::dump()` is available in this build. Tokio only compiles the
+/// task-dump API on Linux x86/x86_64/aarch64 with the `tokio_unstable` cfg and
+/// the `taskdump` feature. On macOS dev builds it is absent, so the page renders
+/// an explanatory message instead. Production (Linux) has the real thing.
+const TASKDUMP_SUPPORTED: bool = cfg!(all(
+    tokio_unstable,
+    target_os = "linux",
+    any(target_arch = "aarch64", target_arch = "x86", target_arch = "x86_64"),
+));
+
+#[cfg(all(
+    tokio_unstable,
+    target_os = "linux",
+    any(target_arch = "aarch64", target_arch = "x86", target_arch = "x86_64"),
+))]
+async fn dump_tasks() -> Vec<TaskDumpEntry> {
+    let handle = tokio::runtime::Handle::current();
+    let dump = handle.dump().await;
+    dump.tasks()
+        .iter()
+        .map(|task| TaskDumpEntry {
+            id: task.id().to_string(),
+            trace: task.trace().to_string(),
+        })
+        .collect()
+}
+
+#[cfg(not(all(
+    tokio_unstable,
+    target_os = "linux",
+    any(target_arch = "aarch64", target_arch = "x86", target_arch = "x86_64"),
+)))]
+async fn dump_tasks() -> Vec<TaskDumpEntry> {
+    Vec::new()
+}
+
+/// Snapshot every task running on the current Tokio runtime and render their
+/// backtraces. Uses `Handle::dump()`, which requires the `tokio_unstable` cfg
+/// flag (set in `.cargo/config.toml`) and the `taskdump` tokio feature.
+///
+/// Note: taking a dump traces every task and is relatively expensive; it should
+/// only be triggered on-demand from this admin page, never on a hot path.
+async fn admin_tasks(
+    Extension(user): Extension<CurrentUser>,
+    State(AdminState { resources, .. }): State<AdminState>,
+) -> Result<impl IntoResponse, WebError> {
+    let start = Instant::now();
+    // `dump()` works by waiting for each task to reach its next yield point, so a
+    // task that never yields (e.g. one wedged in a busy hyper poll loop -- the
+    // very thing we're hunting) can make it hang. Bound it: a timeout here is
+    // itself a strong signal that some task is stuck.
+    let result = tokio::time::timeout(Duration::from_secs(5), dump_tasks()).await;
+    let dump_ms = start.elapsed().as_millis();
+    let timed_out = result.is_err();
+    let tasks = result.unwrap_or_default();
+    let task_count = tasks.len();
+    let supported = TASKDUMP_SUPPORTED;
+    render_admin(
+        Some(&user),
+        &resources,
+        "admin/tasks.html",
+        context!(user, tasks, task_count, dump_ms, supported, timed_out),
     )
 }
 

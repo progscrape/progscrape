@@ -1,0 +1,5 @@
+# Enable tokio's unstable runtime introspection APIs (Handle::dump()), used by
+# the /admin/tasks/ page to snapshot every running task with a backtrace. See
+# web/src/web.rs (admin_tasks). Removing this flag will break that page's build.
+[build]
+rustflags = ["--cfg", "tokio_unstable", "--check-cfg", "cfg(tokio_unstable)"]

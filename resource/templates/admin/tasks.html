@@ -1,0 +1,28 @@
+{% extends "admin/base.html" %}
+{% block content %}
+<h1>Task status</h1>
+<p>
+    Snapshot of every task on the Tokio runtime (application tasks plus internal
+    hyper/reqwest tasks). Each task's
+    backtrace shows where it is currently parked.
+</p>
+{% if not supported %}
+<p><strong>Task dumps are not available in this build.</strong></p>
+{% elif timed_out %}
+<p style="color: #b00;"><strong>Task dump timed out after {{ dump_ms }}ms.</strong>
+The dump waits for every task to reach its next yield point, so a timeout
+strongly suggests a task is wedged and never yielding!<a href="">Retry</a></p>
+{% else %}
+<p>
+    <strong>{{ task_count }}</strong> task{% if task_count != 1 %}s{% endif %}
+    captured in {{ dump_ms }}ms. <a href="">Refresh</a>
+</p>
+{% for task in tasks %}
+<h2>Task {{ task.id }}</h2>
+<pre style="white-space: pre-wrap; overflow-x: auto; background: #f4f4f4; padding: 0.5em;">{{ task.trace }}</pre>
+{% endfor %}
+{% if task_count == 0 %}
+<p><em>No tasks captured.</em></p>
+{% endif %}
+{% endif %}
+{% endblock %}
