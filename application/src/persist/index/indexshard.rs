@@ -5,7 +5,7 @@ use tantivy::tokenizer::{PreTokenizedString, SimpleTokenizer, Token, Tokenizer};
 use tantivy::{
     Directory, DocAddress, IndexSettings, IndexSortByField, IndexWriter, Searcher, schema::*,
 };
-use tantivy::{Index, IndexReader, doc};
+use tantivy::{Index, IndexReader, ReloadPolicy, doc};
 
 use progscrape_scrapers::{ScrapeId, StoryDate};
 use tracing::{error, info};
@@ -115,9 +115,18 @@ impl StoryIndexShard {
         })
     }
 
+    /// Reader with `Manual` reload to avoid watcher thread.
+    fn reader(&self) -> Result<IndexReader, PersistError> {
+        Ok(self
+            .index
+            .reader_builder()
+            .reload_policy(ReloadPolicy::Manual)
+            .try_into()?)
+    }
+
     pub fn validate(&self) -> Result<usize, PersistError> {
         info!("Validating index shard {:?}", self.shard);
-        let searcher = self.index.reader()?.searcher();
+        let searcher = self.reader()?.searcher();
         let damaged = self.index.validate_checksum()?;
         if !damaged.is_empty() {
             error!(
@@ -157,7 +166,7 @@ impl StoryIndexShard {
             if lock.is_none() {
                 *lock = {
                     let now = Instant::now();
-                    let reader = self.index.reader()?;
+                    let reader = self.reader()?;
                     let searcher = reader.searcher();
                     tracing::info!(
                         "Created reader and searcher for {:?} in {}ms",
@@ -190,6 +199,15 @@ impl StoryIndexShard {
         Ok(self.index.writer(MEMORY_ARENA_SIZE)?)
     }
 
+    /// Writer with an explicit indexing-thread count. Old shards get a handful of
+    /// docs per batch and don't benefit from parallel indexing, so we run them
+    /// single-threaded to avoid a `shards * num_cpus` transient thread spike.
+    pub fn writer_with_threads(&self, num_threads: usize) -> Result<IndexWriter, PersistError> {
+        Ok(self
+            .index
+            .writer_with_num_threads(num_threads, MEMORY_ARENA_SIZE)?)
+    }
+
     pub fn commit_writer(&mut self, mut writer: IndexWriter) -> Result<(), PersistError> {
         writer.commit()?;
         // Reload reader and search iff they were loaded
@@ -202,7 +220,7 @@ impl StoryIndexShard {
     }
 
     pub fn most_recent_story(&self) -> Result<StoryDate, PersistError> {
-        let searcher = self.index.reader()?.searcher();
+        let searcher = self.reader()?.searcher();
         let mut recent = 0;
         for segment_reader in searcher.segment_readers().iter() {
             let date = segment_reader.fast_fields().i64(self.schema.date_field)?;

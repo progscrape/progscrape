@@ -68,6 +68,10 @@ pub struct StoryIndex {
 struct WriterProvider {
     writers: HashMap<Shard, IndexWriter>,
     index: SharedMut<IndexCache>,
+    /// Newest shard in the index; the only one indexed with full parallelism when not `bulk`.
+    newest: Shard,
+    /// Bulk import: every shard gets full indexing parallelism for throughput.
+    bulk: bool,
 }
 
 impl WriterProvider {
@@ -81,7 +85,11 @@ impl WriterProvider {
         let writer = if let Some(writer) = self.writers.get_mut(&shard) {
             writer
         } else {
-            let writer = shard_index.writer()?;
+            let writer = if self.bulk || shard >= self.newest {
+                shard_index.writer()?
+            } else {
+                shard_index.writer_with_threads(1)?
+            };
             self.writers.entry(shard).or_insert(writer)
         };
 
@@ -183,11 +191,22 @@ impl StoryIndex {
         WriterOuterClosure: FnOnce(&mut WriterProvider) -> Result<TOuter, PersistError>,
     >(
         &self,
+        bulk: bool,
         f: WriterOuterClosure,
     ) -> Result<TOuter, PersistError> {
+        // Newest shard so far; only it (or all, when `bulk`) gets full indexing parallelism.
+        let newest = self
+            .index_cache
+            .read()
+            .range
+            .iterate(ShardOrder::NewestFirst)
+            .next()
+            .unwrap_or_default();
         let mut provider = WriterProvider {
             writers: Default::default(),
             index: self.index_cache.clone(),
+            newest,
+            bulk,
         };
         let res = f(&mut provider);
         let WriterProvider { writers, .. } = provider;
@@ -319,7 +338,7 @@ impl StoryIndex {
         memindex.insert_scrapes(scrapes)?;
         let positions = self.find_insert_position(memindex.get_all_stories())?;
 
-        self.with_writers(|provider| {
+        self.with_writers(false, |provider| {
             let mut res = vec![];
             for (story, shard, doc_address) in positions {
                 res.push(provider.provide(shard, |_, index, writer| {
@@ -362,7 +381,7 @@ impl StoryIndex {
         eval: &StoryEvaluator,
         scrape_collections: I,
     ) -> Result<Vec<ScrapePersistResult>, PersistError> {
-        self.with_writers(|provider| {
+        self.with_writers(true, |provider| {
             let mut res = vec![];
             let start = timer_start!();
             let mut total = 0;
@@ -409,7 +428,7 @@ impl StoryIndex {
         eval: &StoryEvaluator,
         stories: I,
     ) -> Result<Vec<ScrapePersistResult>, PersistError> {
-        self.with_writers(|provider| {
+        self.with_writers(false, |provider| {
             let mut res = vec![];
             for id in stories {
                 let searcher = self.fetch_by_id(&id);
