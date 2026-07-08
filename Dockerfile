@@ -34,7 +34,16 @@ RUN echo "[profile.release]\nlto = true\ncodegen-units = 1" >> Cargo.toml
 RUN rustup target add aarch64-unknown-linux-gnu
 ENV CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc
 ENV CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++
-RUN mkdir .cargo && echo "[target.aarch64-unknown-linux-gnu]\nlinker = \"aarch64-linux-gnu-gcc\"" > .cargo/config.toml
+# NOTE: this recreates .cargo/config.toml from scratch (the repo's copy isn't
+# COPY'd in), so it must also carry the `tokio_unstable` rustflags that the repo
+# config sets.
+RUN mkdir .cargo && printf '%s\n' \
+    '[build]' \
+    'rustflags = ["--cfg", "tokio_unstable", "--check-cfg", "cfg(tokio_unstable)"]' \
+    '' \
+    '[target.aarch64-unknown-linux-gnu]' \
+    'linker = "aarch64-linux-gnu-gcc"' \
+    > .cargo/config.toml
 
 # pkg-config 0.3: PKG_CONFIG_PATH_${TARGET} (hyphenated triple) is selected per build script when cross-compiling.
 ENV PKG_CONFIG_ALLOW_CROSS=1 \
