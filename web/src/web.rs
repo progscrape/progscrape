@@ -12,7 +12,7 @@ use axum::{
     http::{HeaderName, HeaderValue},
     middleware::{self, Next},
     response::{Html, IntoResponse, Redirect, Response},
-    routing::{get, post},
+    routing::{any, get, post},
 };
 use futures::{StreamExt, stream::FuturesUnordered};
 use hyper::{HeaderMap, Method, StatusCode, header};
@@ -278,6 +278,7 @@ pub fn admin_routes<S: Clone + Send + Sync + 'static>(
         .route("/cron/validate", post(admin_cron_validate))
         .route("/cron/scrape/{service}", post(admin_cron_scrape))
         .route("/tasks/", get(admin_tasks))
+        .route("/proxy/{target}/{*path}", any(admin_proxy))
         .route("/headers/", get(admin_headers))
         .route("/scrape/", get(admin_scrape))
         .route("/scrape/test", post(admin_scrape_test))
@@ -299,6 +300,9 @@ pub fn admin_routes<S: Clone + Send + Sync + 'static>(
         })
         .route_layer(middleware::from_fn_with_state(auth, authorize))
 }
+
+// Backstop so no hung job can freeze the cron loop. Detached, not aborted.
+const CRON_JOB_TIMEOUT: Duration = Duration::from_secs(60 * 60);
 
 /// Feed the `Cron` request list into the `Router`.
 fn start_cron(
@@ -346,13 +350,29 @@ fn start_cron(
                     *req.method_mut() = Method::POST;
                     *req.uri_mut() = uri;
                     (*req.extensions_mut()).insert(CronMarker {});
-                    let response = match tokio::spawn(router.call(req)).await {
-                        Ok(service_result) => service_result.unwrap_infallible(),
-                        Err(e) => {
+                    let response = match tokio::time::timeout(
+                        CRON_JOB_TIMEOUT,
+                        tokio::spawn(router.call(req)),
+                    )
+                    .await
+                    {
+                        Ok(Ok(service_result)) => service_result.unwrap_infallible(),
+                        Ok(Err(e)) => {
                             tracing::error!(ready_uri = %ready_uri, "Cron request task panicked: {e:?}");
                             Response::builder()
                                 .status(StatusCode::INTERNAL_SERVER_ERROR)
                                 .body(Body::from("Internal Server Error (handler panicked)"))
+                                .unwrap()
+                        }
+                        Err(_elapsed) => {
+                            // Detach the job so the loop can tick again.
+                            tracing::error!(
+                                ready_uri = %ready_uri,
+                                "Cron task exceeded {CRON_JOB_TIMEOUT:?}; abandoning it so cron keeps running"
+                            );
+                            Response::builder()
+                                .status(StatusCode::GATEWAY_TIMEOUT)
+                                .body(Body::from("Cron task timed out"))
                                 .unwrap()
                         }
                     };
@@ -480,8 +500,7 @@ pub async fn start_server<P2: Into<std::path::PathBuf>>(
         app.clone(),
     );
 
-    // Single background task-dump loop feeding /admin/tasks/ and task metrics.
-    start_task_monitor();
+    start_task_monitor(resources.config.read().task_dump_interval_seconds);
 
     let tcp = TcpListener::bind(&address).await?;
     axum::serve(tcp, app.into_make_service()).await?;
@@ -1104,8 +1123,7 @@ async fn root_metrics_txt(
     let now = now(&index).await?;
     let top_tags = index.top_tags(usize::MAX)?;
     let storage = index.story_count().await?;
-    // Read the cached snapshot from the background task monitor -- never dump
-    // live on the scrape path (see start_task_monitor).
+    // Cached only -- never dump on the scrape path.
     let tasks = TaskMetrics::current();
     let metrics = render(
         &resources,
@@ -1303,7 +1321,6 @@ async fn admin_update_blog(
 /// Total timeout for a single outbound scrape fetch.
 const SCRAPE_HTTP_TIMEOUT: Duration = Duration::from_secs(90);
 
-/// The HTTP client used for outbound scrapes, with a bounded request timeout.
 fn scrape_client() -> Result<reqwest::Client, WebError> {
     Ok(reqwest::Client::builder()
         .timeout(SCRAPE_HTTP_TIMEOUT)
@@ -1377,19 +1394,14 @@ async fn admin_cron_scrape(
     )
 }
 
-/// A single task's snapshot, as rendered on the `/admin/tasks/` page.
 #[derive(Clone, Serialize)]
 struct TaskDumpEntry {
     id: String,
-    /// The captured backtrace showing where the task is currently parked. Tasks
-    /// stuck in a hyper poll loop (see the Cloudflare hyper bug) show up here.
+    /// Backtrace showing where the task is parked.
     trace: String,
 }
 
-/// Whether `Handle::dump()` is available in this build. Tokio only compiles the
-/// task-dump API on Linux x86/x86_64/aarch64 with the `tokio_unstable` cfg and
-/// the `taskdump` feature. On macOS dev builds it is absent, so the page renders
-/// an explanatory message instead. Production (Linux) has the real thing.
+// Handle::dump() only exists on Linux x86/x86_64/aarch64 + tokio_unstable + taskdump.
 const TASKDUMP_SUPPORTED: bool = cfg!(all(
     tokio_unstable,
     target_os = "linux",
@@ -1422,15 +1434,10 @@ async fn dump_tasks() -> Vec<TaskDumpEntry> {
     Vec::new()
 }
 
-/// The most recent completed task dump. Captured by the single background loop in
-/// [`start_task_monitor`] and read (never re-dumped) by the admin page and the
-/// metrics endpoint.
 #[derive(Clone)]
 struct TaskDumpSnapshot {
     tasks: Vec<TaskDumpEntry>,
-    /// When this dump finished.
     captured_at: Instant,
-    /// How long the `dump()` itself took.
     duration: Duration,
 }
 
@@ -1441,42 +1448,50 @@ fn task_snapshot() -> &'static SharedMut<Option<TaskDumpSnapshot>> {
     TASK_SNAPSHOT.get_or_init(|| SharedMut::new(None))
 }
 
-/// How often the background task monitor captures a fresh dump.
-const TASK_DUMP_INTERVAL: Duration = Duration::from_secs(60);
+// Serialize dumps: concurrent Handle::dump() can deadlock the runtime.
+static DUMP_LOCK: OnceLock<tokio::sync::Mutex<()>> = OnceLock::new();
 
-/// Spawn the single, long-lived task-dump loop. It is the *only* caller of
-/// `Handle::dump()`: one dump at a time, always run to completion.
-fn start_task_monitor() {
+// dump() pauses the runtime -- only call on-demand, never on a hot path.
+async fn refresh_task_dump() {
     if !TASKDUMP_SUPPORTED {
         return;
     }
+    let _guard = DUMP_LOCK
+        .get_or_init(|| tokio::sync::Mutex::new(()))
+        .lock()
+        .await;
+    let start = Instant::now();
+    let tasks = dump_tasks().await;
+    *task_snapshot().write() = Some(TaskDumpSnapshot {
+        tasks,
+        captured_at: Instant::now(),
+        duration: start.elapsed(),
+    });
+}
+
+// Opt-in periodic dump, off by default (dump() pauses the runtime).
+fn start_task_monitor(interval_seconds: u64) {
+    if !TASKDUMP_SUPPORTED || interval_seconds == 0 {
+        return;
+    }
     tokio::spawn(async move {
+        let interval = Duration::from_secs(interval_seconds);
         loop {
-            let start = Instant::now();
-            let tasks = dump_tasks().await;
-            *task_snapshot().write() = Some(TaskDumpSnapshot {
-                tasks,
-                captured_at: Instant::now(),
-                duration: start.elapsed(),
-            });
-            tokio::time::sleep(TASK_DUMP_INTERVAL).await;
+            refresh_task_dump().await;
+            tokio::time::sleep(interval).await;
         }
     });
 }
 
-/// Task-dump summary rendered into the Prometheus metrics endpoint, read from the
-/// cached [`task_snapshot`]. Booleans are exposed as `0`/`1` gauges.
+// Task metrics for /metrics, from the cached dump.
 #[derive(Serialize)]
 struct TaskMetrics {
-    /// Total number of tasks on the runtime at the last dump.
     total: usize,
-    /// Tasks whose backtrace mentions hyper.
+    /// Backtraces mentioning hyper.
     hyper: usize,
-    /// 1 if task dumping is compiled into this build, else 0.
     supported: u8,
-    /// Seconds since the last completed dump. Cycles 0..interval when healthy.
+    /// Grows without bound if a task is wedged.
     age_seconds: f64,
-    /// Duration of the last completed dump, in seconds.
     duration_seconds: f64,
 }
 
@@ -1502,12 +1517,13 @@ impl TaskMetrics {
     }
 }
 
-/// Render the most recent task dump captured by the background monitor.
+// Captures a fresh dump on load (on-demand, serialized).
 async fn admin_tasks(
     Extension(user): Extension<CurrentUser>,
     State(AdminState { resources, .. }): State<AdminState>,
 ) -> Result<impl IntoResponse, WebError> {
     let supported = TASKDUMP_SUPPORTED;
+    refresh_task_dump().await;
     let (tasks, task_count, dump_ms, age_seconds, has_snapshot) = match &*task_snapshot().read() {
         Some(s) => (
             s.tasks.clone(),
@@ -1532,6 +1548,52 @@ async fn admin_tasks(
             has_snapshot
         ),
     )
+}
+
+fn proxy_client() -> Result<reqwest::Client, WebError> {
+    Ok(reqwest::Client::builder()
+        .timeout(Duration::from_secs(30))
+        .build()?)
+}
+
+// Reverse-proxy /admin/proxy/<target>/<path> to config.proxy[<target>].
+async fn admin_proxy(
+    Extension(_user): Extension<CurrentUser>,
+    State(AdminState { resources, .. }): State<AdminState>,
+    Path((target, path)): Path<(String, String)>,
+    method: Method,
+    OriginalUri(uri): OriginalUri,
+    body: axum::body::Bytes,
+) -> Result<impl IntoResponse, WebError> {
+    // Clone out so the config lock isn't held across the request.
+    let base = resources.config.read().proxy.get(&target).cloned();
+    let Some(base) = base else {
+        return Err(WebError::NotFound);
+    };
+
+    let mut url = format!("{}/{}", base.trim_end_matches('/'), path);
+    if let Some(query) = uri.query() {
+        url.push('?');
+        url.push_str(query);
+    }
+    tracing::info!("Admin proxy: {method} {url}");
+
+    let upstream = proxy_client()?
+        .request(method, url.as_str())
+        .body(body)
+        .send()
+        .await?;
+    let status = upstream.status();
+    let content_type = upstream.headers().get(header::CONTENT_TYPE).cloned();
+    let bytes = upstream.bytes().await?;
+
+    let mut builder = Response::builder()
+        .status(status)
+        .header(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
+    if let Some(content_type) = content_type {
+        builder = builder.header(header::CONTENT_TYPE, content_type);
+    }
+    Ok(builder.body(Body::from(bytes)).unwrap())
 }
 
 async fn admin_headers(

@@ -9,4 +9,14 @@
     <li><a href="index/frontpage/">Frontpage status</a></li>
     <li><a href="scrape/">Scrape status</a></li>
 </ul>
+{% if config.proxy %}
+<h2>Proxies</h2>
+<ul>
+{% for name, base in config.proxy %}
+    <li>{{ name }} (<code>{{ base }}</code>):
+        <a href="proxy/{{ name }}/health">health</a> &middot;
+        <a href="proxy/{{ name }}/screenshot">screenshot</a></li>
+{% endfor %}
+</ul>
+{% endif %}
 {% endblock %}
