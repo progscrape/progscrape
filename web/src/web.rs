@@ -277,7 +277,7 @@ pub fn admin_routes<S: Clone + Send + Sync + 'static>(
         .route("/cron/reindex", post(admin_cron_reindex))
         .route("/cron/validate", post(admin_cron_validate))
         .route("/cron/scrape/{service}", post(admin_cron_scrape))
-        .route("/proxy/{target}/{*path}", any(admin_proxy))
+        .route("/proxy/{target}/{link}", any(admin_proxy))
         .route("/headers/", get(admin_headers))
         .route("/scrape/", get(admin_scrape))
         .route("/scrape/test", post(admin_scrape_test))
@@ -1397,24 +1397,29 @@ fn proxy_client() -> Result<reqwest::Client, WebError> {
         .build()?)
 }
 
-// Reverse-proxy /admin/proxy/<target>/<path> to config.proxy[<target>].
+// Reverse-proxy /admin/proxy/<target>/<link> to the full URL at config.proxy[<target>][<link>].
 async fn admin_proxy(
     Extension(_user): Extension<CurrentUser>,
     State(AdminState { resources, .. }): State<AdminState>,
-    Path((target, path)): Path<(String, String)>,
+    Path((target, link)): Path<(String, String)>,
     method: Method,
     OriginalUri(uri): OriginalUri,
     body: axum::body::Bytes,
 ) -> Result<impl IntoResponse, WebError> {
     // Clone out so the config lock isn't held across the request.
-    let base = resources.config.read().proxy.get(&target).cloned();
-    let Some(base) = base else {
+    let target = resources
+        .config
+        .read()
+        .proxy
+        .get(&target)
+        .and_then(|links| links.get(&link))
+        .cloned();
+    let Some(mut url) = target else {
         return Err(WebError::NotFound);
     };
 
-    let mut url = format!("{}/{}", base.trim_end_matches('/'), path);
     if let Some(query) = uri.query() {
-        url.push('?');
+        url.push(if url.contains('?') { '&' } else { '?' });
         url.push_str(query);
     }
     tracing::info!("Admin proxy: {method} {url}");

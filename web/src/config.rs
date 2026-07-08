@@ -11,7 +11,6 @@ pub struct Config {
     pub scrape: progscrape_scrapers::ScrapeConfig,
     pub cron: crate::cron::CronConfig,
     pub rate_limits: crate::rate_limits::RateLimitsConfig,
-    /// `/admin/proxy/<name>/<path>` -> upstream base URL, e.g. { "scrape-vm": "http://scrape-vm:8080" }.
     #[serde(default)]
-    pub proxy: HashMap<String, String>,
+    pub proxy: HashMap<String, HashMap<String, String>>,
 }

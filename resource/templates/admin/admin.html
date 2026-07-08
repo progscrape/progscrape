@@ -11,10 +11,9 @@
 {% if config.proxy %}
 <h2>Proxies</h2>
 <ul>
-{% for name, base in config.proxy %}
-    <li>{{ name }} (<code>{{ base }}</code>):
-        <a href="proxy/{{ name }}/health">health</a> &middot;
-        <a href="proxy/{{ name }}/screenshot">screenshot</a></li>
+{% for name, links in config.proxy %}
+    <li>{{ name }}:
+        {% for link, url in links %}<a href="proxy/{{ name }}/{{ link }}">{{ link }}</a>{% if not loop.last %} &middot; {% endif %}{% endfor %}</li>
 {% endfor %}
 </ul>
 {% endif %}
