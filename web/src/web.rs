@@ -480,6 +480,9 @@ pub async fn start_server<P2: Into<std::path::PathBuf>>(
         app.clone(),
     );
 
+    // Single background task-dump loop feeding /admin/tasks/ and task metrics.
+    start_task_monitor();
+
     let tcp = TcpListener::bind(&address).await?;
     axum::serve(tcp, app.into_make_service()).await?;
 
@@ -1101,10 +1104,13 @@ async fn root_metrics_txt(
     let now = now(&index).await?;
     let top_tags = index.top_tags(usize::MAX)?;
     let storage = index.story_count().await?;
+    // Read the cached snapshot from the background task monitor -- never dump
+    // live on the scrape path (see start_task_monitor).
+    let tasks = TaskMetrics::current();
     let metrics = render(
         &resources,
         "metrics.txt",
-        context!(source_count, storage, top_tags, now),
+        context!(source_count, storage, top_tags, now, tasks),
     )?;
 
     Ok((
@@ -1361,7 +1367,7 @@ async fn admin_cron_scrape(
 }
 
 /// A single task's snapshot, as rendered on the `/admin/tasks/` page.
-#[derive(Serialize)]
+#[derive(Clone, Serialize)]
 struct TaskDumpEntry {
     id: String,
     /// The captured backtrace showing where the task is currently parked. Tasks
@@ -1405,32 +1411,115 @@ async fn dump_tasks() -> Vec<TaskDumpEntry> {
     Vec::new()
 }
 
-/// Snapshot every task running on the current Tokio runtime and render their
-/// backtraces. Uses `Handle::dump()`, which requires the `tokio_unstable` cfg
-/// flag (set in `.cargo/config.toml`) and the `taskdump` tokio feature.
-///
-/// Note: taking a dump traces every task and is relatively expensive; it should
-/// only be triggered on-demand from this admin page, never on a hot path.
+/// The most recent completed task dump. Captured by the single background loop in
+/// [`start_task_monitor`] and read (never re-dumped) by the admin page and the
+/// metrics endpoint.
+#[derive(Clone)]
+struct TaskDumpSnapshot {
+    tasks: Vec<TaskDumpEntry>,
+    /// When this dump finished.
+    captured_at: Instant,
+    /// How long the `dump()` itself took.
+    duration: Duration,
+}
+
+/// Latest task dump.
+static TASK_SNAPSHOT: OnceLock<SharedMut<Option<TaskDumpSnapshot>>> = OnceLock::new();
+
+fn task_snapshot() -> &'static SharedMut<Option<TaskDumpSnapshot>> {
+    TASK_SNAPSHOT.get_or_init(|| SharedMut::new(None))
+}
+
+/// How often the background task monitor captures a fresh dump.
+const TASK_DUMP_INTERVAL: Duration = Duration::from_secs(60);
+
+/// Spawn the single, long-lived task-dump loop. It is the *only* caller of
+/// `Handle::dump()`: one dump at a time, always run to completion.
+fn start_task_monitor() {
+    if !TASKDUMP_SUPPORTED {
+        return;
+    }
+    tokio::spawn(async move {
+        loop {
+            let start = Instant::now();
+            let tasks = dump_tasks().await;
+            *task_snapshot().write() = Some(TaskDumpSnapshot {
+                tasks,
+                captured_at: Instant::now(),
+                duration: start.elapsed(),
+            });
+            tokio::time::sleep(TASK_DUMP_INTERVAL).await;
+        }
+    });
+}
+
+/// Task-dump summary rendered into the Prometheus metrics endpoint, read from the
+/// cached [`task_snapshot`]. Booleans are exposed as `0`/`1` gauges.
+#[derive(Serialize)]
+struct TaskMetrics {
+    /// Total number of tasks on the runtime at the last dump.
+    total: usize,
+    /// Tasks whose backtrace mentions hyper.
+    hyper: usize,
+    /// 1 if task dumping is compiled into this build, else 0.
+    supported: u8,
+    /// Seconds since the last completed dump. Cycles 0..interval when healthy.
+    age_seconds: f64,
+    /// Duration of the last completed dump, in seconds.
+    duration_seconds: f64,
+}
+
+impl TaskMetrics {
+    fn current() -> Self {
+        let supported = TASKDUMP_SUPPORTED as u8;
+        match &*task_snapshot().read() {
+            Some(s) => TaskMetrics {
+                total: s.tasks.len(),
+                hyper: s.tasks.iter().filter(|t| t.trace.contains("hyper")).count(),
+                supported,
+                age_seconds: s.captured_at.elapsed().as_secs_f64(),
+                duration_seconds: s.duration.as_secs_f64(),
+            },
+            None => TaskMetrics {
+                total: 0,
+                hyper: 0,
+                supported,
+                age_seconds: 0.0,
+                duration_seconds: 0.0,
+            },
+        }
+    }
+}
+
+/// Render the most recent task dump captured by the background monitor.
 async fn admin_tasks(
     Extension(user): Extension<CurrentUser>,
     State(AdminState { resources, .. }): State<AdminState>,
 ) -> Result<impl IntoResponse, WebError> {
-    let start = Instant::now();
-    // `dump()` works by waiting for each task to reach its next yield point, so a
-    // task that never yields (e.g. one wedged in a busy hyper poll loop -- the
-    // very thing we're hunting) can make it hang. Bound it: a timeout here is
-    // itself a strong signal that some task is stuck.
-    let result = tokio::time::timeout(Duration::from_secs(5), dump_tasks()).await;
-    let dump_ms = start.elapsed().as_millis();
-    let timed_out = result.is_err();
-    let tasks = result.unwrap_or_default();
-    let task_count = tasks.len();
     let supported = TASKDUMP_SUPPORTED;
+    let (tasks, task_count, dump_ms, age_seconds, has_snapshot) = match &*task_snapshot().read() {
+        Some(s) => (
+            s.tasks.clone(),
+            s.tasks.len(),
+            s.duration.as_millis(),
+            s.captured_at.elapsed().as_secs(),
+            true,
+        ),
+        None => (Vec::new(), 0, 0u128, 0u64, false),
+    };
     render_admin(
         Some(&user),
         &resources,
         "admin/tasks.html",
-        context!(user, tasks, task_count, dump_ms, supported, timed_out),
+        context!(
+            user,
+            tasks,
+            task_count,
+            dump_ms,
+            supported,
+            age_seconds,
+            has_snapshot
+        ),
     )
 }
 

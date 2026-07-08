@@ -2,20 +2,23 @@
 {% block content %}
 <h1>Task status</h1>
 <p>
-    Snapshot of every task on the Tokio runtime (application tasks plus internal
-    hyper/reqwest tasks). Each task's
-    backtrace shows where it is currently parked.
+    Latest snapshot of every task on the Tokio runtime (application tasks plus
+    internal hyper/reqwest tasks).
 </p>
 {% if not supported %}
 <p><strong>Task dumps are not available in this build.</strong></p>
-{% elif timed_out %}
-<p style="color: #b00;"><strong>Task dump timed out after {{ dump_ms }}ms.</strong>
-The dump waits for every task to reach its next yield point, so a timeout
-strongly suggests a task is wedged and never yielding!<a href="">Retry</a></p>
+{% elif not has_snapshot %}
+<p><em>Waiting for the first background dump&hellip; refresh in a moment. <a href="">Refresh</a></em></p>
 {% else %}
+{% if age_seconds > 180 %}
+<p style="color: #b00;"><strong>Snapshot is stale ({{ age_seconds }}s old).</strong>
+The background dumper updates every 60s. If the age keeps climbing, a task is
+likely wedged in a busy loop that never yields (the dump is blocked waiting for
+it).</p>
+{% endif %}
 <p>
-    <strong>{{ task_count }}</strong> task{% if task_count != 1 %}s{% endif %}
-    captured in {{ dump_ms }}ms. <a href="">Refresh</a>
+    <strong>{{ task_count }}</strong> task{% if task_count != 1 %}s{% endif %},
+    dumped {{ age_seconds }}s ago (dump took {{ dump_ms }}ms). <a href="">Refresh</a>
 </p>
 {% for task in tasks %}
 <h2>Task {{ task.id }}</h2>

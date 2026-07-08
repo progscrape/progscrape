@@ -12,6 +12,26 @@ stories_by_tag{tag="{{ tag.0 }}"} {{ tag.1 }}
 
 version{git="{{ git }}"} 1
 
+# HELP tasks_running Number of tasks currently on the Tokio runtime
+# TYPE tasks_running gauge
+tasks_running {{ tasks.total }}
+
+# HELP tasks_running_hyper Number of runtime tasks whose backtrace mentions hyper
+# TYPE tasks_running_hyper gauge
+tasks_running_hyper {{ tasks.hyper }}
+
+# HELP tasks_dump_supported 1 if task dumping is compiled into this build, else 0
+# TYPE tasks_dump_supported gauge
+tasks_dump_supported {{ tasks.supported }}
+
+# HELP tasks_dump_age_seconds Seconds since the last completed background task dump; grows without bound if a task is wedged
+# TYPE tasks_dump_age_seconds gauge
+tasks_dump_age_seconds {{ tasks.age_seconds }}
+
+# HELP tasks_dump_duration_seconds Wall-clock time taken by the last completed task dump
+# TYPE tasks_dump_duration_seconds gauge
+tasks_dump_duration_seconds {{ tasks.duration_seconds }}
+
 # HELP stories_by_source Number of stories in the hot set by source
 # TYPE stories_by_source counter
 {%- for source in source_count %}

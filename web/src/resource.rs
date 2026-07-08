@@ -218,6 +218,13 @@ fn create_config(resource_path: &Path, config: Option<&Path>) -> Result<Config, 
     let mut value: Value = serde_json::from_reader(reader)?;
 
     if let Some(config_path) = config {
+        if !config_path.is_file() {
+            return Err(WebError::ArgumentsInvalid(format!(
+                "Config override path is not a file: {} \
+                 (if this is a directory, a Docker bind-mount source was probably missing)",
+                config_path.to_string_lossy()
+            )));
+        }
         let reader = BufReader::new(File::open(config_path)?);
         let patch: Value = serde_json::from_reader(reader)?;
         merge_json(&mut value, patch);
