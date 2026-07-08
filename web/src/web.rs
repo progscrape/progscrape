@@ -1300,6 +1300,16 @@ async fn admin_update_blog(
     render_admin(None, &resources, "admin/cron_blog.html", context!())
 }
 
+/// Total timeout for a single outbound scrape fetch.
+const SCRAPE_HTTP_TIMEOUT: Duration = Duration::from_secs(90);
+
+/// The HTTP client used for outbound scrapes, with a bounded request timeout.
+fn scrape_client() -> Result<reqwest::Client, WebError> {
+    Ok(reqwest::Client::builder()
+        .timeout(SCRAPE_HTTP_TIMEOUT)
+        .build()?)
+}
+
 async fn admin_cron_scrape(
     State(AdminState {
         resources, index, ..
@@ -1312,9 +1322,10 @@ async fn admin_cron_scrape(
         .scrapers
         .read()
         .compute_scrape_url_demands(source, subsources);
+    let client = scrape_client()?;
     let mut map = HashMap::new();
     for url in urls {
-        let resp = reqwest::Client::new()
+        let resp = client
             .get(&url)
             .header("User-Agent", "progscrape")
             .send()
@@ -1577,9 +1588,10 @@ async fn admin_scrape_test(
         .scrapers
         .read()
         .compute_scrape_url_demands(params.source, params.subsources);
+    let client = scrape_client()?;
     let mut map = HashMap::new();
     for url in urls {
-        let resp = reqwest::Client::new()
+        let resp = client
             .get(&url)
             .header("User-Agent", "progscrape")
             .send()
