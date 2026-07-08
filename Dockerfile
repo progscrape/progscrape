@@ -34,13 +34,7 @@ RUN echo "[profile.release]\nlto = true\ncodegen-units = 1" >> Cargo.toml
 RUN rustup target add aarch64-unknown-linux-gnu
 ENV CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc
 ENV CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++
-# NOTE: this recreates .cargo/config.toml from scratch (the repo's copy isn't
-# COPY'd in), so it must also carry the `tokio_unstable` rustflags that the repo
-# config sets.
 RUN mkdir .cargo && printf '%s\n' \
-    '[build]' \
-    'rustflags = ["--cfg", "tokio_unstable", "--check-cfg", "cfg(tokio_unstable)"]' \
-    '' \
     '[target.aarch64-unknown-linux-gnu]' \
     'linker = "aarch64-linux-gnu-gcc"' \
     > .cargo/config.toml
@@ -58,7 +52,8 @@ ENV AARCH64_UNKNOWN_LINUX_GNU_OPENSSL_LIB_DIR=/usr/lib/aarch64-linux-gnu \
     AARCH64_UNKNOWN_LINUX_GNU_OPENSSL_INCLUDE_DIR=/usr/include
 
 RUN cargo fetch
-RUN RUSTFLAGS="-Awarnings" parallel \
+# `--cfg tokio_unstable` enables tokio's `taskdump` feature
+RUN RUSTFLAGS="-Awarnings --cfg tokio_unstable" parallel \
     --tagstring '{= s:x86_64-unknown-linux-gnu:amd64:; s:aarch64-unknown-linux-gnu:arm64: =}' \
     -j 2 --lb --tag --color \
     "cargo build --profile ${RUST_PROFILE} --target {} --target-dir target/{}" \
