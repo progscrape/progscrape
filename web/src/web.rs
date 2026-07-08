@@ -601,7 +601,6 @@ async fn blog_posts(
     if original_uri.path() == "/blog" {
         return Err(WebError::WrongUrl("/blog/".to_string()));
     }
-    let posts = &*resources.blog_posts.read();
     let now = now(&index).await?;
     let top_tags = index.top_tags(20)?;
     let path = original_uri
@@ -609,6 +608,7 @@ async fn blog_posts(
         .map(|s| s.as_str())
         .unwrap_or_default();
     let (search, _query) = SearchParams::new(&index, BLOG_SEARCH, 0, 30)?;
+    let posts = &**resources.blog_posts.read();
 
     Ok((
         [(

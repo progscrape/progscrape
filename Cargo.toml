@@ -21,7 +21,7 @@ chrono = { version = "0.4.44", features = ["serde"] }
 chrono-tz = "0.10.4"
 futures = "0.3"
 itertools = "0.14"
-keepcalm = { version = "0.5", features = ["serde", "deadlock_detection"] }
+keepcalm = { version = "0.6", features = ["serde", "deadlock_detection"] }
 rand = "0.10.1"
 regex = "1.7"
 rstest = "0.26"

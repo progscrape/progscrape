@@ -188,10 +188,6 @@ impl Index<StoryIndex> {
     pub async fn validate(
         &self,
     ) -> Result<Vec<(Shard, Result<usize, PersistError>)>, PersistError> {
-        // Do NOT hold a read guard across the loop: each iteration re-acquires
-        // `storage.read()` in `async_run!`, and a writer queuing in between would
-        // block that re-acquire behind itself (parking_lot is task-fair) — a
-        // reader→writer→reader deadlock. Fetch the range, then drop the guard.
         let shard_range = self.storage.read().shard_range()?;
         let mut results = Vec::new();
         for shard in shard_range.iterate(ShardOrder::OldestFirst) {
