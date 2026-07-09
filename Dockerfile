@@ -1,22 +1,14 @@
 ARG RUST_VERSION=1.94.1
-FROM --platform=amd64 rust:${RUST_VERSION} AS builder
+
+# Builds natively for the target platform.
+FROM rust:${RUST_VERSION} AS builder
 
 # Test faster dev mode: docker buildx build --build-arg RUST_PROFILE=dev ...
 ARG RUST_PROFILE=release
 
-# Avoid interactive prompts during apt.
 ENV DEBIAN_FRONTEND=noninteractive
-
-RUN dpkg --add-architecture arm64
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates \
-    pkg-config \
-    clang lld \
-    parallel \
-    gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
-    crossbuild-essential-arm64 \
-    libssl-dev libsqlite3-dev \
-    libssl-dev:arm64 libsqlite3-dev:arm64 \
+    ca-certificates pkg-config libssl-dev libsqlite3-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # .git directory is required to serve git version
@@ -30,48 +22,21 @@ WORKDIR /build
 
 RUN echo "[profile.release]\nlto = true\ncodegen-units = 1" >> Cargo.toml
 
-# Set up arm64 cross compile.
-RUN rustup target add aarch64-unknown-linux-gnu
-ENV CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc
-ENV CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++
-RUN mkdir .cargo && printf '%s\n' \
-    '[target.aarch64-unknown-linux-gnu]' \
-    'linker = "aarch64-linux-gnu-gcc"' \
-    > .cargo/config.toml
-
-# pkg-config 0.3: PKG_CONFIG_PATH_${TARGET} (hyphenated triple) is selected per build script when cross-compiling.
-ENV PKG_CONFIG_ALLOW_CROSS=1 \
-    PKG_CONFIG_SYSROOT_DIR=/
-ENV PKG_CONFIG_PATH_x86_64-unknown-linux-gnu=/usr/lib/x86_64-linux-gnu/pkgconfig
-ENV PKG_CONFIG_PATH_aarch64-unknown-linux-gnu=/usr/lib/aarch64-linux-gnu/pkgconfig
-
-# openssl-sys: target-prefixed OPENSSL_* (see its build.rs env()) before plain OPENSSL_* — parallel-safe.
-ENV X86_64_UNKNOWN_LINUX_GNU_OPENSSL_LIB_DIR=/usr/lib/x86_64-linux-gnu \
-    X86_64_UNKNOWN_LINUX_GNU_OPENSSL_INCLUDE_DIR=/usr/include
-ENV AARCH64_UNKNOWN_LINUX_GNU_OPENSSL_LIB_DIR=/usr/lib/aarch64-linux-gnu \
-    AARCH64_UNKNOWN_LINUX_GNU_OPENSSL_INCLUDE_DIR=/usr/include
-
-RUN cargo fetch
-# `--cfg tokio_unstable` enables tokio's `taskdump` feature
-RUN RUSTFLAGS="-Awarnings --cfg tokio_unstable" parallel \
-    --tagstring '{= s:x86_64-unknown-linux-gnu:amd64:; s:aarch64-unknown-linux-gnu:arm64: =}' \
-    -j 2 --lb --tag --color \
-    "cargo build --profile ${RUST_PROFILE} --target {} --target-dir target/{}" \
-    ::: x86_64-unknown-linux-gnu aarch64-unknown-linux-gnu
-
-RUN mkdir -p /output/linux/arm64
-RUN mkdir -p /output/linux/amd64
-RUN mv /build/target/x86_64-unknown-linux-gnu/x86_64-unknown-linux-gnu/${RUST_PROFILE}/progscrape /output/linux/amd64/progscrape-web
-RUN mv /build/target/aarch64-unknown-linux-gnu/aarch64-unknown-linux-gnu/${RUST_PROFILE}/progscrape /output/linux/arm64/progscrape-web
+# `--cfg tokio_unstable` enables tokio's `taskdump` feature. The cache mounts
+# persist the cargo registry and target dir across builds (per-arch gha cache),
+# so the binary must be copied out of the mounted target dir within this step.
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/build/target,sharing=locked \
+    RUSTFLAGS="-Awarnings --cfg tokio_unstable" cargo build --profile ${RUST_PROFILE} \
+    && cp "target/$([ "$RUST_PROFILE" = dev ] && echo debug || echo "$RUST_PROFILE")/progscrape" \
+       /usr/local/bin/progscrape-web
 
 FROM rust:${RUST_VERSION} AS tester
-ARG TARGETPLATFORM
-COPY --from=builder /output/$TARGETPLATFORM/progscrape-web /usr/local/bin/
+COPY --from=builder /usr/local/bin/progscrape-web /usr/local/bin/
 COPY --from=builder /build/resource/ /var/progscrape/resource/
 RUN /usr/local/bin/progscrape-web help
 
 FROM rust:${RUST_VERSION}
-ARG TARGETPLATFORM
 # Debugger for the heartbeat watchdog's native backtraces on a wedged process
 # (needs CAP_SYS_PTRACE on the container too). gdb (~30MB) enables `rust-gdb`;
 # swap for `lldb` (~300MB) if you want `rust-lldb`'s richer output.
